@@ -49,8 +49,11 @@ for (const name of moduleNames) {
     for (const imported of imports) {
       if (imported.includes('/modules/')) errors.push(`${from}: absolute cross-module imports are forbidden (${imported}).`);
       for (const other of moduleNames.filter((candidate) => candidate !== name)) {
-        if (imported.includes(`../${other}/`) || imported.includes(`/modules/${other}/`) || imported === `@elhafez/${other}`) {
-          errors.push(`${from}: may not import module '${other}' directly. Use a public contract or an event.`);
+        if (imported.includes(`../${other}/`) || imported.includes(`/modules/${other}/`)) {
+          errors.push(`${from}: may not import module '${other}' private source.`);
+        }
+        if (imported === `@elhafez/${other}` && !metadata.allowedDependencies?.includes(imported)) {
+          errors.push(`${from}: module '${other}' is not an allowed public dependency.`);
         }
       }
     }

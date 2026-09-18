@@ -12,6 +12,8 @@
     "@nestjs/common": "^11.0.11",
     "@nestjs/core": "^11.0.11",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "@elhafez/period-control": "workspace:*",
+    "@elhafez/general-ledger": "workspace:*"
   }
 }

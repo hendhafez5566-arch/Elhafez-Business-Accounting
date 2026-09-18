@@ -1,0 +1,1 @@
+{"name":"general-ledger","publicApi":["src/public/index.ts"],"ownedTables":["gl_accounts","gl_journals","gl_journal_lines"],"allowedDependencies":["@elhafez/contracts","@elhafez/core","@elhafez/period-control","@elhafez/currency-fx"]}
