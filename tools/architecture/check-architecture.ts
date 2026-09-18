@@ -14,6 +14,23 @@ function filesIn(directory: string): string[] {
 }
 
 const moduleNames = readdirSync(modulesDir).filter((name) => statSync(join(modulesDir, name)).isDirectory() && name !== '_template');
+const kernelPackages = ['core', 'contracts'];
+for (const packageName of kernelPackages) {
+  const packageRoot = join(root, 'packages', packageName, 'src');
+  for (const file of filesIn(packageRoot)) {
+    const content = readFileSync(file, 'utf8');
+    const from = relative(root, file).split(sep).join('/');
+    const imports = [...content.matchAll(/(?:from\s*|import\s*)['"]([^'"]+)['"]/g)].map((match) => match[1]!);
+    for (const imported of imports) {
+      if (moduleNames.some((moduleName) => imported === `@elhafez/${moduleName}` || imported.includes(`/modules/${moduleName}/`))) {
+        errors.push(`${from}: shared kernel packages must not depend on business modules (${imported}).`);
+      }
+      if (/^(?:@nestjs\/|@prisma\/|prisma$|react(?:\/|$))/.test(imported)) {
+        errors.push(`${from}: shared contract/kernel code must not depend on framework or ORM package '${imported}'.`);
+      }
+    }
+  }
+}
 for (const name of moduleNames) {
   const moduleRoot = join(modulesDir, name);
   const manifest = join(moduleRoot, 'module.json');
