@@ -484,7 +484,7 @@ model BillingInvoice {
 
   @@unique([companyId, id])
   @@unique([companyId, sourceType, sourceId])
-  @@unique([companyId, partyId, externalInvoiceNumber])
+  @@index([companyId, partyId, externalInvoiceNumber])
   @@index([companyId, partyId, status])
   @@map("billing_invoices")
 }
@@ -538,17 +538,18 @@ model BillingAllocation {
 }
 
 model BillingAdvance {
-  id                      String  @id
-  companyId               String  @map("company_id")
-  partyKind               String  @map("party_kind")
-  partyId                 String  @map("party_id")
-  amount                  Decimal @db.Decimal(38, 18)
-  available               Decimal @db.Decimal(38, 18)
-  sourceType              String  @map("source_type")
-  sourceId                String  @map("source_id")
-  restrictionSourceType   String? @map("restriction_source_type")
-  restrictionSourceId     String? @map("restriction_source_id")
-  generatedByAdjustmentId String? @map("generated_by_adjustment_id")
+  id                      String    @id
+  companyId               String    @map("company_id")
+  partyKind               String    @map("party_kind")
+  partyId                 String    @map("party_id")
+  amount                  Decimal   @db.Decimal(38, 18)
+  available               Decimal   @db.Decimal(38, 18)
+  sourceType              String    @map("source_type")
+  sourceId                String    @map("source_id")
+  restrictionSourceType   String?   @map("restriction_source_type")
+  restrictionSourceId     String?   @map("restriction_source_id")
+  generatedByAdjustmentId String?   @map("generated_by_adjustment_id")
+  reversedAt              DateTime? @map("reversed_at")
 
   @@unique([companyId, id])
   @@index([companyId, partyKind, partyId])
@@ -570,17 +571,19 @@ model BillingAdvanceConsumption {
 }
 
 model BillingAdjustment {
-  id          String    @id
-  companyId   String    @map("company_id")
-  invoiceId   String    @map("invoice_id")
-  kind        String
-  amount      Decimal   @db.Decimal(38, 18)
-  sourceType  String    @map("source_type")
-  sourceId    String    @map("source_id")
-  requestHash String    @map("request_hash")
-  journalId   String    @map("journal_id")
-  advanceId   String?   @map("advance_id")
-  reversedAt  DateTime? @map("reversed_at")
+  id            String    @id
+  companyId     String    @map("company_id")
+  invoiceId     String    @map("invoice_id")
+  kind          String
+  amount        Decimal   @db.Decimal(38, 18)
+  appliedAmount Decimal   @map("applied_amount") @db.Decimal(38, 18)
+  advanceAmount Decimal   @map("advance_amount") @db.Decimal(38, 18)
+  sourceType    String    @map("source_type")
+  sourceId      String    @map("source_id")
+  requestHash   String    @map("request_hash")
+  journalId     String    @map("journal_id")
+  advanceId     String?   @map("advance_id")
+  reversedAt    DateTime? @map("reversed_at")
 
   @@unique([companyId, id])
   @@unique([companyId, sourceType, sourceId])

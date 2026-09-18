@@ -8,7 +8,8 @@ CREATE TABLE "tax_policies" (
     "output_account_id" TEXT NOT NULL,
     "input_account_id" TEXT NOT NULL,
 
-    CONSTRAINT "tax_policies_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "tax_policies_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "tax_policies_rate_check" CHECK ("rate" >= 0)
 );
 
 -- CreateTable
@@ -25,7 +26,10 @@ CREATE TABLE "tax_snapshots" (
     "input_account_id" TEXT NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "tax_snapshots_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "tax_snapshots_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "tax_snapshots_rate_check" CHECK ("rate" >= 0),
+    CONSTRAINT "tax_snapshots_taxable_amount_check" CHECK ("taxable_amount" >= 0),
+    CONSTRAINT "tax_snapshots_tax_amount_check" CHECK ("tax_amount" >= 0)
 );
 
 -- CreateTable
@@ -53,7 +57,9 @@ CREATE TABLE "billing_invoices" (
     "deferred" BOOLEAN NOT NULL DEFAULT false,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "billing_invoices_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "billing_invoices_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "billing_invoices_base_total_check" CHECK ("base_total" >= 0),
+    CONSTRAINT "billing_invoices_outstanding_check" CHECK ("outstanding" >= 0)
 );
 
 -- CreateTable
@@ -68,7 +74,9 @@ CREATE TABLE "billing_invoice_lines" (
     "tax_amount" DECIMAL(38,18),
     "tax_account_id" TEXT,
 
-    CONSTRAINT "billing_invoice_lines_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "billing_invoice_lines_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "billing_invoice_lines_amount_check" CHECK ("amount" > 0),
+    CONSTRAINT "billing_invoice_lines_tax_amount_check" CHECK ("tax_amount" IS NULL OR "tax_amount" >= 0)
 );
 
 -- CreateTable
@@ -77,7 +85,8 @@ CREATE TABLE "billing_credit_limits" (
     "party_id" TEXT NOT NULL,
     "amount" DECIMAL(38,18) NOT NULL,
 
-    CONSTRAINT "billing_credit_limits_pkey" PRIMARY KEY ("company_id","party_id")
+    CONSTRAINT "billing_credit_limits_pkey" PRIMARY KEY ("company_id","party_id"),
+    CONSTRAINT "billing_credit_limits_amount_check" CHECK ("amount" >= 0)
 );
 
 -- CreateTable
@@ -97,7 +106,10 @@ CREATE TABLE "billing_allocations" (
     "request_hash" TEXT NOT NULL,
     "reversed_at" TIMESTAMP(3),
 
-    CONSTRAINT "billing_allocations_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "billing_allocations_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "billing_allocations_amount_check" CHECK ("amount" > 0),
+    CONSTRAINT "billing_allocations_applied_check" CHECK ("applied_amount" >= 0),
+    CONSTRAINT "billing_allocations_advance_check" CHECK ("advance_amount" >= 0)
 );
 
 -- CreateTable
@@ -113,8 +125,11 @@ CREATE TABLE "billing_advances" (
     "restriction_source_type" TEXT,
     "restriction_source_id" TEXT,
     "generated_by_adjustment_id" TEXT,
+    "reversed_at" TIMESTAMP(3),
 
-    CONSTRAINT "billing_advances_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "billing_advances_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "billing_advances_amount_check" CHECK ("amount" > 0),
+    CONSTRAINT "billing_advances_available_check" CHECK ("available" >= 0 AND "available" <= "amount")
 );
 
 -- CreateTable
@@ -127,7 +142,8 @@ CREATE TABLE "billing_advance_consumptions" (
     "source_id" TEXT NOT NULL,
     "reversed_at" TIMESTAMP(3),
 
-    CONSTRAINT "billing_advance_consumptions_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "billing_advance_consumptions_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "billing_advance_consumptions_amount_check" CHECK ("amount" > 0)
 );
 
 -- CreateTable
@@ -137,6 +153,8 @@ CREATE TABLE "billing_adjustments" (
     "invoice_id" TEXT NOT NULL,
     "kind" TEXT NOT NULL,
     "amount" DECIMAL(38,18) NOT NULL,
+    "applied_amount" DECIMAL(38,18) NOT NULL,
+    "advance_amount" DECIMAL(38,18) NOT NULL,
     "source_type" TEXT NOT NULL,
     "source_id" TEXT NOT NULL,
     "request_hash" TEXT NOT NULL,
@@ -144,7 +162,10 @@ CREATE TABLE "billing_adjustments" (
     "advance_id" TEXT,
     "reversed_at" TIMESTAMP(3),
 
-    CONSTRAINT "billing_adjustments_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "billing_adjustments_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "billing_adjustments_amount_check" CHECK ("amount" > 0),
+    CONSTRAINT "billing_adjustments_applied_check" CHECK ("applied_amount" >= 0),
+    CONSTRAINT "billing_adjustments_advance_check" CHECK ("advance_amount" >= 0)
 );
 
 -- CreateIndex
@@ -166,7 +187,9 @@ CREATE UNIQUE INDEX "billing_invoices_company_id_id_key" ON "billing_invoices"("
 CREATE UNIQUE INDEX "billing_invoices_company_id_source_type_source_id_key" ON "billing_invoices"("company_id", "source_type", "source_id");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "billing_invoices_company_id_party_id_external_invoice_numbe_key" ON "billing_invoices"("company_id", "party_id", "external_invoice_number");
+CREATE UNIQUE INDEX "billing_supplier_external_number_key"
+ON "billing_invoices"("company_id", "party_id", "external_invoice_number")
+WHERE "type" = 'SUPPLIER' AND "external_invoice_number" IS NOT NULL;
 
 -- CreateIndex
 CREATE INDEX "billing_invoice_lines_company_id_invoice_id_idx" ON "billing_invoice_lines"("company_id", "invoice_id");
@@ -206,3 +229,23 @@ CREATE UNIQUE INDEX "billing_adjustments_company_id_source_type_source_id_key" O
 
 -- AddForeignKey
 ALTER TABLE "billing_invoice_lines" ADD CONSTRAINT "billing_invoice_lines_company_id_invoice_id_fkey" FOREIGN KEY ("company_id", "invoice_id") REFERENCES "billing_invoices"("company_id", "id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+
+-- AC-06 local same-company referential integrity
+ALTER TABLE "billing_allocations"
+  ADD CONSTRAINT "billing_allocations_company_invoice_fkey"
+  FOREIGN KEY ("company_id", "invoice_id")
+  REFERENCES "billing_invoices"("company_id", "id")
+  ON DELETE RESTRICT ON UPDATE CASCADE;
+
+ALTER TABLE "billing_advance_consumptions"
+  ADD CONSTRAINT "billing_advance_consumptions_company_advance_fkey"
+  FOREIGN KEY ("company_id", "advance_id")
+  REFERENCES "billing_advances"("company_id", "id")
+  ON DELETE RESTRICT ON UPDATE CASCADE;
+
+ALTER TABLE "billing_adjustments"
+  ADD CONSTRAINT "billing_adjustments_company_invoice_fkey"
+  FOREIGN KEY ("company_id", "invoice_id")
+  REFERENCES "billing_invoices"("company_id", "id")
+  ON DELETE RESTRICT ON UPDATE CASCADE;
