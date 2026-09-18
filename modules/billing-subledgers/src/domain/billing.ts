@@ -59,6 +59,10 @@ export interface Allocation {
   settlementBaseAmount?: DecimalAmount;
   realizedFx?: DecimalAmount;
   settlementFxRateId?: string;
+  prefundingBaseAmount?: DecimalAmount;
+  prefundingAccountId?: string;
+  reclassificationJournalId?: string;
+  reclassificationReversalJournalId?: string;
   restrictionSourceType?: string;
   restrictionSourceId?: string;
   requestHash: string;

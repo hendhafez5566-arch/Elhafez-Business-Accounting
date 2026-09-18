@@ -39,6 +39,7 @@ export class PrismaBillingRepository implements BillingRepository {
       carryingBaseAmount: value.carryingBaseAmount?.toString(),
       settlementBaseAmount: value.settlementBaseAmount?.toString(),
       realizedFx: value.realizedFx?.toString(),
+      prefundingBaseAmount: value.prefundingBaseAmount?.toString(),
       reversedAt: value.reversedAt?.toISOString(),
     };
   }
@@ -86,6 +87,10 @@ export class PrismaBillingRepository implements BillingRepository {
         settlementBaseAmount: value.settlementBaseAmount,
         realizedFx: value.realizedFx,
         settlementFxRateId: value.settlementFxRateId,
+        prefundingBaseAmount: value.prefundingBaseAmount,
+        prefundingAccountId: value.prefundingAccountId,
+        reclassificationJournalId: value.reclassificationJournalId,
+        reclassificationReversalJournalId: value.reclassificationReversalJournalId,
         requestHash: value.requestHash,
         reversedAt: value.reversedAt ? new Date(value.reversedAt) : null,
       },

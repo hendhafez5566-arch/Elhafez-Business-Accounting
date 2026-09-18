@@ -426,8 +426,14 @@ test('GS-003 BR-010 settlement allocates multiple invoices by explicit oldest du
 
 test('GS-004/005/006 prefunding remains Billing-owned and source restricted', async()=>{
  const f=fixture(); await f.service.createDraft(invoice({dueDate:'2026-10-01'}));
- const result=await f.service.settle({id:'pre',companyId:company,partyKind:'CUSTOMER',partyId:'party',amount:amount('120'),settlementCurrency:'EGP',settlementDate:'2026-09-01',explicitDraftInvoiceId:'i1'});
- assert.equal(result.allocations[0]?.invoiceId,'i1'); await f.service.postInvoice(company,'i1'); assert.equal(await f.service.invoiceOutstanding(company,'i1'),'0');
+ const result=await f.service.settle({id:'pre',companyId:company,partyKind:'CUSTOMER',partyId:'party',amount:amount('120'),settlementCurrency:'EGP',settlementDate:'2026-09-01',explicitDraftInvoiceId:'i1',prefundingAccountId:'customer-advance'});
+ assert.equal(result.allocations[0]?.invoiceId,'i1');
+ assert.equal(result.prefundingBaseAmount,'120'); assert.equal(result.realizedFx,'0');
+ await f.service.postInvoice(company,'i1'); assert.equal(await f.service.invoiceOutstanding(company,'i1'),'0');
+ assert.deepEqual(f.journals.at(-1)?.lines,[
+   {accountId:'customer-advance',debit:'100',partyId:'party'},
+   {accountId:'ar',credit:'100',partyId:'party'},
+ ]);
  const advances=await f.service.availableAdvances(company,'CUSTOMER','party'); assert.equal(advances[0]?.available,'20');
  const supplier=await f.service.applyAllocation({id:'supplier-pre',companyId:company,partyKind:'SUPPLIER',partyId:'supplier',amount:amount('10'),sourceType:'TREASURY_SETTLEMENT',sourceId:'supplier-pre',restrictionSourceType:'CONTRACT',restrictionSourceId:'c1'});
  await assert.rejects(f.service.consumeAdvance({companyId:company,advanceId:'advance:'+supplier.id,amount:amount('1'),sourceType:'SUPPLIER_CANCELLATION_CHARGE',sourceId:'use',invoiceSourceType:'CONTRACT',invoiceSourceId:'c2'}),/restricted/);
