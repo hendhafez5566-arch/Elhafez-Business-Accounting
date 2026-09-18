@@ -1,1 +1,159 @@
-import type{CompanyId,DecimalAmount}from'@elhafez/contracts';import type{BillingRepository}from'../application/billing.repository.js';import type{Invoice,Allocation,Advance,Adjustment,PartyKind}from'../domain/billing.js';export class InMemoryBillingRepository implements BillingRepository{readonly invoiceValues:Invoice[]=[];readonly allocationValues:Allocation[]=[];readonly advanceValues:Advance[]=[];readonly adjustmentValues:Adjustment[]=[];readonly limits=new Map<string,DecimalAmount>();readonly consumptions:unknown[]=[];async invoice(c:CompanyId,id:string){return this.invoiceValues.find(x=>x.companyId===c&&x.id===id)}async invoiceBySource(c:CompanyId,t:string,id:string){return this.invoiceValues.find(x=>x.companyId===c&&x.sourceType===t&&x.sourceId===id)}async supplierExternal(c:CompanyId,p:string,n:string){return this.invoiceValues.find(x=>x.companyId===c&&x.partyId===p&&x.externalInvoiceNumber===n)}async invoices(c:CompanyId){return this.invoiceValues.filter(x=>x.companyId===c)}async saveInvoice(v:Invoice){const i=this.invoiceValues.findIndex(x=>x.companyId===v.companyId&&x.id===v.id);if(i<0)this.invoiceValues.push(v);else this.invoiceValues[i]=v}async saveCreditLimit(c:CompanyId,p:string,a:DecimalAmount){this.limits.set(`${c}:${p}`,a)}async creditLimit(c:CompanyId,p:string){return this.limits.get(`${c}:${p}`)}async allocationBySource(c:CompanyId,t:string,id:string){return this.allocationValues.find(x=>x.companyId===c&&x.sourceType===t&&x.sourceId===id)}async saveAllocation(v:Allocation){const i=this.allocationValues.findIndex(x=>x.companyId===v.companyId&&x.id===v.id);if(i<0)this.allocationValues.push(v);else this.allocationValues[i]=v}async allocations(c:CompanyId,i?:string){return this.allocationValues.filter(x=>x.companyId===c&&(!i||x.invoiceId===i))}async advance(c:CompanyId,id:string){return this.advanceValues.find(x=>x.companyId===c&&x.id===id)}async advances(c:CompanyId,k:PartyKind,p:string){return this.advanceValues.filter(x=>x.companyId===c&&x.partyKind===k&&x.partyId===p)}async saveAdvance(v:Advance){const i=this.advanceValues.findIndex(x=>x.companyId===v.companyId&&x.id===v.id);if(i<0)this.advanceValues.push(v);else this.advanceValues[i]=v}async adjustment(c:CompanyId,id:string){return this.adjustmentValues.find(x=>x.companyId===c&&x.id===id)}async adjustmentBySource(c:CompanyId,t:string,id:string){return this.adjustmentValues.find(x=>x.companyId===c&&x.sourceType===t&&x.sourceId===id)}async saveAdjustment(v:Adjustment){const i=this.adjustmentValues.findIndex(x=>x.companyId===v.companyId&&x.id===v.id);if(i<0)this.adjustmentValues.push(v);else this.adjustmentValues[i]=v}async saveConsumption(v:unknown){this.consumptions.push(v)}}
+import { ContractValidationError, type CompanyId, type DecimalAmount } from '@elhafez/contracts';
+import type { BillingRepository } from '../application/billing.repository.js';
+import type {
+  Advance,
+  AdvanceConsumption,
+  Adjustment,
+  Allocation,
+  Invoice,
+  PartyKind,
+} from '../domain/billing.js';
+
+export class InMemoryBillingRepository implements BillingRepository {
+  readonly invoiceValues: Invoice[] = [];
+  readonly allocationValues: Allocation[] = [];
+  readonly advanceValues: Advance[] = [];
+  readonly adjustmentValues: Adjustment[] = [];
+  readonly consumptionValues: AdvanceConsumption[] = [];
+  readonly limits = new Map<string, DecimalAmount>();
+
+  private replace<T extends { companyId: CompanyId; id: string }>(values: T[], value: T): void {
+    const index = values.findIndex((x) => x.companyId === value.companyId && x.id === value.id);
+    if (index < 0) values.push(value);
+    else values[index] = value;
+  }
+
+  async invoice(companyId: CompanyId, id: string) {
+    return this.invoiceValues.find((x) => x.companyId === companyId && x.id === id);
+  }
+
+  async invoiceBySource(companyId: CompanyId, sourceType: string, sourceId: string) {
+    return this.invoiceValues.find((x) => x.companyId === companyId && x.sourceType === sourceType && x.sourceId === sourceId);
+  }
+
+  async supplierExternal(companyId: CompanyId, partyId: string, externalNumber: string) {
+    return this.invoiceValues.find(
+      (x) =>
+        x.companyId === companyId &&
+        x.type === 'SUPPLIER' &&
+        x.partyId === partyId &&
+        x.externalInvoiceNumber === externalNumber,
+    );
+  }
+
+  async invoices(companyId: CompanyId) {
+    return this.invoiceValues.filter((x) => x.companyId === companyId);
+  }
+
+  async saveInvoice(value: Invoice) {
+    this.replace(this.invoiceValues, value);
+  }
+
+  async finalizeInvoicePosting(value: Invoice, allocations: readonly Allocation[], advances: readonly Advance[]) {
+    this.replace(this.invoiceValues, value);
+    for (const allocation of allocations) this.replace(this.allocationValues, allocation);
+    for (const advance of advances) this.replace(this.advanceValues, advance);
+  }
+
+  async saveCreditLimit(companyId: CompanyId, partyId: string, amount: DecimalAmount) {
+    this.limits.set(`${companyId}:${partyId}`, amount);
+  }
+
+  async creditLimit(companyId: CompanyId, partyId: string) {
+    return this.limits.get(`${companyId}:${partyId}`);
+  }
+
+  async allocationBySource(companyId: CompanyId, sourceType: string, sourceId: string) {
+    return this.allocationValues.find(
+      (x) => x.companyId === companyId && x.sourceType === sourceType && x.sourceId === sourceId,
+    );
+  }
+
+  async saveAllocation(value: Allocation) {
+    this.replace(this.allocationValues, value);
+  }
+
+  async saveAllocationEffect(value: Allocation, invoiceBefore?: Invoice, invoiceAfter?: Invoice, advance?: Advance) {
+    if ((invoiceBefore === undefined) !== (invoiceAfter === undefined)) {
+      throw new ContractValidationError('invoice', 'allocation effect requires both invoice states');
+    }
+    if (invoiceBefore && invoiceAfter) {
+      const current = await this.invoice(invoiceBefore.companyId, invoiceBefore.id);
+      if (!current || current.outstanding !== invoiceBefore.outstanding || current.status !== invoiceBefore.status) {
+        throw new ContractValidationError('concurrency', 'invoice changed; retry allocation');
+      }
+      this.replace(this.invoiceValues, invoiceAfter);
+    }
+    this.replace(this.allocationValues, value);
+    if (advance) this.replace(this.advanceValues, advance);
+  }
+
+  async allocations(companyId: CompanyId, invoiceId?: string) {
+    return this.allocationValues.filter(
+      (x) => x.companyId === companyId && (!invoiceId || x.invoiceId === invoiceId),
+    );
+  }
+
+  async advance(companyId: CompanyId, id: string) {
+    return this.advanceValues.find((x) => x.companyId === companyId && x.id === id);
+  }
+
+  async advances(companyId: CompanyId, partyKind: PartyKind, partyId: string) {
+    return this.advanceValues.filter(
+      (x) => x.companyId === companyId && x.partyKind === partyKind && x.partyId === partyId,
+    );
+  }
+
+  async saveAdvance(value: Advance) {
+    this.replace(this.advanceValues, value);
+  }
+
+  async consumptionBySource(companyId: CompanyId, sourceType: string, sourceId: string) {
+    return this.consumptionValues.find(
+      (x) => x.companyId === companyId && x.sourceType === sourceType && x.sourceId === sourceId,
+    );
+  }
+
+  async saveAdvanceConsumptionEffect(
+    consumption: AdvanceConsumption,
+    advanceBefore: Advance,
+    advanceAfter: Advance,
+  ) {
+    const current = await this.advance(advanceBefore.companyId, advanceBefore.id);
+    if (!current || current.available !== advanceBefore.available || current.reversedAt !== advanceBefore.reversedAt) {
+      throw new ContractValidationError('concurrency', 'advance changed; retry consumption');
+    }
+    this.replace(this.advanceValues, advanceAfter);
+    this.replace(this.consumptionValues, consumption);
+  }
+
+  async adjustment(companyId: CompanyId, id: string) {
+    return this.adjustmentValues.find((x) => x.companyId === companyId && x.id === id);
+  }
+
+  async adjustmentBySource(companyId: CompanyId, sourceType: string, sourceId: string) {
+    return this.adjustmentValues.find(
+      (x) => x.companyId === companyId && x.sourceType === sourceType && x.sourceId === sourceId,
+    );
+  }
+
+  async adjustments(companyId: CompanyId, invoiceId?: string) {
+    return this.adjustmentValues.filter(
+      (x) => x.companyId === companyId && (!invoiceId || x.invoiceId === invoiceId),
+    );
+  }
+
+  async saveAdjustment(value: Adjustment) {
+    this.replace(this.adjustmentValues, value);
+  }
+
+  async saveAdjustmentEffect(value: Adjustment, invoiceBefore: Invoice, invoiceAfter: Invoice, advance?: Advance) {
+    const current = await this.invoice(invoiceBefore.companyId, invoiceBefore.id);
+    if (!current || current.outstanding !== invoiceBefore.outstanding || current.status !== invoiceBefore.status) {
+      throw new ContractValidationError('concurrency', 'invoice changed; retry adjustment');
+    }
+    this.replace(this.invoiceValues, invoiceAfter);
+    this.replace(this.adjustmentValues, value);
+    if (advance) this.replace(this.advanceValues, advance);
+  }
+}

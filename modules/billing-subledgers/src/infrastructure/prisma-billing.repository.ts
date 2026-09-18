@@ -1,4 +1,375 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type{PrismaClient}from'@prisma/client';import type{CompanyId,DecimalAmount}from'@elhafez/contracts';import type{BillingRepository}from'../application/billing.repository.js';import type{Invoice,Allocation,Advance,Adjustment,PartyKind}from'../domain/billing.js';
-export class PrismaBillingRepository implements BillingRepository{constructor(private readonly db:PrismaClient){}private inv(v:any):Invoice{return{...v,postingDate:v.postingDate.toISOString().slice(0,10),createdAt:v.createdAt.toISOString(),lines:v.lines.map((x:any)=>({...x,amount:x.amount.toString(),taxAmount:x.taxAmount?.toString()})),baseTotal:v.baseTotal.toString(),outstanding:v.outstanding.toString()}}async invoice(c:CompanyId,id:string){const v=await this.db.billingInvoice.findUnique({where:{companyId_id:{companyId:c,id}},include:{lines:true}});return v?this.inv(v):undefined}async invoiceBySource(c:CompanyId,t:string,id:string){const v=await this.db.billingInvoice.findUnique({where:{companyId_sourceType_sourceId:{companyId:c,sourceType:t,sourceId:id}},include:{lines:true}});return v?this.inv(v):undefined}async supplierExternal(c:CompanyId,p:string,n:string){const v=await this.db.billingInvoice.findUnique({where:{companyId_partyId_externalInvoiceNumber:{companyId:c,partyId:p,externalInvoiceNumber:n}},include:{lines:true}});return v?this.inv(v):undefined}async invoices(c:CompanyId){return(await this.db.billingInvoice.findMany({where:{companyId:c},include:{lines:true}})).map(v=>this.inv(v))}async saveInvoice(v:Invoice){await this.db.$transaction(async tx=>{await tx.billingInvoice.upsert({where:{companyId_id:{companyId:v.companyId,id:v.id}},create:{...v,postingDate:new Date(v.postingDate),lines:undefined},update:{status:v.status,baseTotal:v.baseTotal,outstanding:v.outstanding,journalId:v.journalId,reversalJournalId:v.reversalJournalId,recognitionReference:v.recognitionReference}});for(const x of v.lines)await tx.billingInvoiceLine.upsert({where:{companyId_id:{companyId:v.companyId,id:x.id}},create:{...x,companyId:v.companyId,invoiceId:v.id},update:{taxSnapshotId:x.taxSnapshotId,taxAmount:x.taxAmount,taxAccountId:x.taxAccountId}})})}
-async saveCreditLimit(c:CompanyId,p:string,a:DecimalAmount){await this.db.billingCreditLimit.upsert({where:{companyId_partyId:{companyId:c,partyId:p}},create:{companyId:c,partyId:p,amount:a},update:{amount:a}})}async creditLimit(c:CompanyId,p:string){return(await this.db.billingCreditLimit.findUnique({where:{companyId_partyId:{companyId:c,partyId:p}}}))?.amount.toString()as DecimalAmount|undefined}private alloc(v:any):Allocation{return{...v,amount:v.amount.toString(),appliedAmount:v.appliedAmount.toString(),advanceAmount:v.advanceAmount.toString(),reversedAt:v.reversedAt?.toISOString()}}async allocationBySource(c:CompanyId,t:string,id:string){const v=await this.db.billingAllocation.findUnique({where:{companyId_sourceType_sourceId:{companyId:c,sourceType:t,sourceId:id}}});return v?this.alloc(v):undefined}async saveAllocation(v:Allocation){await this.db.billingAllocation.upsert({where:{companyId_id:{companyId:v.companyId,id:v.id}},create:v,update:{appliedAmount:v.appliedAmount,advanceAmount:v.advanceAmount,reversedAt:v.reversedAt?new Date(v.reversedAt):null}})}async allocations(c:CompanyId,i?:string){return(await this.db.billingAllocation.findMany({where:{companyId:c,...(i?{invoiceId:i}:{})}})).map(v=>this.alloc(v))}private adv(v:any):Advance{return{...v,amount:v.amount.toString(),available:v.available.toString()}}async advance(c:CompanyId,id:string){const v=await this.db.billingAdvance.findUnique({where:{companyId_id:{companyId:c,id}}});return v?this.adv(v):undefined}async advances(c:CompanyId,k:PartyKind,p:string){return(await this.db.billingAdvance.findMany({where:{companyId:c,partyKind:k,partyId:p}})).map(v=>this.adv(v))}async saveAdvance(v:Advance){await this.db.billingAdvance.upsert({where:{companyId_id:{companyId:v.companyId,id:v.id}},create:v,update:{available:v.available}})}private adj(v:any):Adjustment{return{...v,amount:v.amount.toString(),reversedAt:v.reversedAt?.toISOString()}}async adjustment(c:CompanyId,id:string){const v=await this.db.billingAdjustment.findUnique({where:{companyId_id:{companyId:c,id}}});return v?this.adj(v):undefined}async adjustmentBySource(c:CompanyId,t:string,id:string){const v=await this.db.billingAdjustment.findUnique({where:{companyId_sourceType_sourceId:{companyId:c,sourceType:t,sourceId:id}}});return v?this.adj(v):undefined}async saveAdjustment(v:Adjustment){await this.db.billingAdjustment.upsert({where:{companyId_id:{companyId:v.companyId,id:v.id}},create:v,update:{reversedAt:v.reversedAt?new Date(v.reversedAt):null,advanceId:v.advanceId}})}async saveConsumption(v:{id:string;companyId:CompanyId;advanceId:string;amount:DecimalAmount;sourceType:string;sourceId:string;reversedAt?:string}){await this.db.billingAdvanceConsumption.create({data:{...v,reversedAt:v.reversedAt?new Date(v.reversedAt):undefined}})}}
+import type { PrismaClient } from '@prisma/client';
+import { ContractValidationError, type CompanyId, type DecimalAmount } from '@elhafez/contracts';
+import type { BillingRepository } from '../application/billing.repository.js';
+import type {
+  Advance,
+  AdvanceConsumption,
+  Adjustment,
+  Allocation,
+  Invoice,
+  PartyKind,
+} from '../domain/billing.js';
+
+export class PrismaBillingRepository implements BillingRepository {
+  constructor(private readonly db: PrismaClient) {}
+
+  private inv(value: any): Invoice {
+    return {
+      ...value,
+      postingDate: value.postingDate.toISOString().slice(0, 10),
+      createdAt: value.createdAt.toISOString(),
+      lines: value.lines.map((line: any) => ({
+        ...line,
+        amount: line.amount.toString(),
+        taxAmount: line.taxAmount?.toString(),
+      })),
+      baseTotal: value.baseTotal.toString(),
+      outstanding: value.outstanding.toString(),
+    };
+  }
+
+  private allocation(value: any): Allocation {
+    return {
+      ...value,
+      amount: value.amount.toString(),
+      appliedAmount: value.appliedAmount.toString(),
+      advanceAmount: value.advanceAmount.toString(),
+      reversedAt: value.reversedAt?.toISOString(),
+    };
+  }
+
+  private advanceValue(value: any): Advance {
+    return {
+      ...value,
+      amount: value.amount.toString(),
+      available: value.available.toString(),
+      reversedAt: value.reversedAt?.toISOString(),
+    };
+  }
+
+  private adjustmentValue(value: any): Adjustment {
+    return {
+      ...value,
+      amount: value.amount.toString(),
+      appliedAmount: value.appliedAmount.toString(),
+      advanceAmount: value.advanceAmount.toString(),
+      reversedAt: value.reversedAt?.toISOString(),
+    };
+  }
+
+  private consumptionValue(value: any): AdvanceConsumption {
+    return {
+      ...value,
+      amount: value.amount.toString(),
+      reversedAt: value.reversedAt?.toISOString(),
+    };
+  }
+
+  private async upsertAllocation(db: any, value: Allocation) {
+    await db.billingAllocation.upsert({
+      where: { companyId_id: { companyId: value.companyId, id: value.id } },
+      create: {
+        ...value,
+        reversedAt: value.reversedAt ? new Date(value.reversedAt) : null,
+      },
+      update: {
+        appliedAmount: value.appliedAmount,
+        advanceAmount: value.advanceAmount,
+        reversedAt: value.reversedAt ? new Date(value.reversedAt) : null,
+      },
+    });
+  }
+
+  private async upsertAdvance(db: any, value: Advance) {
+    await db.billingAdvance.upsert({
+      where: { companyId_id: { companyId: value.companyId, id: value.id } },
+      create: {
+        ...value,
+        reversedAt: value.reversedAt ? new Date(value.reversedAt) : null,
+      },
+      update: {
+        available: value.available,
+        reversedAt: value.reversedAt ? new Date(value.reversedAt) : null,
+      },
+    });
+  }
+
+  private async upsertAdjustment(db: any, value: Adjustment) {
+    await db.billingAdjustment.upsert({
+      where: { companyId_id: { companyId: value.companyId, id: value.id } },
+      create: {
+        ...value,
+        reversedAt: value.reversedAt ? new Date(value.reversedAt) : null,
+      },
+      update: {
+        appliedAmount: value.appliedAmount,
+        advanceAmount: value.advanceAmount,
+        reversedAt: value.reversedAt ? new Date(value.reversedAt) : null,
+        advanceId: value.advanceId,
+      },
+    });
+  }
+
+  async invoice(companyId: CompanyId, id: string) {
+    const value = await this.db.billingInvoice.findUnique({
+      where: { companyId_id: { companyId, id } },
+      include: { lines: true },
+    });
+    return value ? this.inv(value) : undefined;
+  }
+
+  async invoiceBySource(companyId: CompanyId, sourceType: string, sourceId: string) {
+    const value = await this.db.billingInvoice.findUnique({
+      where: { companyId_sourceType_sourceId: { companyId, sourceType, sourceId } },
+      include: { lines: true },
+    });
+    return value ? this.inv(value) : undefined;
+  }
+
+  async supplierExternal(companyId: CompanyId, partyId: string, externalNumber: string) {
+    const value = await this.db.billingInvoice.findFirst({
+      where: { companyId, type: 'SUPPLIER', partyId, externalInvoiceNumber: externalNumber },
+      include: { lines: true },
+    });
+    return value ? this.inv(value) : undefined;
+  }
+
+  async invoices(companyId: CompanyId) {
+    return (
+      await this.db.billingInvoice.findMany({ where: { companyId }, include: { lines: true } })
+    ).map((value) => this.inv(value));
+  }
+
+  async saveInvoice(value: Invoice) {
+    await this.db.$transaction(async (tx) => {
+      await tx.billingInvoice.upsert({
+        where: { companyId_id: { companyId: value.companyId, id: value.id } },
+        create: {
+          ...value,
+          postingDate: new Date(value.postingDate),
+          lines: undefined,
+        },
+        update: {
+          status: value.status,
+          baseTotal: value.baseTotal,
+          outstanding: value.outstanding,
+          fxRateId: value.fxRateId,
+          journalId: value.journalId,
+          reversalJournalId: value.reversalJournalId,
+          recognitionReference: value.recognitionReference,
+        },
+      });
+      for (const line of value.lines) {
+        await tx.billingInvoiceLine.upsert({
+          where: { companyId_id: { companyId: value.companyId, id: line.id } },
+          create: { ...line, companyId: value.companyId, invoiceId: value.id },
+          update: {
+            taxSnapshotId: line.taxSnapshotId,
+            taxAmount: line.taxAmount,
+            taxAccountId: line.taxAccountId,
+          },
+        });
+      }
+    });
+  }
+
+  async finalizeInvoicePosting(value: Invoice, allocations: readonly Allocation[], advances: readonly Advance[]) {
+    await this.db.$transaction(
+      async (tx) => {
+        const updated = await tx.billingInvoice.updateMany({
+          where: { companyId: value.companyId, id: value.id, status: 'DRAFT' },
+          data: {
+            status: value.status,
+            baseTotal: value.baseTotal,
+            outstanding: value.outstanding,
+            fxRateId: value.fxRateId,
+            journalId: value.journalId,
+          },
+        });
+        if (updated.count !== 1) {
+          throw new ContractValidationError('concurrency', 'invoice changed while posting; retry');
+        }
+        for (const line of value.lines) {
+          await tx.billingInvoiceLine.update({
+            where: { companyId_id: { companyId: value.companyId, id: line.id } },
+            data: {
+              taxSnapshotId: line.taxSnapshotId,
+              taxAmount: line.taxAmount,
+              taxAccountId: line.taxAccountId,
+            },
+          });
+        }
+        for (const allocation of allocations) await this.upsertAllocation(tx, allocation);
+        for (const advance of advances) await this.upsertAdvance(tx, advance);
+      },
+      { isolationLevel: 'Serializable' },
+    );
+  }
+
+  async saveCreditLimit(companyId: CompanyId, partyId: string, amount: DecimalAmount) {
+    await this.db.billingCreditLimit.upsert({
+      where: { companyId_partyId: { companyId, partyId } },
+      create: { companyId, partyId, amount },
+      update: { amount },
+    });
+  }
+
+  async creditLimit(companyId: CompanyId, partyId: string) {
+    const value = await this.db.billingCreditLimit.findUnique({
+      where: { companyId_partyId: { companyId, partyId } },
+    });
+    return value?.amount.toString() as DecimalAmount | undefined;
+  }
+
+  async allocationBySource(companyId: CompanyId, sourceType: string, sourceId: string) {
+    const value = await this.db.billingAllocation.findUnique({
+      where: { companyId_sourceType_sourceId: { companyId, sourceType, sourceId } },
+    });
+    return value ? this.allocation(value) : undefined;
+  }
+
+  async saveAllocation(value: Allocation) {
+    await this.upsertAllocation(this.db, value);
+  }
+
+  async saveAllocationEffect(value: Allocation, invoiceBefore?: Invoice, invoiceAfter?: Invoice, advance?: Advance) {
+    await this.db.$transaction(
+      async (tx) => {
+        if ((invoiceBefore === undefined) !== (invoiceAfter === undefined)) {
+          throw new ContractValidationError('invoice', 'allocation effect requires both invoice states');
+        }
+        if (invoiceBefore && invoiceAfter) {
+          const updated = await tx.billingInvoice.updateMany({
+            where: {
+              companyId: invoiceBefore.companyId,
+              id: invoiceBefore.id,
+              status: invoiceBefore.status,
+              outstanding: invoiceBefore.outstanding,
+            },
+            data: { outstanding: invoiceAfter.outstanding },
+          });
+          if (updated.count !== 1) {
+            throw new ContractValidationError('concurrency', 'invoice changed; retry allocation');
+          }
+        }
+        await this.upsertAllocation(tx, value);
+        if (advance) await this.upsertAdvance(tx, advance);
+      },
+      { isolationLevel: 'Serializable' },
+    );
+  }
+
+  async allocations(companyId: CompanyId, invoiceId?: string) {
+    return (
+      await this.db.billingAllocation.findMany({
+        where: { companyId, ...(invoiceId ? { invoiceId } : {}) },
+      })
+    ).map((value) => this.allocation(value));
+  }
+
+  async advance(companyId: CompanyId, id: string) {
+    const value = await this.db.billingAdvance.findUnique({
+      where: { companyId_id: { companyId, id } },
+    });
+    return value ? this.advanceValue(value) : undefined;
+  }
+
+  async advances(companyId: CompanyId, partyKind: PartyKind, partyId: string) {
+    return (
+      await this.db.billingAdvance.findMany({ where: { companyId, partyKind, partyId } })
+    ).map((value) => this.advanceValue(value));
+  }
+
+  async saveAdvance(value: Advance) {
+    await this.upsertAdvance(this.db, value);
+  }
+
+  async consumptionBySource(companyId: CompanyId, sourceType: string, sourceId: string) {
+    const value = await this.db.billingAdvanceConsumption.findUnique({
+      where: { companyId_sourceType_sourceId: { companyId, sourceType, sourceId } },
+    });
+    return value ? this.consumptionValue(value) : undefined;
+  }
+
+  async saveAdvanceConsumptionEffect(
+    consumption: AdvanceConsumption,
+    advanceBefore: Advance,
+    advanceAfter: Advance,
+  ) {
+    await this.db.$transaction(
+      async (tx) => {
+        const updated = await tx.billingAdvance.updateMany({
+          where: {
+            companyId: advanceBefore.companyId,
+            id: advanceBefore.id,
+            available: advanceBefore.available,
+            reversedAt: advanceBefore.reversedAt ? new Date(advanceBefore.reversedAt) : null,
+          },
+          data: {
+            available: advanceAfter.available,
+            reversedAt: advanceAfter.reversedAt ? new Date(advanceAfter.reversedAt) : null,
+          },
+        });
+        if (updated.count !== 1) {
+          throw new ContractValidationError('concurrency', 'advance changed; retry consumption');
+        }
+        await tx.billingAdvanceConsumption.create({
+          data: {
+            ...consumption,
+            reversedAt: consumption.reversedAt ? new Date(consumption.reversedAt) : null,
+          },
+        });
+      },
+      { isolationLevel: 'Serializable' },
+    );
+  }
+
+  async adjustment(companyId: CompanyId, id: string) {
+    const value = await this.db.billingAdjustment.findUnique({
+      where: { companyId_id: { companyId, id } },
+    });
+    return value ? this.adjustmentValue(value) : undefined;
+  }
+
+  async adjustmentBySource(companyId: CompanyId, sourceType: string, sourceId: string) {
+    const value = await this.db.billingAdjustment.findUnique({
+      where: { companyId_sourceType_sourceId: { companyId, sourceType, sourceId } },
+    });
+    return value ? this.adjustmentValue(value) : undefined;
+  }
+
+  async adjustments(companyId: CompanyId, invoiceId?: string) {
+    return (
+      await this.db.billingAdjustment.findMany({
+        where: { companyId, ...(invoiceId ? { invoiceId } : {}) },
+      })
+    ).map((value) => this.adjustmentValue(value));
+  }
+
+  async saveAdjustment(value: Adjustment) {
+    await this.upsertAdjustment(this.db, value);
+  }
+
+  async saveAdjustmentEffect(value: Adjustment, invoiceBefore: Invoice, invoiceAfter: Invoice, advance?: Advance) {
+    await this.db.$transaction(
+      async (tx) => {
+        const updated = await tx.billingInvoice.updateMany({
+          where: {
+            companyId: invoiceBefore.companyId,
+            id: invoiceBefore.id,
+            status: invoiceBefore.status,
+            outstanding: invoiceBefore.outstanding,
+          },
+          data: { outstanding: invoiceAfter.outstanding },
+        });
+        if (updated.count !== 1) {
+          throw new ContractValidationError('concurrency', 'invoice changed; retry adjustment');
+        }
+        await this.upsertAdjustment(tx, value);
+        if (advance) await this.upsertAdvance(tx, advance);
+      },
+      { isolationLevel: 'Serializable' },
+    );
+  }
+}

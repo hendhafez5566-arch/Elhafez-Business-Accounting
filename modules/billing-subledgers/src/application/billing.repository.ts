@@ -1,1 +1,55 @@
-import type {CompanyId,DecimalAmount} from '@elhafez/contracts';import type {Invoice,Allocation,Advance,Adjustment,PartyKind} from '../domain/billing.js';export const BILLING_REPOSITORY=Symbol('BILLING_REPOSITORY');export interface BillingRepository{invoice(c:CompanyId,id:string):Promise<Invoice|undefined>; invoiceBySource(c:CompanyId,t:string,id:string):Promise<Invoice|undefined>; supplierExternal(c:CompanyId,p:string,n:string):Promise<Invoice|undefined>; invoices(c:CompanyId):Promise<Invoice[]>;saveInvoice(v:Invoice):Promise<void>;saveCreditLimit(c:CompanyId,p:string,a:DecimalAmount):Promise<void>;creditLimit(c:CompanyId,p:string):Promise<DecimalAmount|undefined>;allocationBySource(c:CompanyId,t:string,id:string):Promise<Allocation|undefined>;saveAllocation(v:Allocation):Promise<void>;allocations(c:CompanyId,invoiceId?:string):Promise<Allocation[]>;advance(c:CompanyId,id:string):Promise<Advance|undefined>;advances(c:CompanyId,k:PartyKind,p:string):Promise<Advance[]>;saveAdvance(v:Advance):Promise<void>;adjustment(c:CompanyId,id:string):Promise<Adjustment|undefined>;adjustmentBySource(c:CompanyId,t:string,id:string):Promise<Adjustment|undefined>;saveAdjustment(v:Adjustment):Promise<void>;saveConsumption(v:{id:string;companyId:CompanyId;advanceId:string;amount:DecimalAmount;sourceType:string;sourceId:string;reversedAt?:string}):Promise<void>}
+import type { CompanyId, DecimalAmount } from '@elhafez/contracts';
+import type {
+  Advance,
+  AdvanceConsumption,
+  Adjustment,
+  Allocation,
+  Invoice,
+  PartyKind,
+} from '../domain/billing.js';
+
+export const BILLING_REPOSITORY = Symbol('BILLING_REPOSITORY');
+
+export interface BillingRepository {
+  invoice(companyId: CompanyId, id: string): Promise<Invoice | undefined>;
+  invoiceBySource(companyId: CompanyId, sourceType: string, sourceId: string): Promise<Invoice | undefined>;
+  supplierExternal(companyId: CompanyId, partyId: string, externalNumber: string): Promise<Invoice | undefined>;
+  invoices(companyId: CompanyId): Promise<Invoice[]>;
+  saveInvoice(value: Invoice): Promise<void>;
+  finalizeInvoicePosting(value: Invoice, allocations: readonly Allocation[], advances: readonly Advance[]): Promise<void>;
+
+  saveCreditLimit(companyId: CompanyId, partyId: string, amount: DecimalAmount): Promise<void>;
+  creditLimit(companyId: CompanyId, partyId: string): Promise<DecimalAmount | undefined>;
+
+  allocationBySource(companyId: CompanyId, sourceType: string, sourceId: string): Promise<Allocation | undefined>;
+  saveAllocation(value: Allocation): Promise<void>;
+  saveAllocationEffect(
+    value: Allocation,
+    invoiceBefore?: Invoice,
+    invoiceAfter?: Invoice,
+    advance?: Advance,
+  ): Promise<void>;
+  allocations(companyId: CompanyId, invoiceId?: string): Promise<Allocation[]>;
+
+  advance(companyId: CompanyId, id: string): Promise<Advance | undefined>;
+  advances(companyId: CompanyId, partyKind: PartyKind, partyId: string): Promise<Advance[]>;
+  saveAdvance(value: Advance): Promise<void>;
+
+  consumptionBySource(companyId: CompanyId, sourceType: string, sourceId: string): Promise<AdvanceConsumption | undefined>;
+  saveAdvanceConsumptionEffect(
+    consumption: AdvanceConsumption,
+    advanceBefore: Advance,
+    advanceAfter: Advance,
+  ): Promise<void>;
+
+  adjustment(companyId: CompanyId, id: string): Promise<Adjustment | undefined>;
+  adjustmentBySource(companyId: CompanyId, sourceType: string, sourceId: string): Promise<Adjustment | undefined>;
+  adjustments(companyId: CompanyId, invoiceId?: string): Promise<Adjustment[]>;
+  saveAdjustment(value: Adjustment): Promise<void>;
+  saveAdjustmentEffect(
+    value: Adjustment,
+    invoiceBefore: Invoice,
+    invoiceAfter: Invoice,
+    advance?: Advance,
+  ): Promise<void>;
+}
