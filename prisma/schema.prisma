@@ -1,0 +1,11 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Models are added by business modules. Every model must declare its owner in
+// modules/<module>/module.json and use the module's table-name prefix.
