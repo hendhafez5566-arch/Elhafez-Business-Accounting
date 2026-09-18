@@ -209,78 +209,83 @@ model CbaProgramCostCenter {
 }
 
 model PeriodFiscalYear {
-  id String @id
-  companyId String @map("company_id")
-  startDate DateTime @map("start_date") @db.Date
-  endDate DateTime @map("end_date") @db.Date
-  status String @default("OPEN")
-  periods PeriodAccountingPeriod[]
+  id           String                     @id
+  companyId    String                     @map("company_id")
+  startDate    DateTime                   @map("start_date") @db.Date
+  endDate      DateTime                   @map("end_date") @db.Date
+  status       String                     @default("OPEN")
+  periods      PeriodAccountingPeriod[]
   closeHistory PeriodFiscalCloseHistory[]
+
   @@unique([companyId, id])
   @@index([companyId, startDate, endDate])
   @@map("period_fiscal_years")
 }
 
 model PeriodAccountingPeriod {
-  id String @id
-  companyId String @map("company_id")
-  fiscalYearId String @map("fiscal_year_id")
-  startDate DateTime @map("start_date") @db.Date
-  endDate DateTime @map("end_date") @db.Date
-  status String @default("OPEN")
-  fiscalYear PeriodFiscalYear @relation(fields: [companyId, fiscalYearId], references: [companyId, id], onDelete: Restrict)
+  id           String           @id
+  companyId    String           @map("company_id")
+  fiscalYearId String           @map("fiscal_year_id")
+  startDate    DateTime         @map("start_date") @db.Date
+  endDate      DateTime         @map("end_date") @db.Date
+  status       String           @default("OPEN")
+  fiscalYear   PeriodFiscalYear @relation(fields: [companyId, fiscalYearId], references: [companyId, id], onDelete: Restrict)
+
   @@unique([companyId, id])
   @@index([companyId, fiscalYearId, startDate, endDate])
   @@map("period_accounting_periods")
 }
 
 model PeriodFiscalCloseHistory {
-  id String @id
-  companyId String @map("company_id")
-  fiscalYearId String @map("fiscal_year_id")
-  closeJournalId String @map("close_journal_id")
-  reversalJournalId String? @map("reversal_journal_id")
-  closedAt DateTime @map("closed_at")
-  reopenedAt DateTime? @map("reopened_at")
-  fiscalYear PeriodFiscalYear @relation(fields: [companyId, fiscalYearId], references: [companyId, id], onDelete: Restrict)
+  id                String           @id
+  companyId         String           @map("company_id")
+  fiscalYearId      String           @map("fiscal_year_id")
+  closeJournalId    String           @map("close_journal_id")
+  reversalJournalId String?          @map("reversal_journal_id")
+  closedAt          DateTime         @map("closed_at")
+  reopenedAt        DateTime?        @map("reopened_at")
+  fiscalYear        PeriodFiscalYear @relation(fields: [companyId, fiscalYearId], references: [companyId, id], onDelete: Restrict)
+
   @@unique([companyId, fiscalYearId, closeJournalId])
   @@map("period_fiscal_close_history")
 }
 
 model GlAccount {
-  id String @id
-  companyId String @map("company_id")
-  code String
-  name String
+  id             String          @id
+  companyId      String          @map("company_id")
+  code           String
+  name           String
   classification String
-  active Boolean @default(true)
-  postable Boolean @default(true)
-  parentId String? @map("parent_id")
-  controlType String? @map("control_type")
-  parent GlAccount? @relation("GlAccountHierarchy", fields: [companyId, parentId], references: [companyId, id], onDelete: Restrict)
-  children GlAccount[] @relation("GlAccountHierarchy")
-  lines GlJournalLine[]
+  active         Boolean         @default(true)
+  postable       Boolean         @default(true)
+  parentId       String?         @map("parent_id")
+  controlType    String?         @map("control_type")
+  parent         GlAccount?      @relation("GlAccountHierarchy", fields: [companyId, parentId], references: [companyId, id], onDelete: Restrict)
+  children       GlAccount[]     @relation("GlAccountHierarchy")
+  lines          GlJournalLine[]
+
   @@unique([companyId, id])
   @@unique([companyId, code])
   @@map("gl_accounts")
 }
 
 model GlJournal {
-  id String @id
-  companyId String @map("company_id")
-  number String
-  postingDate DateTime @map("posting_date") @db.Date
-  kind String
-  sourceType String @map("source_type")
-  sourceId String @map("source_id")
-  requestHash String @map("request_hash")
-  correlationId String? @map("correlation_id")
-  reversalOfId String? @unique @map("reversal_of_id")
-  fiscalYearId String? @map("fiscal_year_id")
-  createdAt DateTime @default(now()) @map("created_at")
-  reversalOf GlJournal? @relation("JournalReversal", fields: [reversalOfId], references: [id], onDelete: Restrict)
-  reversal GlJournal? @relation("JournalReversal")
-  lines GlJournalLine[]
+  id            String          @id
+  companyId     String          @map("company_id")
+  number        String
+  postingDate   DateTime        @map("posting_date") @db.Date
+  kind          String
+  sourceType    String          @map("source_type")
+  sourceId      String          @map("source_id")
+  requestHash   String          @map("request_hash")
+  correlationId String?         @map("correlation_id")
+  reversalOfId  String?         @unique @map("reversal_of_id")
+  fiscalYearId  String?         @map("fiscal_year_id")
+  createdAt     DateTime        @default(now()) @map("created_at")
+  reversalOf    GlJournal?      @relation("JournalReversal", fields: [reversalOfId], references: [id], onDelete: Restrict)
+  reversal      GlJournal?      @relation("JournalReversal")
+  lines         GlJournalLine[]
+
   @@unique([companyId, number])
   @@unique([companyId, sourceType, sourceId])
   @@unique([companyId, id])
@@ -289,126 +294,299 @@ model GlJournal {
 }
 
 model GlJournalLine {
-  id String @id
-  companyId String @map("company_id")
-  journalId String @map("journal_id")
-  accountId String @map("account_id")
-  debit Decimal? @db.Decimal(38, 18)
-  credit Decimal? @db.Decimal(38, 18)
-  partyId String? @map("party_id")
-  foreignAmount Decimal? @map("foreign_amount") @db.Decimal(38, 18)
-  foreignCurrency String? @map("foreign_currency")
-  fxRateId String? @map("fx_rate_id")
-  fxRate Decimal? @map("fx_rate") @db.Decimal(38, 18)
-  journal GlJournal @relation(fields: [companyId, journalId], references: [companyId, id], onDelete: Restrict)
-  account GlAccount @relation(fields: [companyId, accountId], references: [companyId, id], onDelete: Restrict)
+  id              String    @id
+  companyId       String    @map("company_id")
+  journalId       String    @map("journal_id")
+  accountId       String    @map("account_id")
+  debit           Decimal?  @db.Decimal(38, 18)
+  credit          Decimal?  @db.Decimal(38, 18)
+  partyId         String?   @map("party_id")
+  foreignAmount   Decimal?  @map("foreign_amount") @db.Decimal(38, 18)
+  foreignCurrency String?   @map("foreign_currency")
+  fxRateId        String?   @map("fx_rate_id")
+  fxRate          Decimal?  @map("fx_rate") @db.Decimal(38, 18)
+  journal         GlJournal @relation(fields: [companyId, journalId], references: [companyId, id], onDelete: Restrict)
+  account         GlAccount @relation(fields: [companyId, accountId], references: [companyId, id], onDelete: Restrict)
+
   @@index([companyId, journalId])
   @@index([companyId, accountId])
   @@map("gl_journal_lines")
 }
 
 model FcApprovalPolicy {
-  id String @id
-  companyId String @map("company_id")
-  action String
-  threshold Decimal @db.Decimal(38, 18)
-  active Boolean @default(true)
-  forbidSelfApproval Boolean @map("forbid_self_approval")
-  requiredAuthority String @map("required_authority")
-  requests FcApprovalRequest[]
+  id                 String              @id
+  companyId          String              @map("company_id")
+  action             String
+  threshold          Decimal             @db.Decimal(38, 18)
+  active             Boolean             @default(true)
+  forbidSelfApproval Boolean             @map("forbid_self_approval")
+  requiredAuthority  String              @map("required_authority")
+  requests           FcApprovalRequest[]
+
   @@unique([companyId, action])
   @@unique([companyId, id])
   @@map("fc_approval_policies")
 }
 
 model FcApprovalRequest {
-  id String @id
-  companyId String @map("company_id")
-  branchId String? @map("branch_id")
-  action String
-  sourceType String @map("source_type")
-  sourceId String @map("source_id")
-  requesterActorId String @map("requester_actor_id")
-  amount Decimal @db.Decimal(38, 18)
-  status String @default("PENDING")
-  policyId String @map("policy_id")
-  policyThresholdSnapshot Decimal @map("policy_threshold_snapshot") @db.Decimal(38, 18)
-  policyForbidSelfApprovalSnapshot Boolean @map("policy_forbid_self_approval_snapshot")
-  policyRequiredAuthoritySnapshot String @map("policy_required_authority_snapshot")
-  requestedAt DateTime @map("requested_at")
-  policy FcApprovalPolicy @relation(fields: [companyId, policyId], references: [companyId, id], onDelete: Restrict)
-  decision FcApprovalDecision?
+  id                               String              @id
+  companyId                        String              @map("company_id")
+  branchId                         String?             @map("branch_id")
+  action                           String
+  sourceType                       String              @map("source_type")
+  sourceId                         String              @map("source_id")
+  requesterActorId                 String              @map("requester_actor_id")
+  amount                           Decimal             @db.Decimal(38, 18)
+  status                           String              @default("PENDING")
+  policyId                         String              @map("policy_id")
+  policyThresholdSnapshot          Decimal             @map("policy_threshold_snapshot") @db.Decimal(38, 18)
+  policyForbidSelfApprovalSnapshot Boolean             @map("policy_forbid_self_approval_snapshot")
+  policyRequiredAuthoritySnapshot  String              @map("policy_required_authority_snapshot")
+  requestedAt                      DateTime            @map("requested_at")
+  policy                           FcApprovalPolicy    @relation(fields: [companyId, policyId], references: [companyId, id], onDelete: Restrict)
+  decision                         FcApprovalDecision?
+
   @@unique([companyId, sourceType, sourceId])
   @@unique([companyId, id])
   @@map("fc_approval_requests")
 }
 
 model FcApprovalDecision {
-  id String @id
-  requestId String @unique @map("request_id")
-  companyId String @map("company_id")
-  outcome String
-  actorId String @map("actor_id")
-  reason String?
-  decidedAt DateTime @map("decided_at")
-  request FcApprovalRequest @relation(fields: [companyId, requestId], references: [companyId, id], onDelete: Restrict)
+  id        String            @id
+  requestId String            @unique @map("request_id")
+  companyId String            @map("company_id")
+  outcome   String
+  actorId   String            @map("actor_id")
+  reason    String?
+  decidedAt DateTime          @map("decided_at")
+  request   FcApprovalRequest @relation(fields: [companyId, requestId], references: [companyId, id], onDelete: Restrict)
+
   @@unique([companyId, requestId])
   @@map("fc_approval_decisions")
 }
 
 model FcReconciliationRun {
-  id String @id
-  companyId String @map("company_id")
-  branchId String? @map("branch_id")
-  type String
-  correlationId String @map("correlation_id")
-  fingerprint String
-  clean Boolean
-  runAt DateTime @map("run_at")
-  issues FcReconciliationIssue[]
+  id            String                  @id
+  companyId     String                  @map("company_id")
+  branchId      String?                 @map("branch_id")
+  type          String
+  correlationId String                  @map("correlation_id")
+  fingerprint   String
+  clean         Boolean
+  runAt         DateTime                @map("run_at")
+  issues        FcReconciliationIssue[]
+
   @@unique([companyId, correlationId])
   @@unique([companyId, id])
   @@map("fc_reconciliation_runs")
 }
 
 model FcReconciliationIssue {
-  id String @id
-  companyId String @map("company_id")
-  runId String @map("run_id")
-  evidenceKey String @map("evidence_key")
-  sourceAmount Decimal @map("source_amount") @db.Decimal(38, 18)
-  ledgerAmount Decimal @map("ledger_amount") @db.Decimal(38, 18)
-  difference Decimal @db.Decimal(38, 18)
-  detail String
-  resolvedAt DateTime? @map("resolved_at")
-  resolutionReference String? @map("resolution_reference")
-  run FcReconciliationRun @relation(fields: [companyId, runId], references: [companyId, id], onDelete: Restrict)
+  id                  String              @id
+  companyId           String              @map("company_id")
+  runId               String              @map("run_id")
+  evidenceKey         String              @map("evidence_key")
+  sourceAmount        Decimal             @map("source_amount") @db.Decimal(38, 18)
+  ledgerAmount        Decimal             @map("ledger_amount") @db.Decimal(38, 18)
+  difference          Decimal             @db.Decimal(38, 18)
+  detail              String
+  resolvedAt          DateTime?           @map("resolved_at")
+  resolutionReference String?             @map("resolution_reference")
+  run                 FcReconciliationRun @relation(fields: [companyId, runId], references: [companyId, id], onDelete: Restrict)
+
   @@unique([runId, evidenceKey])
   @@index([companyId, resolvedAt])
   @@map("fc_reconciliation_issues")
 }
 
 model FcCloseReadinessRun {
-  id String @id
-  companyId String @map("company_id")
-  branchId String? @map("branch_id")
-  correlationId String @map("correlation_id")
-  fingerprint String
-  ready Boolean
-  blockers Json
-  warnings Json
-  evaluatedAt DateTime @map("evaluated_at")
+  id            String   @id
+  companyId     String   @map("company_id")
+  branchId      String?  @map("branch_id")
+  correlationId String   @map("correlation_id")
+  fingerprint   String
+  ready         Boolean
+  blockers      Json
+  warnings      Json
+  evaluatedAt   DateTime @map("evaluated_at")
+
   @@unique([companyId, correlationId])
   @@map("fc_close_readiness_runs")
 }
 
 model FcControlEvidence {
-  id String @id
-  companyId String @map("company_id")
-  kind String
-  subjectId String @map("subject_id")
-  detail Json
+  id         String   @id
+  companyId  String   @map("company_id")
+  kind       String
+  subjectId  String   @map("subject_id")
+  detail     Json
   occurredAt DateTime @map("occurred_at")
+
   @@index([companyId, kind, occurredAt])
   @@map("fc_control_evidence")
+}
+
+model TaxPolicy {
+  id              String   @id
+  companyId       String   @map("company_id")
+  code            String
+  effectiveFrom   DateTime @map("effective_from") @db.Date
+  rate            Decimal  @db.Decimal(38, 18)
+  outputAccountId String   @map("output_account_id")
+  inputAccountId  String   @map("input_account_id")
+
+  @@unique([companyId, id])
+  @@unique([companyId, code, effectiveFrom])
+  @@map("tax_policies")
+}
+
+model TaxSnapshot {
+  id              String   @id
+  companyId       String   @map("company_id")
+  policyId        String   @map("policy_id")
+  code            String
+  effectiveAt     DateTime @map("effective_at")
+  rate            Decimal  @db.Decimal(38, 18)
+  taxableAmount   Decimal  @map("taxable_amount") @db.Decimal(38, 18)
+  taxAmount       Decimal  @map("tax_amount") @db.Decimal(38, 18)
+  outputAccountId String   @map("output_account_id")
+  inputAccountId  String   @map("input_account_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@unique([companyId, id])
+  @@map("tax_snapshots")
+}
+
+model BillingInvoice {
+  id                    String               @id
+  companyId             String               @map("company_id")
+  branchId              String?              @map("branch_id")
+  type                  String
+  status                String
+  partyId               String               @map("party_id")
+  number                String
+  externalInvoiceNumber String?              @map("external_invoice_number")
+  postingDate           DateTime             @map("posting_date") @db.Date
+  currency              String
+  fxRateId              String?              @map("fx_rate_id")
+  sourceType            String               @map("source_type")
+  sourceId              String               @map("source_id")
+  requestHash           String               @map("request_hash")
+  controlAccountId      String               @map("control_account_id")
+  baseTotal             Decimal              @map("base_total") @db.Decimal(38, 18)
+  outstanding           Decimal              @db.Decimal(38, 18)
+  journalId             String?              @map("journal_id")
+  reversalJournalId     String?              @map("reversal_journal_id")
+  recognitionReference  String?              @map("recognition_reference")
+  deferred              Boolean              @default(false)
+  createdAt             DateTime             @default(now()) @map("created_at")
+  lines                 BillingInvoiceLine[]
+
+  @@unique([companyId, id])
+  @@unique([companyId, sourceType, sourceId])
+  @@index([companyId, partyId, externalInvoiceNumber])
+  @@index([companyId, partyId, status])
+  @@map("billing_invoices")
+}
+
+model BillingInvoiceLine {
+  id            String         @id
+  companyId     String         @map("company_id")
+  invoiceId     String         @map("invoice_id")
+  accountId     String         @map("account_id")
+  amount        Decimal        @db.Decimal(38, 18)
+  taxCode       String?        @map("tax_code")
+  taxSnapshotId String?        @map("tax_snapshot_id")
+  taxAmount     Decimal?       @map("tax_amount") @db.Decimal(38, 18)
+  taxAccountId  String?        @map("tax_account_id")
+  invoice       BillingInvoice @relation(fields: [companyId, invoiceId], references: [companyId, id], onDelete: Restrict)
+
+  @@unique([companyId, id])
+  @@index([companyId, invoiceId])
+  @@map("billing_invoice_lines")
+}
+
+model BillingCreditLimit {
+  companyId String  @map("company_id")
+  partyId   String  @map("party_id")
+  amount    Decimal @db.Decimal(38, 18)
+
+  @@id([companyId, partyId])
+  @@map("billing_credit_limits")
+}
+
+model BillingAllocation {
+  id                    String    @id
+  companyId             String    @map("company_id")
+  partyKind             String    @map("party_kind")
+  partyId               String    @map("party_id")
+  invoiceId             String?   @map("invoice_id")
+  amount                Decimal   @db.Decimal(38, 18)
+  appliedAmount         Decimal   @map("applied_amount") @db.Decimal(38, 18)
+  advanceAmount         Decimal   @map("advance_amount") @db.Decimal(38, 18)
+  sourceType            String    @map("source_type")
+  sourceId              String    @map("source_id")
+  restrictionSourceType String?   @map("restriction_source_type")
+  restrictionSourceId   String?   @map("restriction_source_id")
+  requestHash           String    @map("request_hash")
+  reversedAt            DateTime? @map("reversed_at")
+
+  @@unique([companyId, id])
+  @@unique([companyId, sourceType, sourceId])
+  @@index([companyId, invoiceId])
+  @@map("billing_allocations")
+}
+
+model BillingAdvance {
+  id                      String    @id
+  companyId               String    @map("company_id")
+  partyKind               String    @map("party_kind")
+  partyId                 String    @map("party_id")
+  amount                  Decimal   @db.Decimal(38, 18)
+  available               Decimal   @db.Decimal(38, 18)
+  sourceType              String    @map("source_type")
+  sourceId                String    @map("source_id")
+  restrictionSourceType   String?   @map("restriction_source_type")
+  restrictionSourceId     String?   @map("restriction_source_id")
+  generatedByAdjustmentId String?   @map("generated_by_adjustment_id")
+  reversedAt              DateTime? @map("reversed_at")
+
+  @@unique([companyId, id])
+  @@index([companyId, partyKind, partyId])
+  @@map("billing_advances")
+}
+
+model BillingAdvanceConsumption {
+  id         String    @id
+  companyId  String    @map("company_id")
+  advanceId  String    @map("advance_id")
+  amount     Decimal   @db.Decimal(38, 18)
+  sourceType String    @map("source_type")
+  sourceId   String    @map("source_id")
+  reversedAt DateTime? @map("reversed_at")
+
+  @@unique([companyId, id])
+  @@unique([companyId, sourceType, sourceId])
+  @@map("billing_advance_consumptions")
+}
+
+model BillingAdjustment {
+  id            String    @id
+  companyId     String    @map("company_id")
+  invoiceId     String    @map("invoice_id")
+  kind          String
+  amount        Decimal   @db.Decimal(38, 18)
+  appliedAmount Decimal   @map("applied_amount") @db.Decimal(38, 18)
+  advanceAmount Decimal   @map("advance_amount") @db.Decimal(38, 18)
+  sourceType    String    @map("source_type")
+  sourceId      String    @map("source_id")
+  requestHash   String    @map("request_hash")
+  journalId     String    @map("journal_id")
+  advanceId     String?   @map("advance_id")
+  reversedAt    DateTime? @map("reversed_at")
+
+  @@unique([companyId, id])
+  @@unique([companyId, sourceType, sourceId])
+  @@index([companyId, invoiceId])
+  @@map("billing_adjustments")
 }

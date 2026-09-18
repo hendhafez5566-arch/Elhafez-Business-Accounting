@@ -1,0 +1,1 @@
+{"name":"tax","publicApi":["src/public/index.ts"],"ownedTables":["tax_policies","tax_snapshots"],"allowedDependencies":["@elhafez/contracts","@elhafez/core"]}
