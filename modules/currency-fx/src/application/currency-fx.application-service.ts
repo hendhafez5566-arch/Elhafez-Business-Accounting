@@ -3,7 +3,7 @@ import { configureCurrency, makeRate, moneyDifference, type CurrencyConfiguratio
 import type { CurrencyFxRepository } from './currency-fx.repository.js';
 
 export interface FxRateSnapshot { readonly rateId: string; readonly companyId: CompanyId; readonly fromCurrency: CurrencyCode; readonly toCurrency: CurrencyCode; readonly effectiveAt: string; readonly rate: DecimalAmount; readonly source: string }
-export interface RevaluationRequest { readonly companyId: CompanyId; readonly positionReference: string; readonly classification: PositionClassification; readonly foreignAmount: Money; readonly priorBaseAmount: DecimalAmount; readonly baseCurrency: CurrencyCode; readonly at: string }
+export interface RevaluationRequest { readonly companyId: CompanyId; readonly positionReference: string; readonly classification: PositionClassification; readonly monetary: boolean; readonly foreignAmount: Money; readonly priorBaseAmount: DecimalAmount; readonly baseCurrency: CurrencyCode; readonly at: string }
 export type RevaluationPreparation = Readonly<{ positionReference: string; status: 'PREPARED'; baseDifference: Money; rate: FxRateSnapshot } | { positionReference: string; status: 'EXCLUDED' | 'NO_REVALUATION'; reason: string }>;
 export class CurrencyFxApplicationService {
   constructor(private readonly repository: CurrencyFxRepository) {}
@@ -17,6 +17,7 @@ export class CurrencyFxApplicationService {
   async calculateSettlement(companyId: CompanyId, amount: Money, to: CurrencyCode, at: string): Promise<Readonly<{ converted: Money; rate: FxRateSnapshot }>> { const rate = await this.resolveRate(companyId, amount.currency, to, at); return Object.freeze({ converted: money((await import('../domain/fx.js')).multiplyExact(amount.amount, rate.rate), to), rate }); }
   async prepareRevaluation(input: RevaluationRequest): Promise<RevaluationPreparation> {
     if (['REVENUE','EXPENSE','EQUITY'].includes(input.classification)) return Object.freeze({ positionReference: input.positionReference, status: 'EXCLUDED', reason: `BR-036 excludes ${input.classification}` });
+    if (!input.monetary) return Object.freeze({ positionReference: input.positionReference, status: 'EXCLUDED', reason: 'BR-036 excludes non-monetary positions' });
     if (input.foreignAmount.currency === input.baseCurrency) return Object.freeze({ positionReference: input.positionReference, status: 'NO_REVALUATION', reason: 'position is already in base currency' });
     const rate = await this.resolveRate(input.companyId, input.foreignAmount.currency, input.baseCurrency, input.at);
     return Object.freeze({ positionReference: input.positionReference, status: 'PREPARED', baseDifference: money(moneyDifference(input.foreignAmount, rate.rate, decimalAmount(input.priorBaseAmount)), input.baseCurrency), rate });

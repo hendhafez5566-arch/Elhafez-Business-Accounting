@@ -155,49 +155,54 @@ model PcConfiguration {
 }
 
 model FxCurrency {
-  companyId String @map("company_id")
-  code String
+  companyId String  @map("company_id")
+  code      String
   precision Int
-  isBase Boolean @default(false) @map("is_base")
-  status String @default("ACTIVE")
+  isBase    Boolean @default(false) @map("is_base")
+  status    String  @default("ACTIVE")
+
   @@id([companyId, code])
   @@map("fx_currencies")
 }
 
 model FxRate {
-  id String @id
-  companyId String @map("company_id")
-  fromCurrency String @map("from_currency")
-  toCurrency String @map("to_currency")
-  effectiveAt DateTime @map("effective_at")
-  rate Decimal @db.Decimal(38, 18)
-  source String
+  id           String   @id
+  companyId    String   @map("company_id")
+  fromCurrency String   @map("from_currency")
+  toCurrency   String   @map("to_currency")
+  effectiveAt  DateTime @map("effective_at")
+  rate         Decimal  @db.Decimal(38, 18)
+  source       String
+
   @@unique([companyId, fromCurrency, toCurrency, effectiveAt])
   @@index([companyId, fromCurrency, toCurrency, effectiveAt])
   @@map("fx_rates")
 }
 
 model CbaCostCenter {
-  id String @id
-  companyId String @map("company_id")
-  code String
-  name String
-  status String @default("ACTIVE")
-  parentId String? @map("parent_id")
-  parent CbaCostCenter? @relation("CostCenterHierarchy", fields:[parentId], references:[id], onDelete:Restrict)
-  children CbaCostCenter[] @relation("CostCenterHierarchy")
+  id                  String                 @id
+  companyId           String                 @map("company_id")
+  code                String
+  name                String
+  status              String                 @default("ACTIVE")
+  parentId            String?                @map("parent_id")
+  parent              CbaCostCenter?         @relation("CostCenterHierarchy", fields: [companyId, parentId], references: [companyId, id], onDelete: Restrict)
+  children            CbaCostCenter[]        @relation("CostCenterHierarchy")
   programAssociations CbaProgramCostCenter[]
+
   @@unique([companyId, code])
+  @@unique([companyId, id])
   @@index([companyId, status])
   @@map("cba_cost_centers")
 }
 
 model CbaProgramCostCenter {
-  companyId String @map("company_id")
-  sourceType String @map("source_type")
-  sourceId String @map("source_id")
-  costCenterId String @map("cost_center_id")
-  costCenter CbaCostCenter @relation(fields:[costCenterId], references:[id], onDelete:Restrict)
+  companyId    String        @map("company_id")
+  sourceType   String        @map("source_type")
+  sourceId     String        @map("source_id")
+  costCenterId String        @map("cost_center_id")
+  costCenter   CbaCostCenter @relation(fields: [companyId, costCenterId], references: [companyId, id], onDelete: Restrict)
+
   @@id([companyId, sourceType, sourceId])
   @@index([companyId, costCenterId])
   @@map("cba_program_cost_centers")
