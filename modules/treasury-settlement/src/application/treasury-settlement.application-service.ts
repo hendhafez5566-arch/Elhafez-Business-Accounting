@@ -92,7 +92,7 @@ export class TreasurySettlementApplicationService {
     >,
     private readonly controls: Pick<
       FinancialControlsApplicationService,
-      "evaluateApprovalRequirement" | "getApprovalDecision"
+      "evaluateApprovalRequirement" | "getApprovalRequest" | "getApprovalDecision"
     >,
   ) {}
   async createTreasury(input: {
@@ -144,6 +144,9 @@ export class TreasurySettlementApplicationService {
           (x) =>
             x.status === "POSTED" &&
             (x.sourceTreasuryId === id || x.destinationTreasuryId === id),
+        ) ||
+        (await this.repo.cashCounts(companyId, id)).some(
+          (x) => Boolean(x.adjustmentJournalId),
         );
     if (
       history &&
@@ -178,6 +181,8 @@ export class TreasurySettlementApplicationService {
         if (t.sourceTreasuryId === treasuryId) total -= n(t.amount);
         if (t.destinationTreasuryId === treasuryId) total += n(t.amount);
       }
+    for (const count of await this.repo.cashCounts(companyId, treasuryId))
+      if (count.adjustmentJournalId) total += n(count.difference);
     return d(total);
   }
   async postVoucher(input: PostVoucherInput): Promise<Voucher> {
@@ -195,6 +200,8 @@ export class TreasurySettlementApplicationService {
       if (voucher.requestHash !== requestHash)
         throw new ContractValidationError("source", "conflicting replay");
       if (voucher.status === "POSTED") return voucher;
+      if (voucher.status !== "PROCESSING")
+        throw new ContractValidationError("voucher", "reversed/reversing voucher identity cannot be reposted");
     } else {
       voucher = {
         ...input,
@@ -213,19 +220,32 @@ export class TreasurySettlementApplicationService {
         amount,
       });
       if (requirement.decision === "APPROVAL_REQUIRED") {
-        if (!input.approvalRequestId)
+        if (!input.approvalRequestId || !input.actorId)
           throw new ContractValidationError(
             "approval",
-            "approved request required",
+            "approved request and requesting actor are required",
           );
+        const request = await this.controls.getApprovalRequest(
+          input.companyId,
+          input.approvalRequestId,
+        );
         const decision = await this.controls.getApprovalDecision(
           input.companyId,
           input.approvalRequestId,
         );
-        if (decision?.outcome !== "APPROVED")
+        if (
+          !request ||
+          request.action !== "PAYMENT" ||
+          request.amount !== amount ||
+          request.sourceType !== input.sourceType ||
+          request.sourceId !== input.sourceId ||
+          request.requesterActorId !== input.actorId ||
+          (input.branchId !== undefined && request.branchId !== input.branchId) ||
+          decision?.outcome !== "APPROVED"
+        )
           throw new ContractValidationError(
             "approval",
-            "payment is not authorized",
+            "approval evidence does not authorize this exact payment",
           );
       }
       await this.ensureFunds(input.companyId, input.treasuryId, amount);
@@ -363,6 +383,8 @@ export class TreasurySettlementApplicationService {
     const amount = pos(input.amount),
       source = await this.required(input.companyId, input.sourceTreasuryId),
       dest = await this.required(input.companyId, input.destinationTreasuryId);
+    if (!source.active || !dest.active)
+      throw new ContractValidationError("treasury", "transfer requires active treasuries");
     if (source.currency !== dest.currency)
       throw new ContractValidationError(
         "transfer",
@@ -404,13 +426,40 @@ export class TreasurySettlementApplicationService {
     const voucher = await this.repo.voucher(input.companyId, input.voucherId);
     if (!voucher || voucher.status !== "POSTED")
       throw new ContractValidationError("voucher", "posted voucher required");
+    if (input.currency !== voucher.currency)
+      throw new ContractValidationError("currency", "cheque currency must match voucher currency");
+    if (input.bankTreasuryId) {
+      const bank = await this.required(input.companyId, input.bankTreasuryId);
+      if (!bank.active || bank.type !== "BANK" || bank.currency !== input.currency)
+        throw new ContractValidationError("bankTreasuryId", "active matching-currency BANK treasury required");
+    }
+    const existing = await this.repo.cheque(input.companyId, input.id);
+    if (existing) {
+      const same =
+        existing.voucherId === input.voucherId &&
+        existing.direction === input.direction &&
+        existing.bankTreasuryId === input.bankTreasuryId &&
+        existing.number === input.number &&
+        existing.amount === input.amount &&
+        existing.currency === input.currency &&
+        existing.issueDate === input.issueDate &&
+        existing.dueDate === input.dueDate;
+      if (!same) throw new ContractValidationError("cheque", "conflicting cheque replay");
+      return existing;
+    }
     const value: Cheque = {
       ...input,
       status: "ISSUED",
       history: [{ status: "ISSUED", at: new Date().toISOString() }],
     };
-    await this.repo.saveCheque(value);
-    return value;
+    try {
+      await this.repo.createCheque(value);
+      return value;
+    } catch (error) {
+      const concurrent = await this.repo.cheque(input.companyId, input.id);
+      if (concurrent) return concurrent;
+      throw error;
+    }
   }
   async transitionCheque(
     companyId: CompanyId,
@@ -462,8 +511,19 @@ export class TreasurySettlementApplicationService {
         "treasury",
         "cash count requires CASH treasury",
       );
-    const counted = decimalAmount(input.countedAmount),
-      book = await this.balance(input.companyId, input.treasuryId),
+    const counted = decimalAmount(input.countedAmount);
+    if (n(counted) < 0n) throw new ContractValidationError("countedAmount", "cash count cannot be negative");
+    const existing = await this.repo.cashCount(input.companyId, input.id);
+    if (existing) {
+      if (
+        existing.treasuryId !== input.treasuryId ||
+        existing.countedAmount !== counted ||
+        existing.countDate !== input.countDate ||
+        existing.adjustmentAccountId !== input.adjustmentAccountId
+      ) throw new ContractValidationError("cashCount", "conflicting cash-count replay");
+      return existing;
+    }
+    const book = await this.balance(input.companyId, input.treasuryId),
       difference = d(n(counted) - n(book));
     let journalId: string | undefined;
     if (n(difference) !== 0n) {
@@ -507,6 +567,19 @@ export class TreasurySettlementApplicationService {
     return value;
   }
   async importBankLine(input: Omit<BankLine, "status">) {
+    const existing = await this.repo.bankLine(input.companyId, input.id);
+    if (existing) {
+      const normalizedCurrency = currencyCode(input.currency);
+      const normalizedAmount = decimalAmount(input.signedAmount);
+      if (
+        existing.treasuryId !== input.treasuryId ||
+        existing.currency !== normalizedCurrency ||
+        existing.signedAmount !== normalizedAmount ||
+        existing.valueDate !== input.valueDate ||
+        existing.reference !== input.reference
+      ) throw new ContractValidationError("bankLine", "conflicting statement-line replay");
+      return existing;
+    }
     const t = await this.required(input.companyId, input.treasuryId);
     if (t.type !== "BANK" || t.currency !== currencyCode(input.currency))
       throw new ContractValidationError(
@@ -554,6 +627,7 @@ export class TreasurySettlementApplicationService {
     voucherId: string,
     actorId: string,
   ) {
+    if (!actorId.trim()) throw new ContractValidationError("actorId", "manual match actor is required");
     const line = await this.repo.bankLine(companyId, lineId),
       v = await this.repo.voucher(companyId, voucherId);
     if (
@@ -572,7 +646,11 @@ export class TreasurySettlementApplicationService {
     actorId?: string,
   ) {
     const prior = await this.repo.bankMatch(line.companyId, line.id);
-    if (prior) return prior;
+    if (prior) {
+      if (prior.voucherId !== voucherId || prior.mode !== mode)
+        throw new ContractValidationError("bankMatch", "statement line already matched differently");
+      return prior;
+    }
     const value: BankMatch = {
       id: "match:" + line.id,
       companyId: line.companyId,
@@ -582,9 +660,14 @@ export class TreasurySettlementApplicationService {
       ...(actorId ? { actorId } : {}),
       matchedAt: new Date().toISOString(),
     };
-    await this.repo.saveBankMatch(value);
-    await this.repo.saveBankLine({ ...line, status: "MATCHED" });
-    return value;
+    try {
+      await this.repo.saveBankMatchEffect(value, line, { ...line, status: "MATCHED" });
+      return value;
+    } catch (error) {
+      const concurrent = await this.repo.bankMatch(line.companyId, line.id);
+      if (concurrent && concurrent.voucherId === voucherId && concurrent.mode === mode) return concurrent;
+      throw error;
+    }
   }
   private async ensureFunds(
     companyId: CompanyId,

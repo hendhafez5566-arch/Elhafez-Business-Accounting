@@ -60,6 +60,7 @@ export class FinancialControlsApplicationService {
     const decision = { id: input.decisionId, requestId: input.requestId, companyId: input.companyId, outcome: input.outcome, actorId: input.actorId, ...(input.reason === undefined ? {} : { reason: input.reason }), decidedAt: input.decidedAt ?? now() };
     await this.repository.saveDecision(decision); await this.audit(input.companyId, 'APPROVAL_DECIDED', input.requestId, decision); return decision;
   }
+  async getApprovalRequest(companyId: string, requestId: string) { return this.repository.findRequest(companyId, requestId); }
   async getApprovalDecision(companyId: string, requestId: string) { return this.repository.findDecision(companyId, requestId); }
 
   async evaluateFinancialMutation(input: { executionCompanyId: string; executionBranchId: string; actorId: string; sourceReference: string; targetCompanyId: string; targetBranchId: string; lifecycle: 'DRAFT' | 'PERMANENT' | 'POSTED'; collection: boolean; mutation: MutationKind }) {
