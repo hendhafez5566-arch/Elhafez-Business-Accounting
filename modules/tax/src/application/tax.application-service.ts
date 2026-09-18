@@ -1,3 +1,147 @@
-import {createHash} from 'node:crypto'; import {ContractValidationError,decimalAmount,type CompanyId,type DecimalAmount} from '@elhafez/contracts'; import type {TaxPolicy,TaxSnapshot} from '../domain/tax.js'; import type {TaxRepository} from './tax.repository.js';
-const SCALE=10n**18n; const scaled=(v:DecimalAmount)=>{const [a,b='']=v.split('.'); const neg=a!.startsWith('-'); const whole=BigInt(a!); const frac=BigInt((b+'0'.repeat(18)).slice(0,18)); return whole*SCALE+(neg?-frac:frac)}; const canonical=(v:bigint)=>decimalAmount(`${v<0n?'-':''}${(v<0n?-v:v)/SCALE}${(v<0n?-v:v)%SCALE===0n?'':'.'+((v<0n?-v:v)%SCALE).toString().padStart(18,'0').replace(/0+$/,'')}`);
-export class TaxApplicationService { constructor(private readonly repo:TaxRepository){} async configurePolicy(policy:TaxPolicy){ decimalAmount(policy.rate); if((await this.repo.policies(policy.companyId,policy.code)).some(x=>x.effectiveFrom===policy.effectiveFrom)) throw new ContractValidationError('effectiveFrom','policy revision already exists'); await this.repo.savePolicy(Object.freeze({...policy})); return policy } async resolveEffectivePolicy(companyId:CompanyId,code:string,at:string){const found=(await this.repo.policies(companyId,code)).filter(x=>x.effectiveFrom<=at).sort((a,b)=>b.effectiveFrom.localeCompare(a.effectiveFrom)||b.id.localeCompare(a.id))[0]; if(!found)throw new ContractValidationError('taxCode','no effective policy'); return found} async snapshotInvoiceLine(input:{companyId:CompanyId;code:string;effectiveAt:string;taxableAmount:DecimalAmount;sourceId:string}):Promise<TaxSnapshot>{const existing=await this.repo.snapshot(input.companyId,createHash('sha256').update(`${input.companyId}|${input.sourceId}`).digest('hex')); if(existing)return existing; const p=await this.resolveEffectivePolicy(input.companyId,input.code,input.effectiveAt); const amount=canonical((scaled(decimalAmount(input.taxableAmount))*scaled(p.rate))/SCALE); const v=Object.freeze({id:createHash('sha256').update(`${input.companyId}|${input.sourceId}`).digest('hex'),companyId:input.companyId,policyId:p.id,code:p.code,effectiveAt:input.effectiveAt,rate:p.rate,taxableAmount:input.taxableAmount,taxAmount:amount,outputAccountId:p.outputAccountId,inputAccountId:p.inputAccountId,createdAt:new Date().toISOString()}); await this.repo.saveSnapshot(v); return v} async getSnapshot(companyId:CompanyId,id:string){return this.repo.snapshot(companyId,id)} }
+import { createHash } from 'node:crypto';
+import {
+  ContractValidationError,
+  decimalAmount,
+  type CompanyId,
+  type DecimalAmount,
+} from '@elhafez/contracts';
+import type { TaxPolicy, TaxSnapshot } from '../domain/tax.js';
+import type { TaxRepository } from './tax.repository.js';
+
+function canonicalDate(value: string, field: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    throw new ContractValidationError(field, 'must be YYYY-MM-DD');
+  }
+  const date = new Date(value + 'T00:00:00.000Z');
+  if (Number.isNaN(date.valueOf()) || date.toISOString().slice(0, 10) !== value) {
+    throw new ContractValidationError(field, 'must be a valid calendar date');
+  }
+  return value;
+}
+
+function decimalParts(value: DecimalAmount): { coefficient: bigint; scale: number } {
+  const text = decimalAmount(value);
+  const negative = text.startsWith('-');
+  const unsigned = negative ? text.slice(1) : text;
+  const [whole, fraction = ''] = unsigned.split('.');
+  return {
+    coefficient: BigInt((negative ? '-' : '') + whole + fraction),
+    scale: fraction.length,
+  };
+}
+
+function nonNegative(value: DecimalAmount, field: string): DecimalAmount {
+  const parsed = decimalAmount(value);
+  if (decimalParts(parsed).coefficient < 0n) throw new ContractValidationError(field, 'must not be negative');
+  if ((parsed.split('.')[1] ?? '').length > 18) throw new ContractValidationError(field, 'supports at most 18 fractional digits');
+  return parsed;
+}
+
+function canonical(coefficient: bigint, scale: number): DecimalAmount {
+  let current = coefficient;
+  let currentScale = scale;
+  while (currentScale > 18 && current % 10n === 0n) {
+    current /= 10n;
+    currentScale -= 1;
+  }
+  if (currentScale > 18) {
+    throw new ContractValidationError('taxAmount', 'result requires an explicit rounding policy');
+  }
+  const negative = current < 0n;
+  const absolute = negative ? -current : current;
+  let digits = absolute.toString().padStart(currentScale + 1, '0');
+  if (currentScale > 0) {
+    digits = digits.slice(0, -currentScale) + '.' + digits.slice(-currentScale);
+    digits = digits.replace(/\.0+$|(?<=\.[0-9]*[1-9])0+$/, '');
+  }
+  return decimalAmount((negative && digits !== '0' ? '-' : '') + digits);
+}
+
+function multiplyExact(left: DecimalAmount, right: DecimalAmount): DecimalAmount {
+  const a = decimalParts(left);
+  const b = decimalParts(right);
+  return canonical(a.coefficient * b.coefficient, a.scale + b.scale);
+}
+
+export class TaxApplicationService {
+  constructor(private readonly repo: TaxRepository) {}
+
+  async configurePolicy(policy: TaxPolicy) {
+    const effectiveFrom = canonicalDate(policy.effectiveFrom, 'effectiveFrom');
+    const rate = nonNegative(policy.rate, 'rate');
+    if (!policy.code.trim() || !policy.outputAccountId.trim() || !policy.inputAccountId.trim()) {
+      throw new ContractValidationError('taxPolicy', 'code and tax accounts are required');
+    }
+    const existing = (await this.repo.policies(policy.companyId, policy.code)).find(
+      (value) => value.effectiveFrom === effectiveFrom,
+    );
+    if (existing) throw new ContractValidationError('effectiveFrom', 'policy revision already exists');
+    const value = Object.freeze({ ...policy, effectiveFrom, rate });
+    await this.repo.savePolicy(value);
+    return value;
+  }
+
+  async resolveEffectivePolicy(companyId: CompanyId, code: string, at: string) {
+    const effectiveAt = canonicalDate(at, 'effectiveAt');
+    const found = (await this.repo.policies(companyId, code))
+      .filter((value) => value.effectiveFrom <= effectiveAt)
+      .sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom) || b.id.localeCompare(a.id))[0];
+    if (!found) throw new ContractValidationError('taxCode', 'no effective policy');
+    return found;
+  }
+
+  async snapshotInvoiceLine(input: {
+    companyId: CompanyId;
+    code: string;
+    effectiveAt: string;
+    taxableAmount: DecimalAmount;
+    sourceId: string;
+  }): Promise<TaxSnapshot> {
+    const effectiveAt = canonicalDate(input.effectiveAt, 'effectiveAt');
+    const taxableAmount = nonNegative(input.taxableAmount, 'taxableAmount');
+    if (!input.sourceId.trim()) throw new ContractValidationError('sourceId', 'is required');
+    const id = createHash('sha256').update(`${input.companyId}|${input.sourceId}`).digest('hex');
+    const prior = await this.repo.snapshot(input.companyId, id);
+    if (prior) {
+      if (prior.code !== input.code || prior.effectiveAt !== effectiveAt || prior.taxableAmount !== taxableAmount) {
+        throw new ContractValidationError('sourceId', 'conflicting tax snapshot replay');
+      }
+      return prior;
+    }
+
+    const policy = await this.resolveEffectivePolicy(input.companyId, input.code, effectiveAt);
+    const value = Object.freeze({
+      id,
+      companyId: input.companyId,
+      policyId: policy.id,
+      code: policy.code,
+      effectiveAt,
+      rate: policy.rate,
+      taxableAmount,
+      taxAmount: multiplyExact(taxableAmount, policy.rate),
+      outputAccountId: policy.outputAccountId,
+      inputAccountId: policy.inputAccountId,
+      createdAt: new Date().toISOString(),
+    });
+
+    try {
+      await this.repo.saveSnapshot(value);
+      return value;
+    } catch (error) {
+      const concurrent = await this.repo.snapshot(input.companyId, id);
+      if (
+        concurrent &&
+        concurrent.code === input.code &&
+        concurrent.effectiveAt === effectiveAt &&
+        concurrent.taxableAmount === taxableAmount
+      ) {
+        return concurrent;
+      }
+      throw error;
+    }
+  }
+
+  async getSnapshot(companyId: CompanyId, id: string) {
+    return this.repo.snapshot(companyId, id);
+  }
+}
