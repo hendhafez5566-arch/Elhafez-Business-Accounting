@@ -395,7 +395,7 @@ export class BillingSubledgersApplicationService {
       }
 
       if (invoiceBefore.status === 'DRAFT') {
-        // A no-op invoice update gives the database transaction a status/outstanding compare-and-set.
+        // A no-op invoice state touch gives the database transaction a status/outstanding compare-and-set.
         // This makes prefunding race safely with the DRAFT -> POSTING transition.
         invoiceAfter = { ...invoiceBefore };
       } else if (invoiceBefore.status === 'POSTED') {
