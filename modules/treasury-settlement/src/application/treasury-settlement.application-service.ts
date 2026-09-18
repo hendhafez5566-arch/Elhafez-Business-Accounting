@@ -267,11 +267,14 @@ export class TreasurySettlementApplicationService {
       ...(input.restrictionSourceId
         ? { restrictionSourceId: input.restrictionSourceId }
         : {}),
+      ...(input.explicitDraftInvoiceId && input.advanceAccountId
+        ? { prefundingAccountId: input.advanceAccountId }
+        : {}),
     });
     const baseAmount = settlement.settlementBaseAmount;
     const fx = n(settlement.realizedFx);
     const controlAmount = settlement.carryingBaseAmount;
-    const advance = n(baseAmount) - n(controlAmount) - fx;
+    const unapplied = n(settlement.prefundingBaseAmount) + n(settlement.advanceBaseAmount);
     const lines: PostingLine[] =
         input.kind === "RECEIPT"
           ? [
@@ -308,11 +311,17 @@ export class TreasurySettlementApplicationService {
         lines.push({ accountId: input.realizedFxGainAccountId, credit: fxAmount });
       }
     }
-    if (advance > 0n) {
-      if (!input.advanceAccountId) throw new ContractValidationError("advanceAccountId", "required for excess settlement");
-      lines.push(input.kind === "RECEIPT"
-        ? { accountId: input.advanceAccountId, credit: d(advance), partyId: input.partyId }
-        : { accountId: input.advanceAccountId, debit: d(advance), partyId: input.partyId });
+    if (unapplied > 0n) {
+      if (!input.advanceAccountId)
+        throw new ContractValidationError(
+          "advanceAccountId",
+          "required for pre-funding or excess settlement",
+        );
+      lines.push(
+        input.kind === "RECEIPT"
+          ? { accountId: input.advanceAccountId, credit: d(unapplied), partyId: input.partyId }
+          : { accountId: input.advanceAccountId, debit: d(unapplied), partyId: input.partyId },
+      );
     }
     const journal = await this.gl.post({
       id: "treasury:" + input.id,
@@ -356,7 +365,7 @@ export class TreasurySettlementApplicationService {
     const settlementId = v.settlementId;
     v = { ...v, status: "REVERSING" };
     await this.repo.saveVoucher(v);
-    await this.billing.reverseSettlement(companyId, settlementId);
+    await this.billing.reverseSettlement(companyId, settlementId, postingDate, number);
     const reversal = await this.gl.reverse(
       companyId,
       journalId,

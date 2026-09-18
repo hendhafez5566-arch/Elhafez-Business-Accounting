@@ -341,7 +341,38 @@ export class BillingSubledgersApplicationService {
       const applied = minimum(allocation.amount, outstanding);
       const excess = subtract(allocation.amount, applied);
       outstanding = subtract(outstanding, applied);
-      const updated: Allocation = { ...allocation, appliedAmount: applied, advanceAmount: excess };
+      let updated: Allocation = { ...allocation, appliedAmount: applied, advanceAmount: excess };
+      if (
+        scaled18(applied) > 0n &&
+        allocation.sourceType === 'TREASURY_SETTLEMENT' &&
+        allocation.prefundingBaseAmount
+      ) {
+        if (!allocation.prefundingAccountId) {
+          throw new ContractValidationError(
+            'prefundingAccountId',
+            'Treasury pre-funding requires an advance clearing account',
+          );
+        }
+        const reclassification = await this.gl.post({
+          id: 'billing-prefunding:' + allocation.id,
+          companyId,
+          number: invoice.number + '-PF-' + (allocation.settlementSequence ?? allocation.id),
+          postingDate: invoice.postingDate,
+          sourceType: 'BILLING_PREFUNDING_RECLASS',
+          sourceId: allocation.id,
+          lines:
+            invoice.type === 'SUPPLIER'
+              ? [
+                  { accountId: invoice.controlAccountId, debit: applied, partyId: invoice.partyId },
+                  { accountId: allocation.prefundingAccountId, credit: applied, partyId: invoice.partyId },
+                ]
+              : [
+                  { accountId: allocation.prefundingAccountId, debit: applied, partyId: invoice.partyId },
+                  { accountId: invoice.controlAccountId, credit: applied, partyId: invoice.partyId },
+                ],
+        });
+        updated = { ...updated, reclassificationJournalId: reclassification.id };
+      }
       allocationUpdates.push(updated);
       if (scaled18(excess) > 0n) advances.push(this.advanceFromAllocation(updated, excess));
     }
@@ -370,6 +401,7 @@ export class BillingSubledgersApplicationService {
     sourceId: string;
     restrictionSourceType?: string;
     restrictionSourceId?: string;
+    prefundingAccountId?: string;
   }): Promise<Allocation> {
     const amount = positive(input.amount);
     const normalized = { ...input, amount };
@@ -499,9 +531,10 @@ export class BillingSubledgersApplicationService {
     id: string; companyId: CompanyId; partyKind: PartyKind; partyId: string;
     amount: DecimalAmount; settlementCurrency: string; settlementDate: string;
     explicitDraftInvoiceId?: string; restrictionSourceType?: string; restrictionSourceId?: string;
+    prefundingAccountId?: string;
   }): Promise<{ settlementId: string; allocations: Allocation[]; advanceId?: string;
-    carryingBaseAmount: DecimalAmount; settlementBaseAmount: DecimalAmount;
-    realizedFx: DecimalAmount; fxRateId?: string }> {
+    carryingBaseAmount: DecimalAmount; prefundingBaseAmount: DecimalAmount; advanceBaseAmount: DecimalAmount;
+    settlementBaseAmount: DecimalAmount; realizedFx: DecimalAmount; fxRateId?: string }> {
     const amount = positive(input.amount);
     const base = await this.fx.getBaseCurrency(input.companyId);
     const conversion = input.settlementCurrency === base.code
@@ -509,7 +542,17 @@ export class BillingSubledgersApplicationService {
       : await this.fx.calculateSettlement(input.companyId, money(amount, input.settlementCurrency), base.code, input.settlementDate + 'T23:59:59.999Z');
     const settlementBase = checked(conversion.converted.amount, 'settlementBaseAmount');
     const groupHash = fingerprint({ ...input, amount });
-    const existing = (await this.repo.allocations(input.companyId)).filter((x) => x.settlementId === input.id);
+    if (input.explicitDraftInvoiceId && !input.prefundingAccountId) {
+      throw new ContractValidationError(
+        'prefundingAccountId',
+        'draft pre-funding requires the Treasury advance clearing account',
+      );
+    }
+    const allExisting = (await this.repo.allocations(input.companyId)).filter((x) => x.settlementId === input.id);
+    if (allExisting.some((x) => x.reversedAt)) {
+      throw new ContractValidationError('settlement', 'reversed settlement identity cannot be reused');
+    }
+    const existing = allExisting;
     if (existing.length) {
       if (existing.some((x) => x.requestHash !== groupHash)) throw new ContractValidationError('settlement', 'conflicting replay');
       const completed = add(...existing.map((x) => x.settlementBaseAmount ?? x.amount));
@@ -545,10 +588,16 @@ export class BillingSubledgersApplicationService {
         partyKind: input.partyKind, partyId: input.partyId, invoiceId: invoice.id, amount: portion,
         sourceType: 'TREASURY_SETTLEMENT', sourceId: `${input.id}:${sequence}`,
         ...(input.restrictionSourceType ? { restrictionSourceType: input.restrictionSourceType } : {}),
-        ...(input.restrictionSourceId ? { restrictionSourceId: input.restrictionSourceId } : {}) });
+        ...(input.restrictionSourceId ? { restrictionSourceId: input.restrictionSourceId } : {}),
+        ...(invoice.status === 'DRAFT' && input.prefundingAccountId
+          ? { prefundingAccountId: input.prefundingAccountId }
+          : {}) });
+      const isPrefunding = invoice.status === 'DRAFT';
       const enriched: Allocation = { ...allocation, settlementId: input.id, settlementSequence: sequence,
-        carryingBaseAmount: allocation.appliedAmount, settlementBaseAmount: settlementPortion,
-        realizedFx: subtract(settlementPortion, allocation.appliedAmount),
+        carryingBaseAmount: isPrefunding ? zero : allocation.appliedAmount,
+        prefundingBaseAmount: isPrefunding ? settlementPortion : zero,
+        settlementBaseAmount: settlementPortion,
+        realizedFx: isPrefunding ? zero : subtract(settlementPortion, allocation.appliedAmount),
         settlementFxRateId: conversion.rate.rateId, requestHash: groupHash };
       await this.repo.saveAllocation(enriched); result.push(enriched); remaining = subtract(remaining, settlementPortion); sequence++;
     }
@@ -567,20 +616,59 @@ export class BillingSubledgersApplicationService {
   }
 
   private settlementResult(id: string, allocations: Allocation[], settlementBase: DecimalAmount, fxRateId?: string) {
-    const carrying = add(...allocations.map((x) => x.appliedAmount));
-    const realizedFx = subtract(settlementBase, add(carrying, ...allocations.map((x) => x.advanceAmount)));
-    const advance = allocations.find((x) => scaled18(x.advanceAmount) > 0n);
-    return { settlementId: id, allocations, ...(advance ? { advanceId: 'advance:' + advance.id } : {}),
-      carryingBaseAmount: carrying, settlementBaseAmount: settlementBase, realizedFx,
-      ...(fxRateId ? { fxRateId } : {}) };
+    const active = allocations.filter((x) => !x.reversedAt);
+    const carrying = add(...active.map((x) => x.carryingBaseAmount ?? x.appliedAmount));
+    const prefunding = add(...active.map((x) => x.prefundingBaseAmount ?? zero));
+    const advanceBase = add(
+      ...active.map((x) => (scaled18(x.prefundingBaseAmount ?? zero) > 0n ? zero : x.advanceAmount)),
+    );
+    const realizedFx = add(...active.map((x) => x.realizedFx ?? zero));
+    const advance = active.find(
+      (x) => scaled18(x.advanceAmount) > 0n && scaled18(x.prefundingBaseAmount ?? zero) === 0n,
+    );
+    return {
+      settlementId: id,
+      allocations: active,
+      ...(advance ? { advanceId: 'advance:' + advance.id } : {}),
+      carryingBaseAmount: carrying,
+      prefundingBaseAmount: prefunding,
+      advanceBaseAmount: advanceBase,
+      settlementBaseAmount: settlementBase,
+      realizedFx,
+      ...(fxRateId ? { fxRateId } : {}),
+    };
   }
 
-  async reverseSettlement(companyId: CompanyId, settlementId: string): Promise<Allocation[]> {
+  async reverseSettlement(
+    companyId: CompanyId,
+    settlementId: string,
+    postingDate?: string,
+    number?: string,
+  ): Promise<Allocation[]> {
     const values = (await this.repo.allocations(companyId)).filter((x) => x.settlementId === settlementId)
       .sort((a, b) => (b.settlementSequence ?? 0) - (a.settlementSequence ?? 0));
     if (!values.length) throw new ContractValidationError('settlement', 'not found');
     const reversed: Allocation[] = [];
-    for (const value of values) reversed.push(await this.reverseAllocation(companyId, value.id));
+    for (const value of values) {
+      let result = await this.reverseAllocation(companyId, value.id);
+      if (value.reclassificationJournalId && !value.reclassificationReversalJournalId) {
+        if (!postingDate || !number) {
+          throw new ContractValidationError(
+            'settlement',
+            'posting date and number are required to reverse pre-funding reclassification',
+          );
+        }
+        const journal = await this.gl.reverse(
+          companyId,
+          value.reclassificationJournalId,
+          postingDate,
+          number + '-PF-' + (value.settlementSequence ?? value.id),
+        );
+        result = { ...result, reclassificationReversalJournalId: journal.id };
+        await this.repo.saveAllocation(result);
+      }
+      reversed.push(result);
+    }
     return reversed;
   }
 
