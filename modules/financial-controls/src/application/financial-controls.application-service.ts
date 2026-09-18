@@ -43,7 +43,7 @@ export class FinancialControlsApplicationService {
       ? { decision: 'APPROVAL_REQUIRED', policyId: policy.id, threshold: policy.threshold, forbidSelfApproval: policy.forbidSelfApproval, requiredAuthority: policy.requiredAuthority }
       : { decision: 'APPROVAL_NOT_REQUIRED', policyId: policy.id };
   }
-  async requestApproval(input: Omit<ApprovalRequest, 'amount' | 'status' | 'policyId' | 'requestedAt'> & { amount: string; requestedAt?: string }): Promise<ApprovalRequest> {
+  async requestApproval(input: Omit<ApprovalRequest, 'amount' | 'status' | 'policyId' | 'policyThresholdSnapshot' | 'policyForbidSelfApprovalSnapshot' | 'policyRequiredAuthoritySnapshot' | 'requestedAt'> & { amount: string; requestedAt?: string }): Promise<ApprovalRequest> {
     const evaluation = await this.evaluateApprovalRequirement(input);
     if (evaluation.decision !== 'APPROVAL_REQUIRED' || !evaluation.policyId || evaluation.threshold === undefined || evaluation.forbidSelfApproval === undefined || !evaluation.requiredAuthority) throw new ContractValidationError('approval', 'approval is not required');
     const existing = await this.repository.findRequest(input.companyId, input.id);
