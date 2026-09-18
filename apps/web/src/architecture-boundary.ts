@@ -1,2 +1,2 @@
-/** Placeholder boundary for the future React application; no product UI belongs in Phase 0. */
-export const webArchitectureStatus = 'foundation-only' as const;
+/** apps/web owns application composition and generic presentation only. */
+export const webArchitectureStatus = 'application-shell-foundation' as const;
