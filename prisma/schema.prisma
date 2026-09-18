@@ -207,3 +207,102 @@ model CbaProgramCostCenter {
   @@index([companyId, costCenterId])
   @@map("cba_program_cost_centers")
 }
+
+model PeriodFiscalYear {
+  id String @id
+  companyId String @map("company_id")
+  startDate DateTime @map("start_date") @db.Date
+  endDate DateTime @map("end_date") @db.Date
+  status String @default("OPEN")
+  periods PeriodAccountingPeriod[]
+  closeHistory PeriodFiscalCloseHistory[]
+  @@unique([companyId, id])
+  @@index([companyId, startDate, endDate])
+  @@map("period_fiscal_years")
+}
+
+model PeriodAccountingPeriod {
+  id String @id
+  companyId String @map("company_id")
+  fiscalYearId String @map("fiscal_year_id")
+  startDate DateTime @map("start_date") @db.Date
+  endDate DateTime @map("end_date") @db.Date
+  status String @default("OPEN")
+  fiscalYear PeriodFiscalYear @relation(fields: [companyId, fiscalYearId], references: [companyId, id], onDelete: Restrict)
+  @@unique([companyId, id])
+  @@index([companyId, fiscalYearId, startDate, endDate])
+  @@map("period_accounting_periods")
+}
+
+model PeriodFiscalCloseHistory {
+  id String @id
+  companyId String @map("company_id")
+  fiscalYearId String @map("fiscal_year_id")
+  closeJournalId String @map("close_journal_id")
+  reversalJournalId String? @map("reversal_journal_id")
+  closedAt DateTime @map("closed_at")
+  reopenedAt DateTime? @map("reopened_at")
+  fiscalYear PeriodFiscalYear @relation(fields: [companyId, fiscalYearId], references: [companyId, id], onDelete: Restrict)
+  @@unique([companyId, fiscalYearId, closeJournalId])
+  @@map("period_fiscal_close_history")
+}
+
+model GlAccount {
+  id String @id
+  companyId String @map("company_id")
+  code String
+  name String
+  classification String
+  active Boolean @default(true)
+  postable Boolean @default(true)
+  parentId String? @map("parent_id")
+  controlType String? @map("control_type")
+  parent GlAccount? @relation("GlAccountHierarchy", fields: [companyId, parentId], references: [companyId, id], onDelete: Restrict)
+  children GlAccount[] @relation("GlAccountHierarchy")
+  lines GlJournalLine[]
+  @@unique([companyId, id])
+  @@unique([companyId, code])
+  @@map("gl_accounts")
+}
+
+model GlJournal {
+  id String @id
+  companyId String @map("company_id")
+  number String
+  postingDate DateTime @map("posting_date") @db.Date
+  kind String
+  sourceType String @map("source_type")
+  sourceId String @map("source_id")
+  requestHash String @map("request_hash")
+  correlationId String? @map("correlation_id")
+  reversalOfId String? @unique @map("reversal_of_id")
+  fiscalYearId String? @map("fiscal_year_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  reversalOf GlJournal? @relation("JournalReversal", fields: [reversalOfId], references: [id], onDelete: Restrict)
+  reversal GlJournal? @relation("JournalReversal")
+  lines GlJournalLine[]
+  @@unique([companyId, number])
+  @@unique([companyId, sourceType, sourceId])
+  @@unique([companyId, id])
+  @@index([companyId, postingDate])
+  @@map("gl_journals")
+}
+
+model GlJournalLine {
+  id String @id
+  companyId String @map("company_id")
+  journalId String @map("journal_id")
+  accountId String @map("account_id")
+  debit Decimal? @db.Decimal(38, 18)
+  credit Decimal? @db.Decimal(38, 18)
+  partyId String? @map("party_id")
+  foreignAmount Decimal? @map("foreign_amount") @db.Decimal(38, 18)
+  foreignCurrency String? @map("foreign_currency")
+  fxRateId String? @map("fx_rate_id")
+  fxRate Decimal? @map("fx_rate") @db.Decimal(38, 18)
+  journal GlJournal @relation(fields: [companyId, journalId], references: [companyId, id], onDelete: Restrict)
+  account GlAccount @relation(fields: [companyId, accountId], references: [companyId, id], onDelete: Restrict)
+  @@index([companyId, journalId])
+  @@index([companyId, accountId])
+  @@map("gl_journal_lines")
+}

@@ -1,0 +1,5 @@
+import type {CompanyId,DecimalAmount} from '@elhafez/contracts';
+export type AccountClassification='ASSET'|'LIABILITY'|'EQUITY'|'REVENUE'|'EXPENSE'; export interface Account{id:string;companyId:CompanyId;code:string;name:string;classification:AccountClassification;active:boolean;postable:boolean;parentId?:string;controlType?:string}
+export interface JournalLine{id:string;accountId:string;debit?:DecimalAmount;credit?:DecimalAmount;partyId?:string;foreignAmount?:DecimalAmount;foreignCurrency?:string;fxRateId?:string;fxRate?:DecimalAmount}
+export type JournalKind='STANDARD'|'OPENING'|'REVERSAL'|'FISCAL_CLOSE'; export interface Journal{id:string;companyId:CompanyId;number:string;postingDate:string;kind:JournalKind;sourceType:string;sourceId:string;requestHash:string;correlationId?:string;reversalOfId?:string;fiscalYearId?:string;lines:readonly JournalLine[]}
+const parts=(v:string):[bigint,number]=>{const [w,f='']=v.split('.');return [BigInt(w!+f),f.length]}; export const sum=(values:string[])=>{const scale=Math.max(0,...values.map(x=>parts(x)[1]));return values.reduce((n,x)=>{const [v,s]=parts(x);return n+v*10n**BigInt(scale-s)},0n)};
