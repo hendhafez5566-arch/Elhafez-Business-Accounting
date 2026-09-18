@@ -1,0 +1,1 @@
+{"name":"@elhafez/period-control","private":true,"type":"module","exports":{".":"./src/public/index.ts"},"dependencies":{"@elhafez/contracts":"workspace:*","@nestjs/common":"^11.0.11","@prisma/client":"6.19.0"},"scripts":{"build":"tsc -p tsconfig.json","typecheck":"tsc --noEmit -p tsconfig.json","test":"tsx --test src/*.spec.ts src/**/*.spec.ts"}}
