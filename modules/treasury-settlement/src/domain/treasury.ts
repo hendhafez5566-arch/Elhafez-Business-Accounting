@@ -1,0 +1,11 @@
+import type { CompanyId, DecimalAmount } from '@elhafez/contracts';
+export type TreasuryType = 'CASH'|'BANK';
+export interface Treasury { id:string; companyId:CompanyId; code:string; name:string; type:TreasuryType; currency:string; glAccountId:string; active:boolean; }
+export interface TreasuryPolicy { companyId:CompanyId; allowNegative:boolean; }
+export type VoucherStatus='DRAFT'|'PROCESSING'|'POSTED'|'REVERSING'|'REVERSED';
+export interface Voucher { id:string; companyId:CompanyId; branchId?:string; treasuryId:string; kind:'RECEIPT'|'PAYMENT'; partyKind:'CUSTOMER'|'SUPPLIER'; partyId:string; number:string; postingDate:string; currency:string; amount:DecimalAmount; sourceType:string; sourceId:string; requestHash:string; status:VoucherStatus; actorId?:string; approvalRequestId?:string; journalId?:string; reversalJournalId?:string; settlementId?:string; allocationIds:string[]; advanceId?:string; carryingBaseAmount?:DecimalAmount; settlementBaseAmount?:DecimalAmount; realizedFx?:DecimalAmount; fxRateId?:string; }
+export interface Transfer { id:string; companyId:CompanyId; sourceTreasuryId:string; destinationTreasuryId:string; amount:DecimalAmount; postingDate:string; sourceType:string; sourceId:string; requestHash:string; status:'PROCESSING'|'POSTED'; journalId?:string; }
+export interface Cheque { id:string; companyId:CompanyId; voucherId:string; direction:'INCOMING'|'OUTGOING'; bankTreasuryId?:string; number:string; amount:DecimalAmount; currency:string; issueDate:string; dueDate?:string; status:'ISSUED'|'DEPOSITED'|'CLEARED'|'BOUNCED'|'VOIDED'; clearingReference?:string; history:{status:string;at:string;reference?:string}[] }
+export interface CashCount { id:string; companyId:CompanyId; treasuryId:string; countedAmount:DecimalAmount; bookAmount:DecimalAmount; difference:DecimalAmount; countDate:string; adjustmentAccountId?:string; adjustmentJournalId?:string; }
+export interface BankLine { id:string; companyId:CompanyId; treasuryId:string; currency:string; signedAmount:DecimalAmount; valueDate:string; reference?:string; status:'UNMATCHED'|'AMBIGUOUS'|'MATCHED'; }
+export interface BankMatch { id:string; companyId:CompanyId; lineId:string; voucherId:string; mode:'AUTO'|'MANUAL'; actorId?:string; matchedAt:string; }
