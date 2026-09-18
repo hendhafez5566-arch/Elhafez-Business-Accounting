@@ -1,0 +1,6 @@
+{
+  "name": "module-name",
+  "publicApi": ["src/public/index.ts"],
+  "ownedTables": ["module_name_example"],
+  "allowedDependencies": ["@elhafez/contracts", "@elhafez/core"]
+}
