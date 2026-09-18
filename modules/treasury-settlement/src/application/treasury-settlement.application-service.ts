@@ -345,6 +345,25 @@ export class TreasurySettlementApplicationService {
     await this.repo.saveVoucher(voucher);
     return voucher;
   }
+  /** AC-08 narrow payment port for liabilities owned outside Billing. */
+  async postOwnerPayment(input: {
+    id:string; companyId:CompanyId; branchId?:string; treasuryId:string; ownerType:'EXPENSE'|'COMMISSION';
+    ownerId:string; partyId:string; number:string; postingDate:string; amount:DecimalAmount;
+    carryingBaseAmount:DecimalAmount; settlementBaseAmount:DecimalAmount; liabilityAccountId:string;
+    realizedFxGainAccountId?:string; realizedFxLossAccountId?:string; fxRateId?:string;
+  }):Promise<Voucher>{
+    const amount=pos(input.amount),carrying=pos(input.carryingBaseAmount),settlement=pos(input.settlementBaseAmount);
+    const treasury=await this.required(input.companyId,input.treasuryId);
+    const requestHash=hash({...input,amount,carryingBaseAmount:carrying,settlementBaseAmount:settlement});
+    const prior=await this.repo.voucherBySource(input.companyId,'OWNER_PAYMENT',input.ownerType+':'+input.ownerId+':'+input.id);
+    if(prior){if(prior.requestHash!==requestHash)throw new ContractValidationError('source','conflicting replay');return prior;}
+    let voucher:Voucher={id:input.id,companyId:input.companyId,...(input.branchId?{branchId:input.branchId}:{}),treasuryId:input.treasuryId,kind:'PAYMENT',partyKind:'OWNER',partyId:input.partyId,number:input.number,postingDate:input.postingDate,currency:treasury.currency,amount,sourceType:'OWNER_PAYMENT',sourceId:input.ownerType+':'+input.ownerId+':'+input.id,requestHash,status:'PROCESSING',allocationIds:[]};
+    voucher=await this.repo.reserveVoucher(voucher,(await this.repo.policy(input.companyId))?.allowNegative===true);
+    const difference=n(settlement)-n(carrying);const lines:PostingLine[]=[{accountId:input.liabilityAccountId,debit:carrying,partyId:input.partyId},{accountId:treasury.glAccountId,credit:settlement}];
+    if(difference>0n){if(!input.realizedFxLossAccountId)throw new ContractValidationError('realizedFxLossAccountId','required');lines.push({accountId:input.realizedFxLossAccountId,debit:d(difference)});}else if(difference<0n){if(!input.realizedFxGainAccountId)throw new ContractValidationError('realizedFxGainAccountId','required');lines.push({accountId:input.realizedFxGainAccountId,credit:d(-difference)});}
+    const journal=await this.gl.post({id:'treasury-owner:'+input.id,companyId:input.companyId,number:input.number,postingDate:input.postingDate,sourceType:'TREASURY_OWNER_PAYMENT',sourceId:input.id,lines});
+    voucher={...voucher,status:'POSTED',journalId:journal.id,carryingBaseAmount:carrying,settlementBaseAmount:settlement,realizedFx:d(difference),...(input.fxRateId?{fxRateId:input.fxRateId}:{})};await this.repo.saveVoucher(voucher);return voucher;
+  }
   async voidVoucher(
     companyId: CompanyId,
     id: string,
@@ -354,7 +373,7 @@ export class TreasurySettlementApplicationService {
     let v = await this.repo.voucher(companyId, id);
     if (!v) throw new ContractValidationError("voucher", "not found");
     if (v.status === "REVERSED") return v;
-    if (v.status !== "POSTED" || !v.journalId || !v.settlementId)
+    if (v.status !== "POSTED" || !v.journalId)
       throw new ContractValidationError(
         "voucher",
         "only posted voucher may reverse",
@@ -363,7 +382,7 @@ export class TreasurySettlementApplicationService {
     const settlementId = v.settlementId;
     v = { ...v, status: "REVERSING" };
     await this.repo.saveVoucher(v);
-    await this.billing.reverseSettlement(companyId, settlementId, postingDate, number);
+    if(settlementId) await this.billing.reverseSettlement(companyId, settlementId, postingDate, number);
     const reversal = await this.gl.reverse(
       companyId,
       journalId,

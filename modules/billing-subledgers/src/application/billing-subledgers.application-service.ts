@@ -120,6 +120,45 @@ export class BillingSubledgersApplicationService {
     private readonly gl: Pick<GeneralLedgerApplicationService, 'post' | 'reverse'>,
   ) {}
 
+  /** Narrow AC-08 read contract. The returned value is a snapshot, not a repository entity. */
+  async getOpenPosition(companyId: CompanyId, invoiceId: string): Promise<{
+    invoiceId: string; companyId: CompanyId; partyKind: PartyKind; partyId: string;
+    currency: string; outstanding: DecimalAmount; controlAccountId: string; status: Invoice['status'];
+  }> {
+    const invoice = await this.requiredInvoice(companyId, invoiceId);
+    return { invoiceId: invoice.id, companyId: invoice.companyId,
+      partyKind: expectedPartyKind(invoice.type), partyId: invoice.partyId,
+      currency: invoice.currency, outstanding: invoice.outstanding,
+      controlAccountId: invoice.controlAccountId, status: invoice.status };
+  }
+
+  /** Exact, non-cash allocation used only by Party Accounting; it never creates an advance. */
+  async applyPartyNettingAllocation(input: {
+    id: string; companyId: CompanyId; invoiceId: string; partyKind: PartyKind;
+    partyId: string; amount: DecimalAmount; nettingDocumentId: string; lineId: string;
+  }): Promise<Allocation> {
+    const invoice = await this.requiredInvoice(input.companyId, input.invoiceId);
+    const amount = positive(input.amount);
+    if (invoice.status !== 'POSTED' || expectedPartyKind(invoice.type) !== input.partyKind ||
+        invoice.partyId !== input.partyId) {
+      throw new ContractValidationError('invoice', 'posted position and exact party identity required');
+    }
+    if (scaled18(amount) > scaled18(invoice.outstanding)) {
+      throw new ContractValidationError('amount', 'party netting cannot exceed outstanding');
+    }
+    return this.applyAllocation({ id: input.id, companyId: input.companyId,
+      invoiceId: input.invoiceId, partyKind: input.partyKind, partyId: input.partyId,
+      amount, sourceType: 'PARTY_NETTING', sourceId: input.nettingDocumentId + ':' + input.lineId });
+  }
+
+  async reversePartyNettingAllocation(companyId: CompanyId, allocationId: string): Promise<Allocation> {
+    const allocation = (await this.repo.allocations(companyId)).find((value) => value.id === allocationId);
+    if (!allocation || allocation.sourceType !== 'PARTY_NETTING') {
+      throw new ContractValidationError('allocation', 'party netting allocation not found');
+    }
+    return this.reverseAllocation(companyId, allocationId);
+  }
+
   async createDraft(input: CreateInvoiceInput): Promise<Invoice> {
     if (!input.partyId.trim() || !input.number.trim() || !input.sourceType.trim() || !input.sourceId.trim()) {
       throw new ContractValidationError('invoice', 'party, number and source identity are required');
