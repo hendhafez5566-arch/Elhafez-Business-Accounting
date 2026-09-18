@@ -21,6 +21,63 @@ const day = (value: Date | string | null | undefined) =>
 export class PrismaTreasuryRepository implements TreasuryRepository {
   constructor(private readonly db: PrismaClient) {}
 
+  private scaled(value: unknown): bigint {
+    const text = String(value);
+    const negative = text.startsWith('-');
+    const unsigned = negative ? text.slice(1) : text;
+    const [whole, fraction = ''] = unsigned.split('.');
+    const result = BigInt(whole + fraction.padEnd(18, '0'));
+    return negative ? -result : result;
+  }
+
+  private async lockTreasury(tx: any, companyId: string, treasuryId: string) {
+    const key = companyId + ':' + treasuryId;
+    await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${key}))`);
+  }
+
+  private async lockedBalance(tx: any, companyId: string, treasuryId: string, includeReservations: boolean) {
+    const [vouchers, transfers, counts] = await Promise.all([
+      tx.treasuryVoucher.findMany({
+        where: {
+          companyId,
+          treasuryId,
+          status: { in: includeReservations ? ['POSTED', 'PROCESSING'] : ['POSTED'] },
+        },
+        select: { kind: true, status: true, amount: true },
+      }),
+      tx.treasuryTransfer.findMany({
+        where: {
+          companyId,
+          OR: [{ sourceTreasuryId: treasuryId }, { destinationTreasuryId: treasuryId }],
+          status: { in: includeReservations ? ['POSTED', 'PROCESSING'] : ['POSTED'] },
+        },
+        select: { sourceTreasuryId: true, destinationTreasuryId: true, status: true, amount: true },
+      }),
+      tx.treasuryCashCount.findMany({
+        where: { companyId, treasuryId, adjustmentJournalId: { not: null } },
+        select: { difference: true },
+      }),
+    ]);
+    let total = 0n;
+    for (const voucher of vouchers) {
+      if (voucher.status === 'POSTED') {
+        total += voucher.kind === 'RECEIPT' ? this.scaled(voucher.amount) : -this.scaled(voucher.amount);
+      } else if (includeReservations && voucher.kind === 'PAYMENT') {
+        total -= this.scaled(voucher.amount);
+      }
+    }
+    for (const transfer of transfers) {
+      if (transfer.status === 'POSTED') {
+        if (transfer.sourceTreasuryId === treasuryId) total -= this.scaled(transfer.amount);
+        if (transfer.destinationTreasuryId === treasuryId) total += this.scaled(transfer.amount);
+      } else if (includeReservations && transfer.sourceTreasuryId === treasuryId) {
+        total -= this.scaled(transfer.amount);
+      }
+    }
+    for (const count of counts) total += this.scaled(count.difference);
+    return total;
+  }
+
   async treasury(companyId: string, id: string) {
     const value = await this.db.treasuryTreasury.findUnique({ where: { companyId_id: { companyId, id } } });
     return value ? ({ ...value, type: value.type as Treasury['type'], currency: value.currency as Treasury['currency'] } as Treasury) : undefined;
@@ -34,6 +91,48 @@ export class PrismaTreasuryRepository implements TreasuryRepository {
       create: value,
       update: { name: value.name, type: value.type, currency: value.currency, active: value.active, glAccountId: value.glAccountId },
     });
+  }
+
+  async deactivateTreasury(value: Treasury) {
+    return this.db.$transaction(
+      async (tx) => {
+        await this.lockTreasury(tx, value.companyId, value.id);
+        const current = await tx.treasuryTreasury.findUnique({
+          where: { companyId_id: { companyId: value.companyId, id: value.id } },
+        });
+        if (!current) throw new ContractValidationError('treasury', 'not found');
+        const [processingVouchers, processingTransfers] = await Promise.all([
+          tx.treasuryVoucher.count({
+            where: { companyId: value.companyId, treasuryId: value.id, status: 'PROCESSING' },
+          }),
+          tx.treasuryTransfer.count({
+            where: {
+              companyId: value.companyId,
+              status: 'PROCESSING',
+              OR: [{ sourceTreasuryId: value.id }, { destinationTreasuryId: value.id }],
+            },
+          }),
+        ]);
+        if (processingVouchers > 0 || processingTransfers > 0) {
+          throw new ContractValidationError('treasury', 'cannot deactivate while a movement is processing');
+        }
+        if ((await this.lockedBalance(tx, value.companyId, value.id, false)) !== 0n) {
+          throw new ContractValidationError('treasury', 'BR-026 nonzero treasury cannot be deactivated');
+        }
+        const updated = await tx.treasuryTreasury.update({
+          where: { companyId_id: { companyId: value.companyId, id: value.id } },
+          data: {
+            name: value.name,
+            type: value.type,
+            currency: value.currency,
+            glAccountId: value.glAccountId,
+            active: false,
+          },
+        });
+        return { ...updated, type: updated.type as Treasury['type'] } as Treasury;
+      },
+      { isolationLevel: 'Serializable' },
+    );
   }
 
   async policy(companyId: string) {
@@ -75,6 +174,50 @@ export class PrismaTreasuryRepository implements TreasuryRepository {
       })
     ).map((value) => this.voucherValue(value));
   }
+  async reserveVoucher(value: Voucher, allowNegative: boolean) {
+    return this.db.$transaction(
+      async (tx) => {
+        await this.lockTreasury(tx, value.companyId, value.treasuryId);
+        const treasury = await tx.treasuryTreasury.findUnique({
+          where: { companyId_id: { companyId: value.companyId, id: value.treasuryId } },
+        });
+        if (!treasury?.active) throw new ContractValidationError('treasury', 'inactive');
+        const existing = await tx.treasuryVoucher.findUnique({
+          where: {
+            companyId_sourceType_sourceId: {
+              companyId: value.companyId,
+              sourceType: value.sourceType,
+              sourceId: value.sourceId,
+            },
+          },
+        });
+        if (existing) {
+          const mapped = this.voucherValue(existing);
+          if (mapped.requestHash !== value.requestHash) {
+            throw new ContractValidationError('source', 'conflicting replay');
+          }
+          return mapped;
+        }
+        if (!allowNegative && value.kind === 'PAYMENT') {
+          const available = await this.lockedBalance(tx, value.companyId, value.treasuryId, true);
+          if (available - this.scaled(value.amount) < 0n) {
+            throw new ContractValidationError('balance', 'BR-027 negative treasury is prohibited');
+          }
+        }
+        const created = await tx.treasuryVoucher.create({
+          data: {
+            ...value,
+            postingDate: new Date(value.postingDate + 'T00:00:00.000Z'),
+            amount: new Prisma.Decimal(value.amount),
+            allocationIds: value.allocationIds,
+          },
+        });
+        return this.voucherValue(created);
+      },
+      { isolationLevel: 'Serializable' },
+    );
+  }
+
   async saveVoucher(value: Voucher) {
     const data: any = {
       ...value,
@@ -104,6 +247,57 @@ export class PrismaTreasuryRepository implements TreasuryRepository {
   async transfers(companyId: string) {
     return (await this.db.treasuryTransfer.findMany({ where: { companyId } })).map((value) => this.transferValue(value));
   }
+  async reserveTransfer(value: Transfer, allowNegative: boolean) {
+    return this.db.$transaction(
+      async (tx) => {
+        const ids = [value.sourceTreasuryId, value.destinationTreasuryId].sort();
+        for (const treasuryId of ids) await this.lockTreasury(tx, value.companyId, treasuryId);
+        const [source, destination] = await Promise.all([
+          tx.treasuryTreasury.findUnique({
+            where: { companyId_id: { companyId: value.companyId, id: value.sourceTreasuryId } },
+          }),
+          tx.treasuryTreasury.findUnique({
+            where: { companyId_id: { companyId: value.companyId, id: value.destinationTreasuryId } },
+          }),
+        ]);
+        if (!source?.active || !destination?.active) {
+          throw new ContractValidationError('treasury', 'transfer requires active treasuries');
+        }
+        const existing = await tx.treasuryTransfer.findUnique({
+          where: {
+            companyId_sourceType_sourceId: {
+              companyId: value.companyId,
+              sourceType: value.sourceType,
+              sourceId: value.sourceId,
+            },
+          },
+        });
+        if (existing) {
+          const mapped = this.transferValue(existing);
+          if (mapped.requestHash !== value.requestHash) {
+            throw new ContractValidationError('source', 'conflicting replay');
+          }
+          return mapped;
+        }
+        if (!allowNegative) {
+          const available = await this.lockedBalance(tx, value.companyId, value.sourceTreasuryId, true);
+          if (available - this.scaled(value.amount) < 0n) {
+            throw new ContractValidationError('balance', 'BR-027 negative treasury is prohibited');
+          }
+        }
+        const created = await tx.treasuryTransfer.create({
+          data: {
+            ...value,
+            postingDate: new Date(value.postingDate + 'T00:00:00.000Z'),
+            amount: new Prisma.Decimal(value.amount),
+          },
+        });
+        return this.transferValue(created);
+      },
+      { isolationLevel: 'Serializable' },
+    );
+  }
+
   async saveTransfer(value: Transfer) {
     const data: any = {
       ...value,

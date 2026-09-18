@@ -157,16 +157,12 @@ export class TreasurySettlementApplicationService {
         "treasury",
         "BR-025 currency/type immutable after permanent history",
       );
-    if (change.active === false && n(await this.balance(companyId, id)) !== 0n)
-      throw new ContractValidationError(
-        "treasury",
-        "BR-026 nonzero treasury cannot be deactivated",
-      );
     const value = {
       ...old,
       ...change,
       ...(change.currency ? { currency: currencyCode(change.currency) } : {}),
     };
+    if (change.active === false) return this.repo.deactivateTreasury(value);
     await this.repo.saveTreasury(value);
     return value;
   }
@@ -211,7 +207,6 @@ export class TreasurySettlementApplicationService {
         status: "PROCESSING",
         allocationIds: [],
       };
-      await this.repo.saveVoucher(voucher);
     }
     if (input.kind === "PAYMENT") {
       const requirement = await this.controls.evaluateApprovalRequirement({
@@ -248,8 +243,11 @@ export class TreasurySettlementApplicationService {
             "approval evidence does not authorize this exact payment",
           );
       }
-      await this.ensureFunds(input.companyId, input.treasuryId, amount);
     }
+    voucher = await this.repo.reserveVoucher(
+      voucher,
+      (await this.repo.policy(input.companyId))?.allowNegative === true,
+    );
     const settlement = await this.billing.settle({
       id: input.id,
       companyId: input.companyId,
@@ -411,9 +409,11 @@ export class TreasurySettlementApplicationService {
       if (value.status === "POSTED") return value;
     } else {
       value = { ...input, amount, requestHash, status: "PROCESSING" };
-      await this.repo.saveTransfer(value);
     }
-    await this.ensureFunds(input.companyId, source.id, amount);
+    value = await this.repo.reserveTransfer(
+      value,
+      (await this.repo.policy(input.companyId))?.allowNegative === true,
+    );
     const journal = await this.gl.post({
       id: "treasury-transfer:" + input.id,
       companyId: input.companyId,
@@ -677,18 +677,6 @@ export class TreasurySettlementApplicationService {
       if (concurrent && concurrent.voucherId === voucherId && concurrent.mode === mode) return concurrent;
       throw error;
     }
-  }
-  private async ensureFunds(
-    companyId: CompanyId,
-    id: string,
-    amount: DecimalAmount,
-  ) {
-    if ((await this.repo.policy(companyId))?.allowNegative === true) return;
-    if (n(await this.balance(companyId, id)) - n(amount) < 0n)
-      throw new ContractValidationError(
-        "balance",
-        "BR-027 negative treasury is prohibited",
-      );
   }
   private async required(companyId: CompanyId, id: string) {
     const value = await this.repo.treasury(companyId, id);

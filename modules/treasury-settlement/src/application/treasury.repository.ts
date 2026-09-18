@@ -15,6 +15,7 @@ export interface TreasuryRepository {
   treasury(companyId: string, id: string): Promise<Treasury | undefined>;
   treasuries(companyId: string): Promise<Treasury[]>;
   saveTreasury(value: Treasury): Promise<void>;
+  deactivateTreasury(value: Treasury): Promise<Treasury>;
 
   policy(companyId: string): Promise<TreasuryPolicy | undefined>;
   savePolicy(value: TreasuryPolicy): Promise<void>;
@@ -22,10 +23,12 @@ export interface TreasuryRepository {
   voucher(companyId: string, id: string): Promise<Voucher | undefined>;
   voucherBySource(companyId: string, type: string, id: string): Promise<Voucher | undefined>;
   vouchers(companyId: string, treasuryId?: string): Promise<Voucher[]>;
+  reserveVoucher(value: Voucher, allowNegative: boolean): Promise<Voucher>;
   saveVoucher(value: Voucher): Promise<void>;
 
   transferBySource(companyId: string, type: string, id: string): Promise<Transfer | undefined>;
   transfers(companyId: string): Promise<Transfer[]>;
+  reserveTransfer(value: Transfer, allowNegative: boolean): Promise<Transfer>;
   saveTransfer(value: Transfer): Promise<void>;
 
   createCheque(value: Cheque): Promise<void>;
