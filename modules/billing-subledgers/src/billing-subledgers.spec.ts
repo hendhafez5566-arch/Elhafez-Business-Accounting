@@ -317,7 +317,7 @@ test('unconsumed credit-note advance is reversed with the adjustment', async () 
   const f = fixture();
   await f.service.createDraft(invoice());
   await f.service.postInvoice(company, 'i1');
-  const adjustment = await f.service.createAdjustment({
+  await f.service.createAdjustment({
     id: 'cn',
     companyId: company,
     invoiceId: 'i1',
