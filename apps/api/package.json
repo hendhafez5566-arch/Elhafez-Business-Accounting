@@ -17,6 +17,7 @@
     "@elhafez/general-ledger": "workspace:*",
     "@elhafez/financial-controls": "workspace:*",
     "@elhafez/tax": "workspace:*",
-    "@elhafez/billing-subledgers": "workspace:*"
+    "@elhafez/billing-subledgers": "workspace:*",
+    "@elhafez/treasury-settlement": "workspace:*"
   }
 }

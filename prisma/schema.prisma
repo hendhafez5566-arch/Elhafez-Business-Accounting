@@ -467,6 +467,7 @@ model BillingInvoice {
   number                String
   externalInvoiceNumber String?              @map("external_invoice_number")
   postingDate           DateTime             @map("posting_date") @db.Date
+  dueDate               DateTime?            @map("due_date") @db.Date
   currency              String
   fxRateId              String?              @map("fx_rate_id")
   sourceType            String               @map("source_type")
@@ -526,6 +527,12 @@ model BillingAllocation {
   advanceAmount         Decimal   @map("advance_amount") @db.Decimal(38, 18)
   sourceType            String    @map("source_type")
   sourceId              String    @map("source_id")
+  settlementId          String?   @map("settlement_id")
+  settlementSequence    Int?      @map("settlement_sequence")
+  carryingBaseAmount    Decimal?  @map("carrying_base_amount") @db.Decimal(38, 18)
+  settlementBaseAmount  Decimal?  @map("settlement_base_amount") @db.Decimal(38, 18)
+  realizedFx            Decimal?  @map("realized_fx") @db.Decimal(38, 18)
+  settlementFxRateId    String?   @map("settlement_fx_rate_id")
   restrictionSourceType String?   @map("restriction_source_type")
   restrictionSourceId   String?   @map("restriction_source_id")
   requestHash           String    @map("request_hash")
@@ -533,6 +540,7 @@ model BillingAllocation {
 
   @@unique([companyId, id])
   @@unique([companyId, sourceType, sourceId])
+  @@unique([companyId, settlementId, settlementSequence])
   @@index([companyId, invoiceId])
   @@map("billing_allocations")
 }
@@ -589,4 +597,180 @@ model BillingAdjustment {
   @@unique([companyId, sourceType, sourceId])
   @@index([companyId, invoiceId])
   @@map("billing_adjustments")
+}
+
+model BillingSettlementGroup {
+  id          String   @id
+  companyId   String   @map("company_id")
+  requestHash String   @map("request_hash")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([companyId, id])
+  @@map("billing_settlement_groups")
+}
+
+model TreasuryTreasury {
+  id                   String                      @id
+  companyId            String                      @map("company_id")
+  code                 String
+  name                 String
+  type                 String
+  currency             String
+  glAccountId          String                      @map("gl_account_id")
+  active               Boolean                     @default(true)
+  vouchers             TreasuryVoucher[]
+  sourceTransfers      TreasuryTransfer[]          @relation("TransferSource")
+  destinationTransfers TreasuryTransfer[]          @relation("TransferDestination")
+  cheques              TreasuryCheque[]
+  cashCounts           TreasuryCashCount[]
+  bankLines            TreasuryBankStatementLine[]
+
+  @@unique([companyId, id])
+  @@unique([companyId, code])
+  @@map("treasury_treasuries")
+}
+
+model TreasuryCompanyPolicy {
+  companyId     String  @id @map("company_id")
+  allowNegative Boolean @default(false) @map("allow_negative")
+
+  @@map("treasury_company_policies")
+}
+
+model TreasuryVoucher {
+  id                   String                         @id
+  companyId            String                         @map("company_id")
+  branchId             String?                        @map("branch_id")
+  treasuryId           String                         @map("treasury_id")
+  kind                 String
+  partyKind            String                         @map("party_kind")
+  partyId              String                         @map("party_id")
+  number               String
+  postingDate          DateTime                       @map("posting_date") @db.Date
+  currency             String
+  amount               Decimal                        @db.Decimal(38, 18)
+  sourceType           String                         @map("source_type")
+  sourceId             String                         @map("source_id")
+  requestHash          String                         @map("request_hash")
+  status               String
+  actorId              String?                        @map("actor_id")
+  approvalRequestId    String?                        @map("approval_request_id")
+  journalId            String?                        @map("journal_id")
+  reversalJournalId    String?                        @map("reversal_journal_id")
+  settlementId         String?                        @map("settlement_id")
+  allocationIds        Json                           @map("allocation_ids")
+  advanceId            String?                        @map("advance_id")
+  carryingBaseAmount   Decimal?                       @map("carrying_base_amount") @db.Decimal(38, 18)
+  settlementBaseAmount Decimal?                       @map("settlement_base_amount") @db.Decimal(38, 18)
+  realizedFx           Decimal?                       @map("realized_fx") @db.Decimal(38, 18)
+  fxRateId             String?                        @map("fx_rate_id")
+  treasury             TreasuryTreasury               @relation(fields: [companyId, treasuryId], references: [companyId, id], onDelete: Restrict)
+  allocationRefs       TreasuryVoucherAllocationRef[]
+  cheques              TreasuryCheque[]
+
+  @@unique([companyId, id])
+  @@unique([companyId, sourceType, sourceId])
+  @@index([companyId, treasuryId, status])
+  @@map("treasury_vouchers")
+}
+
+model TreasuryVoucherAllocationRef {
+  id           String          @id
+  companyId    String          @map("company_id")
+  voucherId    String          @map("voucher_id")
+  allocationId String          @map("allocation_id")
+  sequence     Int
+  voucher      TreasuryVoucher @relation(fields: [companyId, voucherId], references: [companyId, id], onDelete: Restrict)
+
+  @@unique([companyId, voucherId, sequence])
+  @@unique([companyId, allocationId])
+  @@map("treasury_voucher_allocation_refs")
+}
+
+model TreasuryTransfer {
+  id                    String           @id
+  companyId             String           @map("company_id")
+  sourceTreasuryId      String           @map("source_treasury_id")
+  destinationTreasuryId String           @map("destination_treasury_id")
+  amount                Decimal          @db.Decimal(38, 18)
+  postingDate           DateTime         @map("posting_date") @db.Date
+  sourceType            String           @map("source_type")
+  sourceId              String           @map("source_id")
+  requestHash           String           @map("request_hash")
+  status                String
+  journalId             String?          @map("journal_id")
+  sourceTreasury        TreasuryTreasury @relation("TransferSource", fields: [companyId, sourceTreasuryId], references: [companyId, id], onDelete: Restrict)
+  destinationTreasury   TreasuryTreasury @relation("TransferDestination", fields: [companyId, destinationTreasuryId], references: [companyId, id], onDelete: Restrict)
+
+  @@unique([companyId, id])
+  @@unique([companyId, sourceType, sourceId])
+  @@map("treasury_transfers")
+}
+
+model TreasuryCheque {
+  id                String            @id
+  companyId         String            @map("company_id")
+  voucherId         String            @map("voucher_id")
+  direction         String
+  bankTreasuryId    String?           @map("bank_treasury_id")
+  number            String
+  amount            Decimal           @db.Decimal(38, 18)
+  currency          String
+  issueDate         DateTime          @map("issue_date") @db.Date
+  dueDate           DateTime?         @map("due_date") @db.Date
+  status            String
+  clearingReference String?           @map("clearing_reference")
+  history           Json
+  voucher           TreasuryVoucher   @relation(fields: [companyId, voucherId], references: [companyId, id], onDelete: Restrict)
+  bank              TreasuryTreasury? @relation(fields: [companyId, bankTreasuryId], references: [companyId, id], onDelete: Restrict)
+
+  @@unique([companyId, id])
+  @@map("treasury_cheques")
+}
+
+model TreasuryCashCount {
+  id                  String           @id
+  companyId           String           @map("company_id")
+  treasuryId          String           @map("treasury_id")
+  countedAmount       Decimal          @map("counted_amount") @db.Decimal(38, 18)
+  bookAmount          Decimal          @map("book_amount") @db.Decimal(38, 18)
+  difference          Decimal          @db.Decimal(38, 18)
+  countDate           DateTime         @map("count_date") @db.Date
+  adjustmentAccountId String?          @map("adjustment_account_id")
+  adjustmentJournalId String?          @map("adjustment_journal_id")
+  treasury            TreasuryTreasury @relation(fields: [companyId, treasuryId], references: [companyId, id], onDelete: Restrict)
+
+  @@unique([companyId, id])
+  @@map("treasury_cash_counts")
+}
+
+model TreasuryBankStatementLine {
+  id           String             @id
+  companyId    String             @map("company_id")
+  treasuryId   String             @map("treasury_id")
+  currency     String
+  signedAmount Decimal            @map("signed_amount") @db.Decimal(38, 18)
+  valueDate    DateTime           @map("value_date") @db.Date
+  reference    String?
+  status       String
+  treasury     TreasuryTreasury   @relation(fields: [companyId, treasuryId], references: [companyId, id], onDelete: Restrict)
+  match        TreasuryBankMatch?
+
+  @@unique([companyId, id])
+  @@index([companyId, treasuryId, status])
+  @@map("treasury_bank_statement_lines")
+}
+
+model TreasuryBankMatch {
+  id        String                    @id
+  companyId String                    @map("company_id")
+  lineId    String                    @unique @map("line_id")
+  voucherId String                    @map("voucher_id")
+  mode      String
+  actorId   String?                   @map("actor_id")
+  matchedAt DateTime                  @map("matched_at")
+  line      TreasuryBankStatementLine @relation(fields: [companyId, lineId], references: [companyId, id], onDelete: Restrict)
+
+  @@unique([companyId, lineId])
+  @@map("treasury_bank_matches")
 }

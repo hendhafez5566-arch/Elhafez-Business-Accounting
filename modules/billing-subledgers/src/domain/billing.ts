@@ -24,6 +24,8 @@ export interface Invoice {
   number: string;
   externalInvoiceNumber?: string;
   postingDate: string;
+  /** Contractual due date used by BR-010. Never inferred from posting date. */
+  dueDate?: string;
   currency: string;
   fxRateId?: string;
   sourceType: string;
@@ -51,6 +53,12 @@ export interface Allocation {
   advanceAmount: DecimalAmount;
   sourceType: string;
   sourceId: string;
+  settlementId?: string;
+  settlementSequence?: number;
+  carryingBaseAmount?: DecimalAmount;
+  settlementBaseAmount?: DecimalAmount;
+  realizedFx?: DecimalAmount;
+  settlementFxRateId?: string;
   restrictionSourceType?: string;
   restrictionSourceId?: string;
   requestHash: string;

@@ -18,6 +18,7 @@ export class PrismaBillingRepository implements BillingRepository {
     return {
       ...value,
       postingDate: value.postingDate.toISOString().slice(0, 10),
+      dueDate: value.dueDate?.toISOString().slice(0, 10),
       createdAt: value.createdAt.toISOString(),
       lines: value.lines.map((line: any) => ({
         ...line,
@@ -35,6 +36,9 @@ export class PrismaBillingRepository implements BillingRepository {
       amount: value.amount.toString(),
       appliedAmount: value.appliedAmount.toString(),
       advanceAmount: value.advanceAmount.toString(),
+      carryingBaseAmount: value.carryingBaseAmount?.toString(),
+      settlementBaseAmount: value.settlementBaseAmount?.toString(),
+      realizedFx: value.realizedFx?.toString(),
       reversedAt: value.reversedAt?.toISOString(),
     };
   }
@@ -76,6 +80,13 @@ export class PrismaBillingRepository implements BillingRepository {
       update: {
         appliedAmount: value.appliedAmount,
         advanceAmount: value.advanceAmount,
+        settlementId: value.settlementId,
+        settlementSequence: value.settlementSequence,
+        carryingBaseAmount: value.carryingBaseAmount,
+        settlementBaseAmount: value.settlementBaseAmount,
+        realizedFx: value.realizedFx,
+        settlementFxRateId: value.settlementFxRateId,
+        requestHash: value.requestHash,
         reversedAt: value.reversedAt ? new Date(value.reversedAt) : null,
       },
     });
@@ -148,6 +159,7 @@ export class PrismaBillingRepository implements BillingRepository {
         create: {
           ...value,
           postingDate: new Date(value.postingDate),
+          dueDate: value.dueDate ? new Date(value.dueDate) : null,
           lines: undefined,
         },
         update: {

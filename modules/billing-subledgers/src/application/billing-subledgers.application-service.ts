@@ -103,6 +103,7 @@ export interface CreateInvoiceInput {
   number: string;
   externalInvoiceNumber?: string;
   postingDate: string;
+  dueDate?: string;
   currency: string;
   sourceType: string;
   sourceId: string;
@@ -490,6 +491,96 @@ export class BillingSubledgersApplicationService {
       invoiceAfter,
       reversedAdvance,
     );
+    return reversed;
+  }
+
+  /** AC-07 public settlement contract. Billing chooses and owns all economic allocations. */
+  async settle(input: {
+    id: string; companyId: CompanyId; partyKind: PartyKind; partyId: string;
+    amount: DecimalAmount; settlementCurrency: string; settlementDate: string;
+    explicitDraftInvoiceId?: string; restrictionSourceType?: string; restrictionSourceId?: string;
+  }): Promise<{ settlementId: string; allocations: Allocation[]; advanceId?: string;
+    carryingBaseAmount: DecimalAmount; settlementBaseAmount: DecimalAmount;
+    realizedFx: DecimalAmount; fxRateId?: string }> {
+    const amount = positive(input.amount);
+    const base = await this.fx.getBaseCurrency(input.companyId);
+    const conversion = input.settlementCurrency === base.code
+      ? { converted: money(amount, base.code), rate: { rateId: 'SAME_CURRENCY' } }
+      : await this.fx.calculateSettlement(input.companyId, money(amount, input.settlementCurrency), base.code, input.settlementDate + 'T23:59:59.999Z');
+    const settlementBase = checked(conversion.converted.amount, 'settlementBaseAmount');
+    const groupHash = fingerprint({ ...input, amount });
+    const existing = (await this.repo.allocations(input.companyId)).filter((x) => x.settlementId === input.id);
+    if (existing.length) {
+      if (existing.some((x) => x.requestHash !== groupHash)) throw new ContractValidationError('settlement', 'conflicting replay');
+      const completed = add(...existing.map((x) => x.settlementBaseAmount ?? x.amount));
+      if (completed === settlementBase) return this.settlementResult(input.id, existing, settlementBase, conversion.rate.rateId);
+    }
+    let remaining = subtract(settlementBase, add(...existing.map((x) => x.settlementBaseAmount ?? x.amount)));
+    let remainingSource = amount;
+    let sequence = existing.reduce((maximum, value) => Math.max(maximum, value.settlementSequence ?? -1), -1) + 1;
+    const candidates = input.explicitDraftInvoiceId
+      ? [await this.requiredInvoice(input.companyId, input.explicitDraftInvoiceId)]
+      : (await this.repo.invoices(input.companyId))
+          .filter((x) => x.partyId === input.partyId && expectedPartyKind(x.type) === input.partyKind && x.status === 'POSTED' && scaled18(x.outstanding) > 0n)
+          .sort((a, b) => {
+            if (!a.dueDate || !b.dueDate) throw new ContractValidationError('dueDate', 'explicit due date evidence is required for settlement');
+            return a.dueDate.localeCompare(b.dueDate) || a.postingDate.localeCompare(b.postingDate) || a.number.localeCompare(b.number) || a.id.localeCompare(b.id);
+          });
+    const result: Allocation[] = [...existing];
+    for (const invoice of candidates) {
+      if (scaled18(remaining) <= 0n) break;
+      if (!invoice.dueDate) throw new ContractValidationError('dueDate', 'explicit due date evidence is required for settlement');
+      let portion = invoice.status === 'DRAFT' ? remaining : minimum(remaining, invoice.outstanding);
+      let settlementPortion = portion;
+      if (invoice.status === 'POSTED' && invoice.currency === input.settlementCurrency && invoice.currency !== base.code) {
+        const documentTotal = add(...invoice.lines.flatMap((line) => line.taxAmount ? [line.amount, line.taxAmount] : [line.amount]));
+        if (remainingSource !== documentTotal || invoice.outstanding !== invoice.baseTotal) {
+          throw new ContractValidationError('amount', 'partial foreign settlement requires an explicit deterministic allocation intent');
+        }
+        portion = invoice.outstanding;
+        settlementPortion = remaining;
+        remainingSource = zero;
+      }
+      const allocation = await this.applyAllocation({ id: `${input.id}:${sequence}`, companyId: input.companyId,
+        partyKind: input.partyKind, partyId: input.partyId, invoiceId: invoice.id, amount: portion,
+        sourceType: 'TREASURY_SETTLEMENT', sourceId: `${input.id}:${sequence}`,
+        ...(input.restrictionSourceType ? { restrictionSourceType: input.restrictionSourceType } : {}),
+        ...(input.restrictionSourceId ? { restrictionSourceId: input.restrictionSourceId } : {}) });
+      const enriched: Allocation = { ...allocation, settlementId: input.id, settlementSequence: sequence,
+        carryingBaseAmount: allocation.appliedAmount, settlementBaseAmount: settlementPortion,
+        realizedFx: subtract(settlementPortion, allocation.appliedAmount),
+        settlementFxRateId: conversion.rate.rateId, requestHash: groupHash };
+      await this.repo.saveAllocation(enriched); result.push(enriched); remaining = subtract(remaining, settlementPortion); sequence++;
+    }
+    if (scaled18(remaining) > 0n) {
+      const allocation = await this.applyAllocation({ id: `${input.id}:${sequence}`, companyId: input.companyId,
+        partyKind: input.partyKind, partyId: input.partyId, amount: remaining,
+        sourceType: 'TREASURY_SETTLEMENT', sourceId: `${input.id}:${sequence}`,
+        ...(input.restrictionSourceType ? { restrictionSourceType: input.restrictionSourceType } : {}),
+        ...(input.restrictionSourceId ? { restrictionSourceId: input.restrictionSourceId } : {}) });
+      const enriched: Allocation = { ...allocation, settlementId: input.id, settlementSequence: sequence,
+        carryingBaseAmount: zero, settlementBaseAmount: remaining, realizedFx: zero,
+        settlementFxRateId: conversion.rate.rateId, requestHash: groupHash };
+      await this.repo.saveAllocation(enriched); result.push(enriched);
+    }
+    return this.settlementResult(input.id, result, settlementBase, conversion.rate.rateId);
+  }
+
+  private settlementResult(id: string, allocations: Allocation[], settlementBase: DecimalAmount, fxRateId?: string) {
+    const carrying = add(...allocations.map((x) => x.appliedAmount));
+    const realizedFx = subtract(settlementBase, add(carrying, ...allocations.map((x) => x.advanceAmount)));
+    const advance = allocations.find((x) => scaled18(x.advanceAmount) > 0n);
+    return { settlementId: id, allocations, ...(advance ? { advanceId: 'advance:' + advance.id } : {}),
+      carryingBaseAmount: carrying, settlementBaseAmount: settlementBase, realizedFx,
+      ...(fxRateId ? { fxRateId } : {}) };
+  }
+
+  async reverseSettlement(companyId: CompanyId, settlementId: string): Promise<Allocation[]> {
+    const values = (await this.repo.allocations(companyId)).filter((x) => x.settlementId === settlementId)
+      .sort((a, b) => (b.settlementSequence ?? 0) - (a.settlementSequence ?? 0));
+    if (!values.length) throw new ContractValidationError('settlement', 'not found');
+    const reversed: Allocation[] = [];
+    for (const value of values) reversed.push(await this.reverseAllocation(companyId, value.id));
     return reversed;
   }
 
