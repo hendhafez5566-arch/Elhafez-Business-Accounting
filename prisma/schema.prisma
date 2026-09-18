@@ -306,3 +306,106 @@ model GlJournalLine {
   @@index([companyId, accountId])
   @@map("gl_journal_lines")
 }
+
+model FcApprovalPolicy {
+  id String @id
+  companyId String @map("company_id")
+  action String
+  threshold Decimal @db.Decimal(38, 18)
+  active Boolean @default(true)
+  forbidSelfApproval Boolean @map("forbid_self_approval")
+  requiredAuthority String @map("required_authority")
+  requests FcApprovalRequest[]
+  @@unique([companyId, action])
+  @@unique([companyId, id])
+  @@map("fc_approval_policies")
+}
+
+model FcApprovalRequest {
+  id String @id
+  companyId String @map("company_id")
+  branchId String? @map("branch_id")
+  action String
+  sourceType String @map("source_type")
+  sourceId String @map("source_id")
+  requesterActorId String @map("requester_actor_id")
+  amount Decimal @db.Decimal(38, 18)
+  status String @default("PENDING")
+  policyId String @map("policy_id")
+  requestedAt DateTime @map("requested_at")
+  policy FcApprovalPolicy @relation(fields: [companyId, policyId], references: [companyId, id], onDelete: Restrict)
+  decision FcApprovalDecision?
+  @@unique([companyId, sourceType, sourceId])
+  @@unique([companyId, id])
+  @@map("fc_approval_requests")
+}
+
+model FcApprovalDecision {
+  id String @id
+  requestId String @unique @map("request_id")
+  companyId String @map("company_id")
+  outcome String
+  actorId String @map("actor_id")
+  reason String?
+  decidedAt DateTime @map("decided_at")
+  request FcApprovalRequest @relation(fields: [companyId, requestId], references: [companyId, id], onDelete: Restrict)
+  @@unique([companyId, requestId])
+  @@map("fc_approval_decisions")
+}
+
+model FcReconciliationRun {
+  id String @id
+  companyId String @map("company_id")
+  branchId String? @map("branch_id")
+  type String
+  correlationId String @map("correlation_id")
+  fingerprint String
+  clean Boolean
+  runAt DateTime @map("run_at")
+  issues FcReconciliationIssue[]
+  @@unique([companyId, correlationId])
+  @@unique([companyId, id])
+  @@map("fc_reconciliation_runs")
+}
+
+model FcReconciliationIssue {
+  id String @id
+  companyId String @map("company_id")
+  runId String @map("run_id")
+  evidenceKey String @map("evidence_key")
+  sourceAmount Decimal @map("source_amount") @db.Decimal(38, 18)
+  ledgerAmount Decimal @map("ledger_amount") @db.Decimal(38, 18)
+  difference Decimal @db.Decimal(38, 18)
+  detail String
+  resolvedAt DateTime? @map("resolved_at")
+  resolutionReference String? @map("resolution_reference")
+  run FcReconciliationRun @relation(fields: [companyId, runId], references: [companyId, id], onDelete: Restrict)
+  @@unique([runId, evidenceKey])
+  @@index([companyId, resolvedAt])
+  @@map("fc_reconciliation_issues")
+}
+
+model FcCloseReadinessRun {
+  id String @id
+  companyId String @map("company_id")
+  branchId String? @map("branch_id")
+  correlationId String @map("correlation_id")
+  fingerprint String
+  ready Boolean
+  blockers Json
+  warnings Json
+  evaluatedAt DateTime @map("evaluated_at")
+  @@unique([companyId, correlationId])
+  @@map("fc_close_readiness_runs")
+}
+
+model FcControlEvidence {
+  id String @id
+  companyId String @map("company_id")
+  kind String
+  subjectId String @map("subject_id")
+  detail Json
+  occurredAt DateTime @map("occurred_at")
+  @@index([companyId, kind, occurredAt])
+  @@map("fc_control_evidence")
+}

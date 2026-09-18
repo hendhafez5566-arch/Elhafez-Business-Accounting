@@ -1,0 +1,6 @@
+{
+  "name": "financial-controls",
+  "publicApi": ["src/public/index.ts"],
+  "ownedTables": ["fc_approval_policies", "fc_approval_requests", "fc_approval_decisions", "fc_reconciliation_runs", "fc_reconciliation_issues", "fc_close_readiness_runs", "fc_control_evidence"],
+  "allowedDependencies": ["@elhafez/contracts", "@elhafez/core"]
+}
