@@ -1,36 +1,5 @@
-import assert from 'node:assert/strict';
-import test from 'node:test';
-import { PlatformCoreApplicationService, PlatformError } from './public/index.js';
-
-test('authentication hashes passwords, resolves context, and revokes sessions', async () => {
-  const service = new PlatformCoreApplicationService();
-  const user = await service.createUser({ email: 'admin@example.test', password: 'long-safe-password', displayName: 'Admin' });
-  assert.notEqual(user.passwordHash, 'long-safe-password');
-  const login = await service.login(user.email, 'long-safe-password');
-  assert.equal(service.currentUser(login.token).id, user.id);
-  service.logout(login.token);
-  assert.throws(() => service.currentUser(login.token), PlatformError);
-});
-
-test('roles, permissions, company isolation and branch access are enforced', async () => {
-  const service = new PlatformCoreApplicationService();
-  const user = await service.createUser({ email: 'u@example.test', password: 'long-safe-password', displayName: 'U' });
-  const role = service.createRole('administrator'); const permission = service.createPermission('company.manage');
-  service.assignRole(user.id, role); service.grantPermission(role, permission); service.authorize(user.id, 'company.manage');
-  assert.throws(() => service.authorize(user.id, 'company.delete'), PlatformError);
-  const company = service.createCompany(user.id, 'One'); const other = service.createCompany(user.id, 'Two');
-  const branch = service.createBranch(user.id, company.id, 'HQ'); service.grantBranchAccess(user.id, branch.id);
-  service.requireBranchAccess(user.id, company.id, branch.id);
-  assert.throws(() => service.requireBranchAccess(user.id, other.id, branch.id), PlatformError);
-});
-
-test('audit, validation, files, notifications and configuration foundations work', async () => {
-  const service = new PlatformCoreApplicationService();
-  await assert.rejects(service.createUser({ email: 'bad', password: 'short', displayName: '' }), PlatformError);
-  const user = await service.createUser({ email: 'a@example.test', password: 'long-safe-password', displayName: 'A' });
-  service.registerFile({ companyId: null, key: 'safe/key', contentType: 'text/plain', size: 2, createdBy: user.id });
-  assert.equal(service.notify(user.id, 'system.notice', {}).userId, user.id);
-  service.setConfiguration('retention.days', 90); assert.equal(service.getConfiguration<number>('retention.days'), 90);
-  assert.ok(service.listAudit().length > 0);
-  assert.equal(service.toError(new PlatformError('FORBIDDEN', 'x')).status, 403);
-});
+import assert from 'node:assert/strict'; import test from 'node:test'; import { PlatformCoreApplicationService, PlatformError } from './public/index.js'; import { InMemoryPlatformRepository } from './infrastructure/in-memory-platform.repository.js';
+const service=()=>new PlatformCoreApplicationService(new InMemoryPlatformRepository());
+test('authentication hashes passwords, resolves context, and revokes sessions',async()=>{const s=service(),u=await s.createUser({email:'admin@example.test',password:'long-safe-password',displayName:'Admin'});assert.notEqual(u.passwordHash,'long-safe-password');const l=await s.login(u.email,'long-safe-password');assert.equal((await s.currentUser(l.token)).id,u.id);await s.logout(l.token);await assert.rejects(s.currentUser(l.token),PlatformError)});
+test('roles, permissions, company isolation and branch access are enforced',async()=>{const s=service(),u=await s.createUser({email:'u@example.test',password:'long-safe-password',displayName:'U'}),r=await s.createRole('administrator'),p=await s.createPermission('company.manage');await s.assignRole(u.id,r);await s.grantPermission(r,p);await s.authorize(u.id,'company.manage');await assert.rejects(s.authorize(u.id,'company.delete'),PlatformError);const c=await s.createCompany(u.id,'One'),o=await s.createCompany(u.id,'Two'),b=await s.createBranch(u.id,c.id,'HQ');await s.grantBranchAccess(u.id,b.id);await s.requireBranchAccess(u.id,c.id,b.id);await assert.rejects(s.requireBranchAccess(u.id,o.id,b.id),PlatformError)});
+test('audit, validation, files, notifications and configuration foundations work',async()=>{const s=service();await assert.rejects(s.createUser({email:'bad',password:'short',displayName:''}),PlatformError);const u=await s.createUser({email:'a@example.test',password:'long-safe-password',displayName:'A'});await s.registerFile({companyId:null,key:'safe/key',contentType:'text/plain',size:2,createdBy:u.id});assert.equal((await s.notify(u.id,'system.notice',{})).userId,u.id);await s.setConfiguration('retention.days',90);assert.equal(await s.getConfiguration<number>('retention.days'),90);assert.ok((await s.listAudit()).length>0);assert.equal(s.toError(new PlatformError('FORBIDDEN','x')).status,403)});
