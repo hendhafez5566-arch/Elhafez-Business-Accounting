@@ -1,0 +1,6 @@
+{
+  "name": "currency-fx",
+  "publicApi": ["src/public/index.ts"],
+  "ownedTables": ["fx_currencies", "fx_rates"],
+  "allowedDependencies": ["@elhafez/contracts", "@elhafez/core"]
+}
