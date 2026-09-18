@@ -41,6 +41,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@elhafez/treasury-settlement':
+        specifier: workspace:*
+        version: link:../../modules/treasury-settlement
       '@elhafez/billing-subledgers':
         specifier: workspace:*
         version: link:../../modules/billing-subledgers
@@ -117,6 +120,33 @@ importers:
       '@elhafez/tax':
         specifier: workspace:*
         version: link:../tax
+      '@nestjs/common':
+        specifier: ^11.0.11
+        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@prisma/client':
+        specifier: 6.19.0
+        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
+
+  modules/treasury-settlement:
+    dependencies:
+      '@elhafez/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@elhafez/billing-subledgers':
+        specifier: workspace:*
+        version: link:../billing-subledgers
+      '@elhafez/currency-fx':
+        specifier: workspace:*
+        version: link:../currency-fx
+      '@elhafez/general-ledger':
+        specifier: workspace:*
+        version: link:../general-ledger
+      '@elhafez/period-control':
+        specifier: workspace:*
+        version: link:../period-control
+      '@elhafez/financial-controls':
+        specifier: workspace:*
+        version: link:../financial-controls
       '@nestjs/common':
         specifier: ^11.0.11
         version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)

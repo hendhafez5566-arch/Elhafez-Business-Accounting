@@ -37,10 +37,10 @@ function fixture() {
       isBase: true,
       status: 'ACTIVE' as const,
     }),
-    calculateSettlement: async (_companyId: unknown, source: any, to: any) => ({
+    calculateSettlement: async (_companyId: unknown, source: any, to: any, at: string) => ({
       converted: money(
         source.currency === 'USD'
-          ? decimalAmount((BigInt(source.amount.replace('.', '')) * 50n).toString())
+          ? decimalAmount((BigInt(source.amount.replace('.', '')) * (at.startsWith('2026-09-18') ? 60n : 50n)).toString())
           : source.amount,
         to,
       ),
@@ -50,7 +50,7 @@ function fixture() {
         fromCurrency: source.currency,
         toCurrency: to,
         effectiveAt: '2026-09-01T23:59:59.999Z',
-        rate: amount('50'),
+        rate: amount(at.startsWith('2026-09-18') ? '60' : '50'),
         source: 'TEST',
       },
     }),
@@ -408,4 +408,34 @@ test('GS-019 opening customer balance uses OPENING journal semantics', async () 
   );
   await f.service.postInvoice(company, 'i1');
   assert.equal(f.journals[0].kind, 'OPENING');
+});
+
+test('GS-003 BR-010 settlement allocates multiple invoices by explicit oldest due date and replays once', async () => {
+  const f=fixture();
+  for (const [id,due,total] of [['late','2026-10-20','40'],['old','2026-09-20','30'],['middle','2026-10-01','50']] as const) {
+    await f.service.createDraft(invoice({id,sourceId:'src-'+id,number:'N-'+id,dueDate:due,lines:[{id:'l-'+id,accountId:'revenue',amount:amount(total)}]}));
+    await f.service.postInvoice(company,id);
+  }
+  const command={id:'settle-1',companyId:company,partyKind:'CUSTOMER' as const,partyId:'party',amount:amount('100'),settlementCurrency:'EGP',settlementDate:'2026-10-22'};
+  const first=await f.service.settle(command), replay=await f.service.settle(command);
+  assert.deepEqual(first.allocations.map(x=>[x.invoiceId,x.appliedAmount]),[['old','30'],['middle','50'],['late','20']]);
+  assert.deepEqual(replay.allocations.map(x=>x.id),first.allocations.map(x=>x.id));
+  assert.equal(await f.service.invoiceOutstanding(company,'late'),'20');
+  await assert.rejects(f.service.settle({...command,amount:amount('101')}),/conflicting replay/);
+});
+
+test('GS-004/005/006 prefunding remains Billing-owned and source restricted', async()=>{
+ const f=fixture(); await f.service.createDraft(invoice({dueDate:'2026-10-01'}));
+ const result=await f.service.settle({id:'pre',companyId:company,partyKind:'CUSTOMER',partyId:'party',amount:amount('120'),settlementCurrency:'EGP',settlementDate:'2026-09-01',explicitDraftInvoiceId:'i1'});
+ assert.equal(result.allocations[0]?.invoiceId,'i1'); await f.service.postInvoice(company,'i1'); assert.equal(await f.service.invoiceOutstanding(company,'i1'),'0');
+ const advances=await f.service.availableAdvances(company,'CUSTOMER','party'); assert.equal(advances[0]?.available,'20');
+ const supplier=await f.service.applyAllocation({id:'supplier-pre',companyId:company,partyKind:'SUPPLIER',partyId:'supplier',amount:amount('10'),sourceType:'TREASURY_SETTLEMENT',sourceId:'supplier-pre',restrictionSourceType:'CONTRACT',restrictionSourceId:'c1'});
+ await assert.rejects(f.service.consumeAdvance({companyId:company,advanceId:'advance:'+supplier.id,amount:amount('1'),sourceType:'SUPPLIER_CANCELLATION_CHARGE',sourceId:'use',invoiceSourceType:'CONTRACT',invoiceSourceId:'c2'}),/restricted/);
+});
+
+test('GS-008 BR-011 foreign settlement preserves carrying/current base and realized FX evidence',async()=>{
+ const f=fixture(); await f.service.createDraft(invoice({currency:'USD',dueDate:'2026-09-10',lines:[{id:'l',accountId:'revenue',amount:amount('2')}]})); await f.service.postInvoice(company,'i1');
+ const result=await f.service.settle({id:'fx-settle',companyId:company,partyKind:'CUSTOMER',partyId:'party',amount:amount('2'),settlementCurrency:'USD',settlementDate:'2026-09-18'});
+ assert.equal(result.carryingBaseAmount,'100'); assert.equal(result.settlementBaseAmount,'120'); assert.equal(result.realizedFx,'20'); assert.equal(result.fxRateId,'usd-egp');
+ assert.equal(result.allocations[0]?.carryingBaseAmount,'100'); assert.equal(result.allocations[0]?.settlementFxRateId,'usd-egp');
 });

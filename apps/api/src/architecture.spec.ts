@@ -12,3 +12,6 @@ test('AC-06 production modules are registered through public APIs', () => {
   assert.ok(TaxModule);
   assert.ok(BillingSubledgersModule);
 });
+
+import { TreasurySettlementModule } from '@elhafez/treasury-settlement';
+test('AC-07 Treasury production module is registered through its public API', () => assert.ok(TreasurySettlementModule));
