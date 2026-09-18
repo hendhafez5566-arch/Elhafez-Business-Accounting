@@ -9,10 +9,11 @@
     "@elhafez/contracts": "workspace:*",
     "@elhafez/core": "workspace:*",
     "@nestjs/common": "^11.0.11",
-    "@prisma/client": "^6.19.0"
+    "@prisma/client": "6.19.0"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "prisma:generate": "prisma generate --schema ../../prisma/schema.prisma",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "tsx --test src/**/*.spec.ts"
   }
