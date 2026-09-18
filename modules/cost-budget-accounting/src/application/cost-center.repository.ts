@@ -1,0 +1,3 @@
+import type { CompanyId,SourceReference } from '@elhafez/contracts'; import type { CostCenter,CostCenterId,ProgramCostCenterAssociation } from '../domain/cost-center.js';
+export interface CostCenterRepository { save(value:CostCenter):Promise<void>; find(companyId:CompanyId,id:CostCenterId):Promise<CostCenter|undefined>; findByCode(companyId:CompanyId,code:string):Promise<CostCenter|undefined>; saveAssociation(value:ProgramCostCenterAssociation):Promise<void>; findAssociation(companyId:CompanyId,program:SourceReference):Promise<ProgramCostCenterAssociation|undefined>; }
+export const COST_CENTER_REPOSITORY = Symbol('COST_CENTER_REPOSITORY');
