@@ -9,7 +9,8 @@
     "lint": "eslint . --max-warnings=0",
     "architecture:check": "tsx tools/architecture/check-architecture.ts",
     "test": "pnpm --recursive run test",
-    "verify": "pnpm lint && pnpm typecheck && pnpm architecture:check && pnpm test"
+    "prisma:generate": "pnpm --filter @elhafez/platform-core run prisma:generate",
+    "verify": "pnpm prisma:generate && pnpm lint && pnpm typecheck && pnpm architecture:check && pnpm test"
   },
   "devDependencies": {
     "@eslint/js": "^9.20.0",
@@ -17,7 +18,7 @@
     "eslint": "^9.20.0",
     "eslint-plugin-import": "^2.31.0",
     "globals": "^15.15.0",
-    "prisma": "8.0.0-rc.15",
+    "prisma": "6.19.0",
     "tsx": "^4.19.3",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.24.0"
