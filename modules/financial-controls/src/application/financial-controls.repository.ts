@@ -10,6 +10,6 @@ export interface FinancialControlsRepository {
   saveDecision(value: ApprovalDecision): Promise<void>; findDecision(companyId: string, requestId: string): Promise<ApprovalDecision | undefined>;
   saveRun(value: ReconciliationRun, issues: readonly ReconciliationIssue[]): Promise<void>; findRun(companyId: string, correlationId: string): Promise<{ run: ReconciliationRun; issues: readonly ReconciliationIssue[] } | undefined>;
   findIssue(companyId: string, issueId: string): Promise<ReconciliationIssue | undefined>; resolveIssue(companyId: string, issueId: string, at: string, reference: string): Promise<ReconciliationIssue>;
-  saveCloseRun(value: CloseReadinessRun): Promise<void>; saveEvidence(value: ControlEvidence): Promise<void>;
+  saveCloseRun(value: CloseReadinessRun): Promise<CloseReadinessRun>; findCloseRun(companyId: string, correlationId: string): Promise<CloseReadinessRun | undefined>; saveEvidence(value: ControlEvidence): Promise<void>;
 }
 export const FINANCIAL_CONTROLS_REPOSITORY = Symbol('FINANCIAL_CONTROLS_REPOSITORY');

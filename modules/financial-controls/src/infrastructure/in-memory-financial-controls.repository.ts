@@ -15,6 +15,7 @@ export class InMemoryFinancialControlsRepository implements FinancialControlsRep
   async findRun(c: string, id: string) { return this.runs.get(this.key(c, id)); }
   async findIssue(c: string, id: string) { return this.issues.get(this.key(c, id)); }
   async resolveIssue(c: string, id: string, at: string, reference: string) { const issue = this.issues.get(this.key(c, id)); if (!issue) throw new ContractValidationError('issueId', 'not found'); const resolved = { ...issue, resolvedAt: at, resolutionReference: reference }; this.issues.set(this.key(c, id), resolved); return resolved; }
-  async saveCloseRun(v: CloseReadinessRun) { this.closeRuns.push(v); }
+  async saveCloseRun(v: CloseReadinessRun) { const existing = await this.findCloseRun(v.companyId, v.correlationId); if (existing) return existing; this.closeRuns.push(v); return v; }
+  async findCloseRun(c: string, correlationId: string) { return this.closeRuns.find((x) => x.companyId === c && x.correlationId === correlationId); }
   async saveEvidence(v: ControlEvidence) { if (!this.evidence.some((x) => x.id === v.id)) this.evidence.push(v); }
 }

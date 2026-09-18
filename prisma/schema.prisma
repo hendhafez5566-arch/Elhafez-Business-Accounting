@@ -332,6 +332,9 @@ model FcApprovalRequest {
   amount Decimal @db.Decimal(38, 18)
   status String @default("PENDING")
   policyId String @map("policy_id")
+  policyThresholdSnapshot Decimal @map("policy_threshold_snapshot") @db.Decimal(38, 18)
+  policyForbidSelfApprovalSnapshot Boolean @map("policy_forbid_self_approval_snapshot")
+  policyRequiredAuthoritySnapshot String @map("policy_required_authority_snapshot")
   requestedAt DateTime @map("requested_at")
   policy FcApprovalPolicy @relation(fields: [companyId, policyId], references: [companyId, id], onDelete: Restrict)
   decision FcApprovalDecision?

@@ -7,7 +7,7 @@ export type MutationKind = 'CREATE' | 'UPDATE' | 'DELETE' | 'REVERSE';
 export type ReconciliationType = 'SUBLEDGER_TO_GL' | 'TAX_TO_GL' | 'INTEGRITY' | 'CLOSE_READINESS';
 
 export interface ApprovalPolicy { readonly id: string; readonly companyId: string; readonly action: FinancialAction; readonly threshold: DecimalAmount; readonly active: boolean; readonly forbidSelfApproval: boolean; readonly requiredAuthority: string }
-export interface ApprovalRequest { readonly id: string; readonly companyId: string; readonly branchId?: string; readonly action: FinancialAction; readonly sourceType: string; readonly sourceId: string; readonly requesterActorId: string; readonly amount: DecimalAmount; readonly status: ApprovalStatus; readonly policyId: string; readonly requestedAt: string }
+export interface ApprovalRequest { readonly id: string; readonly companyId: string; readonly branchId?: string; readonly action: FinancialAction; readonly sourceType: string; readonly sourceId: string; readonly requesterActorId: string; readonly amount: DecimalAmount; readonly status: ApprovalStatus; readonly policyId: string; readonly policyThresholdSnapshot: DecimalAmount; readonly policyForbidSelfApprovalSnapshot: boolean; readonly policyRequiredAuthoritySnapshot: string; readonly requestedAt: string }
 export interface ApprovalDecision { readonly id: string; readonly requestId: string; readonly companyId: string; readonly outcome: Exclude<ApprovalStatus, 'PENDING'>; readonly actorId: string; readonly reason?: string; readonly decidedAt: string }
 
 function parts(value: DecimalAmount): [bigint, number] { const [whole, fraction = ''] = value.split('.'); return [BigInt(whole! + fraction), fraction.length]; }
