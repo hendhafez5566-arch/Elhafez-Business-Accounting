@@ -1,3 +1,126 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type {PrismaClient} from '@prisma/client';import type {CompanyId} from '@elhafez/contracts';import type {LedgerRepository} from '../application/ledger.repository.js';import type {Account,Journal,JournalLine} from '../domain/ledger.js';
-export class PrismaLedgerRepository implements LedgerRepository{constructor(private db:PrismaClient){}async saveAccount(a:Account){await this.db.glAccount.upsert({where:{companyId_id:{companyId:a.companyId,id:a.id}},create:{...a},update:{name:a.name,active:a.active,postable:a.postable,code:a.code,classification:a.classification,parentId:a.parentId,controlType:a.controlType}})}async account(c:CompanyId,id:string){return (await this.db.glAccount.findUnique({where:{companyId_id:{companyId:c,id}}})) as Account|undefined}async accountByCode(c:CompanyId,code:string){return (await this.db.glAccount.findUnique({where:{companyId_code:{companyId:c,code}}})) as Account|undefined}async hasHistory(c:CompanyId,id:string){return !!await this.db.glJournalLine.findFirst({where:{companyId:c,accountId:id}})}async saveJournal(j:Journal){const prior=await this.db.glJournal.findUnique({where:{companyId_id:{companyId:j.companyId,id:j.id}}});if(prior){if(j.reversalOfId&&!prior.reversalOfId){await this.db.glJournal.update({where:{id:j.id},data:{reversalOfId:j.reversalOfId}});return}throw new Error('posted journals are immutable')}await this.db.$transaction(async tx=>{await tx.glJournal.create({data:{id:j.id,companyId:j.companyId,number:j.number,postingDate:new Date(j.postingDate),kind:j.kind,sourceType:j.sourceType,sourceId:j.sourceId,requestHash:j.requestHash,correlationId:j.correlationId,reversalOfId:j.reversalOfId,fiscalYearId:j.fiscalYearId}});await tx.glJournalLine.createMany({data:j.lines.map(l=>({...l,companyId:j.companyId,journalId:j.id}))})})}private map(x:any):Journal{return {...x,postingDate:x.postingDate.toISOString().slice(0,10),correlationId:x.correlationId??undefined,reversalOfId:x.reversalOfId??undefined,fiscalYearId:x.fiscalYearId??undefined,lines:x.lines.map((l:any):JournalLine=>({...l,debit:l.debit?.toString(),credit:l.credit?.toString(),partyId:l.partyId??undefined,foreignAmount:l.foreignAmount?.toString(),foreignCurrency:l.foreignCurrency??undefined,fxRateId:l.fxRateId??undefined,fxRate:l.fxRate?.toString()}))}as Journal}async journal(c:CompanyId,id:string){const x=await this.db.glJournal.findUnique({where:{companyId_id:{companyId:c,id}},include:{lines:true}});return x?this.map(x):undefined}async journalBySource(c:CompanyId,t:string,id:string){const x=await this.db.glJournal.findUnique({where:{companyId_sourceType_sourceId:{companyId:c,sourceType:t,sourceId:id}},include:{lines:true}});return x?this.map(x):undefined}async journals(c:CompanyId){return (await this.db.glJournal.findMany({where:{companyId:c},include:{lines:true}})).map(x=>this.map(x))}}
+import type { PrismaClient } from '@prisma/client';
+import type { CompanyId } from '@elhafez/contracts';
+import type { LedgerRepository } from '../application/ledger.repository.js';
+import type { Account, Journal, JournalLine } from '../domain/ledger.js';
+
+export class PrismaLedgerRepository implements LedgerRepository {
+  constructor(private readonly db: PrismaClient) {}
+
+  async saveAccount(account: Account): Promise<void> {
+    await this.db.glAccount.upsert({
+      where: { companyId_id: { companyId: account.companyId, id: account.id } },
+      create: { ...account },
+      update: {
+        name: account.name,
+        active: account.active,
+        postable: account.postable,
+        code: account.code,
+        classification: account.classification,
+        parentId: account.parentId,
+        controlType: account.controlType,
+      },
+    });
+  }
+
+  async account(companyId: CompanyId, id: string): Promise<Account | undefined> {
+    return (await this.db.glAccount.findUnique({
+      where: { companyId_id: { companyId, id } },
+    })) as Account | undefined;
+  }
+
+  async accountByCode(companyId: CompanyId, code: string): Promise<Account | undefined> {
+    return (await this.db.glAccount.findUnique({
+      where: { companyId_code: { companyId, code } },
+    })) as Account | undefined;
+  }
+
+  async hasHistory(companyId: CompanyId, id: string): Promise<boolean> {
+    return !!(await this.db.glJournalLine.findFirst({
+      where: { companyId, accountId: id },
+    }));
+  }
+
+  async saveJournal(journal: Journal): Promise<void> {
+    const prior = await this.db.glJournal.findUnique({
+      where: { companyId_id: { companyId: journal.companyId, id: journal.id } },
+    });
+    if (prior) throw new Error('posted journals are immutable');
+
+    await this.db.$transaction(async (tx) => {
+      await tx.glJournal.create({
+        data: {
+          id: journal.id,
+          companyId: journal.companyId,
+          number: journal.number,
+          postingDate: new Date(journal.postingDate),
+          kind: journal.kind,
+          sourceType: journal.sourceType,
+          sourceId: journal.sourceId,
+          requestHash: journal.requestHash,
+          correlationId: journal.correlationId,
+          reversalOfId: journal.reversalOfId,
+          fiscalYearId: journal.fiscalYearId,
+        },
+      });
+      await tx.glJournalLine.createMany({
+        data: journal.lines.map((line) => ({
+          ...line,
+          companyId: journal.companyId,
+          journalId: journal.id,
+        })),
+      });
+    });
+  }
+
+  private map(value: any): Journal {
+    return {
+      ...value,
+      postingDate: value.postingDate.toISOString().slice(0, 10),
+      correlationId: value.correlationId ?? undefined,
+      reversalOfId: value.reversalOfId ?? undefined,
+      fiscalYearId: value.fiscalYearId ?? undefined,
+      lines: value.lines.map(
+        (line: any): JournalLine => ({
+          ...line,
+          debit: line.debit?.toString(),
+          credit: line.credit?.toString(),
+          partyId: line.partyId ?? undefined,
+          foreignAmount: line.foreignAmount?.toString(),
+          foreignCurrency: line.foreignCurrency ?? undefined,
+          fxRateId: line.fxRateId ?? undefined,
+          fxRate: line.fxRate?.toString(),
+        }),
+      ),
+    } as Journal;
+  }
+
+  async journal(companyId: CompanyId, id: string): Promise<Journal | undefined> {
+    const value = await this.db.glJournal.findUnique({
+      where: { companyId_id: { companyId, id } },
+      include: { lines: true },
+    });
+    return value ? this.map(value) : undefined;
+  }
+
+  async journalBySource(
+    companyId: CompanyId,
+    sourceType: string,
+    sourceId: string,
+  ): Promise<Journal | undefined> {
+    const value = await this.db.glJournal.findUnique({
+      where: { companyId_sourceType_sourceId: { companyId, sourceType, sourceId } },
+      include: { lines: true },
+    });
+    return value ? this.map(value) : undefined;
+  }
+
+  async journals(companyId: CompanyId): Promise<Journal[]> {
+    return (
+      await this.db.glJournal.findMany({
+        where: { companyId },
+        include: { lines: true },
+      })
+    ).map((value) => this.map(value));
+  }
+}
