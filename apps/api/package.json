@@ -8,6 +8,7 @@
     "test": "tsx --test src/**/*.spec.ts"
   },
   "dependencies": {
+    "@elhafez/platform-core": "workspace:*",
     "@nestjs/common": "^11.0.11",
     "@nestjs/core": "^11.0.11",
     "reflect-metadata": "^0.2.2",

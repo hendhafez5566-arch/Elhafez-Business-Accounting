@@ -35,6 +35,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@elhafez/platform-core':
+        specifier: workspace:*
+        version: link:../../modules/platform-core
       '@nestjs/common':
         specifier: ^11.0.11
         version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -63,6 +66,18 @@ importers:
 
   modules/_template:
     dependencies:
+      '@nestjs/common':
+        specifier: ^11.0.11
+        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
+
+  modules/platform-core:
+    dependencies:
+      '@elhafez/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@elhafez/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@nestjs/common':
         specifier: ^11.0.11
         version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)

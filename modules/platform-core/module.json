@@ -1,0 +1,6 @@
+{
+  "name": "platform-core",
+  "publicApi": ["src/public/index.ts"],
+  "ownedTables": ["pc_users", "pc_roles", "pc_permissions", "pc_user_roles", "pc_role_permissions", "pc_companies", "pc_branches", "pc_user_branch_access", "pc_sessions", "pc_audit_logs", "pc_files", "pc_notifications", "pc_configuration"],
+  "allowedDependencies": ["@elhafez/contracts", "@elhafez/core"]
+}
