@@ -16,6 +16,8 @@ export interface BillingRepository {
   supplierExternal(companyId: CompanyId, partyId: string, externalNumber: string): Promise<Invoice | undefined>;
   invoices(companyId: CompanyId): Promise<Invoice[]>;
   saveInvoice(value: Invoice): Promise<void>;
+  markInvoicePosting(companyId: CompanyId, id: string): Promise<Invoice>;
+  beginCancellation(companyId: CompanyId, id: string): Promise<Invoice>;
   finalizeInvoicePosting(value: Invoice, allocations: readonly Allocation[], advances: readonly Advance[]): Promise<void>;
 
   saveCreditLimit(companyId: CompanyId, partyId: string, amount: DecimalAmount): Promise<void>;

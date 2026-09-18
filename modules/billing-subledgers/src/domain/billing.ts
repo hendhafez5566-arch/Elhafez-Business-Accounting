@@ -1,7 +1,7 @@
 import type { CompanyId, DecimalAmount } from '@elhafez/contracts';
 
 export type InvoiceType = 'CUSTOMER' | 'SUPPLIER' | 'OPENING_CUSTOMER_BALANCE';
-export type InvoiceStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';
+export type InvoiceStatus = 'DRAFT' | 'POSTING' | 'POSTED' | 'CANCELLING' | 'CANCELLED';
 export type PartyKind = 'CUSTOMER' | 'SUPPLIER';
 
 export interface InvoiceLine {

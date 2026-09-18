@@ -174,11 +174,70 @@ export class PrismaBillingRepository implements BillingRepository {
     });
   }
 
+  async markInvoicePosting(companyId: CompanyId, id: string) {
+    const current = await this.invoice(companyId, id);
+    if (!current) throw new ContractValidationError('invoice', 'not found');
+    if (current.status === 'POSTING') return current;
+    if (current.status !== 'DRAFT') throw new ContractValidationError('status', 'invoice cannot enter posting');
+    const updated = await this.db.billingInvoice.updateMany({
+      where: { companyId, id, status: 'DRAFT' },
+      data: { status: 'POSTING' },
+    });
+    if (updated.count !== 1) {
+      const concurrent = await this.invoice(companyId, id);
+      if (concurrent?.status === 'POSTING') return concurrent;
+      throw new ContractValidationError('concurrency', 'invoice posting state changed; retry');
+    }
+    return (await this.invoice(companyId, id))!;
+  }
+
+  async beginCancellation(companyId: CompanyId, id: string) {
+    return this.db.$transaction(
+      async (tx) => {
+        const raw = await tx.billingInvoice.findUnique({
+          where: { companyId_id: { companyId, id } },
+          include: { lines: true },
+        });
+        if (!raw) throw new ContractValidationError('invoice', 'not found');
+        const current = this.inv(raw);
+        if (current.status === 'CANCELLING') return current;
+        if (current.status !== 'POSTED') {
+          throw new ContractValidationError('status', 'only posted invoice may cancel');
+        }
+        const [activeAllocations, activeAdjustments] = await Promise.all([
+          tx.billingAllocation.count({
+            where: {
+              companyId,
+              invoiceId: id,
+              reversedAt: null,
+              appliedAmount: { gt: 0 },
+            },
+          }),
+          tx.billingAdjustment.count({
+            where: { companyId, invoiceId: id, reversedAt: null },
+          }),
+        ]);
+        if (activeAllocations > 0 || activeAdjustments > 0) {
+          throw new ContractValidationError('invoice', 'BLOCKED: active downstream billing effects');
+        }
+        const updated = await tx.billingInvoice.updateMany({
+          where: { companyId, id, status: 'POSTED' },
+          data: { status: 'CANCELLING' },
+        });
+        if (updated.count !== 1) {
+          throw new ContractValidationError('concurrency', 'invoice changed while cancelling; retry');
+        }
+        return { ...current, status: 'CANCELLING' as const };
+      },
+      { isolationLevel: 'Serializable' },
+    );
+  }
+
   async finalizeInvoicePosting(value: Invoice, allocations: readonly Allocation[], advances: readonly Advance[]) {
     await this.db.$transaction(
       async (tx) => {
         const updated = await tx.billingInvoice.updateMany({
-          where: { companyId: value.companyId, id: value.id, status: 'DRAFT' },
+          where: { companyId: value.companyId, id: value.id, status: 'POSTING' },
           data: {
             status: value.status,
             baseTotal: value.baseTotal,

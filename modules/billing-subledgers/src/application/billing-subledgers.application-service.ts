@@ -207,7 +207,9 @@ export class BillingSubledgersApplicationService {
   async postInvoice(companyId: CompanyId, id: string): Promise<Invoice> {
     const invoice = await this.requiredInvoice(companyId, id);
     if (invoice.status === 'POSTED') return invoice;
-    if (invoice.status !== 'DRAFT') throw new ContractValidationError('status', 'only draft may post');
+    if (invoice.status !== 'DRAFT' && invoice.status !== 'POSTING') {
+      throw new ContractValidationError('status', 'only draft/posting invoice may post');
+    }
 
     const prepared: Array<{
       line: InvoiceLine;
@@ -318,6 +320,8 @@ export class BillingSubledgersApplicationService {
       }
     }
 
+    if (invoice.status === 'DRAFT') await this.repo.markInvoicePosting(companyId, id);
+
     const journal = await this.gl.post({
       id: 'billing:' + id,
       companyId,
@@ -391,7 +395,9 @@ export class BillingSubledgersApplicationService {
       }
 
       if (invoiceBefore.status === 'DRAFT') {
-        // Prefunding is preserved as an allocation intent. It is applied atomically when the invoice posts.
+        // A no-op invoice update gives the database transaction a status/outstanding compare-and-set.
+        // This makes prefunding race safely with the DRAFT -> POSTING transition.
+        invoiceAfter = { ...invoiceBefore };
       } else if (invoiceBefore.status === 'POSTED') {
         appliedAmount = minimum(amount, invoiceBefore.outstanding);
         advanceAmount = subtract(amount, appliedAmount);
@@ -656,20 +662,11 @@ export class BillingSubledgersApplicationService {
     postingDate: string,
     number: string,
   ): Promise<Invoice> {
-    const invoice = await this.requiredInvoice(companyId, id);
+    let invoice = await this.requiredInvoice(companyId, id);
     if (invoice.status === 'CANCELLED') return invoice;
-    if (invoice.status !== 'POSTED' || !invoice.journalId) {
-      throw new ContractValidationError('invoice', 'only posted invoice may be cancelled');
-    }
-
-    const activeAllocations = (await this.repo.allocations(companyId, id)).some(
-      (value) => !value.reversedAt && scaled18(value.appliedAmount) > 0n,
-    );
-    const activeAdjustments = (await this.repo.adjustments(companyId, id)).some(
-      (value) => !value.reversedAt,
-    );
-    if (activeAllocations || activeAdjustments) {
-      throw new ContractValidationError('invoice', 'BLOCKED: active downstream billing effects');
+    if (invoice.status === 'POSTED') invoice = await this.repo.beginCancellation(companyId, id);
+    if (invoice.status !== 'CANCELLING' || !invoice.journalId) {
+      throw new ContractValidationError('invoice', 'only posted/cancelling invoice may be cancelled');
     }
 
     const reversal = await this.gl.reverse(companyId, invoice.journalId, postingDate, number);

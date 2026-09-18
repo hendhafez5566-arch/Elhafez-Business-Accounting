@@ -49,6 +49,35 @@ export class InMemoryBillingRepository implements BillingRepository {
     this.replace(this.invoiceValues, value);
   }
 
+  async markInvoicePosting(companyId: CompanyId, id: string) {
+    const value = await this.invoice(companyId, id);
+    if (!value) throw new ContractValidationError('invoice', 'not found');
+    if (value.status === 'POSTING') return value;
+    if (value.status !== 'DRAFT') throw new ContractValidationError('status', 'invoice cannot enter posting');
+    const next = { ...value, status: 'POSTING' as const };
+    this.replace(this.invoiceValues, next);
+    return next;
+  }
+
+  async beginCancellation(companyId: CompanyId, id: string) {
+    const value = await this.invoice(companyId, id);
+    if (!value) throw new ContractValidationError('invoice', 'not found');
+    if (value.status === 'CANCELLING') return value;
+    if (value.status !== 'POSTED') throw new ContractValidationError('status', 'only posted invoice may cancel');
+    const activeAllocation = this.allocationValues.some(
+      (item) => item.companyId === companyId && item.invoiceId === id && !item.reversedAt && item.appliedAmount !== '0',
+    );
+    const activeAdjustment = this.adjustmentValues.some(
+      (item) => item.companyId === companyId && item.invoiceId === id && !item.reversedAt,
+    );
+    if (activeAllocation || activeAdjustment) {
+      throw new ContractValidationError('invoice', 'BLOCKED: active downstream billing effects');
+    }
+    const next = { ...value, status: 'CANCELLING' as const };
+    this.replace(this.invoiceValues, next);
+    return next;
+  }
+
   async finalizeInvoicePosting(value: Invoice, allocations: readonly Allocation[], advances: readonly Advance[]) {
     this.replace(this.invoiceValues, value);
     for (const allocation of allocations) this.replace(this.allocationValues, allocation);
