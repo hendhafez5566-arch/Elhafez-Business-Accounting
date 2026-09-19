@@ -803,6 +803,7 @@ model PartyNettingDocument {
   id String @id
   companyId String @map("company_id")
   groupId String @map("group_id")
+  branchId String? @map("branch_id")
   customerInvoiceId String @map("customer_invoice_id")
   supplierInvoiceId String @map("supplier_invoice_id")
   amount Decimal @db.Decimal(38,18)
@@ -810,10 +811,13 @@ model PartyNettingDocument {
   number String
   status String
   requestHash String @map("request_hash")
+  requesterActorId String @map("requester_actor_id")
+  approvalRequestId String? @map("approval_request_id")
   customerAllocationId String? @map("customer_allocation_id")
   supplierAllocationId String? @map("supplier_allocation_id")
   journalId String? @map("journal_id")
   reversalJournalId String? @map("reversal_journal_id")
+  failureReason String? @map("failure_reason")
   reversedAt DateTime? @map("reversed_at")
   group PartyAccountingGroup @relation(fields:[companyId,groupId],references:[companyId,id],onDelete:Restrict)
   lines PartyNettingLine[]
@@ -860,6 +864,8 @@ model EcrExpense {
  treasuryVoucherId String? @map("treasury_voucher_id")
  journalId String? @map("journal_id")
  approvalRequestId String? @map("approval_request_id")
+ expenseAccountId String? @map("expense_account_id")
+ prepaidAccountId String? @map("prepaid_account_id")
  @@unique([companyId,id])
  @@unique([companyId,sourceType,sourceId])
  @@map("ecr_expenses")
@@ -877,9 +883,11 @@ model EcrRecognitionSchedule {
  deferredAccountId String @map("deferred_account_id")
  recognitionAccountId String @map("recognition_account_id")
  requestHash String @map("request_hash")
+ initialJournalId String? @map("initial_journal_id")
  parts EcrRecognitionPart[]
  @@unique([companyId,id])
  @@unique([companyId,sourceType,sourceId,kind])
+ @@unique([companyId,sourceInvoiceId,kind])
  @@map("ecr_recognition_schedules")
 }
 model EcrRecognitionPart {
@@ -895,24 +903,6 @@ model EcrRecognitionPart {
  @@unique([companyId,scheduleId,serviceDate,id])
  @@map("ecr_recognition_parts")
 }
-model EcrPrepaymentSchedule {
- id String @id
- companyId String @map("company_id")
- recognitionScheduleId String @map("recognition_schedule_id")
- sourceAmount Decimal @map("source_amount") @db.Decimal(38,18)
- @@unique([companyId,id])
- @@map("ecr_prepayment_schedules")
-}
-model EcrPrepaymentPart {
- id String @id
- companyId String @map("company_id")
- scheduleId String @map("schedule_id")
- amount Decimal @db.Decimal(38,18)
- serviceDate DateTime @map("service_date") @db.Date
- status String
- @@unique([companyId,id])
- @@map("ecr_prepayment_parts")
-}
 model EcrCommissionClaim {
  id String @id
  companyId String @map("company_id")
@@ -926,6 +916,7 @@ model EcrCommissionClaim {
  status String
  requestHash String @map("request_hash")
  approvalRequestId String? @map("approval_request_id")
+ requesterActorId String? @map("requester_actor_id")
  recognitionJournalId String? @map("recognition_journal_id")
  reversalJournalId String? @map("reversal_journal_id")
  expenseAccountId String @map("expense_account_id")
@@ -939,13 +930,15 @@ model EcrCommissionPayment {
  id String @id
  companyId String @map("company_id")
  claimId String @map("claim_id")
+ requestHash String @map("request_hash")
+ status String
  amount Decimal @db.Decimal(38,18)
  paymentCurrency String @map("payment_currency")
  settlementBaseAmount Decimal @map("settlement_base_amount") @db.Decimal(38,18)
  carryingBaseAmount Decimal @map("carrying_base_amount") @db.Decimal(38,18)
  realizedFx Decimal @map("realized_fx") @db.Decimal(38,18)
  fxRateId String? @map("fx_rate_id")
- treasuryVoucherId String @map("treasury_voucher_id")
+ treasuryVoucherId String? @map("treasury_voucher_id")
  claim EcrCommissionClaim @relation(fields:[companyId,claimId],references:[companyId,id],onDelete:Restrict)
  @@unique([companyId,id])
  @@unique([companyId,treasuryVoucherId])
@@ -960,6 +953,8 @@ model EcrAccrual {
  serviceDate DateTime @map("service_date") @db.Date
  status String
  journalId String @map("journal_id")
+ accruedRevenueAccountId String @map("accrued_revenue_account_id")
+ revenueAccountId String @map("revenue_account_id")
  billingInvoiceId String? @map("billing_invoice_id")
  clearingJournalId String? @map("clearing_journal_id")
  @@unique([companyId,id])

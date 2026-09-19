@@ -123,13 +123,21 @@ export class BillingSubledgersApplicationService {
   /** Narrow AC-08 read contract. The returned value is a snapshot, not a repository entity. */
   async getOpenPosition(companyId: CompanyId, invoiceId: string): Promise<{
     invoiceId: string; companyId: CompanyId; partyKind: PartyKind; partyId: string;
-    currency: string; outstanding: DecimalAmount; controlAccountId: string; status: Invoice['status'];
+    invoiceType: InvoiceType; currency: string; outstanding: DecimalAmount; baseTotal: DecimalAmount;
+    controlAccountId: string; status: Invoice['status']; postingDate: string; deferred: boolean;
   }> {
     const invoice = await this.requiredInvoice(companyId, invoiceId);
     return { invoiceId: invoice.id, companyId: invoice.companyId,
       partyKind: expectedPartyKind(invoice.type), partyId: invoice.partyId,
-      currency: invoice.currency, outstanding: invoice.outstanding,
-      controlAccountId: invoice.controlAccountId, status: invoice.status };
+      invoiceType: invoice.type, currency: invoice.currency, outstanding: invoice.outstanding,
+      baseTotal: invoice.baseTotal, controlAccountId: invoice.controlAccountId,
+      status: invoice.status, postingDate: invoice.postingDate, deferred: invoice.deferred === true };
+  }
+
+  async getAdvance(companyId: CompanyId, advanceId: string): Promise<Advance> {
+    const value = await this.repo.advance(companyId, advanceId);
+    if (!value || value.reversedAt) throw new ContractValidationError('advance', 'not available');
+    return value;
   }
 
   /** Exact, non-cash allocation used only by Party Accounting; it never creates an advance. */
@@ -902,7 +910,7 @@ export class BillingSubledgersApplicationService {
     companyId: CompanyId;
     advanceId: string;
     amount: DecimalAmount;
-    sourceType: 'SUPPLIER_CANCELLATION_CHARGE' | 'CUSTOMER_CANCELLATION_FEE';
+    sourceType: 'SUPPLIER_CANCELLATION_CHARGE' | 'CUSTOMER_CANCELLATION_FEE' | 'SUPPLIER_ADVANCE_REFUND';
     sourceId: string;
     invoiceSourceType?: string;
     invoiceSourceId?: string;

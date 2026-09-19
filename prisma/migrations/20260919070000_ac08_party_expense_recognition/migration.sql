@@ -24,6 +24,7 @@ CREATE TABLE "party_netting_documents" (
     "id" TEXT NOT NULL,
     "company_id" TEXT NOT NULL,
     "group_id" TEXT NOT NULL,
+    "branch_id" TEXT,
     "customer_invoice_id" TEXT NOT NULL,
     "supplier_invoice_id" TEXT NOT NULL,
     "amount" DECIMAL(38,18) NOT NULL,
@@ -31,10 +32,13 @@ CREATE TABLE "party_netting_documents" (
     "number" TEXT NOT NULL,
     "status" TEXT NOT NULL,
     "request_hash" TEXT NOT NULL,
+    "requester_actor_id" TEXT NOT NULL,
+    "approval_request_id" TEXT,
     "customer_allocation_id" TEXT,
     "supplier_allocation_id" TEXT,
     "journal_id" TEXT,
     "reversal_journal_id" TEXT,
+    "failure_reason" TEXT,
     "reversed_at" TIMESTAMP(3),
 
     CONSTRAINT "party_netting_documents_pkey" PRIMARY KEY ("id")
@@ -81,6 +85,8 @@ CREATE TABLE "ecr_expenses" (
     "treasury_voucher_id" TEXT,
     "journal_id" TEXT,
     "approval_request_id" TEXT,
+    "expense_account_id" TEXT,
+    "prepaid_account_id" TEXT,
 
     CONSTRAINT "ecr_expenses_pkey" PRIMARY KEY ("id")
 );
@@ -99,6 +105,7 @@ CREATE TABLE "ecr_recognition_schedules" (
     "deferred_account_id" TEXT NOT NULL,
     "recognition_account_id" TEXT NOT NULL,
     "request_hash" TEXT NOT NULL,
+    "initial_journal_id" TEXT,
 
     CONSTRAINT "ecr_recognition_schedules_pkey" PRIMARY KEY ("id")
 );
@@ -118,28 +125,6 @@ CREATE TABLE "ecr_recognition_parts" (
 );
 
 -- CreateTable
-CREATE TABLE "ecr_prepayment_schedules" (
-    "id" TEXT NOT NULL,
-    "company_id" TEXT NOT NULL,
-    "recognition_schedule_id" TEXT NOT NULL,
-    "source_amount" DECIMAL(38,18) NOT NULL,
-
-    CONSTRAINT "ecr_prepayment_schedules_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "ecr_prepayment_parts" (
-    "id" TEXT NOT NULL,
-    "company_id" TEXT NOT NULL,
-    "schedule_id" TEXT NOT NULL,
-    "amount" DECIMAL(38,18) NOT NULL,
-    "service_date" DATE NOT NULL,
-    "status" TEXT NOT NULL,
-
-    CONSTRAINT "ecr_prepayment_parts_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
 CREATE TABLE "ecr_commission_claims" (
     "id" TEXT NOT NULL,
     "company_id" TEXT NOT NULL,
@@ -153,6 +138,7 @@ CREATE TABLE "ecr_commission_claims" (
     "status" TEXT NOT NULL,
     "request_hash" TEXT NOT NULL,
     "approval_request_id" TEXT,
+    "requester_actor_id" TEXT,
     "recognition_journal_id" TEXT,
     "reversal_journal_id" TEXT,
     "expense_account_id" TEXT NOT NULL,
@@ -166,13 +152,15 @@ CREATE TABLE "ecr_commission_payments" (
     "id" TEXT NOT NULL,
     "company_id" TEXT NOT NULL,
     "claim_id" TEXT NOT NULL,
+    "request_hash" TEXT NOT NULL,
+    "status" TEXT NOT NULL,
     "amount" DECIMAL(38,18) NOT NULL,
     "payment_currency" TEXT NOT NULL,
     "settlement_base_amount" DECIMAL(38,18) NOT NULL,
     "carrying_base_amount" DECIMAL(38,18) NOT NULL,
     "realized_fx" DECIMAL(38,18) NOT NULL,
     "fx_rate_id" TEXT,
-    "treasury_voucher_id" TEXT NOT NULL,
+    "treasury_voucher_id" TEXT,
 
     CONSTRAINT "ecr_commission_payments_pkey" PRIMARY KEY ("id")
 );
@@ -187,6 +175,8 @@ CREATE TABLE "ecr_accruals" (
     "service_date" DATE NOT NULL,
     "status" TEXT NOT NULL,
     "journal_id" TEXT NOT NULL,
+    "accrued_revenue_account_id" TEXT NOT NULL,
+    "revenue_account_id" TEXT NOT NULL,
     "billing_invoice_id" TEXT,
     "clearing_journal_id" TEXT,
 
@@ -224,13 +214,10 @@ CREATE UNIQUE INDEX "ecr_recognition_schedules_company_id_id_key" ON "ecr_recogn
 CREATE UNIQUE INDEX "ecr_recognition_schedules_company_id_source_type_source_id__key" ON "ecr_recognition_schedules"("company_id", "source_type", "source_id", "kind");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "ecr_recognition_schedules_company_id_source_invoice_id_kind_key" ON "ecr_recognition_schedules"("company_id", "source_invoice_id", "kind");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "ecr_recognition_parts_company_id_schedule_id_service_date_i_key" ON "ecr_recognition_parts"("company_id", "schedule_id", "service_date", "id");
-
--- CreateIndex
-CREATE UNIQUE INDEX "ecr_prepayment_schedules_company_id_id_key" ON "ecr_prepayment_schedules"("company_id", "id");
-
--- CreateIndex
-CREATE UNIQUE INDEX "ecr_prepayment_parts_company_id_id_key" ON "ecr_prepayment_parts"("company_id", "id");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "ecr_commission_claims_company_id_id_key" ON "ecr_commission_claims"("company_id", "id");
@@ -268,3 +255,13 @@ ALTER TABLE "ecr_recognition_parts" ADD CONSTRAINT "ecr_recognition_parts_compan
 -- AddForeignKey
 ALTER TABLE "ecr_commission_payments" ADD CONSTRAINT "ecr_commission_payments_company_id_claim_id_fkey" FOREIGN KEY ("company_id", "claim_id") REFERENCES "ecr_commission_claims"("company_id", "id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
+
+-- AC-08 monetary invariants.
+ALTER TABLE "party_netting_documents" ADD CONSTRAINT "party_netting_documents_amount_positive" CHECK ("amount" > 0);
+ALTER TABLE "party_netting_lines" ADD CONSTRAINT "party_netting_lines_amount_positive" CHECK ("amount" > 0);
+ALTER TABLE "ecr_expenses" ADD CONSTRAINT "ecr_expenses_amounts_positive" CHECK ("amount" > 0 AND "base_amount" > 0);
+ALTER TABLE "ecr_recognition_schedules" ADD CONSTRAINT "ecr_recognition_schedule_amounts_positive" CHECK ("source_amount" > 0 AND "base_amount" > 0);
+ALTER TABLE "ecr_recognition_parts" ADD CONSTRAINT "ecr_recognition_parts_amount_positive" CHECK ("amount" > 0);
+ALTER TABLE "ecr_commission_claims" ADD CONSTRAINT "ecr_commission_claims_amounts_positive" CHECK ("amount" > 0 AND "base_carrying_amount" > 0);
+ALTER TABLE "ecr_commission_payments" ADD CONSTRAINT "ecr_commission_payments_amounts_positive" CHECK ("amount" > 0 AND "settlement_base_amount" > 0 AND "carrying_base_amount" > 0);
+ALTER TABLE "ecr_accruals" ADD CONSTRAINT "ecr_accruals_amount_positive" CHECK ("amount" > 0);

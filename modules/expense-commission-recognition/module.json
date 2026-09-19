@@ -1,1 +1,23 @@
-{"name":"expense-commission-recognition","publicApi":["src/public/index.ts"],"ownedTables":["ecr_expenses","ecr_prepayment_schedules","ecr_prepayment_parts","ecr_commission_claims","ecr_commission_payments","ecr_recognition_schedules","ecr_recognition_parts","ecr_accruals"],"allowedDependencies":["@elhafez/contracts","@elhafez/billing-subledgers","@elhafez/treasury-settlement","@elhafez/general-ledger","@elhafez/period-control","@elhafez/currency-fx","@elhafez/financial-controls"]}
+{
+  "name": "expense-commission-recognition",
+  "publicApi": [
+    "src/public/index.ts"
+  ],
+  "ownedTables": [
+    "ecr_expenses",
+    "ecr_commission_claims",
+    "ecr_commission_payments",
+    "ecr_recognition_schedules",
+    "ecr_recognition_parts",
+    "ecr_accruals"
+  ],
+  "allowedDependencies": [
+    "@elhafez/contracts",
+    "@elhafez/billing-subledgers",
+    "@elhafez/treasury-settlement",
+    "@elhafez/general-ledger",
+    "@elhafez/period-control",
+    "@elhafez/currency-fx",
+    "@elhafez/financial-controls"
+  ]
+}

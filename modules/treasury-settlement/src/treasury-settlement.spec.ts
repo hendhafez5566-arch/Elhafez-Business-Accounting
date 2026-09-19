@@ -98,3 +98,12 @@ test('AC-07 hardening: bank match cannot be silently redirected', async () => {
     /already matched differently/,
   );
 });
+
+test('AC-08 owner payment rejects a currency different from the selected Treasury', async () => {
+  const f = await setup();
+  await assert.rejects(f.service.postOwnerPayment({
+    id:'owner-fx',companyId:company,treasuryId:'cash',ownerType:'EXPENSE',ownerId:'expense-1',partyId:'expense-1',
+    number:'OP-1',postingDate:'2026-09-18',amount:amount('10'),paymentCurrency:'USD',
+    carryingBaseAmount:amount('10'),settlementBaseAmount:amount('10'),liabilityAccountId:'expense'
+  }), /must match selected Treasury currency/);
+});
