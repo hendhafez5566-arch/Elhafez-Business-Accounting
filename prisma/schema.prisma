@@ -1219,3 +1219,103 @@ run AfPayrollRun @relation(fields:[companyId,runId],references:[companyId,id],on
 @@unique([companyId,id])
 @@map("af_payroll_liabilities")
 }
+
+model ProcPolicy {
+ companyId String @id @map("company_id")
+ commitmentTiming String @map("commitment_timing")
+ version Int
+ effectiveFrom DateTime @map("effective_from") @db.Date
+ requestHash String @map("request_hash")
+ @@map("proc_policies")
+}
+model ProcSupplierCommitment {
+ id String @id
+ companyId String @map("company_id")
+ supplierId String @map("supplier_id")
+ sourceType String @map("source_type")
+ sourceId String @map("source_id")
+ status String
+ effectiveDate DateTime @map("effective_date") @db.Date
+ cancelledAt DateTime? @map("cancelled_at")
+ cancelReason String? @map("cancel_reason")
+ requestHash String @map("request_hash")
+ createdAt DateTime @map("created_at")
+ purchaseOrders ProcPurchaseOrder[]
+ @@unique([companyId,id])
+ @@unique([companyId,sourceType,sourceId])
+ @@index([companyId,status])
+ @@map("proc_supplier_commitments")
+}
+model ProcPurchaseOrder {
+ id String @id
+ companyId String @map("company_id")
+ commitmentId String? @map("commitment_id")
+ supplierId String @map("supplier_id")
+ number String
+ origin String
+ status String
+ requestHash String @map("request_hash")
+ createdAt DateTime @map("created_at")
+ commitment ProcSupplierCommitment? @relation(fields:[companyId,commitmentId],references:[companyId,id],onDelete:Restrict)
+ lines ProcPurchaseOrderLine[]
+ conversions ProcInvoiceConversion[]
+ @@unique([companyId,id])
+ @@unique([companyId,number])
+ @@index([companyId,commitmentId,status])
+ @@map("proc_purchase_orders")
+}
+model ProcPurchaseOrderLine {
+ id String @id
+ companyId String @map("company_id")
+ purchaseOrderId String @map("purchase_order_id")
+ itemReference String @map("item_reference")
+ orderedQuantity Decimal @map("ordered_quantity") @db.Decimal(38,18)
+ receivedQuantity Decimal @map("received_quantity") @db.Decimal(38,18)
+ invoicedQuantity Decimal @map("invoiced_quantity") @db.Decimal(38,18)
+ purchaseOrder ProcPurchaseOrder @relation(fields:[companyId,purchaseOrderId],references:[companyId,id],onDelete:Restrict)
+ conversions ProcInvoiceConversion[]
+ @@unique([companyId,id])
+ @@index([companyId,purchaseOrderId])
+ @@map("proc_purchase_order_lines")
+}
+model ProcCommitmentHistory {
+ id String @id
+ companyId String @map("company_id")
+ aggregateId String @map("aggregate_id")
+ kind String
+ sourceReference String? @map("source_reference")
+ createdAt DateTime @map("created_at")
+ @@unique([companyId,id])
+ @@index([companyId,aggregateId,createdAt])
+ @@map("proc_commitment_history")
+}
+model ProcPoHistory {
+ id String @id
+ companyId String @map("company_id")
+ aggregateId String @map("aggregate_id")
+ kind String
+ sourceReference String? @map("source_reference")
+ requestHash String? @map("request_hash")
+ createdAt DateTime @map("created_at")
+ @@unique([companyId,id])
+ @@index([companyId,aggregateId,createdAt])
+ @@map("proc_po_history")
+}
+model ProcInvoiceConversion {
+ id String @id
+ companyId String @map("company_id")
+ purchaseOrderId String @map("purchase_order_id")
+ lineId String @map("line_id")
+ billingInvoiceId String @map("billing_invoice_id")
+ quantity Decimal @db.Decimal(38,18)
+ reopenedQuantity Decimal @map("reopened_quantity") @db.Decimal(38,18)
+ requestHash String @map("request_hash")
+ status String
+ createdAt DateTime @map("created_at")
+ purchaseOrder ProcPurchaseOrder @relation(fields:[companyId,purchaseOrderId],references:[companyId,id],onDelete:Restrict)
+ line ProcPurchaseOrderLine @relation(fields:[companyId,lineId],references:[companyId,id],onDelete:Restrict)
+ @@unique([companyId,id])
+ @@unique([companyId,billingInvoiceId,lineId])
+ @@index([companyId,purchaseOrderId,status])
+ @@map("proc_invoice_conversions")
+}
