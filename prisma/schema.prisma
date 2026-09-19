@@ -1025,13 +1025,14 @@ residualValue Decimal @map("residual_value") @db.Decimal(38,18)
 usefulLifeMonths Int @map("useful_life_months")
 method String
 assetAccountId String @map("asset_account_id")
+capitalizationOffsetAccountId String @map("capitalization_offset_account_id")
 accumulatedDepreciationAccountId String @map("accumulated_depreciation_account_id")
 depreciationExpenseAccountId String @map("depreciation_expense_account_id")
 disposalGainAccountId String? @map("disposal_gain_account_id")
 disposalLossAccountId String? @map("disposal_loss_account_id")
 status String
 accumulatedDepreciation Decimal @map("accumulated_depreciation") @db.Decimal(38,18)
-capitalizationJournalId String @map("capitalization_journal_id")
+capitalizationJournalId String? @map("capitalization_journal_id")
 requestHash String @map("request_hash")
 depreciations AfAssetDepreciation[]
 disposals AfAssetDisposal[]
@@ -1060,8 +1061,13 @@ companyId String @map("company_id")
 assetId String @map("asset_id")
 postingDate DateTime @map("posting_date") @db.Date
 proceeds Decimal @db.Decimal(38,18)
+proceedsMode String @map("proceeds_mode")
+treasuryId String? @map("treasury_id")
+proceedsClearingAccountId String? @map("proceeds_clearing_account_id")
 requestHash String @map("request_hash")
-journalId String @map("journal_id")
+status String
+treasuryVoucherId String? @map("treasury_voucher_id")
+journalId String? @map("journal_id")
 asset AfAsset @relation(fields:[companyId,assetId],references:[companyId,id],onDelete:Restrict)
 @@unique([companyId,id])
 @@unique([companyId,assetId])
@@ -1075,13 +1081,14 @@ reference String
 principal Decimal @db.Decimal(38,18)
 outstandingPrincipal Decimal @map("outstanding_principal") @db.Decimal(38,18)
 currency String
+baseCurrency String @map("base_currency")
 baseAmount Decimal @map("base_amount") @db.Decimal(38,18)
 liabilityAccountId String @map("liability_account_id")
 interestExpenseAccountId String @map("interest_expense_account_id")
-fundingAccountId String @map("funding_account_id")
+fundingTreasuryId String @map("funding_treasury_id")
 status String
 requestHash String @map("request_hash")
-originationJournalId String @map("origination_journal_id")
+originationTreasuryVoucherId String? @map("origination_treasury_voucher_id")
 installments AfLoanInstallment[]
 @@unique([companyId,id])
 @@unique([companyId,reference])
@@ -1110,7 +1117,9 @@ companyId String @map("company_id")
 name String
 provisionAccountId String @map("provision_account_id")
 expenseAccountId String @map("expense_account_id")
+releaseAccountId String @map("release_account_id")
 available Decimal @db.Decimal(38,18)
+requestHash String @map("request_hash")
 movements AfProvisionMovement[]
 @@unique([companyId,id])
 @@map("af_provisions")
@@ -1124,7 +1133,9 @@ amount Decimal @db.Decimal(38,18)
 sourceType String @map("source_type")
 sourceId String @map("source_id")
 requestHash String @map("request_hash")
-journalId String @map("journal_id")
+journalId String? @map("journal_id")
+status String
+offsetAccountId String @map("offset_account_id")
 createdAt DateTime @map("created_at")
 provision AfProvision @relation(fields:[companyId,provisionId],references:[companyId,id],onDelete:Restrict)
 @@unique([companyId,id])
@@ -1138,9 +1149,11 @@ customerId String? @map("customer_id")
 sourceReference String @map("source_reference")
 allowanceAccountId String @map("allowance_account_id")
 expenseAccountId String @map("expense_account_id")
+releaseAccountId String @map("release_account_id")
 amount Decimal @db.Decimal(38,18)
 used Decimal @db.Decimal(38,18)
 available Decimal @db.Decimal(38,18)
+requestHash String @map("request_hash")
 movements AfAllowanceMovement[]
 writeoffs AfAllowanceWriteoff[]
 @@unique([companyId,id])
@@ -1155,6 +1168,7 @@ amount Decimal @db.Decimal(38,18)
 sourceId String @map("source_id")
 requestHash String @map("request_hash")
 journalId String? @map("journal_id")
+status String
 billingAdjustmentId String? @map("billing_adjustment_id")
 createdAt DateTime @map("created_at")
 allowance AfAllowance @relation(fields:[companyId,allowanceId],references:[companyId,id],onDelete:Restrict)
@@ -1171,6 +1185,7 @@ postingDate DateTime @map("posting_date") @db.Date
 requestHash String @map("request_hash")
 status String
 billingAdjustmentId String? @map("billing_adjustment_id")
+failureReason String? @map("failure_reason")
 allowance AfAllowance @relation(fields:[companyId,allowanceId],references:[companyId,id],onDelete:Restrict)
 @@unique([companyId,id])
 @@map("af_allowance_writeoffs")
@@ -1181,6 +1196,7 @@ companyId String @map("company_id")
 sourceId String @map("source_id")
 payrollPeriod String @map("payroll_period")
 postingDate DateTime @map("posting_date") @db.Date
+currency String
 expenseTotal Decimal @map("expense_total") @db.Decimal(38,18)
 expenseAccountId String @map("expense_account_id")
 status String
