@@ -193,6 +193,7 @@ CREATE TABLE "ecr_accruals" (
     "service_date" DATE NOT NULL,
     "status" TEXT NOT NULL,
     "journal_id" TEXT NOT NULL,
+    "request_hash" TEXT NOT NULL,
     "accrued_revenue_account_id" TEXT NOT NULL,
     "revenue_account_id" TEXT NOT NULL,
     "billing_invoice_id" TEXT,
