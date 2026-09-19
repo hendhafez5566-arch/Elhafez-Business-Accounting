@@ -356,6 +356,34 @@ test('BR-018 recognition blocks deferred adjustment', async () => {
   );
 });
 
+test('BR-018 stale adjustment state cannot cross an atomic recognition start', async () => {
+  const f = fixture();
+  await f.service.createDraft(invoice({ deferred: true }));
+  await f.service.postInvoice(company, 'i1');
+  const stale = (await f.repository.invoice(company, 'i1'))!;
+  await f.service.recordRecognitionStarted(company, 'i1', 'schedule-race');
+  await assert.rejects(
+    f.repository.saveAdjustmentEffect(
+      {
+        id: 'stale-adjustment',
+        companyId: company,
+        invoiceId: 'i1',
+        kind: 'CREDIT_NOTE',
+        amount: amount('1'),
+        appliedAmount: amount('1'),
+        advanceAmount: amount('0'),
+        sourceType: 'RACE',
+        sourceId: '1',
+        requestHash: 'race',
+        journalId: 'race-journal',
+      },
+      stale,
+      { ...stale, outstanding: amount('99') },
+    ),
+    /concurrency/,
+  );
+});
+
 test('BR-020/021 advance charge consumption and BR-022 write-off cap', async () => {
   const f = fixture();
   await f.service.applyAllocation({

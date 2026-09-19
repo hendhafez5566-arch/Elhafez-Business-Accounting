@@ -345,6 +345,93 @@ export class TreasurySettlementApplicationService {
     await this.repo.saveVoucher(voucher);
     return voucher;
   }
+  /** Narrow read-only Treasury snapshot for collaborating owners. */
+  async getTreasurySnapshot(companyId:CompanyId,id:string):Promise<Readonly<Treasury>>{
+    const value=await this.required(companyId,id);
+    return Object.freeze({...value});
+  }
+  /** AC-08 narrow payment port for liabilities owned outside Billing. */
+  async postOwnerPayment(input: {
+    id:string; companyId:CompanyId; branchId?:string; treasuryId:string; ownerType:'EXPENSE'|'COMMISSION';
+    ownerId:string; partyId:string; number:string; postingDate:string; amount:DecimalAmount;
+    paymentCurrency:string;
+    carryingBaseAmount:DecimalAmount; settlementBaseAmount:DecimalAmount; liabilityAccountId:string;
+    debitPartyId?:string;
+    realizedFxGainAccountId?:string; realizedFxLossAccountId?:string; fxRateId?:string;
+  }):Promise<Voucher>{
+    const amount=pos(input.amount),carrying=pos(input.carryingBaseAmount),settlement=pos(input.settlementBaseAmount);
+    const treasury=await this.required(input.companyId,input.treasuryId);
+    if(currencyCode(input.paymentCurrency)!==treasury.currency)throw new ContractValidationError('paymentCurrency','must match selected Treasury currency');
+    const ownerSourceId=input.ownerType+':'+input.ownerId+':'+input.id;
+    const requestHash=hash({...input,amount,carryingBaseAmount:carrying,settlementBaseAmount:settlement});
+    let voucher=await this.repo.voucherBySource(input.companyId,'OWNER_PAYMENT',ownerSourceId);
+    if(voucher){
+      if(voucher.requestHash!==requestHash)throw new ContractValidationError('source','conflicting replay');
+      if(voucher.status==='POSTED')return voucher;
+      if(voucher.status!=='PROCESSING')throw new ContractValidationError('voucher','reversed/reversing owner payment identity cannot be reposted');
+    }else{
+      voucher={id:input.id,companyId:input.companyId,...(input.branchId?{branchId:input.branchId}:{}),treasuryId:input.treasuryId,kind:'PAYMENT',partyKind:'OWNER',partyId:input.partyId,number:input.number,postingDate:input.postingDate,currency:treasury.currency,amount,sourceType:'OWNER_PAYMENT',sourceId:ownerSourceId,requestHash,status:'PROCESSING',allocationIds:[]};
+    }
+    voucher=await this.repo.reserveVoucher(voucher,(await this.repo.policy(input.companyId))?.allowNegative===true);
+    const difference=n(settlement)-n(carrying);
+    const lines:PostingLine[]=[
+      {accountId:input.liabilityAccountId,debit:carrying,...(input.debitPartyId?{partyId:input.debitPartyId}:{})},
+      {accountId:treasury.glAccountId,credit:settlement},
+    ];
+    if(difference>0n){
+      if(!input.realizedFxLossAccountId)throw new ContractValidationError('realizedFxLossAccountId','required');
+      lines.push({accountId:input.realizedFxLossAccountId,debit:d(difference)});
+    }else if(difference<0n){
+      if(!input.realizedFxGainAccountId)throw new ContractValidationError('realizedFxGainAccountId','required');
+      lines.push({accountId:input.realizedFxGainAccountId,credit:d(-difference)});
+    }
+    const journal=await this.gl.post({
+      id:'treasury-owner:'+ownerSourceId,
+      companyId:input.companyId,
+      number:input.number,
+      postingDate:input.postingDate,
+      sourceType:'TREASURY_OWNER_PAYMENT',
+      sourceId:ownerSourceId,
+      lines,
+    });
+    voucher={...voucher,status:'POSTED',journalId:journal.id,carryingBaseAmount:carrying,settlementBaseAmount:settlement,realizedFx:d(difference),...(input.fxRateId?{fxRateId:input.fxRateId}:{})};
+    await this.repo.saveVoucher(voucher);
+    return voucher;
+  }
+  /** Restricted AC-08 receipt: cash returned by a supplier reduces a Billing-owned supplier advance. */
+  async postSupplierAdvanceRefundReceipt(input:{id:string;companyId:CompanyId;branchId?:string;treasuryId:string;
+    supplierPartyId:string;advanceId:string;number:string;postingDate:string;amount:DecimalAmount;
+    paymentCurrency:string;advanceAccountId:string}):Promise<Voucher>{
+    const amount=pos(input.amount),treasury=await this.required(input.companyId,input.treasuryId);
+    if(currencyCode(input.paymentCurrency)!==treasury.currency)throw new ContractValidationError('paymentCurrency','must match selected Treasury currency');
+    const sourceId=input.advanceId+':'+input.id,requestHash=hash({...input,amount});
+    let voucher=await this.repo.voucherBySource(input.companyId,'SUPPLIER_ADVANCE_REFUND',sourceId);
+    if(voucher){
+      if(voucher.requestHash!==requestHash)throw new ContractValidationError('source','conflicting replay');
+      if(voucher.status==='POSTED')return voucher;
+      if(voucher.status!=='PROCESSING')throw new ContractValidationError('voucher','reversed/reversing supplier refund identity cannot be reposted');
+    }else{
+      voucher={id:input.id,companyId:input.companyId,...(input.branchId?{branchId:input.branchId}:{}),treasuryId:input.treasuryId,
+        kind:'RECEIPT',partyKind:'OWNER',partyId:input.supplierPartyId,number:input.number,postingDate:input.postingDate,
+        currency:treasury.currency,amount,sourceType:'SUPPLIER_ADVANCE_REFUND',sourceId,requestHash,status:'PROCESSING',allocationIds:[]};
+    }
+    voucher=await this.repo.reserveVoucher(voucher,true);
+    const journal=await this.gl.post({
+      id:'treasury-supplier-refund:'+sourceId,
+      companyId:input.companyId,
+      number:input.number,
+      postingDate:input.postingDate,
+      sourceType:'TREASURY_SUPPLIER_ADVANCE_REFUND',
+      sourceId,
+      lines:[
+        {accountId:treasury.glAccountId,debit:amount},
+        {accountId:input.advanceAccountId,credit:amount,partyId:input.supplierPartyId},
+      ],
+    });
+    voucher={...voucher,status:'POSTED',journalId:journal.id,carryingBaseAmount:amount,settlementBaseAmount:amount,realizedFx:d(0n)};
+    await this.repo.saveVoucher(voucher);
+    return voucher;
+  }
   async voidVoucher(
     companyId: CompanyId,
     id: string,
@@ -354,7 +441,7 @@ export class TreasurySettlementApplicationService {
     let v = await this.repo.voucher(companyId, id);
     if (!v) throw new ContractValidationError("voucher", "not found");
     if (v.status === "REVERSED") return v;
-    if (v.status !== "POSTED" || !v.journalId || !v.settlementId)
+    if (v.status !== "POSTED" || !v.journalId)
       throw new ContractValidationError(
         "voucher",
         "only posted voucher may reverse",
@@ -363,7 +450,7 @@ export class TreasurySettlementApplicationService {
     const settlementId = v.settlementId;
     v = { ...v, status: "REVERSING" };
     await this.repo.saveVoucher(v);
-    await this.billing.reverseSettlement(companyId, settlementId, postingDate, number);
+    if(settlementId) await this.billing.reverseSettlement(companyId, settlementId, postingDate, number);
     const reversal = await this.gl.reverse(
       companyId,
       journalId,

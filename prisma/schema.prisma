@@ -778,3 +778,206 @@ model TreasuryBankMatch {
   @@unique([companyId, lineId])
   @@map("treasury_bank_matches")
 }
+
+model PartyAccountingGroup {
+  id String @id
+  companyId String @map("company_id")
+  name String
+  status String
+  members PartyAccountingGroupMember[]
+  nettings PartyNettingDocument[]
+  @@unique([companyId,id])
+  @@map("party_accounting_groups")
+}
+model PartyAccountingGroupMember {
+  id String @id
+  companyId String @map("company_id")
+  groupId String @map("group_id")
+  role String
+  partyId String @map("party_id")
+  group PartyAccountingGroup @relation(fields:[companyId,groupId],references:[companyId,id],onDelete:Restrict)
+  @@unique([companyId,groupId,role,partyId])
+  @@map("party_accounting_group_members")
+}
+model PartyNettingDocument {
+  id String @id
+  companyId String @map("company_id")
+  groupId String @map("group_id")
+  branchId String? @map("branch_id")
+  customerInvoiceId String @map("customer_invoice_id")
+  supplierInvoiceId String @map("supplier_invoice_id")
+  amount Decimal @db.Decimal(38,18)
+  postingDate DateTime @map("posting_date") @db.Date
+  number String
+  status String
+  requestHash String @map("request_hash")
+  requesterActorId String @map("requester_actor_id")
+  approvalRequestId String? @map("approval_request_id")
+  customerAllocationId String? @map("customer_allocation_id")
+  supplierAllocationId String? @map("supplier_allocation_id")
+  journalId String? @map("journal_id")
+  reversalJournalId String? @map("reversal_journal_id")
+  failureReason String? @map("failure_reason")
+  reversedAt DateTime? @map("reversed_at")
+  group PartyAccountingGroup @relation(fields:[companyId,groupId],references:[companyId,id],onDelete:Restrict)
+  lines PartyNettingLine[]
+  allocationRefs PartyNettingAllocationRef[]
+  @@unique([companyId,id])
+  @@unique([companyId,number])
+  @@map("party_netting_documents")
+}
+model PartyNettingLine {
+ id String @id
+ companyId String @map("company_id")
+ documentId String @map("document_id")
+ role String
+ invoiceId String @map("invoice_id")
+ partyId String @map("party_id")
+ amount Decimal @db.Decimal(38,18)
+ document PartyNettingDocument @relation(fields:[companyId,documentId],references:[companyId,id],onDelete:Restrict)
+ @@unique([companyId,documentId,role])
+ @@map("party_netting_lines")
+}
+model PartyNettingAllocationRef {
+ id String @id
+ companyId String @map("company_id")
+ documentId String @map("document_id")
+ allocationId String @map("allocation_id")
+ reversedAt DateTime? @map("reversed_at")
+ document PartyNettingDocument @relation(fields:[companyId,documentId],references:[companyId,id],onDelete:Restrict)
+ @@unique([companyId,allocationId])
+ @@map("party_netting_allocation_refs")
+}
+model EcrExpense {
+ id String @id
+ companyId String @map("company_id")
+ branchId String? @map("branch_id")
+ form String
+ sourceType String @map("source_type")
+ sourceId String @map("source_id")
+ currency String
+ amount Decimal @db.Decimal(38,18)
+ baseAmount Decimal @map("base_amount") @db.Decimal(38,18)
+ status String
+ requestHash String @map("request_hash")
+ billingInvoiceId String? @map("billing_invoice_id")
+ treasuryVoucherId String? @map("treasury_voucher_id")
+ journalId String? @map("journal_id")
+ approvalRequestId String? @map("approval_request_id")
+ expenseAccountId String? @map("expense_account_id")
+ prepaidAccountId String? @map("prepaid_account_id")
+ @@unique([companyId,id])
+ @@unique([companyId,sourceType,sourceId])
+ @@map("ecr_expenses")
+}
+model EcrRecognitionSchedule {
+ id String @id
+ companyId String @map("company_id")
+ kind String
+ sourceType String @map("source_type")
+ sourceId String @map("source_id")
+ sourceInvoiceId String? @map("source_invoice_id")
+ currency String
+ sourceAmount Decimal @map("source_amount") @db.Decimal(38,18)
+ baseAmount Decimal @map("base_amount") @db.Decimal(38,18)
+ deferredAccountId String @map("deferred_account_id")
+ recognitionAccountId String @map("recognition_account_id")
+ requestHash String @map("request_hash")
+ initialJournalId String? @map("initial_journal_id")
+ parts EcrRecognitionPart[]
+ @@unique([companyId,id])
+ @@unique([companyId,sourceType,sourceId,kind])
+ @@unique([companyId,sourceInvoiceId,kind])
+ @@map("ecr_recognition_schedules")
+}
+model EcrRecognitionPart {
+ id String @id
+ companyId String @map("company_id")
+ scheduleId String @map("schedule_id")
+ serviceDate DateTime @map("service_date") @db.Date
+ amount Decimal @db.Decimal(38,18)
+ status String
+ cycle Int @default(0)
+ journalId String? @map("journal_id")
+ reversalJournalId String? @map("reversal_journal_id")
+ schedule EcrRecognitionSchedule @relation(fields:[companyId,scheduleId],references:[companyId,id],onDelete:Restrict)
+ @@unique([companyId,scheduleId,serviceDate,id])
+ @@map("ecr_recognition_parts")
+}
+model EcrCommissionClaim {
+ id String @id
+ companyId String @map("company_id")
+ branchId String? @map("branch_id")
+ agentPartyId String @map("agent_party_id")
+ sourceType String @map("source_type")
+ sourceId String @map("source_id")
+ currency String
+ amount Decimal @db.Decimal(38,18)
+ baseCarryingAmount Decimal @map("base_carrying_amount") @db.Decimal(38,18)
+ status String
+ requestHash String @map("request_hash")
+ approvalRequestId String? @map("approval_request_id")
+ requesterActorId String? @map("requester_actor_id")
+ recognitionJournalId String? @map("recognition_journal_id")
+ reversalJournalId String? @map("reversal_journal_id")
+ expenseAccountId String @map("expense_account_id")
+ liabilityAccountId String @map("liability_account_id")
+ payments EcrCommissionPayment[]
+ @@unique([companyId,id])
+ @@unique([companyId,sourceType,sourceId])
+ @@map("ecr_commission_claims")
+}
+model EcrCommissionPayment {
+ id String @id
+ companyId String @map("company_id")
+ claimId String @map("claim_id")
+ requestHash String @map("request_hash")
+ status String
+ amount Decimal @db.Decimal(38,18)
+ paymentCurrency String @map("payment_currency")
+ claimAmountApplied Decimal @map("claim_amount_applied") @db.Decimal(38,18)
+ claimFxRateId String? @map("claim_fx_rate_id")
+ settlementBaseAmount Decimal @map("settlement_base_amount") @db.Decimal(38,18)
+ carryingBaseAmount Decimal @map("carrying_base_amount") @db.Decimal(38,18)
+ realizedFx Decimal @map("realized_fx") @db.Decimal(38,18)
+ fxRateId String? @map("fx_rate_id")
+ treasuryVoucherId String? @map("treasury_voucher_id")
+ claim EcrCommissionClaim @relation(fields:[companyId,claimId],references:[companyId,id],onDelete:Restrict)
+ @@unique([companyId,id])
+ @@unique([companyId,treasuryVoucherId])
+ @@map("ecr_commission_payments")
+}
+model EcrSupplierAdvanceSettlement {
+ id String @id
+ companyId String @map("company_id")
+ kind String
+ advanceId String @map("advance_id")
+ supplierPartyId String @map("supplier_party_id")
+ amount Decimal @db.Decimal(38,18)
+ requestHash String @map("request_hash")
+ status String
+ treasuryVoucherId String? @map("treasury_voucher_id")
+ journalId String? @map("journal_id")
+ failureReason String? @map("failure_reason")
+ @@unique([companyId,id])
+ @@map("ecr_supplier_advance_settlements")
+}
+
+model EcrAccrual {
+ id String @id
+ companyId String @map("company_id")
+ sourceType String @map("source_type")
+ sourceId String @map("source_id")
+ amount Decimal @db.Decimal(38,18)
+ serviceDate DateTime @map("service_date") @db.Date
+ status String
+ journalId String @map("journal_id")
+ requestHash String @map("request_hash")
+ accruedRevenueAccountId String @map("accrued_revenue_account_id")
+ revenueAccountId String @map("revenue_account_id")
+ billingInvoiceId String? @map("billing_invoice_id")
+ clearingJournalId String? @map("clearing_journal_id")
+ @@unique([companyId,id])
+ @@unique([companyId,sourceType,sourceId])
+ @@map("ecr_accruals")
+}

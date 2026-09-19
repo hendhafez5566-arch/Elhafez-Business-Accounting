@@ -191,6 +191,26 @@ export class PrismaBillingRepository implements BillingRepository {
     });
   }
 
+  async startRecognition(companyId: CompanyId, id: string, reference: string) {
+    const current = await this.invoice(companyId, id);
+    if (!current) throw new ContractValidationError('invoice', 'not found');
+    if (!current.deferred || current.status !== 'POSTED') throw new ContractValidationError('invoice', 'posted deferred invoice required');
+    if (current.recognitionReference) {
+      if (current.recognitionReference === reference) return current;
+      throw new ContractValidationError('recognitionReference', 'already recorded');
+    }
+    const updated = await this.db.billingInvoice.updateMany({
+      where: { companyId, id, status: 'POSTED', recognitionReference: null },
+      data: { recognitionReference: reference },
+    });
+    if (updated.count !== 1) {
+      const concurrent = await this.invoice(companyId, id);
+      if (concurrent?.recognitionReference === reference) return concurrent;
+      throw new ContractValidationError('concurrency', 'invoice changed while recognition started; retry');
+    }
+    return (await this.invoice(companyId, id))!;
+  }
+
   async markInvoicePosting(companyId: CompanyId, id: string) {
     const current = await this.invoice(companyId, id);
     if (!current) throw new ContractValidationError('invoice', 'not found');
@@ -322,6 +342,7 @@ export class PrismaBillingRepository implements BillingRepository {
               id: invoiceBefore.id,
               status: invoiceBefore.status,
               outstanding: invoiceBefore.outstanding,
+              recognitionReference: invoiceBefore.recognitionReference ?? null,
             },
             data: { outstanding: invoiceAfter.outstanding },
           });

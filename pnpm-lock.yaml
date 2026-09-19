@@ -47,6 +47,12 @@ importers:
       '@elhafez/billing-subledgers':
         specifier: workspace:*
         version: link:../../modules/billing-subledgers
+      '@elhafez/party-accounting':
+        specifier: workspace:*
+        version: link:../../modules/party-accounting
+      '@elhafez/expense-commission-recognition':
+        specifier: workspace:*
+        version: link:../../modules/expense-commission-recognition
       '@elhafez/tax':
         specifier: workspace:*
         version: link:../../modules/tax
@@ -144,6 +150,57 @@ importers:
       '@elhafez/period-control':
         specifier: workspace:*
         version: link:../period-control
+      '@elhafez/financial-controls':
+        specifier: workspace:*
+        version: link:../financial-controls
+      '@nestjs/common':
+        specifier: ^11.0.11
+        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@prisma/client':
+        specifier: 6.19.0
+        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
+
+  modules/party-accounting:
+    dependencies:
+      '@elhafez/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@elhafez/billing-subledgers':
+        specifier: workspace:*
+        version: link:../billing-subledgers
+      '@elhafez/general-ledger':
+        specifier: workspace:*
+        version: link:../general-ledger
+      '@elhafez/financial-controls':
+        specifier: workspace:*
+        version: link:../financial-controls
+      '@nestjs/common':
+        specifier: ^11.0.11
+        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@prisma/client':
+        specifier: 6.19.0
+        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
+
+  modules/expense-commission-recognition:
+    dependencies:
+      '@elhafez/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@elhafez/billing-subledgers':
+        specifier: workspace:*
+        version: link:../billing-subledgers
+      '@elhafez/treasury-settlement':
+        specifier: workspace:*
+        version: link:../treasury-settlement
+      '@elhafez/general-ledger':
+        specifier: workspace:*
+        version: link:../general-ledger
+      '@elhafez/period-control':
+        specifier: workspace:*
+        version: link:../period-control
+      '@elhafez/currency-fx':
+        specifier: workspace:*
+        version: link:../currency-fx
       '@elhafez/financial-controls':
         specifier: workspace:*
         version: link:../financial-controls

@@ -18,6 +18,8 @@
     "@elhafez/financial-controls": "workspace:*",
     "@elhafez/tax": "workspace:*",
     "@elhafez/billing-subledgers": "workspace:*",
-    "@elhafez/treasury-settlement": "workspace:*"
+    "@elhafez/treasury-settlement": "workspace:*",
+    "@elhafez/party-accounting": "workspace:*",
+    "@elhafez/expense-commission-recognition": "workspace:*"
   }
 }

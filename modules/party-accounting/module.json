@@ -1,0 +1,1 @@
+{"name":"party-accounting","publicApi":["src/public/index.ts"],"ownedTables":["party_accounting_groups","party_accounting_group_members","party_netting_documents","party_netting_lines","party_netting_allocation_refs"],"allowedDependencies":["@elhafez/contracts","@elhafez/billing-subledgers","@elhafez/general-ledger","@elhafez/financial-controls"]}
