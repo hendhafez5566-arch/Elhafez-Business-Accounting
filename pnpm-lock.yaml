@@ -187,6 +187,18 @@ importers:
         specifier: 6.19.0
         version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
 
+  modules/tourism-contract-inventory:
+    dependencies:
+      '@elhafez/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@elhafez/procurement-finance':
+        specifier: workspace:*
+        version: link:../procurement-finance
+      '@elhafez/cost-budget-accounting':
+        specifier: workspace:*
+        version: link:../cost-budget-accounting
+
   modules/treasury-settlement:
     dependencies:
       '@elhafez/contracts':
