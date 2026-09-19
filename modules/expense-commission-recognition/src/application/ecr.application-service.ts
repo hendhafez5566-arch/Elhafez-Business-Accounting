@@ -30,6 +30,7 @@ export class ExpenseCommissionRecognitionApplicationService {
    if(!input.billingInvoiceId)throw new ContractValidationError('billingInvoiceId','supplier payable must remain Billing-owned');
    const invoice=await this.billing.getOpenPosition(input.companyId,input.billingInvoiceId);
    if(invoice.partyKind!=='SUPPLIER'||invoice.status!=='POSTED')throw new ContractValidationError('billingInvoiceId','posted Billing-owned supplier invoice required');
+   if(normalized.currency!==invoice.currency||baseAmount!==invoice.baseTotal)throw new ContractValidationError('billingInvoiceId','expense reference must match the posted Billing supplier invoice currency and base total');
    status='POSTED';
   }
   if(input.form==='DIRECT_PAID'&&!input.expenseAccountId)throw new ContractValidationError('expenseAccountId','required');
