@@ -1,0 +1,15 @@
+{
+  "name": "@elhafez/tourism-contract-inventory",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "./src/public/index.ts",
+  "types": "./src/public/index.ts",
+  "exports": {
+    ".": "./src/public/index.ts"
+  },
+  "dependencies": {
+    "@elhafez/contracts": "workspace:*",
+    "@elhafez/procurement-finance": "workspace:*",
+    "@elhafez/cost-budget-accounting": "workspace:*"
+  }
+}
