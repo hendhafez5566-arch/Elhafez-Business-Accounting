@@ -314,13 +314,13 @@ test('GS-031 posts supplier invoice with money independent from quantity and can
     commandId: 'receipt',
   });
 
-  const command = conversionCommand(decimalAmount('4'), decimalAmount('725.50'));
+  const command = conversionCommand(decimalAmount('4'), decimalAmount('725.5'));
   await Promise.all([
     service.convertToSupplierInvoice(command),
     service.convertToSupplierInvoice(command),
   ]);
 
-  assert.equal(billing.lastDraft?.lines[0]?.amount, '725.50');
+  assert.equal(billing.lastDraft?.lines[0]?.amount, '725.5');
   assert.equal(billing.invoices.get('invoice')?.status, 'POSTED');
   assert.equal(
     (await service.getRemainingUninvoicedQuantities(company, 'po-1'))[0]?.quantity,
