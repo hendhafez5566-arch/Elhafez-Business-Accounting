@@ -15,3 +15,10 @@ test('AC-06 production modules are registered through public APIs', () => {
 
 import { TreasurySettlementModule } from '@elhafez/treasury-settlement';
 test('AC-07 Treasury production module is registered through its public API', () => assert.ok(TreasurySettlementModule));
+
+import { PartyAccountingModule } from '@elhafez/party-accounting';
+import { ExpenseCommissionRecognitionModule } from '@elhafez/expense-commission-recognition';
+test('AC-08 production modules are registered through public APIs', () => {
+  assert.ok(PartyAccountingModule);
+  assert.ok(ExpenseCommissionRecognitionModule);
+});

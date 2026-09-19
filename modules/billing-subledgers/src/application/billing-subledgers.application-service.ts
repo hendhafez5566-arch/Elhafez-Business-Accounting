@@ -120,6 +120,58 @@ export class BillingSubledgersApplicationService {
     private readonly gl: Pick<GeneralLedgerApplicationService, 'post' | 'reverse'>,
   ) {}
 
+  /** Narrow AC-08 read contract. The returned value is a snapshot, not a repository entity. */
+  async getOpenPosition(companyId: CompanyId, invoiceId: string): Promise<{
+    invoiceId: string; companyId: CompanyId; partyKind: PartyKind; partyId: string;
+    invoiceType: InvoiceType; currency: string; documentTotal: DecimalAmount;
+    outstanding: DecimalAmount; baseTotal: DecimalAmount;
+    controlAccountId: string; status: Invoice['status']; postingDate: string; deferred: boolean;
+  }> {
+    const invoice = await this.requiredInvoice(companyId, invoiceId);
+    const documentTotal = add(
+      ...invoice.lines.map((line) => add(line.amount, line.taxAmount ?? zero)),
+    );
+    return { invoiceId: invoice.id, companyId: invoice.companyId,
+      partyKind: expectedPartyKind(invoice.type), partyId: invoice.partyId,
+      invoiceType: invoice.type, currency: invoice.currency, documentTotal,
+      outstanding: invoice.outstanding, baseTotal: invoice.baseTotal,
+      controlAccountId: invoice.controlAccountId,
+      status: invoice.status, postingDate: invoice.postingDate, deferred: invoice.deferred === true };
+  }
+
+  async getAdvance(companyId: CompanyId, advanceId: string): Promise<Advance> {
+    const value = await this.repo.advance(companyId, advanceId);
+    if (!value || value.reversedAt) throw new ContractValidationError('advance', 'not available');
+    return value;
+  }
+
+  /** Exact, non-cash allocation used only by Party Accounting; it never creates an advance. */
+  async applyPartyNettingAllocation(input: {
+    id: string; companyId: CompanyId; invoiceId: string; partyKind: PartyKind;
+    partyId: string; amount: DecimalAmount; nettingDocumentId: string; lineId: string;
+  }): Promise<Allocation> {
+    const invoice = await this.requiredInvoice(input.companyId, input.invoiceId);
+    const amount = positive(input.amount);
+    if (invoice.status !== 'POSTED' || expectedPartyKind(invoice.type) !== input.partyKind ||
+        invoice.partyId !== input.partyId) {
+      throw new ContractValidationError('invoice', 'posted position and exact party identity required');
+    }
+    if (scaled18(amount) > scaled18(invoice.outstanding)) {
+      throw new ContractValidationError('amount', 'party netting cannot exceed outstanding');
+    }
+    return this.applyAllocation({ id: input.id, companyId: input.companyId,
+      invoiceId: input.invoiceId, partyKind: input.partyKind, partyId: input.partyId,
+      amount, sourceType: 'PARTY_NETTING', sourceId: input.nettingDocumentId + ':' + input.lineId });
+  }
+
+  async reversePartyNettingAllocation(companyId: CompanyId, allocationId: string): Promise<Allocation> {
+    const allocation = (await this.repo.allocations(companyId)).find((value) => value.id === allocationId);
+    if (!allocation || allocation.sourceType !== 'PARTY_NETTING') {
+      throw new ContractValidationError('allocation', 'party netting allocation not found');
+    }
+    return this.reverseAllocation(companyId, allocationId);
+  }
+
   async createDraft(input: CreateInvoiceInput): Promise<Invoice> {
     if (!input.partyId.trim() || !input.number.trim() || !input.sourceType.trim() || !input.sourceId.trim()) {
       throw new ContractValidationError('invoice', 'party, number and source identity are required');
@@ -825,14 +877,7 @@ export class BillingSubledgersApplicationService {
 
   async recordRecognitionStarted(companyId: CompanyId, invoiceId: string, reference: string) {
     if (!reference.trim()) throw new ContractValidationError('recognitionReference', 'is required');
-    const invoice = await this.requiredInvoice(companyId, invoiceId);
-    if (!invoice.deferred) throw new ContractValidationError('invoice', 'not deferred');
-    if (invoice.recognitionReference && invoice.recognitionReference !== reference) {
-      throw new ContractValidationError('recognitionReference', 'already recorded');
-    }
-    const value = { ...invoice, recognitionReference: reference };
-    await this.repo.saveInvoice(value);
-    return value;
+    return this.repo.startRecognition(companyId, invoiceId, reference);
   }
 
   async cancelInvoice(
@@ -863,7 +908,7 @@ export class BillingSubledgersApplicationService {
     companyId: CompanyId;
     advanceId: string;
     amount: DecimalAmount;
-    sourceType: 'SUPPLIER_CANCELLATION_CHARGE' | 'CUSTOMER_CANCELLATION_FEE';
+    sourceType: 'SUPPLIER_CANCELLATION_CHARGE' | 'CUSTOMER_CANCELLATION_FEE' | 'SUPPLIER_ADVANCE_REFUND';
     sourceId: string;
     invoiceSourceType?: string;
     invoiceSourceId?: string;
