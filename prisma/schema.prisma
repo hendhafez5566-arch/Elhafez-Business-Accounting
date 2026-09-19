@@ -934,6 +934,7 @@ model EcrCommissionPayment {
  status String
  amount Decimal @db.Decimal(38,18)
  paymentCurrency String @map("payment_currency")
+ claimAmountApplied Decimal @map("claim_amount_applied") @db.Decimal(38,18)
  settlementBaseAmount Decimal @map("settlement_base_amount") @db.Decimal(38,18)
  carryingBaseAmount Decimal @map("carrying_base_amount") @db.Decimal(38,18)
  realizedFx Decimal @map("realized_fx") @db.Decimal(38,18)
@@ -944,6 +945,22 @@ model EcrCommissionPayment {
  @@unique([companyId,treasuryVoucherId])
  @@map("ecr_commission_payments")
 }
+model EcrSupplierAdvanceSettlement {
+ id String @id
+ companyId String @map("company_id")
+ kind String
+ advanceId String @map("advance_id")
+ supplierPartyId String @map("supplier_party_id")
+ amount Decimal @db.Decimal(38,18)
+ requestHash String @map("request_hash")
+ status String
+ treasuryVoucherId String? @map("treasury_voucher_id")
+ journalId String? @map("journal_id")
+ failureReason String? @map("failure_reason")
+ @@unique([companyId,id])
+ @@map("ecr_supplier_advance_settlements")
+}
+
 model EcrAccrual {
  id String @id
  companyId String @map("company_id")
