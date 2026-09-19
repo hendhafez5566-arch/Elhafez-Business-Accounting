@@ -204,10 +204,10 @@ export class CostBudgetAccountingApplicationService {
     const value = { ...normalized, requestHash, createdAt: new Date().toISOString() };
     try {
       await this.repository.saveTourismServiceActualization(value);
-      return value;
+      return (await this.repository.tourismServiceActualization(input.companyId, input.id)) ?? value;
     } catch (error) {
       // Check if this is a unique constraint violation (concurrency race)
-      if (error && typeof error === 'object' && 'code' in error && (error as any).code === 'P2002') {
+      if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
         // Same ID but different payload = conflict
         const existing = await this.repository.tourismServiceActualization(input.companyId, input.id);
         if (!existing) throw error;

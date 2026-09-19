@@ -1,6 +1,6 @@
 {
   "id": "ac12-tourism-finance-orchestration",
-  "summary": "Implement AC-12 durable tourism financial orchestration and the minimal provider-owned public capabilities it requires.",
+  "summary": "Implement AC-12 durable tourism financial orchestration, its minimal provider-owned capabilities, and final CI closure fixes.",
   "type": "feature",
   "allowedModules": [
     "tourism-finance-orchestration",
