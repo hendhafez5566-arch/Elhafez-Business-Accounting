@@ -1,5 +1,5 @@
 import type { CompanyId } from '@elhafez/contracts';
-import type { Expense, RecognitionSchedule, CommissionClaim, CommissionPayment, Accrual } from '../domain/ecr.js';
+import type { Expense, RecognitionSchedule, CommissionClaim, CommissionPayment, Accrual, SupplierAdvanceSettlement } from '../domain/ecr.js';
 export const ECR_REPOSITORY=Symbol('ECR_REPOSITORY');
 export interface EcrRepository {
  expense(companyId:CompanyId,id:string):Promise<Expense|undefined>; saveExpense(value:Expense):Promise<void>;
@@ -10,4 +10,6 @@ export interface EcrRepository {
  reserveCommissionPayment(companyId:CompanyId,claimId:string,payment:CommissionPayment):Promise<{claim:CommissionClaim;payment:CommissionPayment}>;
  finalizeCommissionPayment(companyId:CompanyId,claimId:string,payment:CommissionPayment):Promise<CommissionClaim>;
  accrual(companyId:CompanyId,id:string):Promise<Accrual|undefined>; saveAccrual(value:Accrual):Promise<void>;
+ supplierSettlement(companyId:CompanyId,id:string):Promise<SupplierAdvanceSettlement|undefined>;
+ saveSupplierSettlement(value:SupplierAdvanceSettlement):Promise<void>;
 }
