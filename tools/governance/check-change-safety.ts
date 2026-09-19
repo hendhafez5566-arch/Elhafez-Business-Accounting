@@ -37,8 +37,6 @@ if (!existsSync(configPath)) {
 const config = JSON.parse(readFileSync(configPath, 'utf8')) as SafetyConfig;
 const base = resolveBase();
 const entries = readDiff(base);
-const changedPaths = new Set(entries.flatMap((entry) => [entry.oldPath, entry.path].filter(Boolean) as string[]));
-
 if (entries.length === 0) {
   console.log('Change safety passed (no changes relative to base).');
   process.exit(0);
@@ -262,7 +260,7 @@ function git(args: string[]): string {
 }
 
 function matches(pattern: string, path: string): boolean {
-  const escaped = pattern.replace(/[.+^$(){}|\[\]\\]/g, '\\$&');
+  const escaped = [...pattern]\n    .map((character) => '.+^$(){}|[]\\\\'.includes(character) ? `\\\\${character}` : character)\n    .join('');
   const regex = escaped
     .replace(/\*\*/g, '§DOUBLESTAR§')
     .replace(/\*/g, '[^/]*')
