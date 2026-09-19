@@ -123,14 +123,19 @@ export class BillingSubledgersApplicationService {
   /** Narrow AC-08 read contract. The returned value is a snapshot, not a repository entity. */
   async getOpenPosition(companyId: CompanyId, invoiceId: string): Promise<{
     invoiceId: string; companyId: CompanyId; partyKind: PartyKind; partyId: string;
-    invoiceType: InvoiceType; currency: string; outstanding: DecimalAmount; baseTotal: DecimalAmount;
+    invoiceType: InvoiceType; currency: string; documentTotal: DecimalAmount;
+    outstanding: DecimalAmount; baseTotal: DecimalAmount;
     controlAccountId: string; status: Invoice['status']; postingDate: string; deferred: boolean;
   }> {
     const invoice = await this.requiredInvoice(companyId, invoiceId);
+    const documentTotal = add(
+      ...invoice.lines.map((line) => add(line.amount, line.taxAmount ?? zero)),
+    );
     return { invoiceId: invoice.id, companyId: invoice.companyId,
       partyKind: expectedPartyKind(invoice.type), partyId: invoice.partyId,
-      invoiceType: invoice.type, currency: invoice.currency, outstanding: invoice.outstanding,
-      baseTotal: invoice.baseTotal, controlAccountId: invoice.controlAccountId,
+      invoiceType: invoice.type, currency: invoice.currency, documentTotal,
+      outstanding: invoice.outstanding, baseTotal: invoice.baseTotal,
+      controlAccountId: invoice.controlAccountId,
       status: invoice.status, postingDate: invoice.postingDate, deferred: invoice.deferred === true };
   }
 
