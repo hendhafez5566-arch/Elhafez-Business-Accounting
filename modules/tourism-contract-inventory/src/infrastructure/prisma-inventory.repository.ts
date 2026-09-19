@@ -879,7 +879,7 @@ export class PrismaTourismInventoryRepository implements TourismInventoryReposit
           id: input.costEffectId,
           companyId: input.companyId,
           allocationId: row.id,
-          program: row.program,
+          program: json(row.program),
           previousQuantity: row.quantity,
           newQuantity: input.newQuantity,
           costAmount: input.costAmount,
