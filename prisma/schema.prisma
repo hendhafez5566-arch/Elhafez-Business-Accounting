@@ -1623,3 +1623,108 @@ model TciContractHistory {
  @@map("tci_contract_history")
 }
 
+
+model TfoFinancialSetup {
+ id String @id
+ companyId String @map("company_id")
+ category String
+ customerPartyId String @map("customer_party_id")
+ receivableAccountId String @map("receivable_account_id")
+ revenueAccountId String @map("revenue_account_id")
+ costAccountId String @map("cost_account_id")
+ commissionExpenseAccountId String? @map("commission_expense_account_id")
+ commissionLiabilityAccountId String? @map("commission_liability_account_id")
+ active Boolean @default(true)
+ @@unique([companyId,id])
+ @@unique([companyId,category])
+ @@map("tfo_financial_setups")
+}
+model TfoWorkflow {
+ id String @id
+ companyId String @map("company_id")
+ branchId String? @map("branch_id")
+ kind String
+ commandKey String @map("command_key")
+ payloadHash String @map("payload_hash")
+ sourceType String @map("source_type")
+ sourceId String @map("source_id")
+ status String
+ payload Json
+ result Json?
+ createdAt DateTime @default(now()) @map("created_at")
+ updatedAt DateTime @updatedAt @map("updated_at")
+ steps TfoWorkflowStep[]
+ @@unique([companyId,id])
+ @@unique([companyId,commandKey])
+ @@index([companyId,sourceType,sourceId,kind])
+ @@index([companyId,branchId,status])
+ @@map("tfo_workflows")
+}
+model TfoWorkflowStep {
+ id String @id
+ companyId String @map("company_id")
+ workflowId String @map("workflow_id")
+ name String
+ effectKey String @map("effect_key")
+ status String
+ ownerReference String? @map("owner_reference")
+ result Json?
+ createdAt DateTime @default(now()) @map("created_at")
+ completedAt DateTime? @map("completed_at")
+ workflow TfoWorkflow @relation(fields:[companyId,workflowId],references:[companyId,id],onDelete:Restrict)
+ @@unique([companyId,id])
+ @@unique([companyId,workflowId,name])
+ @@unique([companyId,effectKey])
+ @@index([companyId,status,createdAt])
+ @@map("tfo_workflow_steps")
+}
+model TfoBookingReference {
+ id String @id
+ companyId String @map("company_id")
+ branchId String? @map("branch_id")
+ bookingType String @map("booking_type")
+ bookingId String @map("booking_id")
+ programType String @map("program_type")
+ programId String @map("program_id")
+ invoiceId String @map("invoice_id")
+ allocationIds Json @map("allocation_ids")
+ commissionClaimId String? @map("commission_claim_id")
+ workflowId String @map("workflow_id")
+ @@unique([companyId,id])
+ @@unique([companyId,bookingType,bookingId])
+ @@index([companyId,programType,programId])
+ @@index([companyId,branchId])
+ @@map("tfo_booking_references")
+}
+model TfoServiceFinancialSnapshot {
+ id String @id
+ companyId String @map("company_id")
+ serviceType String @map("service_type")
+ serviceId String @map("service_id")
+ version Int
+ category String
+ currency String
+ saleAmount Decimal @map("sale_amount") @db.Decimal(38,18)
+ costAmount Decimal @map("cost_amount") @db.Decimal(38,18)
+ status String
+ supersedesId String? @map("supersedes_id")
+ evidence Json
+ createdAt DateTime @default(now()) @map("created_at")
+ @@unique([companyId,id])
+ @@unique([companyId,serviceType,serviceId,version])
+ @@index([companyId,serviceType,serviceId,createdAt])
+ @@map("tfo_service_financial_snapshots")
+}
+model TfoProgramHistory {
+ id String @id
+ companyId String @map("company_id")
+ programType String @map("program_type")
+ programId String @map("program_id")
+ kind String
+ workflowId String @map("workflow_id")
+ evidence Json
+ createdAt DateTime @default(now()) @map("created_at")
+ @@unique([companyId,id])
+ @@index([companyId,programType,programId,createdAt])
+ @@map("tfo_program_history")
+}

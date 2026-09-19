@@ -1,0 +1,26 @@
+{
+  "id": "ac12-tourism-finance-orchestration",
+  "summary": "Implement AC-12 durable tourism financial orchestration and the minimal provider-owned public capabilities it requires.",
+  "type": "feature",
+  "allowedModules": [
+    "tourism-finance-orchestration",
+    "billing-subledgers",
+    "expense-commission-recognition",
+    "procurement-finance",
+    "financial-controls"
+  ],
+  "allowedPaths": [
+    ".changes/ac12-tourism-finance-orchestration.json",
+    "prisma/schema.prisma",
+    "prisma/migrations/**",
+    "apps/api/src/app.module.ts",
+    "apps/api/package.json",
+    "pnpm-lock.yaml"
+  ],
+  "protectedPaths": [
+    "modules/tourism-finance-orchestration/module.json"
+  ],
+  "protectedReason": "AC-12 is a new approved business module and requires its ownership and dependency manifest plus API composition-root registration.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": ""
+}

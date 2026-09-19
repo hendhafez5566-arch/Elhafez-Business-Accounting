@@ -197,6 +197,18 @@ export class ExpenseCommissionRecognitionApplicationService {
   const posted={...payment,status:'POSTED' as const,treasuryVoucherId:voucher.id};await this.repo.finalizeCommissionPayment(input.companyId,input.claimId,posted);return posted;
  }
 
+ async getCommissionCancellationEvidence(companyId:CompanyId,claimId:string){
+  const claim=await this.requiredClaim(companyId,claimId),posted=claim.payments.filter(payment=>payment.status==='POSTED');
+  return Object.freeze({claimId:claim.id,status:claim.status,hasPostedPaymentHistory:posted.length>0,postedPaymentIds:posted.map(payment=>payment.id),reversible:posted.length===0&&claim.status!=='REVERSED'});
+ }
+ async reverseUnpaidCommission(companyId:CompanyId,claimId:string,postingDate:string,number:string){
+  let claim=await this.requiredClaim(companyId,claimId);const evidence=await this.getCommissionCancellationEvidence(companyId,claimId);
+  if(evidence.hasPostedPaymentHistory)throw new ContractValidationError('commission','paid commission history blocks reversal');
+  if(claim.status==='REVERSED')return claim;
+  if(claim.recognitionJournalId){const reversal=await this.gl.reverse(companyId,claim.recognitionJournalId,postingDate,number);claim={...claim,reversalJournalId:reversal.id};}
+  claim={...claim,status:'REVERSED'};await this.repo.saveClaim(claim);return claim;
+ }
+
 
  async accrueRevenue(input:{id:string;companyId:CompanyId;sourceType:string;sourceId:string;amount:DecimalAmount;serviceDate:string;number:string;accruedRevenueAccountId:string;revenueAccountId:string}):Promise<Accrual>{
   const amount=pos(input.amount),requestHash=h({...input,amount}),prior=await this.repo.accrual(input.companyId,input.id);

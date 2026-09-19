@@ -139,6 +139,21 @@ export class BillingSubledgersApplicationService {
       status: invoice.status, postingDate: invoice.postingDate, deferred: invoice.deferred === true };
   }
 
+  /** Billing-owned cancellation evidence; consumers must not infer history from outstanding alone. */
+  async getCancellationEvidence(companyId: CompanyId, invoiceId: string) {
+    const invoice = await this.requiredInvoice(companyId, invoiceId);
+    const allocations = await this.repo.allocations(companyId, invoiceId);
+    const advances = await this.repo.advances(companyId, expectedPartyKind(invoice.type), invoice.partyId);
+    return Object.freeze({
+      invoiceId: invoice.id,
+      postedInvoiceExists: invoice.status === 'POSTED' || invoice.status === 'CANCELLED',
+      hasEconomicAllocationHistory: allocations.length > 0,
+      hasAvailableAdvance: advances.some((value) => !value.reversedAt && scaled18(value.available) > 0n),
+      outstanding: invoice.outstanding,
+      cancellationSafe: allocations.length === 0 && !advances.some((value) => !value.reversedAt && scaled18(value.available) > 0n),
+    });
+  }
+
   async getAdvance(companyId: CompanyId, advanceId: string): Promise<Advance> {
     const value = await this.repo.advance(companyId, advanceId);
     if (!value || value.reversedAt) throw new ContractValidationError('advance', 'not available');

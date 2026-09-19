@@ -504,19 +504,12 @@ export class ProcurementFinanceApplicationService {
       pos = await this.repo.posByCommitment(companyId, query.commitmentId);
     }
 
-    return pos.flatMap((po) =>
-      po.lines
-        .filter(
-          (line) =>
-            scaled(line.receivedQuantity) > 0n ||
-            scaled(line.invoicedQuantity) > 0n,
-        )
-        .map((line) => ({
-          type: 'SUPPLIER_EXECUTION' as const,
-          purchaseOrderId: po.id,
-          lineId: line.id,
-        })),
-    );
+    return pos.flatMap((po) => po.lines.flatMap((line) => {
+      const result: Array<{type:'SUPPLIER_EXECUTION'|'SUPPLIER_INVOICE';purchaseOrderId:string;lineId:string}> = [];
+      if (scaled(line.receivedQuantity) > 0n) result.push({ type: 'SUPPLIER_EXECUTION', purchaseOrderId: po.id, lineId: line.id });
+      if (scaled(line.invoicedQuantity) > 0n) result.push({ type: 'SUPPLIER_INVOICE', purchaseOrderId: po.id, lineId: line.id });
+      return result;
+    }));
   }
 
   async getHistory(companyId: CompanyId, id: string) {
