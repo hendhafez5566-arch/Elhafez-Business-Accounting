@@ -1,1 +1,1 @@
-{"name":"cost-budget-accounting","publicApi":["src/public/index.ts"],"ownedTables":["cba_cost_centers","cba_program_cost_centers"],"allowedDependencies":["@elhafez/contracts","@elhafez/core"]}
+{"name":"cost-budget-accounting","publicApi":["src/public/index.ts"],"ownedTables":["cba_cost_centers","cba_program_cost_centers","cba_budgets","cba_budget_actuals"],"allowedDependencies":["@elhafez/contracts","@elhafez/core"]}
