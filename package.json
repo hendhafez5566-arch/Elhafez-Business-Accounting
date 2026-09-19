@@ -10,7 +10,8 @@
     "architecture:check": "tsx tools/architecture/check-architecture.ts",
     "test": "pnpm --recursive run test",
     "prisma:generate": "pnpm --filter @elhafez/platform-core run prisma:generate",
-    "verify": "pnpm prisma:generate && pnpm lint && pnpm typecheck && pnpm architecture:check && pnpm test"
+    "verify": "pnpm change-safety:check && pnpm prisma:generate && pnpm lint && pnpm typecheck && pnpm architecture:check && pnpm test",
+    "change-safety:check": "tsx tools/governance/check-change-safety.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.20.0",
