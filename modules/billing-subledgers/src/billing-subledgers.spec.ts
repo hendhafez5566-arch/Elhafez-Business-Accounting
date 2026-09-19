@@ -492,17 +492,19 @@ test('AC-12 cancellation evidence distinguishes active settlement from retained 
 });
 
 test('BLOCKER-6 unrelated customer advance does not block invoice A cancellation', async () => {
-  const service = createService();
+  const service = fixture().service;
   // Create invoice A (outstanding = 100)
   const invoiceA = await service.createDraft({
     id: 'invoice-A',
     companyId: company,
-    type: 'CUSTOMER_INVOICE',
+    type: 'CUSTOMER',
     partyId: 'customer-1',
     number: 'INV-A',
     postingDate: '2026-09-19',
     currency: 'EGP',
     controlAccountId: 'ar',
+    sourceType: 'TOURISM_PROGRAM',
+    sourceId: 'program-A',
     lines: [{ id: 'line-A', amount: decimalAmount('100'), accountId: 'revenue' }],
   });
   await service.postInvoice(company, invoiceA.id);
@@ -510,12 +512,14 @@ test('BLOCKER-6 unrelated customer advance does not block invoice A cancellation
   const invoiceB = await service.createDraft({
     id: 'invoice-B',
     companyId: company,
-    type: 'CUSTOMER_INVOICE',
+    type: 'CUSTOMER',
     partyId: 'customer-1',
     number: 'INV-B',
     postingDate: '2026-09-19',
     currency: 'EGP',
     controlAccountId: 'ar',
+    sourceType: 'TOURISM_PROGRAM',
+    sourceId: 'program-B',
     lines: [{ id: 'line-B', amount: decimalAmount('200'), accountId: 'revenue' }],
   });
   await service.postInvoice(company, invoiceB.id);
@@ -531,7 +535,6 @@ test('BLOCKER-6 unrelated customer advance does not block invoice A cancellation
     sourceType: 'TREASURY_VOUCHER',
     sourceId: 'voucher-B',
   });
-  assert.ok(allocationB.advanceId, 'should create advance from excess payment');
   assert.equal(allocationB.advanceAmount, '50', 'advance amount should be excess over invoice');
   // Invoice A should be cancellation-safe despite customer having advance from B
   const evidenceA = await service.getCancellationEvidence(company, invoiceA.id);

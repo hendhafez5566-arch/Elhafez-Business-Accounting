@@ -147,8 +147,8 @@ export class BillingSubledgersApplicationService {
     // BLOCKER-6: Scope to invoice-related advances only, not all customer advances
     const relatedAdvanceIds = new Set<string>();
     for (const allocation of allocations) {
-      if (allocation.advanceId) {
-        relatedAdvanceIds.add(allocation.advanceId);
+      if (scaled18(allocation.advanceAmount) > 0n) {
+        relatedAdvanceIds.add(`advance:${allocation.id}`);
       }
     }
     const advances = await this.repo.advances(companyId, expectedPartyKind(invoice.type), invoice.partyId);
