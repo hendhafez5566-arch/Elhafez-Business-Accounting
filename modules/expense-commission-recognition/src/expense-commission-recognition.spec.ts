@@ -16,6 +16,17 @@ test('BR-032 DIRECT_PAID posts through Treasury and PREPAID owns a persisted exa
 test('accrued revenue clears once against a posted customer invoice',async()=>{const{service,posts}=fixture();await service.accrueRevenue({id:'a',companyId:companyId('c'),sourceType:'SERVICE',sourceId:'svc',amount:decimalAmount('40'),serviceDate:'2026-09-01',number:'A',accruedRevenueAccountId:'accrued',revenueAccountId:'revenue'});const cleared=await service.clearAccruedRevenue({companyId:companyId('c'),accrualId:'a',billingInvoiceId:'customer-i',postingDate:'2026-09-18',number:'AC'});assert.equal(cleared.status,'CLEARED');assert.equal((await service.clearAccruedRevenue({companyId:companyId('c'),accrualId:'a',billingInvoiceId:'customer-i',postingDate:'2026-09-18',number:'AC'})).clearingJournalId,cleared.clearingJournalId);assert.equal(posts.length,2)});
 
 
+test('BR-032 direct paid expense converts the economic currency into the selected Treasury currency',async()=>{
+ const{service,ownerPaymentInputs}=fixture();
+ await service.createExpense({id:'fx-expense',companyId:companyId('c'),form:'DIRECT_PAID',sourceType:'EXPENSE',sourceId:'fx-expense',currency:'USD',amount:decimalAmount('100'),baseAmount:decimalAmount('5000'),expenseAccountId:'expense'});
+ await service.postPaidExpense({companyId:companyId('c'),expenseId:'fx-expense',actorId:'actor',treasuryId:'t',paymentCurrency:'EGP',postingDate:'2026-09-18',number:'FX-E'});
+ const payment=ownerPaymentInputs[0] as {amount:string;paymentCurrency:string;carryingBaseAmount:string;settlementBaseAmount:string};
+ assert.equal(payment.amount,'5000');
+ assert.equal(payment.paymentCurrency,'EGP');
+ assert.equal(payment.carryingBaseAmount,'5000');
+ assert.equal(payment.settlementBaseAmount,'5000');
+});
+
 test('BR-032 supplier-payable expense is only a validated Billing reference',async()=>{
  const{service,payments}=fixture();
  const expense=await service.createExpense({id:'payable',companyId:companyId('c'),form:'SUPPLIER_PAYABLE',sourceType:'BILL',sourceId:'supplier-i',currency:'EGP',amount:decimalAmount('100'),baseAmount:decimalAmount('100'),billingInvoiceId:'supplier-i'});
