@@ -9,6 +9,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: pnpm/action-setup@v4
         with:
           version: 9.15.0
@@ -17,6 +19,18 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Change safety (pull request)
+        if: github.event_name == 'pull_request'
+        env:
+          CHANGE_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          REQUIRE_CHANGE_SCOPE: 'true'
+        run: pnpm change-safety:check
+      - name: Change safety (main push)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          CHANGE_BASE_SHA: ${{ github.event.before }}
+          REQUIRE_CHANGE_SCOPE: 'true'
+        run: pnpm change-safety:check
       - run: pnpm prisma:generate
       - run: pnpm typecheck
       - run: pnpm lint
