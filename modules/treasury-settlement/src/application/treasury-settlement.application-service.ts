@@ -79,6 +79,11 @@ export interface PostVoucherInput {
   restrictionSourceType?: string;
   restrictionSourceId?: string;
 }
+export interface PostAccountingMovementInput {
+  id:string; companyId:CompanyId; treasuryId:string; partyId:string; kind:"RECEIPT"|"PAYMENT"; number:string;
+  postingDate:string; currency:string; amount:DecimalAmount; sourceType:string; sourceId:string;
+  offsetLines:readonly {accountId:string;amount:DecimalAmount}[];
+}
 export class TreasurySettlementApplicationService {
   constructor(
     private readonly repo: TreasuryRepository,
@@ -95,6 +100,21 @@ export class TreasurySettlementApplicationService {
       "evaluateApprovalRequirement" | "getApprovalRequest" | "getApprovalDecision"
     >,
   ) {}
+  /** Narrow owner-public port for accounting cash movements with no Billing allocation. */
+  async postAccountingMovement(input:PostAccountingMovementInput):Promise<Voucher>{
+    const amount=pos(input.amount),treasury=await this.required(input.companyId,input.treasuryId);
+    if(!treasury.active)throw new ContractValidationError('treasury','inactive');
+    if(currencyCode(input.currency)!==treasury.currency)throw new ContractValidationError('currency','must equal selected Treasury currency');
+    if(input.offsetLines.reduce((total,line)=>total+n(pos(line.amount)),0n)!==n(amount))throw new ContractValidationError('offsetLines','must equal movement amount');
+    const requestHash=hash({...input,amount});let voucher=await this.repo.voucherBySource(input.companyId,input.sourceType,input.sourceId);
+    if(voucher){if(voucher.requestHash!==requestHash)throw new ContractValidationError('source','conflicting replay');if(voucher.status==='POSTED')return voucher;}
+    else voucher={id:input.id,companyId:input.companyId,treasuryId:input.treasuryId,kind:input.kind,partyKind:'OWNER',partyId:input.partyId,number:input.number,postingDate:input.postingDate,currency:treasury.currency,amount,sourceType:input.sourceType,sourceId:input.sourceId,requestHash,status:'PROCESSING',allocationIds:[]};
+    voucher=await this.repo.reserveVoucher(voucher,(await this.repo.policy(input.companyId))?.allowNegative===true);
+    const offset=input.offsetLines.filter(line=>n(line.amount)>0n).map(line=>input.kind==='PAYMENT'?{accountId:line.accountId,debit:line.amount}:{accountId:line.accountId,credit:line.amount});
+    const treasuryLine=input.kind==='PAYMENT'?{accountId:treasury.glAccountId,credit:amount}:{accountId:treasury.glAccountId,debit:amount};
+    const journal=await this.gl.post({id:`treasury-accounting:${input.id}`,companyId:input.companyId,number:input.number,postingDate:input.postingDate,sourceType:'TREASURY_ACCOUNTING_MOVEMENT',sourceId:`${input.sourceType}:${input.sourceId}`,lines:[...offset,treasuryLine]});
+    voucher={...voucher,status:'POSTED',journalId:journal.id};await this.repo.saveVoucher(voucher);return voucher;
+  }
   async createTreasury(input: {
     id: string;
     companyId: CompanyId;

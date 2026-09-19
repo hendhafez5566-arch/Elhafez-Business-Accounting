@@ -1,7 +1,7 @@
 import type { PrismaClient } from '@prisma/client';
 import { ContractValidationError, sourceReference, type CompanyId, type SourceReference } from '@elhafez/contracts';
 import type { CostCenterRepository } from '../application/cost-center.repository.js';
-import type { CostCenter, CostCenterId, ProgramCostCenterAssociation } from '../domain/cost-center.js';
+import type { Budget, BudgetActual, CostCenter, CostCenterId, ProgramCostCenterAssociation } from '../domain/cost-center.js';
 
 export class PrismaCostCenterRepository implements CostCenterRepository {
   constructor(private readonly db: PrismaClient) {}
@@ -35,4 +35,12 @@ export class PrismaCostCenterRepository implements CostCenterRepository {
     const value = await this.db.cbaProgramCostCenter.findUnique({ where: { companyId_sourceType_sourceId: { companyId, sourceType: program.sourceType, sourceId: program.sourceId } } });
     return value ? { companyId, program: sourceReference(value.sourceType, value.sourceId), costCenterId: value.costCenterId as CostCenterId } : undefined;
   }
+  async saveBudget(value: Budget): Promise<void> {
+    const collision=await this.db.cbaBudget.findFirst({where:{id:value.id,companyId:{not:value.companyId}}});if(collision)throw new ContractValidationError('budget','id owned by another company');
+    await this.db.cbaBudget.upsert({where:{companyId_id:{companyId:value.companyId,id:value.id}},create:{id:value.id,companyId:value.companyId,costCenterId:value.costCenterId,periodStart:new Date(value.periodStart),periodEnd:new Date(value.periodEnd),currency:value.currency,amount:value.amount,status:value.status,requestHash:value.requestHash},update:{status:value.status}});
+  }
+  async budget(companyId:CompanyId,id:string):Promise<Budget|undefined>{const x=await this.db.cbaBudget.findUnique({where:{companyId_id:{companyId,id}}});return x?{...x,companyId,amount:String(x.amount) as Budget['amount'],periodStart:x.periodStart.toISOString().slice(0,10),periodEnd:x.periodEnd.toISOString().slice(0,10),costCenterId:x.costCenterId as CostCenterId,status:x.status as Budget['status']}:undefined}
+  async budgets(companyId:CompanyId,costCenterId:CostCenterId){const xs=await this.db.cbaBudget.findMany({where:{companyId,costCenterId}});return Promise.all(xs.map(x=>this.budget(companyId,x.id) as Promise<Budget>))}
+  async saveActual(value:BudgetActual){const old=await this.db.cbaBudgetActual.findUnique({where:{companyId_journalId_journalLineId:{companyId:value.companyId,journalId:value.journalId,journalLineId:value.journalLineId}}});if(old){const identical=old.id===value.id&&old.companyId===value.companyId&&old.costCenterId===value.costCenterId&&old.postingDate.toISOString().slice(0,10)===value.postingDate&&String(old.amount)===value.amount&&old.journalId===value.journalId&&old.journalLineId===value.journalLineId;if(!identical)throw new ContractValidationError('actual','conflicting replay');return;}await this.db.cbaBudgetActual.create({data:{id:value.id,companyId:value.companyId,costCenterId:value.costCenterId,postingDate:new Date(value.postingDate),amount:value.amount,journalId:value.journalId,journalLineId:value.journalLineId}})}
+  async actuals(companyId:CompanyId,costCenterId:CostCenterId):Promise<BudgetActual[]>{return(await this.db.cbaBudgetActual.findMany({where:{companyId,costCenterId}})).map(x=>({...x,companyId,costCenterId:x.costCenterId as CostCenterId,amount:String(x.amount) as BudgetActual['amount'],postingDate:x.postingDate.toISOString().slice(0,10)}))}
 }
