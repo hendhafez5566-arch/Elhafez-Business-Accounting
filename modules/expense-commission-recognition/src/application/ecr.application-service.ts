@@ -183,7 +183,7 @@ export class ExpenseCommissionRecognitionApplicationService {
   const final=priorApplied+n(claimAmountApplied)===n(claim.amount);
   const carrying=final?d(n(claim.baseCarryingAmount)-priorCarrying):d(n(claim.baseCarryingAmount)*n(claimAmountApplied)/n(claim.amount));
   if(n(carrying)<=0n)throw new ContractValidationError('carryingBaseAmount','must remain positive');
-  const reservation:CommissionPayment={id:input.paymentId,requestHash,status:'RESERVED',amount,paymentCurrency,claimAmountApplied,settlementBaseAmount:conversion.converted.amount,carryingBaseAmount:carrying,realizedFx:d(n(conversion.converted.amount)-n(carrying)),fxRateId:conversion.rate.rateId};
+  const reservation:CommissionPayment={id:input.paymentId,requestHash,status:'RESERVED',amount,paymentCurrency,claimAmountApplied,claimFxRateId:claimAppliedConversion.rate.rateId,settlementBaseAmount:conversion.converted.amount,carryingBaseAmount:carrying,realizedFx:d(n(conversion.converted.amount)-n(carrying)),fxRateId:conversion.rate.rateId};
   const reserved=await this.repo.reserveCommissionPayment(input.companyId,input.claimId,reservation);
   if(reserved.payment.status==='POSTED')return reserved.payment;
   claim=reserved.claim;const payment=reserved.payment;
