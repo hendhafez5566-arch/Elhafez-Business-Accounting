@@ -345,6 +345,11 @@ export class TreasurySettlementApplicationService {
     await this.repo.saveVoucher(voucher);
     return voucher;
   }
+  /** Narrow read-only Treasury snapshot for collaborating owners. */
+  async getTreasurySnapshot(companyId:CompanyId,id:string):Promise<Readonly<Treasury>>{
+    const value=await this.required(companyId,id);
+    return Object.freeze({...value});
+  }
   /** AC-08 narrow payment port for liabilities owned outside Billing. */
   async postOwnerPayment(input: {
     id:string; companyId:CompanyId; branchId?:string; treasuryId:string; ownerType:'EXPENSE'|'COMMISSION';
