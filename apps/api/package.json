@@ -23,6 +23,7 @@
     "@elhafez/expense-commission-recognition": "workspace:*"
     ,"@elhafez/assets-financing": "workspace:*",
     "@elhafez/cost-budget-accounting": "workspace:*",
-    "@elhafez/procurement-finance": "workspace:*"
+    "@elhafez/procurement-finance": "workspace:*",
+    "@elhafez/tourism-contract-inventory": "workspace:*"
   }
 }

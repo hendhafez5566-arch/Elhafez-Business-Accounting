@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/consistent-type-imports */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/consistent-type-imports */
 import { PrismaClient, Prisma } from '@prisma/client';
 import { ContractValidationError } from '@elhafez/contracts';
 import type { TreasuryRepository } from '../application/treasury.repository.js';

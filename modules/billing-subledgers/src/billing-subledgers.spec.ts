@@ -1,4 +1,4 @@
- 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { companyId, currencyCode, decimalAmount, money } from '@elhafez/contracts';

@@ -1354,6 +1354,7 @@ model TciContractVersion {
  terms Json
  createdAt DateTime @default(now()) @map("created_at")
  isCurrent Boolean @default(false) @map("is_current")
+ allocations TciAllocation[]
  contract TciContract @relation(fields:[companyId,contractId],references:[companyId,id],onDelete:Restrict)
  @@unique([companyId, id])
  @@unique([companyId, contractId, versionNumber])
@@ -1373,7 +1374,6 @@ model TciHotelInventory {
  availableQuantity Decimal @map("available_quantity") @db.Decimal(38,18)
  status String
  contract TciContract @relation(fields:[companyId,contractId],references:[companyId,id],onDelete:Restrict)
- allocations TciAllocation[]
  @@unique([companyId, id])
  @@unique([companyId, contractId, hotelId, serviceDate])
  @@index([companyId, contractId, status])
@@ -1425,7 +1425,6 @@ model TciTransportCapacity {
  periodEnd DateTime @map("period_end")
  consumedUnits Decimal @map("consumed_units") @db.Decimal(38,18)
  contract TciContract @relation(fields:[companyId,contractId],references:[companyId,id],onDelete:Restrict)
- allocations TciAllocation[]
  @@unique([companyId, id])
  @@unique([companyId, contractId, vehicleId, periodStart, periodEnd])
  @@index([companyId, periodStart, periodEnd])
@@ -1444,7 +1443,6 @@ model TciVisaQuota {
  effectiveFrom DateTime @map("effective_from")
  effectiveTo DateTime @map("effective_to")
  contract TciContract @relation(fields:[companyId,contractId],references:[companyId,id],onDelete:Restrict)
- allocations TciAllocation[]
  @@unique([companyId, id])
  @@unique([companyId, contractId, visaType, nationality, effectiveFrom, effectiveTo])
  @@map("tci_visa_quotas")
@@ -1470,19 +1468,22 @@ model TciAllocation {
  id String @id
  companyId String @map("company_id")
  contractId String @map("contract_id")
+ contractVersionId String @map("contract_version_id")
+ resourceType String @map("resource_type")
+ resourceId String @map("resource_id")
  program Json
  serviceDate DateTime @map("service_date")
+ periodEnd DateTime? @map("period_end")
  quantity Decimal @db.Decimal(38,18)
  status String
  releaseBlockerReason String? @map("release_blocker_reason")
  createdAt DateTime @default(now()) @map("created_at")
  sourceReference Json? @map("source_reference")
- hotelInventory TciHotelInventory? @relation(fields:[companyId,contractId],references:[companyId,id], map: "tci_allocations_hotel_inv_fk")
- transportCapacity TciTransportCapacity? @relation(fields:[companyId,contractId],references:[companyId,id], map: "tci_allocations_transport_cap_fk")
- visaQuota TciVisaQuota? @relation(fields:[companyId,contractId],references:[companyId,id], map: "tci_allocations_visa_quota_fk")
- contract TciContract @relation(fields:[companyId,contractId],references:[companyId,id],onDelete:Restrict, map: "tci_allocations_contract_fk")
+ contract TciContract @relation(fields:[companyId,contractId],references:[companyId,id],onDelete:Restrict)
+ contractVersion TciContractVersion @relation(fields:[companyId,contractVersionId],references:[companyId,id],onDelete:Restrict)
  releases TciAllocationRelease[]
  @@unique([companyId, id])
+ @@index([companyId, resourceType, resourceId, serviceDate, periodEnd, status])
  @@index([companyId, contractId, status])
  @@index([companyId, program, status])
  @@map("tci_allocations")
@@ -1508,6 +1509,7 @@ model TciProcurementRequest {
  program Json
  residualQuantity Decimal @map("residual_quantity") @db.Decimal(38,18)
  procurementType String @map("procurement_type")
+ externalReference String? @map("external_reference")
  referenceData Json @map("reference_data")
  createdAt DateTime @default(now()) @map("created_at")
  sourceReference Json? @map("source_reference")
@@ -1534,7 +1536,7 @@ model TciContractHistory {
  contractId String @map("contract_id")
  kind String
  aggregateId String @map("aggregate_id")
- sourceReference String? @map("source_reference")
+ evidence Json?
  createdAt DateTime @default(now()) @map("created_at")
  contract TciContract @relation(fields:[companyId,contractId],references:[companyId,id],onDelete:Restrict)
  @@unique([companyId, id])
