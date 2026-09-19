@@ -872,14 +872,7 @@ export class BillingSubledgersApplicationService {
 
   async recordRecognitionStarted(companyId: CompanyId, invoiceId: string, reference: string) {
     if (!reference.trim()) throw new ContractValidationError('recognitionReference', 'is required');
-    const invoice = await this.requiredInvoice(companyId, invoiceId);
-    if (!invoice.deferred) throw new ContractValidationError('invoice', 'not deferred');
-    if (invoice.recognitionReference && invoice.recognitionReference !== reference) {
-      throw new ContractValidationError('recognitionReference', 'already recorded');
-    }
-    const value = { ...invoice, recognitionReference: reference };
-    await this.repo.saveInvoice(value);
-    return value;
+    return this.repo.startRecognition(companyId, invoiceId, reference);
   }
 
   async cancelInvoice(
