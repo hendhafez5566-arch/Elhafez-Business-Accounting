@@ -49,6 +49,19 @@ export class InMemoryBillingRepository implements BillingRepository {
     this.replace(this.invoiceValues, value);
   }
 
+  async startRecognition(companyId: CompanyId, id: string, reference: string) {
+    const current = await this.invoice(companyId, id);
+    if (!current) throw new ContractValidationError('invoice', 'not found');
+    if (!current.deferred || current.status !== 'POSTED') throw new ContractValidationError('invoice', 'posted deferred invoice required');
+    if (current.recognitionReference) {
+      if (current.recognitionReference === reference) return current;
+      throw new ContractValidationError('recognitionReference', 'already recorded');
+    }
+    const next = { ...current, recognitionReference: reference };
+    this.replace(this.invoiceValues, next);
+    return next;
+  }
+
   async markInvoicePosting(companyId: CompanyId, id: string) {
     const value = await this.invoice(companyId, id);
     if (!value) throw new ContractValidationError('invoice', 'not found');
@@ -178,7 +191,7 @@ export class InMemoryBillingRepository implements BillingRepository {
 
   async saveAdjustmentEffect(value: Adjustment, invoiceBefore: Invoice, invoiceAfter: Invoice, advance?: Advance) {
     const current = await this.invoice(invoiceBefore.companyId, invoiceBefore.id);
-    if (!current || current.outstanding !== invoiceBefore.outstanding || current.status !== invoiceBefore.status) {
+    if (!current || current.outstanding !== invoiceBefore.outstanding || current.status !== invoiceBefore.status || current.recognitionReference !== invoiceBefore.recognitionReference) {
       throw new ContractValidationError('concurrency', 'invoice changed; retry adjustment');
     }
     this.replace(this.invoiceValues, invoiceAfter);
