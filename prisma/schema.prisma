@@ -935,6 +935,7 @@ model EcrCommissionPayment {
  amount Decimal @db.Decimal(38,18)
  paymentCurrency String @map("payment_currency")
  claimAmountApplied Decimal @map("claim_amount_applied") @db.Decimal(38,18)
+ claimFxRateId String? @map("claim_fx_rate_id")
  settlementBaseAmount Decimal @map("settlement_base_amount") @db.Decimal(38,18)
  carryingBaseAmount Decimal @map("carrying_base_amount") @db.Decimal(38,18)
  realizedFx Decimal @map("realized_fx") @db.Decimal(38,18)
