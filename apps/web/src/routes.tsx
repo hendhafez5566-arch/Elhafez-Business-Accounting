@@ -10,7 +10,15 @@ export interface AppRoute {
 
 /** Public registration seam: future modules contribute route definitions, never shell UI. */
 export function defineRoutes(...routes: readonly AppRoute[]): readonly AppRoute[] {
-  return routes;
+  const ids = new Set<string>();
+  const paths = new Set<string>();
+  for (const route of routes) {
+    if (ids.has(route.id)) throw new Error(`Duplicate route id: ${route.id}`);
+    if (paths.has(route.path)) throw new Error(`Duplicate route path: ${route.path}`);
+    ids.add(route.id);
+    paths.add(route.path);
+  }
+  return Object.freeze([...routes]);
 }
 
 export const foundationRoutes = defineRoutes({

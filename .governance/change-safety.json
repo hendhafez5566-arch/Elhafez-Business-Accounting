@@ -1,0 +1,31 @@
+{
+  "protectedPaths": [
+    "AGENTS.md",
+    "AI_CHANGE_PROTOCOL.md",
+    "PROJECT_MANAGER_HANDOFF.md",
+    "PROJECT_STATE.md",
+    ".github/workflows/**",
+    ".github/CODEOWNERS",
+    ".github/pull_request_template.md",
+    ".governance/**",
+    "tools/architecture/**",
+    "tools/governance/**",
+    "eslint.config.mjs",
+    "tsconfig*.json",
+    "apps/web/src/app-shell.tsx",
+    "apps/web/src/shell-state.ts",
+    "apps/web/src/routes.tsx",
+    "apps/web/src/ui.tsx",
+    "apps/web/src/styles.css",
+    "modules/*/module.json"
+  ],
+  "generatedOrForbiddenPaths": [
+    "**/*.tsbuildinfo",
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/coverage/**",
+    "**/.env",
+    "**/.env.*",
+    "**/*.log"
+  ]
+}

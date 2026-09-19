@@ -10,6 +10,8 @@ Before editing any code, every coding agent MUST read:
 
 For accounting/financial work also read the relevant `docs/accounting/*` architecture, ownership, dependency, contracts and coverage files.
 
+Before editing, create exactly one change-scope manifest under `.changes/<change-id>.json` for the PR. Declare the owning modules, explicitly allowed non-module paths, and any protected paths that truly must change. The CI change-safety gate validates this manifest against the real diff.
+
 ## Mandatory rules
 
 1. Work only on the requested branch; inspect `git status` before changes.
@@ -28,11 +30,15 @@ For accounting/financial work also read the relevant `docs/accounting/*` archite
 14. Never weaken tests, lint, type safety, architecture checks, or migrations to make CI green.
 15. Run focused tests plus repository quality gates before completion.
 16. Inspect final changed filenames and remove generated/unrelated artifacts.
-17. If correct implementation requires violating these rules, STOP and report the architectural blocker instead of bypassing it.
+17. Never edit an accepted historical Prisma migration. Schema evolution is additive through a new migration.
+18. Public package exports are backward-compatible by default. Removing a public symbol requires explicit breaking-change approval in the change manifest.
+19. Protected global paths (shell, global CSS, architecture/governance, workflows, module manifests) may change only when explicitly declared with a reason.
+20. If correct implementation requires violating these rules, STOP and report the architectural blocker instead of bypassing it.
 
-Required repository gate:
+Required repository gates:
 
 ```bash
+pnpm change-safety:check
 pnpm verify
 ```
 

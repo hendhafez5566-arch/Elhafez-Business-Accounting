@@ -3,6 +3,17 @@
 - Requested change:
 - Owning module:
 - Explicitly out of scope:
+- Change-scope manifest: `.changes/<change-id>.json`
+
+## Blast radius
+
+- [ ] Exactly one change-scope manifest is included.
+- [ ] Every changed business module is listed in `allowedModules`.
+- [ ] Every changed non-module path is listed in `allowedPaths`.
+- [ ] Any protected global path is explicitly declared with a real reason.
+- [ ] No accepted historical migration was edited/deleted/renamed.
+- [ ] No generated/build/cache/secrets artifact is committed.
+- [ ] No public API symbol was removed unless explicitly approved as a breaking change.
 
 ## Architecture / ownership
 
@@ -10,6 +21,9 @@
 - [ ] No module writes another module's tables/repositories.
 - [ ] Cross-module calls use public package/application boundaries only.
 - [ ] Compile-time dependency DAG remains valid.
+- [ ] Table ownership is unique.
+- [ ] No direct Prisma access crosses module ownership.
+- [ ] Domain code remains independent from Prisma/Nest/UI frameworks.
 - [ ] No unrelated Core/shared/app-shell/global-style change was used as a workaround.
 - [ ] The change modifies the canonical path; it does not add patch-on-patch duplication.
 
@@ -24,6 +38,7 @@
 ## Verification
 
 - [ ] Focused module tests pass.
+- [ ] `pnpm change-safety:check` passes.
 - [ ] `pnpm prisma:generate` passes when applicable.
 - [ ] `pnpm typecheck` passes.
 - [ ] `pnpm lint` passes.
@@ -39,4 +54,5 @@
 - Tests added/updated:
 - Migration:
 - Public API impact:
+- Protected paths touched and reason:
 - Known blockers/limitations:
