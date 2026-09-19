@@ -1,55 +1,28 @@
 ```
 # Dependencies
 node_modules/
-.pnpm-store/
-.npm/
-.yarn/
 
-# Build outputs
+# TypeScript/JavaScript build output
 dist/
 build/
-.next/
-.nuxt/
-public/build/
+*.js.map
+*.tsbuildinfo
 
-# Prisma
-prisma/migrations/
-prisma/schema.prisma.bak
-
-# Environment variables
-.env
-.env.local
-.env.*
-!.env.example
-
-# Logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# OS generated files
-.DS_Store
-Thumbs.db
-
-# IDE specific
+# IDE files
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# Python (if applicable)
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-venv/
-env/
-ENV/
+# Environment
+.env
+.env.local
+*.env.*
 
-# Temporary files
-*.tmp
-*.temp
-.DS_Store
+# Logs
+*.log
+
+# Coverage
+coverage/
+.nyc_output/
 ```

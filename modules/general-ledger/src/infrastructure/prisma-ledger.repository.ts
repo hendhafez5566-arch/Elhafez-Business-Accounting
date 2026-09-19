@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import type { PrismaClient } from '@prisma/client';
 import type { CompanyId } from '@elhafez/contracts';
 import type { LedgerRepository } from '../application/ledger.repository.js';

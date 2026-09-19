@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import type { PrismaClient } from '@prisma/client';
 import { ContractValidationError, type CompanyId, type DecimalAmount } from '@elhafez/contracts';
 import type { BillingRepository } from '../application/billing.repository.js';

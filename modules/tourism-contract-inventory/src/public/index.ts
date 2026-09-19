@@ -1,3 +1,22 @@
-export { type TourismContract, type ContractVersion, type HotelInventory, type FlightBlock, type FlightBlockConsumption, type TransportCapacity, type VisaQuota, type StopSale, type Allocation, type AllocationRelease, type ProcurementRequest, type IdempotencyKey, type ContractHistory, type ContractType, type ContractStatus, type AllocationStatus, type CapacitySourceType } from '../domain/inventory.js';
-export { type CreateTourismContractInput, type AmendContractInput, type CreateHotelInventoryInput, type CreateFlightBlockInput, type CreateTransportCapacityInput, type CreateVisaQuotaInput, type CreateStopSaleInput, type AllocateCapacityInput, type ReleaseAllocationInput, type AdjustAllocationInput, type ConsumeFlightBlockInput, type InternalFirstFulfillmentInput, type CheckAvailabilityInput, type AvailabilityResult, type AllocationResult, type ReleaseResult, type IdempotencyCheckResult, type TourismContractInventoryApplicationService } from '../application/inventory.application-service.js';
-export { type TourismContractRepository, type ContractVersionRepository, type HotelInventoryRepository, type FlightBlockRepository, type FlightBlockConsumptionRepository, type TransportCapacityRepository, type VisaQuotaRepository, type StopSaleRepository, type AllocationRepository, type AllocationReleaseRepository, type ProcurementRequestRepository, type IdempotencyKeyRepository, type ContractHistoryRepository } from '../infrastructure/inventory.repository.js';
+/** The only importable boundary for tourism contract inventory capabilities. */
+export { TourismContractInventoryModule } from './tourism-contract-inventory.module.js';
+export { TourismContractInventoryApplicationServiceImpl } from './application/tourism-contract-inventory.application-service.impl.js';
+export type {
+  TourismContract, ContractVersion, HotelInventory, FlightBlock, FlightBlockConsumption,
+  TransportCapacity, VisaQuota, StopSale, Allocation, AllocationRelease, ProcurementRequest,
+  IdempotencyKey, ContractHistory, ContractType, ContractStatus, AllocationStatus, CapacitySourceType
+} from './domain/inventory.js';
+export type {
+  CreateTourismContractInput, AmendContractInput, CreateHotelInventoryInput,
+  CreateFlightBlockInput, CreateTransportCapacityInput, CreateVisaQuotaInput,
+  CreateStopSaleInput, AllocateCapacityInput, ReleaseAllocationInput,
+  AdjustAllocationInput, ConsumeFlightBlockInput, InternalFirstFulfillmentInput,
+  CheckAvailabilityInput, AvailabilityResult, AllocationResult, ReleaseResult,
+  IdempotencyCheckResult, TourismContractInventoryApplicationService
+} from './application/inventory.application-service.js';
+export type {
+  TourismContractRepository, ContractVersionRepository, HotelInventoryRepository,
+  FlightBlockRepository, FlightBlockConsumptionRepository, TransportCapacityRepository,
+  VisaQuotaRepository, StopSaleRepository, AllocationRepository, AllocationReleaseRepository,
+  ProcurementRequestRepository, IdempotencyKeyRepository, ContractHistoryRepository
+} from './infrastructure/inventory.repository.js';

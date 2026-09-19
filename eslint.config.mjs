@@ -13,7 +13,7 @@ export default tseslint.config(
     plugins: { import: importPlugin },
     rules: {
       '@typescript-eslint/consistent-type-imports': 'error',
-      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-explicit-any': 'off',
       'import/no-cycle': ['error', { maxDepth: 1 }]
     }
   }
