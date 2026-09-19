@@ -1,10 +1,24 @@
-import type {CompanyId,SourceReference} from '@elhafez/contracts';
-import type {TourismFinanceRepository} from '../application/orchestration.repository.js';
-import type {BookingReference,FinancialSetup,ProgramHistory,ServiceFinancialSnapshot,Workflow,WorkflowStep} from '../domain/orchestration.js';
-const key=(r:SourceReference)=>`${r.sourceType}:${r.sourceId}`;
+import type { CompanyId, SourceReference } from '@elhafez/contracts';
+import type { TourismFinanceRepository } from '../application/orchestration.repository.js';
+import type { BookingReference, FinancialSetup, ProgramHistory, ServiceFinancialSnapshot, Workflow, WorkflowStep } from '../domain/orchestration.js';
+const key = (reference: SourceReference) => `${reference.sourceType}:${reference.sourceId}`;
 export class InMemoryTourismFinanceRepository implements TourismFinanceRepository {
- workflows=new Map<string,Workflow>();steps=new Map<string,WorkflowStep>();setups=new Map<string,FinancialSetup>();bookings=new Map<string,BookingReference>();snapshots:ServiceFinancialSnapshot[]=[];history:ProgramHistory[]=[];
- async reserveWorkflow(v:Workflow){const k=`${v.companyId}:${v.commandKey}`,old=this.workflows.get(k);if(old)return old;this.workflows.set(k,v);return v}async workflow(c:CompanyId,k:string){return this.workflows.get(`${c}:${k}`)}async saveWorkflow(v:Workflow){this.workflows.set(`${v.companyId}:${v.commandKey}`,v)}
- async step(c:CompanyId,w:string,n:string){return this.steps.get(`${c}:${w}:${n}`)}async reserveStep(v:WorkflowStep){const k=`${v.companyId}:${v.workflowId}:${v.name}`,old=this.steps.get(k);if(old)return old;this.steps.set(k,v);return v}async completeStep(c:CompanyId,id:string,ownerReference:string|undefined,result:unknown){const entry=[...this.steps.entries()].find(([,v])=>v.companyId===c&&v.id===id);if(!entry)throw new Error('step not found');const value={...entry[1],status:'COMPLETED' as const,...(ownerReference?{ownerReference}:{}),result,completedAt:new Date().toISOString()};this.steps.set(entry[0],value);return value}
- async saveSetup(v:FinancialSetup){this.setups.set(`${v.companyId}:${v.category}`,v)}async setup(c:CompanyId,category:string){return this.setups.get(`${c}:${category}`)}async saveBooking(v:BookingReference){this.bookings.set(`${v.companyId}:${key(v.booking)}`,v)}async booking(c:CompanyId,s:SourceReference){return this.bookings.get(`${c}:${key(s)}`)}async bookingsForProgram(c:CompanyId,p:SourceReference){return [...this.bookings.values()].filter(x=>x.companyId===c&&key(x.program)===key(p))}async saveSnapshot(v:ServiceFinancialSnapshot){this.snapshots.push(v)}async latestSnapshot(c:CompanyId,s:SourceReference){return this.snapshots.filter(x=>x.companyId===c&&key(x.service)===key(s)).sort((a,b)=>b.version-a.version)[0]}async saveProgramHistory(v:ProgramHistory){if(!this.history.some(x=>x.companyId===v.companyId&&x.id===v.id))this.history.push(v)}async programHistory(c:CompanyId,p:SourceReference){return this.history.filter(x=>x.companyId===c&&key(x.program)===key(p))}
+  workflows = new Map<string, Workflow>(); steps = new Map<string, WorkflowStep>(); setups = new Map<string, FinancialSetup>(); bookings = new Map<string, BookingReference>(); snapshots: ServiceFinancialSnapshot[] = []; history: ProgramHistory[] = [];
+  async reserveWorkflow(value: Workflow) { const mapKey = `${value.companyId}:${value.commandKey}`; const old = this.workflows.get(mapKey); if (old) return old; this.workflows.set(mapKey, value); return value; }
+  async workflow(companyId: CompanyId, commandKey: string) { return this.workflows.get(`${companyId}:${commandKey}`); }
+  async workflowById(companyId: CompanyId, id: string) { return [...this.workflows.values()].find((item) => item.companyId === companyId && item.id === id); }
+  async saveWorkflow(value: Workflow) { this.workflows.set(`${value.companyId}:${value.commandKey}`, value); }
+  async step(companyId: CompanyId, workflowId: string, name: string) { return this.steps.get(`${companyId}:${workflowId}:${name}`); }
+  async reserveStep(value: WorkflowStep) { const mapKey = `${value.companyId}:${value.workflowId}:${value.name}`; const old = this.steps.get(mapKey); if (old) return old; this.steps.set(mapKey, value); return value; }
+  async completeStep(companyId: CompanyId, id: string, ownerReference: string | undefined, result: unknown) { const entry = [...this.steps.entries()].find(([, value]) => value.companyId === companyId && value.id === id); if (!entry) throw new Error('step not found'); const value = { ...entry[1], status: 'COMPLETED' as const, ...(ownerReference ? { ownerReference } : {}), result, completedAt: new Date().toISOString() }; this.steps.set(entry[0], value); return value; }
+  async saveSetup(value: FinancialSetup) { this.setups.set(`${value.companyId}:${value.category}`, value); }
+  async setup(companyId: CompanyId, category: string) { return this.setups.get(`${companyId}:${category}`); }
+  async reserveBooking(value: BookingReference) { const mapKey = `${value.companyId}:${key(value.booking)}`; const old = this.bookings.get(mapKey); if (old) return old; this.bookings.set(mapKey, value); return value; }
+  async saveBooking(value: BookingReference) { this.bookings.set(`${value.companyId}:${key(value.booking)}`, value); }
+  async booking(companyId: CompanyId, source: SourceReference) { return this.bookings.get(`${companyId}:${key(source)}`); }
+  async bookingsForProgram(companyId: CompanyId, program: SourceReference) { return [...this.bookings.values()].filter((item) => item.companyId === companyId && key(item.program) === key(program)); }
+  async reserveSnapshot(value: ServiceFinancialSnapshot) { const old = this.snapshots.find((item) => item.companyId === value.companyId && key(item.service) === key(value.service) && item.version === value.version); if (old) return old; this.snapshots.push(value); return value; }
+  async latestSnapshot(companyId: CompanyId, service: SourceReference) { return this.snapshots.filter((item) => item.companyId === companyId && key(item.service) === key(service)).sort((left, right) => right.version - left.version)[0]; }
+  async saveProgramHistory(value: ProgramHistory) { if (!this.history.some((item) => item.companyId === value.companyId && item.id === value.id)) this.history.push(value); }
+  async programHistory(companyId: CompanyId, program: SourceReference) { return this.history.filter((item) => item.companyId === companyId && key(item.program) === key(program)); }
 }

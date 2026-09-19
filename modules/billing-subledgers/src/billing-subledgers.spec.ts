@@ -473,3 +473,20 @@ test('GS-008 BR-011 foreign settlement preserves carrying/current base and reali
  assert.equal(result.carryingBaseAmount,'100'); assert.equal(result.settlementBaseAmount,'120'); assert.equal(result.realizedFx,'20'); assert.equal(result.fxRateId,'usd-egp');
  assert.equal(result.allocations[0]?.carryingBaseAmount,'100'); assert.equal(result.allocations[0]?.settlementFxRateId,'usd-egp');
 });
+
+test('AC-12 cancellation evidence distinguishes active settlement from retained reversed history', async () => {
+  const f = fixture();
+  const draft = await f.service.createDraft(invoice({ dueDate: '2026-09-30' }));
+  await f.service.postInvoice(company, draft.id);
+  await f.service.applyAllocation({ id: 'payment-1', companyId: company, partyKind: 'CUSTOMER', partyId: 'party', invoiceId: draft.id, amount: amount('25'), sourceType: 'TREASURY_SETTLEMENT', sourceId: 'voucher-1' });
+  const active = await f.service.getCancellationEvidence(company, draft.id);
+  assert.equal(active.hasHistoricalAllocationEvidence, true);
+  assert.equal(active.settlementRequired, true);
+  assert.deepEqual(active.activeAllocationIds, ['payment-1']);
+  await f.service.reverseAllocation(company, 'payment-1');
+  const reversed = await f.service.getCancellationEvidence(company, draft.id);
+  assert.equal(reversed.hasHistoricalAllocationEvidence, true);
+  assert.equal(reversed.settlementRequired, false);
+  assert.equal(reversed.cancellationSafe, true);
+  assert.deepEqual(reversed.activeAllocationIds, []);
+});

@@ -125,3 +125,15 @@ test('BR-061 Cost owner records allocation cost effects idempotently without fak
   );
   assert.equal(await service.getProgramAllocationCostEffect(other, effect.id), undefined);
 });
+
+test('BR-068 Tourism service actualization is semantic, idempotent and conflict safe', async () => {
+  const service = new CostBudgetAccountingApplicationService(new InMemoryCostCenterRepository());
+  await service.create(input);
+  await service.ensureProgramCostCenter(company, program, id);
+  const command = { id: 'milestone-1', companyId: company, program, service: sourceReference('TOURISM_SERVICE', 'ticket-1'), evidence: sourceReference('FLIGHT_SEGMENT', 'segment-1'), amount: decimalAmount('75.25'), postingDate: '2026-09-19' };
+  const first = await service.recordTourismServiceActualization(command);
+  assert.strictEqual(await service.recordTourismServiceActualization(command), first);
+  await assert.rejects(service.recordTourismServiceActualization({ ...command, amount: decimalAmount('76') }), /conflicting replay/);
+  assert.equal(first.service.sourceId, 'ticket-1');
+  assert.equal(first.evidence.sourceId, 'segment-1');
+});

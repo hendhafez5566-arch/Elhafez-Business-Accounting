@@ -143,14 +143,19 @@ export class BillingSubledgersApplicationService {
   async getCancellationEvidence(companyId: CompanyId, invoiceId: string) {
     const invoice = await this.requiredInvoice(companyId, invoiceId);
     const allocations = await this.repo.allocations(companyId, invoiceId);
+    const activeAllocations = allocations.filter((value) => !value.reversedAt);
     const advances = await this.repo.advances(companyId, expectedPartyKind(invoice.type), invoice.partyId);
+    const hasAvailableAdvance = advances.some((value) => !value.reversedAt && scaled18(value.available) > 0n);
+    const settlementRequired = activeAllocations.length > 0 || hasAvailableAdvance;
     return Object.freeze({
       invoiceId: invoice.id,
       postedInvoiceExists: invoice.status === 'POSTED' || invoice.status === 'CANCELLED',
-      hasEconomicAllocationHistory: allocations.length > 0,
-      hasAvailableAdvance: advances.some((value) => !value.reversedAt && scaled18(value.available) > 0n),
+      hasHistoricalAllocationEvidence: allocations.length > 0,
+      activeAllocationIds: activeAllocations.map((value) => value.id),
+      hasAvailableAdvance,
       outstanding: invoice.outstanding,
-      cancellationSafe: allocations.length === 0 && !advances.some((value) => !value.reversedAt && scaled18(value.available) > 0n),
+      settlementRequired,
+      cancellationSafe: !settlementRequired,
     });
   }
 

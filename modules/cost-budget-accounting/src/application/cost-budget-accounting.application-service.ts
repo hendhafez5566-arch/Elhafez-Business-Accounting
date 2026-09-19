@@ -191,6 +191,22 @@ export class CostBudgetAccountingApplicationService {
   ): Promise<ProgramAllocationCostEffect | undefined> {
     return this.repository.programAllocationCostEffect(companyId, id);
   }
+
+  async recordTourismServiceActualization(input: {
+    id: string; companyId: CompanyId; program: SourceReference; service: SourceReference;
+    evidence: SourceReference; amount: DecimalAmount; postingDate: string;
+  }) {
+    const center = await this.resolveProgramCostCenter(input.companyId, input.program);
+    const amount = decimalAmount(input.amount);
+    if (scaled(amount) < 0n) throw new ContractValidationError('amount', 'must not be negative');
+    const normalized = { ...input, costCenterId: center.id, amount };
+    const requestHash = fingerprint(normalized);
+    const old = await this.repository.tourismServiceActualization(input.companyId, input.id);
+    if (old) { if (old.requestHash !== requestHash) throw new ContractValidationError('tourismActualization', 'conflicting replay'); return old; }
+    const value = { ...normalized, requestHash, createdAt: new Date().toISOString() };
+    await this.repository.saveTourismServiceActualization(value);
+    return value;
+  }
 }
 
 function fingerprint(value: unknown): string {

@@ -260,10 +260,9 @@ test('partial receipt, concurrent over-receipt, blocker and cross-company isolat
     }),
   ]);
   assert.equal(outcomes.filter((result) => result.status === 'fulfilled').length, 1);
-  assert.equal(
-    (await service.getCancellationBlockers(company, { purchaseOrderId: 'po-1' }))
-      .length,
-    1,
+  assert.deepEqual(
+    (await service.getCancellationBlockers(company, { purchaseOrderId: 'po-1' })).map((item) => item.type),
+    ['SUPPLIER_EXECUTION'],
   );
   await assert.rejects(service.cancelPurchaseOrder(company, 'po-1'));
   await assert.rejects(
@@ -288,6 +287,10 @@ test('partial invoicing does not falsely close PO and later receipt remains vali
   assert.equal(
     (await service.getPurchaseOrder(company, 'po-1')).status,
     'PARTIALLY_INVOICED',
+  );
+  assert.deepEqual(
+    (await service.getCancellationBlockers(company, { purchaseOrderId: 'po-1' })).map((item) => item.type),
+    ['SUPPLIER_EXECUTION', 'SUPPLIER_INVOICE'],
   );
 
   await service.receivePurchaseOrder({

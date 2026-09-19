@@ -69,3 +69,17 @@ export interface ProgramAllocationCostEffect {
   readonly requestHash: string;
   readonly createdAt: string;
 }
+
+/** Cost-owned, non-GL evidence that a real Tourism service milestone actualized program cost. */
+export interface TourismServiceActualization {
+  readonly id: string;
+  readonly companyId: CompanyId;
+  readonly costCenterId: CostCenterId;
+  readonly program: SourceReference;
+  readonly service: SourceReference;
+  readonly evidence: SourceReference;
+  readonly amount: DecimalAmount;
+  readonly postingDate: string;
+  readonly requestHash: string;
+  readonly createdAt: string;
+}

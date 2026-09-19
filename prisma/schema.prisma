@@ -190,6 +190,7 @@ model CbaCostCenter {
   children            CbaCostCenter[]        @relation("CostCenterHierarchy")
   programAssociations CbaProgramCostCenter[]
   programAllocationEffects CbaProgramAllocationCostEffect[]
+  tourismServiceActualizations CbaTourismServiceActualization[]
 
   @@unique([companyId, code])
   @@unique([companyId, id])
@@ -1628,8 +1629,8 @@ model TfoFinancialSetup {
  id String @id
  companyId String @map("company_id")
  category String
- customerPartyId String @map("customer_party_id")
  receivableAccountId String @map("receivable_account_id")
+ customerAdvanceAccountId String @map("customer_advance_account_id")
  revenueAccountId String @map("revenue_account_id")
  costAccountId String @map("cost_account_id")
  commissionExpenseAccountId String? @map("commission_expense_account_id")
@@ -1654,6 +1655,8 @@ model TfoWorkflow {
  createdAt DateTime @default(now()) @map("created_at")
  updatedAt DateTime @updatedAt @map("updated_at")
  steps TfoWorkflowStep[]
+ bookingReferences TfoBookingReference[]
+ programHistory TfoProgramHistory[]
  @@unique([companyId,id])
  @@unique([companyId,commandKey])
  @@index([companyId,sourceType,sourceId,kind])
@@ -1686,10 +1689,15 @@ model TfoBookingReference {
  bookingId String @map("booking_id")
  programType String @map("program_type")
  programId String @map("program_id")
- invoiceId String @map("invoice_id")
- allocationIds Json @map("allocation_ids")
+ customerPartyId String @map("customer_party_id")
+ confirmationPayloadHash String @map("confirmation_payload_hash")
+ status String
+ invoiceId String? @map("invoice_id")
+ allocations Json
  commissionClaimId String? @map("commission_claim_id")
+ depositVoucherIds Json @map("deposit_voucher_ids")
  workflowId String @map("workflow_id")
+ workflow TfoWorkflow @relation(fields:[companyId,workflowId],references:[companyId,id],onDelete:Restrict)
  @@unique([companyId,id])
  @@unique([companyId,bookingType,bookingId])
  @@index([companyId,programType,programId])
@@ -1709,7 +1717,10 @@ model TfoServiceFinancialSnapshot {
  status String
  supersedesId String? @map("supersedes_id")
  evidence Json
+ requestHash String @map("request_hash")
  createdAt DateTime @default(now()) @map("created_at")
+ supersedes TfoServiceFinancialSnapshot? @relation("TfoSnapshotLineage",fields:[companyId,supersedesId],references:[companyId,id],onDelete:Restrict)
+ amendments TfoServiceFinancialSnapshot[] @relation("TfoSnapshotLineage")
  @@unique([companyId,id])
  @@unique([companyId,serviceType,serviceId,version])
  @@index([companyId,serviceType,serviceId,createdAt])
@@ -1724,7 +1735,29 @@ model TfoProgramHistory {
  workflowId String @map("workflow_id")
  evidence Json
  createdAt DateTime @default(now()) @map("created_at")
+ workflow TfoWorkflow @relation(fields:[companyId,workflowId],references:[companyId,id],onDelete:Restrict)
  @@unique([companyId,id])
  @@index([companyId,programType,programId,createdAt])
  @@map("tfo_program_history")
+}
+
+model CbaTourismServiceActualization {
+ id String @id
+ companyId String @map("company_id")
+ costCenterId String @map("cost_center_id")
+ programSourceType String @map("program_source_type")
+ programSourceId String @map("program_source_id")
+ serviceSourceType String @map("service_source_type")
+ serviceSourceId String @map("service_source_id")
+ evidenceSourceType String @map("evidence_source_type")
+ evidenceSourceId String @map("evidence_source_id")
+ amount Decimal @db.Decimal(38,18)
+ postingDate DateTime @map("posting_date") @db.Date
+ requestHash String @map("request_hash")
+ createdAt DateTime @default(now()) @map("created_at")
+ costCenter CbaCostCenter @relation(fields:[companyId,costCenterId],references:[companyId,id],onDelete:Restrict)
+ @@unique([companyId,id])
+ @@index([companyId,programSourceType,programSourceId,postingDate])
+ @@index([companyId,serviceSourceType,serviceSourceId])
+ @@map("cba_tourism_service_actualizations")
 }
