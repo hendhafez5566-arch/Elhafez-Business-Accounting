@@ -6,7 +6,6 @@ import {
   sourceReference,
   type CompanyId,
   type DecimalAmount,
-  type SourceReference,
 } from '@elhafez/contracts';
 import type {
   AdjustAllocationInput,
@@ -362,10 +361,14 @@ class BehavioralRepository {
   }
 
   async attachProcurementReference(
-    _companyId: CompanyId,
-    _requestId: string,
-    _externalReference: string,
-  ) {}
+    companyId: CompanyId,
+    requestId: string,
+    externalReference: string,
+  ) {
+    void companyId;
+    void requestId;
+    void externalReference;
+  }
 
   async adjust(
     input: AdjustAllocationInput,
