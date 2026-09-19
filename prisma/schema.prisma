@@ -189,6 +189,7 @@ model CbaCostCenter {
   parent              CbaCostCenter?         @relation("CostCenterHierarchy", fields: [companyId, parentId], references: [companyId, id], onDelete: Restrict)
   children            CbaCostCenter[]        @relation("CostCenterHierarchy")
   programAssociations CbaProgramCostCenter[]
+  programAllocationEffects CbaProgramAllocationCostEffect[]
 
   @@unique([companyId, code])
   @@unique([companyId, id])
@@ -1009,6 +1010,26 @@ journalLineId String @map("journal_line_id")
 @@index([companyId,costCenterId,postingDate])
 @@map("cba_budget_actuals")
 }
+
+model CbaProgramAllocationCostEffect {
+id String @id
+companyId String @map("company_id")
+costCenterId String @map("cost_center_id")
+programSourceType String @map("program_source_type")
+programSourceId String @map("program_source_id")
+allocationId String @map("allocation_id")
+previousQuantity Decimal @map("previous_quantity") @db.Decimal(38,18)
+newQuantity Decimal @map("new_quantity") @db.Decimal(38,18)
+amount Decimal @db.Decimal(38,18)
+postingDate DateTime @map("posting_date") @db.Date
+requestHash String @map("request_hash")
+createdAt DateTime @default(now()) @map("created_at")
+costCenter CbaCostCenter @relation(fields:[companyId,costCenterId],references:[companyId,id],onDelete:Restrict)
+@@unique([companyId,id])
+@@index([companyId,costCenterId,postingDate])
+@@index([companyId,allocationId])
+@@map("cba_program_allocation_cost_effects")
+}
 model AfAsset {
 id String @id
 companyId String @map("company_id")
@@ -1477,12 +1498,18 @@ model TciAllocation {
  quantity Decimal @db.Decimal(38,18)
  status String
  releaseBlockerReason String? @map("release_blocker_reason")
+ visaBatchKey String? @map("visa_batch_key")
+ visaBatchReference Json? @map("visa_batch_reference")
  createdAt DateTime @default(now()) @map("created_at")
  sourceReference Json? @map("source_reference")
  contract TciContract @relation(fields:[companyId,contractId],references:[companyId,id],onDelete:Restrict)
  contractVersion TciContractVersion @relation(fields:[companyId,contractVersionId],references:[companyId,id],onDelete:Restrict)
  releases TciAllocationRelease[]
+ economicEvidence TciAllocationEconomicEvidence[]
+ coverageRequirements TciAllocationCoverageRequirement[]
+ costEffects TciAllocationCostEffect[]
  @@unique([companyId, id])
+ @@unique([companyId, visaBatchKey])
  @@index([companyId, resourceType, resourceId, serviceDate, periodEnd, status])
  @@index([companyId, contractId, status])
  @@index([companyId, program, status])
@@ -1501,6 +1528,58 @@ model TciAllocationRelease {
  @@unique([companyId, id])
  @@index([companyId, allocationId])
  @@map("tci_allocation_releases")
+}
+
+model TciAllocationEconomicEvidence {
+ id String @id
+ companyId String @map("company_id")
+ allocationId String @map("allocation_id")
+ kind String
+ evidenceKey String @map("evidence_key")
+ evidence Json
+ createdAt DateTime @default(now()) @map("created_at")
+ allocation TciAllocation @relation(fields:[companyId,allocationId],references:[companyId,id],onDelete:Restrict)
+ @@unique([companyId, id])
+ @@unique([companyId, allocationId, evidenceKey])
+ @@index([companyId, allocationId, createdAt])
+ @@map("tci_allocation_economic_evidence")
+}
+
+model TciAllocationCoverageRequirement {
+ id String @id
+ companyId String @map("company_id")
+ allocationId String @map("allocation_id")
+ minimumQuantity Decimal @map("minimum_quantity") @db.Decimal(38,18)
+ requirementKey String @map("requirement_key")
+ requirementReference Json @map("requirement_reference")
+ active Boolean @default(true)
+ createdAt DateTime @default(now()) @map("created_at")
+ releasedAt DateTime? @map("released_at")
+ allocation TciAllocation @relation(fields:[companyId,allocationId],references:[companyId,id],onDelete:Restrict)
+ @@unique([companyId, id])
+ @@unique([companyId, allocationId, requirementKey])
+ @@index([companyId, allocationId, active])
+ @@map("tci_allocation_coverage_requirements")
+}
+
+model TciAllocationCostEffect {
+ id String @id
+ companyId String @map("company_id")
+ allocationId String @map("allocation_id")
+ program Json
+ previousQuantity Decimal @map("previous_quantity") @db.Decimal(38,18)
+ newQuantity Decimal @map("new_quantity") @db.Decimal(38,18)
+ costAmount Decimal @map("cost_amount") @db.Decimal(38,18)
+ postingDate DateTime @map("posting_date") @db.Date
+ status String
+ ownerReference String? @map("owner_reference")
+ requestHash String @map("request_hash")
+ createdAt DateTime @default(now()) @map("created_at")
+ completedAt DateTime? @map("completed_at")
+ allocation TciAllocation @relation(fields:[companyId,allocationId],references:[companyId,id],onDelete:Restrict)
+ @@unique([companyId, id])
+ @@index([companyId, allocationId, status])
+ @@map("tci_allocation_cost_effects")
 }
 
 model TciProcurementRequest {
