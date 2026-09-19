@@ -204,7 +204,7 @@ export class CostBudgetAccountingApplicationService {
     const value = { ...normalized, requestHash, createdAt: new Date().toISOString() };
     try {
       await this.repository.saveTourismServiceActualization(value);
-      return value;
+      return (await this.repository.tourismServiceActualization(input.companyId, input.id)) ?? value;
     } catch (error) {
       // Check if this is a unique constraint violation (concurrency race)
       if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
