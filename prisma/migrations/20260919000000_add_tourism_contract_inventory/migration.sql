@@ -131,6 +131,8 @@ CREATE TABLE "tci_allocations" (
     "quantity" DECIMAL(38,18) NOT NULL,
     "status" TEXT NOT NULL,
     "release_blocker_reason" TEXT,
+    "visa_batch_key" TEXT,
+    "visa_batch_reference" JSONB,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "source_reference" JSONB,
 
@@ -148,6 +150,71 @@ CREATE TABLE "tci_allocation_releases" (
     "status" TEXT NOT NULL,
 
     CONSTRAINT "tci_allocation_releases_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "tci_allocation_economic_evidence" (
+    "id" TEXT NOT NULL,
+    "company_id" TEXT NOT NULL,
+    "allocation_id" TEXT NOT NULL,
+    "kind" TEXT NOT NULL,
+    "evidence_key" TEXT NOT NULL,
+    "evidence" JSONB NOT NULL,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "tci_allocation_economic_evidence_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "tci_allocation_coverage_requirements" (
+    "id" TEXT NOT NULL,
+    "company_id" TEXT NOT NULL,
+    "allocation_id" TEXT NOT NULL,
+    "minimum_quantity" DECIMAL(38,18) NOT NULL,
+    "requirement_key" TEXT NOT NULL,
+    "requirement_reference" JSONB NOT NULL,
+    "active" BOOLEAN NOT NULL DEFAULT true,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "released_at" TIMESTAMP(3),
+
+    CONSTRAINT "tci_allocation_coverage_requirements_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "tci_allocation_cost_effects" (
+    "id" TEXT NOT NULL,
+    "company_id" TEXT NOT NULL,
+    "allocation_id" TEXT NOT NULL,
+    "program" JSONB NOT NULL,
+    "previous_quantity" DECIMAL(38,18) NOT NULL,
+    "new_quantity" DECIMAL(38,18) NOT NULL,
+    "cost_amount" DECIMAL(38,18) NOT NULL,
+    "posting_date" DATE NOT NULL,
+    "status" TEXT NOT NULL,
+    "owner_reference" TEXT,
+    "request_hash" TEXT NOT NULL,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "completed_at" TIMESTAMP(3),
+
+    CONSTRAINT "tci_allocation_cost_effects_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "cba_program_allocation_cost_effects" (
+    "id" TEXT NOT NULL,
+    "company_id" TEXT NOT NULL,
+    "cost_center_id" TEXT NOT NULL,
+    "program_source_type" TEXT NOT NULL,
+    "program_source_id" TEXT NOT NULL,
+    "allocation_id" TEXT NOT NULL,
+    "previous_quantity" DECIMAL(38,18) NOT NULL,
+    "new_quantity" DECIMAL(38,18) NOT NULL,
+    "amount" DECIMAL(38,18) NOT NULL,
+    "posting_date" DATE NOT NULL,
+    "request_hash" TEXT NOT NULL,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "cba_program_allocation_cost_effects_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -274,6 +341,42 @@ CREATE INDEX "tci_allocations_company_id_program_status_idx" ON "tci_allocations
 CREATE UNIQUE INDEX "tci_allocations_company_id_id_key" ON "tci_allocations"("company_id", "id");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "tci_allocations_company_id_visa_batch_key_key" ON "tci_allocations"("company_id", "visa_batch_key");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "tci_allocation_economic_evidence_company_id_id_key" ON "tci_allocation_economic_evidence"("company_id", "id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "tci_allocation_economic_evidence_company_id_allocation_id_evidence_key_key" ON "tci_allocation_economic_evidence"("company_id", "allocation_id", "evidence_key");
+
+-- CreateIndex
+CREATE INDEX "tci_allocation_economic_evidence_company_id_allocation_id_created_at_idx" ON "tci_allocation_economic_evidence"("company_id", "allocation_id", "created_at");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "tci_allocation_coverage_requirements_company_id_id_key" ON "tci_allocation_coverage_requirements"("company_id", "id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "tci_allocation_coverage_requirements_company_id_allocation_id_requirement_key_key" ON "tci_allocation_coverage_requirements"("company_id", "allocation_id", "requirement_key");
+
+-- CreateIndex
+CREATE INDEX "tci_allocation_coverage_requirements_company_id_allocation_id_active_idx" ON "tci_allocation_coverage_requirements"("company_id", "allocation_id", "active");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "tci_allocation_cost_effects_company_id_id_key" ON "tci_allocation_cost_effects"("company_id", "id");
+
+-- CreateIndex
+CREATE INDEX "tci_allocation_cost_effects_company_id_allocation_id_status_idx" ON "tci_allocation_cost_effects"("company_id", "allocation_id", "status");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "cba_program_allocation_cost_effects_company_id_id_key" ON "cba_program_allocation_cost_effects"("company_id", "id");
+
+-- CreateIndex
+CREATE INDEX "cba_program_allocation_cost_effects_company_id_cost_center_id_posting_date_idx" ON "cba_program_allocation_cost_effects"("company_id", "cost_center_id", "posting_date");
+
+-- CreateIndex
+CREATE INDEX "cba_program_allocation_cost_effects_company_id_allocation_id_idx" ON "cba_program_allocation_cost_effects"("company_id", "allocation_id");
+
+-- CreateIndex
 CREATE INDEX "tci_allocation_releases_company_id_allocation_id_idx" ON "tci_allocation_releases"("company_id", "allocation_id");
 
 -- CreateIndex
@@ -328,6 +431,18 @@ ALTER TABLE "tci_allocations" ADD CONSTRAINT "tci_allocations_company_id_contrac
 ALTER TABLE "tci_allocation_releases" ADD CONSTRAINT "tci_allocation_releases_company_id_allocation_id_fkey" FOREIGN KEY ("company_id", "allocation_id") REFERENCES "tci_allocations"("company_id", "id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "tci_allocation_economic_evidence" ADD CONSTRAINT "tci_allocation_economic_evidence_company_id_allocation_id_fkey" FOREIGN KEY ("company_id", "allocation_id") REFERENCES "tci_allocations"("company_id", "id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "tci_allocation_coverage_requirements" ADD CONSTRAINT "tci_allocation_coverage_requirements_company_id_allocation_id_fkey" FOREIGN KEY ("company_id", "allocation_id") REFERENCES "tci_allocations"("company_id", "id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "tci_allocation_cost_effects" ADD CONSTRAINT "tci_allocation_cost_effects_company_id_allocation_id_fkey" FOREIGN KEY ("company_id", "allocation_id") REFERENCES "tci_allocations"("company_id", "id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "cba_program_allocation_cost_effects" ADD CONSTRAINT "cba_program_allocation_cost_effects_company_id_cost_center_id_fkey" FOREIGN KEY ("company_id", "cost_center_id") REFERENCES "cba_cost_centers"("company_id", "id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "tci_contract_history" ADD CONSTRAINT "tci_contract_history_company_id_contract_id_fkey" FOREIGN KEY ("company_id", "contract_id") REFERENCES "tci_contracts"("company_id", "id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 
@@ -336,6 +451,9 @@ ALTER TABLE "tci_hotel_inventory" ADD CONSTRAINT "tci_hotel_quantity_nonnegative
 ALTER TABLE "tci_flight_blocks" ADD CONSTRAINT "tci_flight_quantity_nonnegative" CHECK ("total_seats" >= 0 AND "consumed_seats" >= 0 AND "available_seats" >= 0 AND "consumed_seats" + "available_seats" = "total_seats");
 ALTER TABLE "tci_transport_capacity" ADD CONSTRAINT "tci_transport_capacity_positive" CHECK ("capacity_units" > 0 AND "consumed_units" >= 0 AND "period_start" < "period_end");
 ALTER TABLE "tci_visa_quotas" ADD CONSTRAINT "tci_visa_quantity_nonnegative" CHECK ("quota_total" >= 0 AND "quota_consumed" >= 0 AND "quota_remaining" >= 0 AND "quota_consumed" + "quota_remaining" = "quota_total");
-ALTER TABLE "tci_allocations" ADD CONSTRAINT "tci_allocation_quantity_positive" CHECK ("quantity" > 0);
+ALTER TABLE "tci_allocations" ADD CONSTRAINT "tci_allocation_quantity_nonnegative" CHECK ("quantity" >= 0);
+ALTER TABLE "tci_allocation_coverage_requirements" ADD CONSTRAINT "tci_coverage_quantity_positive" CHECK ("minimum_quantity" > 0);
+ALTER TABLE "tci_allocation_cost_effects" ADD CONSTRAINT "tci_cost_effect_quantity_nonnegative" CHECK ("previous_quantity" >= 0 AND "new_quantity" >= 0);
+ALTER TABLE "cba_program_allocation_cost_effects" ADD CONSTRAINT "cba_program_cost_effect_quantity_nonnegative" CHECK ("previous_quantity" >= 0 AND "new_quantity" >= 0);
 ALTER TABLE "tci_allocation_releases" ADD CONSTRAINT "tci_release_quantity_nonnegative" CHECK ("released_quantity" >= 0);
 CREATE UNIQUE INDEX "tci_one_current_contract_version" ON "tci_contract_versions" ("company_id", "contract_id") WHERE "is_current" = TRUE;
