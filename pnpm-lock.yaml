@@ -47,6 +47,9 @@ importers:
       '@elhafez/cost-budget-accounting':
         specifier: workspace:*
         version: link:../../modules/cost-budget-accounting
+      '@elhafez/procurement-finance':
+        specifier: workspace:*
+        version: link:../../modules/procurement-finance
       '@elhafez/treasury-settlement':
         specifier: workspace:*
         version: link:../../modules/treasury-settlement
@@ -135,6 +138,21 @@ importers:
       '@elhafez/financial-controls':
         specifier: workspace:*
         version: link:../financial-controls
+      '@nestjs/common':
+        specifier: ^11.0.11
+        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@prisma/client':
+        specifier: 6.19.0
+        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
+
+  modules/procurement-finance:
+    dependencies:
+      '@elhafez/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@elhafez/billing-subledgers':
+        specifier: workspace:*
+        version: link:../billing-subledgers
       '@nestjs/common':
         specifier: ^11.0.11
         version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
