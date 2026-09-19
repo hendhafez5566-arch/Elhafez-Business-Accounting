@@ -1,0 +1,35 @@
+{
+  "id": "20260919-change-safety-hardening",
+  "summary": "Install mandatory blast-radius, architecture, migration, public-API and protected-path safety gates before AC-12.",
+  "type": "governance",
+  "allowedModules": [],
+  "allowedPaths": [
+    ".changes/20260919-change-safety-hardening.json",
+    ".governance/change-safety.json",
+    ".github/CODEOWNERS",
+    ".github/pull_request_template.md",
+    ".github/workflows/ci.yml",
+    "AGENTS.md",
+    "AI_CHANGE_PROTOCOL.md",
+    "package.json",
+    "tools/architecture/check-architecture.ts",
+    "tools/governance/check-change-safety.ts",
+    "apps/web/src/app-shell-contract.spec.ts",
+    "apps/web/src/routes.spec.ts",
+    "apps/web/src/routes.tsx"
+  ],
+  "protectedPaths": [
+    ".governance/change-safety.json",
+    ".github/CODEOWNERS",
+    ".github/pull_request_template.md",
+    ".github/workflows/ci.yml",
+    "AGENTS.md",
+    "AI_CHANGE_PROTOCOL.md",
+    "tools/architecture/check-architecture.ts",
+    "tools/governance/check-change-safety.ts",
+    "apps/web/src/routes.tsx"
+  ],
+  "protectedReason": "This is an explicitly authorized governance hardening change whose sole purpose is to install the permanent safety gates.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": ""
+}
