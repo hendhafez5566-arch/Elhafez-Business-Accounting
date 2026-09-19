@@ -1,5 +1,5 @@
-import { ContractValidationError, type CompanyId, type DecimalAmount, type SourceReference } from '@elhafez/contracts';
-import type { TourismContract, ContractVersion, HotelInventory, FlightBlock, FlightBlockConsumption, TransportCapacity, VisaQuota, StopSale, Allocation, AllocationRelease, ProcurementRequest, IdempotencyKey, ContractHistory, ContractType, ContractStatus, AllocationStatus } from '../domain/inventory.js';
+import { type CompanyId, type DecimalAmount, type SourceReference } from '@elhafez/contracts';
+import type { TourismContract, ContractVersion, HotelInventory, FlightBlock, FlightBlockConsumption, TransportCapacity, VisaQuota, StopSale, Allocation, ProcurementRequest, ContractType } from '../domain/inventory.js';
 
 export interface CreateTourismContractInput {
   readonly companyId: CompanyId;

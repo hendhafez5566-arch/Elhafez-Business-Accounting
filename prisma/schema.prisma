@@ -1447,7 +1447,6 @@ model TciVisaQuota {
  allocations TciAllocation[]
  @@unique([companyId, id])
  @@unique([companyId, contractId, visaType, nationality, effectiveFrom, effectiveTo])
- @@index([companyId, visaType, status])
  @@map("tci_visa_quotas")
 }
 
@@ -1478,10 +1477,10 @@ model TciAllocation {
  releaseBlockerReason String? @map("release_blocker_reason")
  createdAt DateTime @default(now()) @map("created_at")
  sourceReference Json? @map("source_reference")
- hotelInventory TciHotelInventory? @relation(fields:[companyId,contractId],references:[companyId,id])
- transportCapacity TciTransportCapacity? @relation(fields:[companyId,contractId],references:[companyId,id])
- visaQuota TciVisaQuota? @relation(fields:[companyId,contractId],references:[companyId,id])
- contract TciContract @relation(fields:[companyId,contractId],references:[companyId,id],onDelete:Restrict)
+ hotelInventory TciHotelInventory? @relation(fields:[companyId,contractId],references:[companyId,id], map: "tci_allocations_hotel_inv_fk")
+ transportCapacity TciTransportCapacity? @relation(fields:[companyId,contractId],references:[companyId,id], map: "tci_allocations_transport_cap_fk")
+ visaQuota TciVisaQuota? @relation(fields:[companyId,contractId],references:[companyId,id], map: "tci_allocations_visa_quota_fk")
+ contract TciContract @relation(fields:[companyId,contractId],references:[companyId,id],onDelete:Restrict, map: "tci_allocations_contract_fk")
  releases TciAllocationRelease[]
  @@unique([companyId, id])
  @@index([companyId, contractId, status])
