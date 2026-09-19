@@ -897,6 +897,7 @@ model EcrRecognitionPart {
  serviceDate DateTime @map("service_date") @db.Date
  amount Decimal @db.Decimal(38,18)
  status String
+ cycle Int @default(0)
  journalId String? @map("journal_id")
  reversalJournalId String? @map("reversal_journal_id")
  schedule EcrRecognitionSchedule @relation(fields:[companyId,scheduleId],references:[companyId,id],onDelete:Restrict)
