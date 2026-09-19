@@ -1,47 +1,1558 @@
 import { randomUUID } from 'node:crypto';
 import { Prisma, type PrismaClient } from '@prisma/client';
-import { decimalAmount, type CompanyId, type DecimalAmount, type SourceReference } from '@elhafez/contracts';
-import type { Allocation, ContractType, ContractVersion, FlightBlock, FlightBlockConsumption, HotelInventory, ProcurementRequest, StopSale, TourismContract, TransportCapacity, VisaQuota } from '../domain/inventory.js';
-import type { AdjustAllocationInput, AllocateCapacityInput, AllocationResult, AmendContractInput, AvailabilityResult, CheckAvailabilityInput, ConsumeFlightBlockInput, CreateFlightBlockInput, CreateHotelInventoryInput, CreateStopSaleInput, CreateTourismContractInput, CreateTransportCapacityInput, CreateVisaQuotaInput, InternalFirstFulfillmentInput, ReleaseAllocationInput, ReleaseResult } from '../application/inventory.application-service.js';
-import type { TourismInventoryRepository } from './inventory.repository.js';
+import {
+  decimalAmount,
+  type CompanyId,
+  type DecimalAmount,
+  type SourceReference,
+} from '@elhafez/contracts';
+import type {
+  Allocation,
+  AllocationCostEffect,
+  AllocationCoverageRequirement,
+  AllocationEconomicEvidence,
+  ContractType,
+  ContractVersion,
+  FlightBlock,
+  FlightBlockConsumption,
+  HotelInventory,
+  ProcurementRequest,
+  ReleaseBlocker,
+  StopSale,
+  TourismContract,
+  TransportCapacity,
+  VisaQuota,
+} from '../domain/inventory.js';
+import type {
+  AdjustAllocationInput,
+  AllocateCapacityInput,
+  AllocationResult,
+  AmendContractInput,
+  AvailabilityResult,
+  CheckAvailabilityInput,
+  ConsumeFlightBlockInput,
+  CreateFlightBlockInput,
+  CreateHotelInventoryInput,
+  CreateStopSaleInput,
+  CreateTourismContractInput,
+  CreateTransportCapacityInput,
+  CreateVisaQuotaInput,
+  InternalFirstFulfillmentInput,
+  ProtectAllocationCoverageInput,
+  RegisterAllocationEconomicEvidenceInput,
+  ReleaseAllocationCoverageInput,
+  ReleaseAllocationInput,
+  ReleaseResult,
+} from '../application/inventory.application-service.js';
+import { idempotencyHash } from '../application/idempotency-hash.js';
+import type {
+  AdjustmentResult,
+  TourismInventoryRepository,
+} from './inventory.repository.js';
 
-type Tx=Prisma.TransactionClient;
-const json=(v:unknown)=>v as Prisma.InputJsonValue;
-const source=(v:Prisma.JsonValue|null):SourceReference|undefined=>v===null?undefined:v as unknown as SourceReference;
-const amount=(v:{toString():string}):DecimalAmount=>decimalAmount(v.toString());
-const iso=(v:Date)=>v.toISOString();
-const contract=(r:{id:string;companyId:string;type:string;status:string;supplierId:string|null;effectiveFrom:Date;effectiveTo:Date;createdAt:Date;sourceReference:Prisma.JsonValue|null}):TourismContract=>({id:r.id,companyId:r.companyId as CompanyId,type:r.type as ContractType,status:r.status as TourismContract['status'],supplierId:r.supplierId??undefined,effectiveFrom:iso(r.effectiveFrom),effectiveTo:iso(r.effectiveTo),createdAt:iso(r.createdAt),sourceReference:source(r.sourceReference)});
-const version=(r:{id:string;companyId:string;contractId:string;versionNumber:number;effectiveFrom:Date;effectiveTo:Date|null;terms:Prisma.JsonValue;createdAt:Date;isCurrent:boolean}):ContractVersion=>({id:r.id,companyId:r.companyId as CompanyId,contractId:r.contractId,versionNumber:r.versionNumber,effectiveFrom:iso(r.effectiveFrom),effectiveTo:r.effectiveTo?iso(r.effectiveTo):undefined,terms:r.terms as Record<string,unknown>,createdAt:iso(r.createdAt),isCurrent:r.isCurrent});
-const allocation=(r:{id:string;companyId:string;contractId:string;contractVersionId:string;resourceType:string;resourceId:string;program:Prisma.JsonValue;serviceDate:Date;periodEnd:Date|null;quantity:{toString():string};status:string;releaseBlockerReason:string|null;createdAt:Date;sourceReference:Prisma.JsonValue|null}):Allocation=>({id:r.id,companyId:r.companyId as CompanyId,contractId:r.contractId,contractVersionId:r.contractVersionId,resourceType:r.resourceType as ContractType,resourceId:r.resourceId,program:r.program as unknown as SourceReference,serviceDate:iso(r.serviceDate),periodEnd:r.periodEnd?iso(r.periodEnd):undefined,quantity:amount(r.quantity),status:r.status as Allocation['status'],releaseBlockerReason:r.releaseBlockerReason??undefined,createdAt:iso(r.createdAt),sourceReference:source(r.sourceReference)});
+type Tx = Prisma.TransactionClient;
+
+type AllocationRow = {
+  id: string;
+  companyId: string;
+  contractId: string;
+  contractVersionId: string;
+  resourceType: string;
+  resourceId: string;
+  program: Prisma.JsonValue;
+  serviceDate: Date;
+  periodEnd: Date | null;
+  quantity: Prisma.Decimal;
+  status: string;
+  releaseBlockerReason: string | null;
+  visaBatchReference: Prisma.JsonValue | null;
+  createdAt: Date;
+  sourceReference: Prisma.JsonValue | null;
+};
+
+const json = (value: unknown): Prisma.InputJsonValue => value as Prisma.InputJsonValue;
+const source = (value: Prisma.JsonValue | null): SourceReference | undefined =>
+  value === null ? undefined : (value as unknown as SourceReference);
+const amount = (value: { toString(): string }): DecimalAmount => decimalAmount(value.toString());
+const iso = (value: Date): string => value.toISOString();
+
+function contract(row: {
+  id: string;
+  companyId: string;
+  type: string;
+  status: string;
+  supplierId: string | null;
+  effectiveFrom: Date;
+  effectiveTo: Date;
+  createdAt: Date;
+  sourceReference: Prisma.JsonValue | null;
+}): TourismContract {
+  return {
+    id: row.id,
+    companyId: row.companyId as CompanyId,
+    type: row.type as TourismContract['type'],
+    status: row.status as TourismContract['status'],
+    supplierId: row.supplierId ?? undefined,
+    effectiveFrom: iso(row.effectiveFrom),
+    effectiveTo: iso(row.effectiveTo),
+    createdAt: iso(row.createdAt),
+    sourceReference: source(row.sourceReference),
+  };
+}
+
+function version(row: {
+  id: string;
+  companyId: string;
+  contractId: string;
+  versionNumber: number;
+  effectiveFrom: Date;
+  effectiveTo: Date | null;
+  terms: Prisma.JsonValue;
+  createdAt: Date;
+  isCurrent: boolean;
+}): ContractVersion {
+  return {
+    id: row.id,
+    companyId: row.companyId as CompanyId,
+    contractId: row.contractId,
+    versionNumber: row.versionNumber,
+    effectiveFrom: iso(row.effectiveFrom),
+    effectiveTo: row.effectiveTo ? iso(row.effectiveTo) : undefined,
+    terms: row.terms as Record<string, unknown>,
+    createdAt: iso(row.createdAt),
+    isCurrent: row.isCurrent,
+  };
+}
+
+function allocation(row: AllocationRow): Allocation {
+  return {
+    id: row.id,
+    companyId: row.companyId as CompanyId,
+    contractId: row.contractId,
+    contractVersionId: row.contractVersionId,
+    resourceType: row.resourceType as ContractType,
+    resourceId: row.resourceId,
+    program: row.program as unknown as SourceReference,
+    serviceDate: iso(row.serviceDate),
+    periodEnd: row.periodEnd ? iso(row.periodEnd) : undefined,
+    quantity: amount(row.quantity),
+    status: row.status as Allocation['status'],
+    releaseBlockerReason: row.releaseBlockerReason ?? undefined,
+    visaBatchReference: source(row.visaBatchReference),
+    createdAt: iso(row.createdAt),
+    sourceReference: source(row.sourceReference),
+  };
+}
+
+function sameSource(left: SourceReference, right: SourceReference): boolean {
+  return left.sourceType === right.sourceType && left.sourceId === right.sourceId;
+}
 
 export class PrismaTourismInventoryRepository implements TourismInventoryRepository {
- constructor(private readonly db:PrismaClient){}
- private async command<T>(companyId:CompanyId,key:string|undefined,hash:string,work:(tx:Tx)=>Promise<T>):Promise<T>{
-  return this.db.$transaction(async tx=>{if(key){const old=await tx.tciIdempotencyKey.findUnique({where:{companyId_key:{companyId,key}}});if(old){if(old.requestHash!==hash)throw new Error(`Idempotency conflict for '${key}'`);return old.result as unknown as T}}
-   const result=await work(tx);if(key)await tx.tciIdempotencyKey.create({data:{id:randomUUID(),companyId,key,requestHash:hash,result:json(result)}});return result},{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
- }
- async createContract(i:CreateTourismContractInput,k:string|undefined,h:string){return this.command(i.companyId,k,h,async tx=>{const id=randomUUID(),created=await tx.tciContract.create({data:{id,companyId:i.companyId,type:i.type,status:'ACTIVE',supplierId:i.supplierId,effectiveFrom:new Date(i.effectiveFrom),effectiveTo:new Date(i.effectiveTo),sourceReference:i.sourceReference?json(i.sourceReference):Prisma.JsonNull}});const v=await tx.tciContractVersion.create({data:{id:randomUUID(),companyId:i.companyId,contractId:id,versionNumber:1,effectiveFrom:new Date(i.effectiveFrom),effectiveTo:new Date(i.effectiveTo),terms:json({type:i.type,supplierId:i.supplierId??null}),isCurrent:true}});await this.history(tx,i.companyId,id,'CONTRACT_CREATED',v.id);return contract(created)})}
- async amendContract(i:AmendContractInput,k:string|undefined,h:string){return this.command(i.companyId,k,h,async tx=>{const c=await tx.tciContract.findUnique({where:{companyId_id:{companyId:i.companyId,id:i.contractId}}});if(!c)throw new Error('contract not found for company');const current=await tx.tciContractVersion.findFirst({where:{companyId:i.companyId,contractId:i.contractId,isCurrent:true}});if(!current)throw new Error('current contract version not found');const uncovered=await tx.tciAllocation.count({where:{companyId:i.companyId,contractId:i.contractId,status:{in:['CONFIRMED','PARTIALLY_RELEASED']},OR:[{serviceDate:{lt:new Date(i.effectiveFrom)}},...(i.effectiveTo?[{serviceDate:{gt:new Date(i.effectiveTo)}}]:[])]}});if(uncovered)throw new Error('amendment would remove required active program coverage');await tx.tciContractVersion.updateMany({where:{companyId:i.companyId,contractId:i.contractId,isCurrent:true},data:{isCurrent:false}});const created=await tx.tciContractVersion.create({data:{id:randomUUID(),companyId:i.companyId,contractId:i.contractId,versionNumber:current.versionNumber+1,effectiveFrom:new Date(i.effectiveFrom),effectiveTo:i.effectiveTo?new Date(i.effectiveTo):null,terms:json(i.terms),isCurrent:true}});await tx.tciContract.update({where:{companyId_id:{companyId:i.companyId,id:i.contractId}},data:{status:'AMENDED'}});await this.history(tx,i.companyId,i.contractId,'CONTRACT_AMENDED',created.id);return version(created)})}
- async contract(c:CompanyId,id:string){const r=await this.db.tciContract.findUnique({where:{companyId_id:{companyId:c,id}}});return r?contract(r):null}
- async versions(c:CompanyId,id:string){return (await this.db.tciContractVersion.findMany({where:{companyId:c,contractId:id},orderBy:{versionNumber:'asc'}})).map(version)}
- async createHotel(i:CreateHotelInventoryInput,k:string|undefined,h:string):Promise<HotelInventory>{return this.command(i.companyId,k,h,async tx=>{await this.requireContract(tx,i.companyId,i.contractId,'HOTEL');const r=await tx.tciHotelInventory.create({data:{id:randomUUID(),companyId:i.companyId,contractId:i.contractId,hotelId:i.hotelId,roomId:i.roomId,serviceDate:new Date(i.serviceDate),contractedQuantity:i.contractedQuantity,allocatedQuantity:'0',availableQuantity:i.contractedQuantity,status:'ACTIVE'}});await this.history(tx,i.companyId,i.contractId,'HOTEL_INVENTORY_CREATED',r.id);return {id:r.id,companyId:r.companyId as CompanyId,contractId:r.contractId,hotelId:r.hotelId,roomId:r.roomId??undefined,serviceDate:iso(r.serviceDate),contractedQuantity:amount(r.contractedQuantity),allocatedQuantity:amount(r.allocatedQuantity),availableQuantity:amount(r.availableQuantity),status:'ACTIVE'}})}
- async createFlight(i:CreateFlightBlockInput,k:string|undefined,h:string):Promise<FlightBlock>{return this.command(i.companyId,k,h,async tx=>{await this.requireContract(tx,i.companyId,i.contractId,'FLIGHT_BLOCK');const r=await tx.tciFlightBlock.create({data:{id:randomUUID(),companyId:i.companyId,contractId:i.contractId,flightNumber:i.flightNumber,origin:i.origin,destination:i.destination,departureDate:new Date(i.departureDate),totalSeats:i.totalSeats,consumedSeats:'0',availableSeats:i.totalSeats}});return {id:r.id,companyId:r.companyId as CompanyId,contractId:r.contractId,flightNumber:r.flightNumber,origin:r.origin,destination:r.destination,departureDate:iso(r.departureDate),totalSeats:amount(r.totalSeats),consumedSeats:amount(r.consumedSeats),availableSeats:amount(r.availableSeats)}})}
- async createTransport(i:CreateTransportCapacityInput,k:string|undefined,h:string):Promise<TransportCapacity>{return this.command(i.companyId,k,h,async tx=>{await this.requireContract(tx,i.companyId,i.contractId,'TRANSPORT');const r=await tx.tciTransportCapacity.create({data:{id:randomUUID(),companyId:i.companyId,contractId:i.contractId,vehicleId:i.vehicleId,capacityUnits:i.capacityUnits,periodStart:new Date(i.periodStart),periodEnd:new Date(i.periodEnd),consumedUnits:'0'}});return {id:r.id,companyId:r.companyId as CompanyId,contractId:r.contractId,vehicleId:r.vehicleId,capacityUnits:amount(r.capacityUnits),periodStart:iso(r.periodStart),periodEnd:iso(r.periodEnd),consumedUnits:amount(r.consumedUnits)}})}
- async createVisa(i:CreateVisaQuotaInput,k:string|undefined,h:string):Promise<VisaQuota>{return this.command(i.companyId,k,h,async tx=>{await this.requireContract(tx,i.companyId,i.contractId,'VISA');const r=await tx.tciVisaQuota.create({data:{id:randomUUID(),companyId:i.companyId,contractId:i.contractId,visaType:i.visaType,nationality:i.nationality,quotaTotal:i.quotaTotal,quotaConsumed:'0',quotaRemaining:i.quotaTotal,effectiveFrom:new Date(i.effectiveFrom),effectiveTo:new Date(i.effectiveTo)}});return {id:r.id,companyId:r.companyId as CompanyId,contractId:r.contractId,visaType:r.visaType,nationality:r.nationality??undefined,quotaTotal:amount(r.quotaTotal),quotaConsumed:amount(r.quotaConsumed),quotaRemaining:amount(r.quotaRemaining),effectiveFrom:iso(r.effectiveFrom),effectiveTo:iso(r.effectiveTo)}})}
- async createStopSale(i:CreateStopSaleInput,k:string|undefined,h:string):Promise<StopSale>{return this.command(i.companyId,k,h,async tx=>{await this.requireContract(tx,i.companyId,i.contractId);const r=await tx.tciStopSale.create({data:{id:randomUUID(),companyId:i.companyId,contractId:i.contractId,reason:i.reason,effectiveFrom:new Date(i.effectiveFrom),effectiveTo:new Date(i.effectiveTo),isActive:true}});return {id:r.id,companyId:r.companyId as CompanyId,contractId:r.contractId,reason:r.reason,effectiveFrom:iso(r.effectiveFrom),effectiveTo:iso(r.effectiveTo),createdAt:iso(r.createdAt),isActive:r.isActive}})}
- async availability(i:CheckAvailabilityInput):Promise<AvailabilityResult>{const stop=await this.db.tciStopSale.findFirst({where:{companyId:i.companyId,contractId:i.contractId,isActive:true,effectiveFrom:{lte:new Date(i.serviceDate)},effectiveTo:{gte:new Date(i.serviceDate)}}});if(stop)return {available:false,availableQuantity:decimalAmount('0'),blockerReason:`Stop sale: ${stop.reason}`};const q=await this.resourceAvailable(this.db,i);return {available:q!=='0',availableQuantity:q}}
- async allocate(i:AllocateCapacityInput,k:string|undefined,h:string):Promise<AllocationResult>{return this.command(i.companyId,k,h,tx=>this.allocateTx(tx,i))}
- private async allocateTx(tx:Tx,i:AllocateCapacityInput):Promise<AllocationResult>{const stop=await tx.tciStopSale.findFirst({where:{companyId:i.companyId,contractId:i.contractId,isActive:true,effectiveFrom:{lte:new Date(i.serviceDate)},effectiveTo:{gte:new Date(i.serviceDate)}}});if(stop)throw new Error(`stop sale in effect: ${stop.reason}`);const current=await tx.tciContractVersion.findFirst({where:{companyId:i.companyId,contractId:i.contractId,isCurrent:true}});if(!current)throw new Error('current contract version not found');await this.consume(tx,i);const r=await tx.tciAllocation.create({data:{id:randomUUID(),companyId:i.companyId,contractId:i.contractId,contractVersionId:current.id,resourceType:i.resourceType,resourceId:i.resourceId,program:json(i.program),serviceDate:new Date(i.serviceDate),periodEnd:i.periodEnd?new Date(i.periodEnd):null,quantity:i.quantity,status:'CONFIRMED',sourceReference:i.sourceReference?json(i.sourceReference):Prisma.JsonNull}});await this.history(tx,i.companyId,i.contractId,'ALLOCATION_CREATED',r.id);return {allocation:allocation(r)}}
- private async consume(tx:Tx,i:AllocateCapacityInput):Promise<void>{let n=0;if(i.resourceType==='HOTEL')n=(await tx.tciHotelInventory.updateMany({where:{companyId:i.companyId,id:i.resourceId,contractId:i.contractId,serviceDate:new Date(i.serviceDate),status:'ACTIVE',availableQuantity:{gte:i.quantity}},data:{allocatedQuantity:{increment:i.quantity},availableQuantity:{decrement:i.quantity}}})).count;else if(i.resourceType==='FLIGHT_BLOCK')n=(await tx.tciFlightBlock.updateMany({where:{companyId:i.companyId,id:i.resourceId,contractId:i.contractId,departureDate:new Date(i.serviceDate),availableSeats:{gte:i.quantity}},data:{consumedSeats:{increment:i.quantity},availableSeats:{decrement:i.quantity}}})).count;else if(i.resourceType==='VISA')n=(await tx.tciVisaQuota.updateMany({where:{companyId:i.companyId,id:i.resourceId,contractId:i.contractId,effectiveFrom:{lte:new Date(i.serviceDate)},effectiveTo:{gte:new Date(i.serviceDate)},quotaRemaining:{gte:i.quantity}},data:{quotaConsumed:{increment:i.quantity},quotaRemaining:{decrement:i.quantity}}})).count;else {if(!i.periodEnd)throw new Error('transport periodEnd is required');const cap=await tx.tciTransportCapacity.findUnique({where:{companyId_id:{companyId:i.companyId,id:i.resourceId}}});if(cap&&cap.contractId===i.contractId&&cap.periodStart<=new Date(i.serviceDate)&&cap.periodEnd>=new Date(i.periodEnd)){const used=await tx.tciAllocation.aggregate({_sum:{quantity:true},where:{companyId:i.companyId,resourceType:'TRANSPORT',resourceId:i.resourceId,status:{in:['CONFIRMED','PARTIALLY_RELEASED','CONSUMED']},serviceDate:{lt:new Date(i.periodEnd)},periodEnd:{gt:new Date(i.serviceDate)}}});const sum=new Prisma.Decimal(used._sum.quantity??0).add(i.quantity);if(sum.lte(cap.capacityUnits))n=1}}if(n!==1)throw new Error(`insufficient ${i.resourceType} capacity or resource mismatch`)}
- async release(i:ReleaseAllocationInput,k:string|undefined,h:string):Promise<ReleaseResult>{return this.command(i.companyId,k,h,async tx=>{const r=await tx.tciAllocation.findUnique({where:{companyId_id:{companyId:i.companyId,id:i.allocationId}}});if(!r)throw new Error('allocation not found for company');if(r.status==='CONSUMED'||i.downstreamEvidence){const evidence=i.downstreamEvidence?JSON.stringify(i.downstreamEvidence):'allocation has downstream economic history';await tx.tciAllocationRelease.create({data:{id:randomUUID(),companyId:i.companyId,allocationId:r.id,releasedQuantity:'0',blockerEvidence:evidence,status:'BLOCKED'}});return {success:false,blockerEvidence:evidence,releasedQuantity:decimalAmount('0')}}if(new Prisma.Decimal(i.quantity).gt(r.quantity))throw new Error('release exceeds allocated quantity');await this.restore(tx,r.resourceType as ContractType,r.resourceId,i.companyId,i.quantity);const left=r.quantity.sub(i.quantity),status=left.isZero()?'RELEASED':'PARTIALLY_RELEASED';await tx.tciAllocation.update({where:{companyId_id:{companyId:i.companyId,id:r.id}},data:{quantity:left,status}});await tx.tciAllocationRelease.create({data:{id:randomUUID(),companyId:i.companyId,allocationId:r.id,releasedQuantity:i.quantity,status:'SUCCESS'}});return {success:true,releasedQuantity:i.quantity}})}
- async adjust(i:AdjustAllocationInput,k:string|undefined,h:string){const prior=k?await this.idempotency(i.companyId,k):null;const result=await this.command(i.companyId,k,h,async tx=>{const r=await tx.tciAllocation.findUnique({where:{companyId_id:{companyId:i.companyId,id:i.allocationId}}});if(!r)throw new Error('allocation not found for company');const old=amount(r.quantity),next=new Prisma.Decimal(i.newQuantity),delta=next.sub(r.quantity);if(delta.gt(0))await this.consume(tx,{companyId:i.companyId,contractId:r.contractId,resourceType:r.resourceType as ContractType,resourceId:r.resourceId,program:r.program as unknown as SourceReference,serviceDate:iso(r.serviceDate),periodEnd:r.periodEnd?iso(r.periodEnd):undefined,quantity:amount(delta),sourceReference:i.sourceReference});else if(delta.lt(0))await this.restore(tx,r.resourceType as ContractType,r.resourceId,i.companyId,amount(delta.negated()));const updated=await tx.tciAllocation.update({where:{companyId_id:{companyId:i.companyId,id:r.id}},data:{quantity:i.newQuantity}});await this.history(tx,i.companyId,r.contractId,'ALLOCATION_ADJUSTED',r.id);return {allocation:allocation(updated),previousQuantity:old,replayed:false}});return prior?{...result,replayed:true}:result}
- async consumeFlight(i:ConsumeFlightBlockInput,k:string|undefined,h:string):Promise<FlightBlockConsumption>{return this.command(i.companyId,k,h,async tx=>{const block=await tx.tciFlightBlock.findUnique({where:{companyId_id:{companyId:i.companyId,id:i.flightBlockId}}});if(!block)throw new Error('flight block not found for company');const updated=await tx.tciFlightBlock.updateMany({where:{companyId:i.companyId,id:i.flightBlockId,availableSeats:{gte:i.seats}},data:{consumedSeats:{increment:i.seats},availableSeats:{decrement:i.seats}}});if(updated.count!==1)throw new Error('insufficient shared flight seats');const r=await tx.tciFlightBlockConsumption.create({data:{id:randomUUID(),companyId:i.companyId,flightBlockId:i.flightBlockId,program:json(i.program),consumedSeats:i.seats,sourceReference:json(i.flightSegmentReference)}});return {id:r.id,companyId:r.companyId as CompanyId,flightBlockId:r.flightBlockId,program:r.program as unknown as SourceReference,consumedSeats:amount(r.consumedSeats),consumedAt:iso(r.consumedAt),sourceReference:source(r.sourceReference)}})}
- async internalFirst(i:InternalFirstFulfillmentInput,k:string|undefined,h:string):Promise<AllocationResult>{return this.command(i.companyId,k,h,async tx=>{const available=await this.resourceAvailable(tx,{companyId:i.companyId,contractId:'',resourceType:i.contractType,resourceId:i.resourceId,serviceDate:i.serviceDate,periodEnd:i.periodEnd},false),take=Prisma.Decimal.min(new Prisma.Decimal(available),new Prisma.Decimal(i.requiredQuantity)),result:AllocationResult={};if(take.gt(0)){const resource=await this.resourceContract(tx,i.companyId,i.contractType,i.resourceId);if(!resource)throw new Error('internal resource not found');Object.assign(result,await this.allocateTx(tx,{...i,contractId:resource,resourceType:i.contractType,quantity:amount(take)}))}const residual=new Prisma.Decimal(i.requiredQuantity).sub(take);if(residual.gt(0)){const request:ProcurementRequest={id:randomUUID(),companyId:i.companyId,program:i.program,residualQuantity:amount(residual),procurementType:i.contractType,externalReference:'',referenceData:i.referenceData,createdAt:new Date().toISOString(),sourceReference:i.sourceReference};await tx.tciProcurementRequest.create({data:{id:request.id,companyId:i.companyId,program:json(i.program),residualQuantity:request.residualQuantity,procurementType:i.contractType,externalReference:null,referenceData:json(i.referenceData),sourceReference:i.sourceReference?json(i.sourceReference):Prisma.JsonNull}});return {...result,procurementRequest:request}}return result})}
- async attachProcurementReference(c:CompanyId,id:string,ref:string){const r=await this.db.tciProcurementRequest.updateMany({where:{companyId:c,id},data:{externalReference:ref}});if(r.count!==1)throw new Error('procurement evidence not found for company')}
- async idempotency(c:CompanyId,k:string){const r=await this.db.tciIdempotencyKey.findUnique({where:{companyId_key:{companyId:c,key:k}}});return r?{requestHash:r.requestHash,result:r.result as Record<string,unknown>}:null}
- private async restore(tx:Tx,type:ContractType,id:string,c:CompanyId,q:DecimalAmount){if(type==='HOTEL')await tx.tciHotelInventory.update({where:{companyId_id:{companyId:c,id}},data:{allocatedQuantity:{decrement:q},availableQuantity:{increment:q}}});else if(type==='FLIGHT_BLOCK')await tx.tciFlightBlock.update({where:{companyId_id:{companyId:c,id}},data:{consumedSeats:{decrement:q},availableSeats:{increment:q}}});else if(type==='VISA')await tx.tciVisaQuota.update({where:{companyId_id:{companyId:c,id}},data:{quotaConsumed:{decrement:q},quotaRemaining:{increment:q}}})}
- private async resourceAvailable(db:Tx|PrismaClient,i:CheckAvailabilityInput,matchContract=true):Promise<DecimalAmount>{const base={companyId:i.companyId,id:i.resourceId,...(matchContract?{contractId:i.contractId}:{})};if(i.resourceType==='HOTEL'){const r=await db.tciHotelInventory.findFirst({where:{...base,serviceDate:new Date(i.serviceDate),status:'ACTIVE'}});return r?amount(r.availableQuantity):decimalAmount('0')}if(i.resourceType==='FLIGHT_BLOCK'){const r=await db.tciFlightBlock.findFirst({where:{...base,departureDate:new Date(i.serviceDate)}});return r?amount(r.availableSeats):decimalAmount('0')}if(i.resourceType==='VISA'){const r=await db.tciVisaQuota.findFirst({where:{...base,effectiveFrom:{lte:new Date(i.serviceDate)},effectiveTo:{gte:new Date(i.serviceDate)}}});return r?amount(r.quotaRemaining):decimalAmount('0')}const r=await db.tciTransportCapacity.findFirst({where:base});if(!r||!i.periodEnd)return decimalAmount('0');const used=await db.tciAllocation.aggregate({_sum:{quantity:true},where:{companyId:i.companyId,resourceType:'TRANSPORT',resourceId:i.resourceId,status:{in:['CONFIRMED','PARTIALLY_RELEASED','CONSUMED']},serviceDate:{lt:new Date(i.periodEnd)},periodEnd:{gt:new Date(i.serviceDate)}}});return amount(Prisma.Decimal.max(new Prisma.Decimal(0),r.capacityUnits.sub(used._sum.quantity??0)))}
- private async resourceContract(tx:Tx,c:CompanyId,t:ContractType,id:string){if(t==='HOTEL')return (await tx.tciHotelInventory.findUnique({where:{companyId_id:{companyId:c,id}}}))?.contractId;if(t==='FLIGHT_BLOCK')return (await tx.tciFlightBlock.findUnique({where:{companyId_id:{companyId:c,id}}}))?.contractId;if(t==='TRANSPORT')return (await tx.tciTransportCapacity.findUnique({where:{companyId_id:{companyId:c,id}}}))?.contractId;return (await tx.tciVisaQuota.findUnique({where:{companyId_id:{companyId:c,id}}}))?.contractId}
- private async requireContract(tx:Tx,c:CompanyId,id:string,type?:ContractType){const r=await tx.tciContract.findUnique({where:{companyId_id:{companyId:c,id}}});if(!r||type&&r.type!==type)throw new Error('matching contract not found for company')}
- private history(tx:Tx,c:CompanyId,contractId:string,kind:string,aggregateId:string){return tx.tciContractHistory.create({data:{id:randomUUID(),companyId:c,contractId,kind,aggregateId,evidence:json({})}})}
+  constructor(private readonly db: PrismaClient) {}
+
+  private async command<T>(
+    companyId: CompanyId,
+    key: string | undefined,
+    hash: string,
+    work: (tx: Tx) => Promise<T>,
+  ): Promise<T> {
+    return this.db.$transaction(
+      async (tx) => {
+        if (key) {
+          const old = await tx.tciIdempotencyKey.findUnique({
+            where: { companyId_key: { companyId, key } },
+          });
+          if (old) {
+            if (old.requestHash !== hash) {
+              throw new Error(`Idempotency conflict for '${key}'`);
+            }
+            return old.result as unknown as T;
+          }
+        }
+
+        const result = await work(tx);
+        if (key) {
+          await tx.tciIdempotencyKey.create({
+            data: {
+              id: randomUUID(),
+              companyId,
+              key,
+              requestHash: hash,
+              result: json(result),
+            },
+          });
+        }
+        return result;
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
+  }
+
+  async createContract(
+    input: CreateTourismContractInput,
+    key: string | undefined,
+    hash: string,
+  ): Promise<TourismContract> {
+    return this.command(input.companyId, key, hash, async (tx) => {
+      const id = randomUUID();
+      const created = await tx.tciContract.create({
+        data: {
+          id,
+          companyId: input.companyId,
+          type: input.type,
+          status: 'ACTIVE',
+          supplierId: input.supplierId,
+          effectiveFrom: new Date(input.effectiveFrom),
+          effectiveTo: new Date(input.effectiveTo),
+          sourceReference: input.sourceReference ? json(input.sourceReference) : Prisma.JsonNull,
+        },
+      });
+      const initialVersion = await tx.tciContractVersion.create({
+        data: {
+          id: randomUUID(),
+          companyId: input.companyId,
+          contractId: id,
+          versionNumber: 1,
+          effectiveFrom: new Date(input.effectiveFrom),
+          effectiveTo: new Date(input.effectiveTo),
+          terms: json({ type: input.type, supplierId: input.supplierId ?? null }),
+          isCurrent: true,
+        },
+      });
+      await this.history(tx, input.companyId, id, 'CONTRACT_CREATED', initialVersion.id);
+      return contract(created);
+    });
+  }
+
+  async amendContract(
+    input: AmendContractInput,
+    key: string | undefined,
+    hash: string,
+  ): Promise<ContractVersion> {
+    return this.command(input.companyId, key, hash, async (tx) => {
+      const currentContract = await tx.tciContract.findUnique({
+        where: { companyId_id: { companyId: input.companyId, id: input.contractId } },
+      });
+      if (!currentContract) throw new Error('contract not found for company');
+
+      const currentVersion = await tx.tciContractVersion.findFirst({
+        where: { companyId: input.companyId, contractId: input.contractId, isCurrent: true },
+      });
+      if (!currentVersion) throw new Error('current contract version not found');
+
+      const dateBlockers = await tx.tciAllocation.count({
+        where: {
+          companyId: input.companyId,
+          contractId: input.contractId,
+          status: { in: ['CONFIRMED', 'PARTIALLY_RELEASED'] },
+          OR: [
+            { serviceDate: { lt: new Date(input.effectiveFrom) } },
+            ...(input.effectiveTo
+              ? [{ serviceDate: { gt: new Date(input.effectiveTo) } }]
+              : []),
+          ],
+        },
+      });
+      const protectedCoverage = await tx.tciAllocationCoverageRequirement.count({
+        where: {
+          companyId: input.companyId,
+          active: true,
+          allocation: {
+            contractId: input.contractId,
+            OR: [
+              { serviceDate: { lt: new Date(input.effectiveFrom) } },
+              ...(input.effectiveTo
+                ? [{ serviceDate: { gt: new Date(input.effectiveTo) } }]
+                : []),
+            ],
+          },
+        },
+      });
+      if (dateBlockers || protectedCoverage) {
+        throw new Error('amendment would remove required active program coverage');
+      }
+
+      await tx.tciContractVersion.updateMany({
+        where: {
+          companyId: input.companyId,
+          contractId: input.contractId,
+          isCurrent: true,
+        },
+        data: { isCurrent: false },
+      });
+
+      const created = await tx.tciContractVersion.create({
+        data: {
+          id: randomUUID(),
+          companyId: input.companyId,
+          contractId: input.contractId,
+          versionNumber: currentVersion.versionNumber + 1,
+          effectiveFrom: new Date(input.effectiveFrom),
+          effectiveTo: input.effectiveTo ? new Date(input.effectiveTo) : null,
+          terms: json(input.terms),
+          isCurrent: true,
+        },
+      });
+      await tx.tciContract.update({
+        where: { companyId_id: { companyId: input.companyId, id: input.contractId } },
+        data: { status: 'AMENDED' },
+      });
+      await this.history(
+        tx,
+        input.companyId,
+        input.contractId,
+        'CONTRACT_AMENDED',
+        created.id,
+      );
+      return version(created);
+    });
+  }
+
+  async contract(companyId: CompanyId, id: string): Promise<TourismContract | null> {
+    const row = await this.db.tciContract.findUnique({
+      where: { companyId_id: { companyId, id } },
+    });
+    return row ? contract(row) : null;
+  }
+
+  async versions(companyId: CompanyId, id: string): Promise<ContractVersion[]> {
+    return (
+      await this.db.tciContractVersion.findMany({
+        where: { companyId, contractId: id },
+        orderBy: { versionNumber: 'asc' },
+      })
+    ).map(version);
+  }
+
+  async createHotel(
+    input: CreateHotelInventoryInput,
+    key: string | undefined,
+    hash: string,
+  ): Promise<HotelInventory> {
+    return this.command(input.companyId, key, hash, async (tx) => {
+      await this.requireContract(tx, input.companyId, input.contractId, 'HOTEL');
+      const row = await tx.tciHotelInventory.create({
+        data: {
+          id: randomUUID(),
+          companyId: input.companyId,
+          contractId: input.contractId,
+          hotelId: input.hotelId,
+          roomId: input.roomId,
+          serviceDate: new Date(input.serviceDate),
+          contractedQuantity: input.contractedQuantity,
+          allocatedQuantity: '0',
+          availableQuantity: input.contractedQuantity,
+          status: 'ACTIVE',
+        },
+      });
+      await this.history(
+        tx,
+        input.companyId,
+        input.contractId,
+        'HOTEL_INVENTORY_CREATED',
+        row.id,
+      );
+      return {
+        id: row.id,
+        companyId: row.companyId as CompanyId,
+        contractId: row.contractId,
+        hotelId: row.hotelId,
+        roomId: row.roomId ?? undefined,
+        serviceDate: iso(row.serviceDate),
+        contractedQuantity: amount(row.contractedQuantity),
+        allocatedQuantity: amount(row.allocatedQuantity),
+        availableQuantity: amount(row.availableQuantity),
+        status: 'ACTIVE',
+      };
+    });
+  }
+
+  async createFlight(
+    input: CreateFlightBlockInput,
+    key: string | undefined,
+    hash: string,
+  ): Promise<FlightBlock> {
+    return this.command(input.companyId, key, hash, async (tx) => {
+      await this.requireContract(tx, input.companyId, input.contractId, 'FLIGHT_BLOCK');
+      const row = await tx.tciFlightBlock.create({
+        data: {
+          id: randomUUID(),
+          companyId: input.companyId,
+          contractId: input.contractId,
+          flightNumber: input.flightNumber,
+          origin: input.origin,
+          destination: input.destination,
+          departureDate: new Date(input.departureDate),
+          totalSeats: input.totalSeats,
+          consumedSeats: '0',
+          availableSeats: input.totalSeats,
+        },
+      });
+      return {
+        id: row.id,
+        companyId: row.companyId as CompanyId,
+        contractId: row.contractId,
+        flightNumber: row.flightNumber,
+        origin: row.origin,
+        destination: row.destination,
+        departureDate: iso(row.departureDate),
+        totalSeats: amount(row.totalSeats),
+        consumedSeats: amount(row.consumedSeats),
+        availableSeats: amount(row.availableSeats),
+      };
+    });
+  }
+
+  async createTransport(
+    input: CreateTransportCapacityInput,
+    key: string | undefined,
+    hash: string,
+  ): Promise<TransportCapacity> {
+    return this.command(input.companyId, key, hash, async (tx) => {
+      await this.requireContract(tx, input.companyId, input.contractId, 'TRANSPORT');
+      const row = await tx.tciTransportCapacity.create({
+        data: {
+          id: randomUUID(),
+          companyId: input.companyId,
+          contractId: input.contractId,
+          vehicleId: input.vehicleId,
+          capacityUnits: input.capacityUnits,
+          periodStart: new Date(input.periodStart),
+          periodEnd: new Date(input.periodEnd),
+          consumedUnits: '0',
+        },
+      });
+      return {
+        id: row.id,
+        companyId: row.companyId as CompanyId,
+        contractId: row.contractId,
+        vehicleId: row.vehicleId,
+        capacityUnits: amount(row.capacityUnits),
+        periodStart: iso(row.periodStart),
+        periodEnd: iso(row.periodEnd),
+        consumedUnits: amount(row.consumedUnits),
+      };
+    });
+  }
+
+  async createVisa(
+    input: CreateVisaQuotaInput,
+    key: string | undefined,
+    hash: string,
+  ): Promise<VisaQuota> {
+    return this.command(input.companyId, key, hash, async (tx) => {
+      await this.requireContract(tx, input.companyId, input.contractId, 'VISA');
+      const row = await tx.tciVisaQuota.create({
+        data: {
+          id: randomUUID(),
+          companyId: input.companyId,
+          contractId: input.contractId,
+          visaType: input.visaType,
+          nationality: input.nationality,
+          quotaTotal: input.quotaTotal,
+          quotaConsumed: '0',
+          quotaRemaining: input.quotaTotal,
+          effectiveFrom: new Date(input.effectiveFrom),
+          effectiveTo: new Date(input.effectiveTo),
+        },
+      });
+      return {
+        id: row.id,
+        companyId: row.companyId as CompanyId,
+        contractId: row.contractId,
+        visaType: row.visaType,
+        nationality: row.nationality ?? undefined,
+        quotaTotal: amount(row.quotaTotal),
+        quotaConsumed: amount(row.quotaConsumed),
+        quotaRemaining: amount(row.quotaRemaining),
+        effectiveFrom: iso(row.effectiveFrom),
+        effectiveTo: iso(row.effectiveTo),
+      };
+    });
+  }
+
+  async createStopSale(
+    input: CreateStopSaleInput,
+    key: string | undefined,
+    hash: string,
+  ): Promise<StopSale> {
+    return this.command(input.companyId, key, hash, async (tx) => {
+      await this.requireContract(tx, input.companyId, input.contractId);
+      const row = await tx.tciStopSale.create({
+        data: {
+          id: randomUUID(),
+          companyId: input.companyId,
+          contractId: input.contractId,
+          reason: input.reason,
+          effectiveFrom: new Date(input.effectiveFrom),
+          effectiveTo: new Date(input.effectiveTo),
+          isActive: true,
+        },
+      });
+      return {
+        id: row.id,
+        companyId: row.companyId as CompanyId,
+        contractId: row.contractId,
+        reason: row.reason,
+        effectiveFrom: iso(row.effectiveFrom),
+        effectiveTo: iso(row.effectiveTo),
+        createdAt: iso(row.createdAt),
+        isActive: row.isActive,
+      };
+    });
+  }
+
+  async availability(input: CheckAvailabilityInput): Promise<AvailabilityResult> {
+    const stopSale = await this.db.tciStopSale.findFirst({
+      where: {
+        companyId: input.companyId,
+        contractId: input.contractId,
+        isActive: true,
+        effectiveFrom: { lte: new Date(input.serviceDate) },
+        effectiveTo: { gte: new Date(input.serviceDate) },
+      },
+    });
+    if (stopSale) {
+      return {
+        available: false,
+        availableQuantity: decimalAmount('0'),
+        blockerReason: `Stop sale: ${stopSale.reason}`,
+      };
+    }
+    const availableQuantity = await this.resourceAvailable(this.db, input);
+    return { available: availableQuantity !== '0', availableQuantity };
+  }
+
+  async allocate(
+    input: AllocateCapacityInput,
+    key: string | undefined,
+    hash: string,
+  ): Promise<AllocationResult> {
+    try {
+      return await this.command(input.companyId, key, hash, (tx) =>
+        this.allocateTx(tx, input),
+      );
+    } catch (error) {
+      if (
+        input.resourceType === 'VISA' &&
+        input.visaBatchReference &&
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        const prior = await this.findVisaBatchAllocation(
+          input.companyId,
+          idempotencyHash(input.visaBatchReference),
+        );
+        if (prior && this.sameVisaAllocation(prior, input)) {
+          return { allocation: prior };
+        }
+      }
+      throw error;
+    }
+  }
+
+  private async allocateTx(tx: Tx, input: AllocateCapacityInput): Promise<AllocationResult> {
+    const stopSale = await tx.tciStopSale.findFirst({
+      where: {
+        companyId: input.companyId,
+        contractId: input.contractId,
+        isActive: true,
+        effectiveFrom: { lte: new Date(input.serviceDate) },
+        effectiveTo: { gte: new Date(input.serviceDate) },
+      },
+    });
+    if (stopSale) throw new Error(`stop sale in effect: ${stopSale.reason}`);
+
+    let visaBatchKey: string | null = null;
+    if (input.resourceType === 'VISA') {
+      if (!input.visaBatchReference) throw new Error('visa batch evidence is required');
+      visaBatchKey = idempotencyHash(input.visaBatchReference);
+      const prior = await tx.tciAllocation.findUnique({
+        where: {
+          companyId_visaBatchKey: {
+            companyId: input.companyId,
+            visaBatchKey,
+          },
+        },
+      });
+      if (prior) {
+        const mapped = allocation(prior);
+        if (this.sameVisaAllocation(mapped, input)) return { allocation: mapped };
+        throw new Error('conflicting visa batch reuse');
+      }
+    }
+
+    const currentVersion = await tx.tciContractVersion.findFirst({
+      where: {
+        companyId: input.companyId,
+        contractId: input.contractId,
+        isCurrent: true,
+      },
+    });
+    if (!currentVersion) throw new Error('current contract version not found');
+
+    await this.consume(tx, input);
+    const row = await tx.tciAllocation.create({
+      data: {
+        id: randomUUID(),
+        companyId: input.companyId,
+        contractId: input.contractId,
+        contractVersionId: currentVersion.id,
+        resourceType: input.resourceType,
+        resourceId: input.resourceId,
+        program: json(input.program),
+        serviceDate: new Date(input.serviceDate),
+        periodEnd: input.periodEnd ? new Date(input.periodEnd) : null,
+        quantity: input.quantity,
+        status: 'CONFIRMED',
+        visaBatchKey,
+        visaBatchReference: input.visaBatchReference
+          ? json(input.visaBatchReference)
+          : Prisma.JsonNull,
+        sourceReference: input.sourceReference ? json(input.sourceReference) : Prisma.JsonNull,
+      },
+    });
+    await this.history(
+      tx,
+      input.companyId,
+      input.contractId,
+      'ALLOCATION_CREATED',
+      row.id,
+    );
+    return { allocation: allocation(row) };
+  }
+
+  private async consume(tx: Tx, input: AllocateCapacityInput): Promise<void> {
+    let count = 0;
+    if (input.resourceType === 'HOTEL') {
+      count = (
+        await tx.tciHotelInventory.updateMany({
+          where: {
+            companyId: input.companyId,
+            id: input.resourceId,
+            contractId: input.contractId,
+            serviceDate: new Date(input.serviceDate),
+            status: 'ACTIVE',
+            availableQuantity: { gte: input.quantity },
+          },
+          data: {
+            allocatedQuantity: { increment: input.quantity },
+            availableQuantity: { decrement: input.quantity },
+          },
+        })
+      ).count;
+    } else if (input.resourceType === 'FLIGHT_BLOCK') {
+      count = (
+        await tx.tciFlightBlock.updateMany({
+          where: {
+            companyId: input.companyId,
+            id: input.resourceId,
+            contractId: input.contractId,
+            departureDate: new Date(input.serviceDate),
+            availableSeats: { gte: input.quantity },
+          },
+          data: {
+            consumedSeats: { increment: input.quantity },
+            availableSeats: { decrement: input.quantity },
+          },
+        })
+      ).count;
+    } else if (input.resourceType === 'VISA') {
+      count = (
+        await tx.tciVisaQuota.updateMany({
+          where: {
+            companyId: input.companyId,
+            id: input.resourceId,
+            contractId: input.contractId,
+            effectiveFrom: { lte: new Date(input.serviceDate) },
+            effectiveTo: { gte: new Date(input.serviceDate) },
+            quotaRemaining: { gte: input.quantity },
+          },
+          data: {
+            quotaConsumed: { increment: input.quantity },
+            quotaRemaining: { decrement: input.quantity },
+          },
+        })
+      ).count;
+    } else {
+      if (!input.periodEnd) throw new Error('transport periodEnd is required');
+      const capacity = await tx.tciTransportCapacity.findUnique({
+        where: {
+          companyId_id: {
+            companyId: input.companyId,
+            id: input.resourceId,
+          },
+        },
+      });
+      if (
+        capacity &&
+        capacity.contractId === input.contractId &&
+        capacity.periodStart <= new Date(input.serviceDate) &&
+        capacity.periodEnd >= new Date(input.periodEnd)
+      ) {
+        const used = await tx.tciAllocation.aggregate({
+          _sum: { quantity: true },
+          where: {
+            companyId: input.companyId,
+            resourceType: 'TRANSPORT',
+            resourceId: input.resourceId,
+            status: { in: ['CONFIRMED', 'PARTIALLY_RELEASED', 'CONSUMED'] },
+            serviceDate: { lt: new Date(input.periodEnd) },
+            periodEnd: { gt: new Date(input.serviceDate) },
+          },
+        });
+        const requested = new Prisma.Decimal(used._sum.quantity ?? 0).add(input.quantity);
+        if (requested.lte(capacity.capacityUnits)) count = 1;
+      }
+    }
+
+    if (count !== 1) {
+      throw new Error(`insufficient ${input.resourceType} capacity or resource mismatch`);
+    }
+  }
+
+  async release(
+    input: ReleaseAllocationInput,
+    key: string | undefined,
+    hash: string,
+  ): Promise<ReleaseResult> {
+    return this.command(input.companyId, key, hash, async (tx) => {
+      const row = await tx.tciAllocation.findUnique({
+        where: {
+          companyId_id: {
+            companyId: input.companyId,
+            id: input.allocationId,
+          },
+        },
+      });
+      if (!row) throw new Error('allocation not found for company');
+      if (new Prisma.Decimal(input.quantity).gt(row.quantity)) {
+        throw new Error('release exceeds allocated quantity');
+      }
+
+      const remaining = row.quantity.sub(input.quantity);
+      const blockers = await this.releaseBlockersTx(tx, row, remaining);
+      if (blockers.length) {
+        const evidence = JSON.stringify(blockers);
+        await tx.tciAllocation.update({
+          where: {
+            companyId_id: {
+              companyId: input.companyId,
+              id: row.id,
+            },
+          },
+          data: { releaseBlockerReason: evidence },
+        });
+        await tx.tciAllocationRelease.create({
+          data: {
+            id: randomUUID(),
+            companyId: input.companyId,
+            allocationId: row.id,
+            releasedQuantity: '0',
+            blockerEvidence: evidence,
+            status: 'BLOCKED',
+          },
+        });
+        return {
+          success: false,
+          blockerEvidence: evidence,
+          releasedQuantity: decimalAmount('0'),
+        };
+      }
+
+      await this.restore(
+        tx,
+        row.resourceType as ContractType,
+        row.resourceId,
+        input.companyId,
+        input.quantity,
+      );
+      const status = remaining.isZero() ? 'RELEASED' : 'PARTIALLY_RELEASED';
+      await tx.tciAllocation.update({
+        where: {
+          companyId_id: {
+            companyId: input.companyId,
+            id: row.id,
+          },
+        },
+        data: {
+          quantity: remaining,
+          status,
+          releaseBlockerReason: null,
+        },
+      });
+      await tx.tciAllocationRelease.create({
+        data: {
+          id: randomUUID(),
+          companyId: input.companyId,
+          allocationId: row.id,
+          releasedQuantity: input.quantity,
+          status: 'SUCCESS',
+        },
+      });
+      return { success: true, releasedQuantity: input.quantity };
+    });
+  }
+
+  async adjust(
+    input: AdjustAllocationInput,
+    key: string | undefined,
+    hash: string,
+  ): Promise<AdjustmentResult> {
+    return this.command(input.companyId, key, hash, async (tx) => {
+      const existingEffect = await tx.tciAllocationCostEffect.findUnique({
+        where: {
+          companyId_id: {
+            companyId: input.companyId,
+            id: input.costEffectId,
+          },
+        },
+      });
+      if (existingEffect) {
+        if (existingEffect.requestHash !== hash) {
+          throw new Error('conflicting allocation cost effect replay');
+        }
+        const existingAllocation = await tx.tciAllocation.findUnique({
+          where: {
+            companyId_id: {
+              companyId: input.companyId,
+              id: existingEffect.allocationId,
+            },
+          },
+        });
+        if (!existingAllocation) throw new Error('allocation cost effect lost its allocation');
+        return {
+          allocation: allocation(existingAllocation),
+          previousQuantity: amount(existingEffect.previousQuantity),
+          costEffectId: existingEffect.id,
+        };
+      }
+
+      const row = await tx.tciAllocation.findUnique({
+        where: {
+          companyId_id: {
+            companyId: input.companyId,
+            id: input.allocationId,
+          },
+        },
+      });
+      if (!row) throw new Error('allocation not found for company');
+
+      const previousQuantity = amount(row.quantity);
+      const next = new Prisma.Decimal(input.newQuantity);
+      const delta = next.sub(row.quantity);
+      if (delta.gt(0)) {
+        await this.consume(tx, {
+          companyId: input.companyId,
+          contractId: row.contractId,
+          resourceType: row.resourceType as ContractType,
+          resourceId: row.resourceId,
+          program: row.program as unknown as SourceReference,
+          serviceDate: iso(row.serviceDate),
+          periodEnd: row.periodEnd ? iso(row.periodEnd) : undefined,
+          quantity: amount(delta),
+          sourceReference: input.sourceReference,
+          visaBatchReference: source(row.visaBatchReference),
+        });
+      } else if (delta.lt(0)) {
+        await this.restore(
+          tx,
+          row.resourceType as ContractType,
+          row.resourceId,
+          input.companyId,
+          amount(delta.negated()),
+        );
+      }
+
+      const updated = await tx.tciAllocation.update({
+        where: {
+          companyId_id: {
+            companyId: input.companyId,
+            id: row.id,
+          },
+        },
+        data: { quantity: input.newQuantity },
+      });
+      await tx.tciAllocationCostEffect.create({
+        data: {
+          id: input.costEffectId,
+          companyId: input.companyId,
+          allocationId: row.id,
+          program: row.program,
+          previousQuantity: row.quantity,
+          newQuantity: input.newQuantity,
+          costAmount: input.costAmount,
+          postingDate: new Date(input.postingDate),
+          status: 'PENDING',
+          requestHash: hash,
+        },
+      });
+      await this.history(
+        tx,
+        input.companyId,
+        row.contractId,
+        'ALLOCATION_ADJUSTED',
+        row.id,
+      );
+      return {
+        allocation: allocation(updated),
+        previousQuantity,
+        costEffectId: input.costEffectId,
+      };
+    });
+  }
+
+  async costEffect(
+    companyId: CompanyId,
+    effectId: string,
+  ): Promise<AllocationCostEffect | null> {
+    const row = await this.db.tciAllocationCostEffect.findUnique({
+      where: { companyId_id: { companyId, id: effectId } },
+    });
+    return row
+      ? {
+          id: row.id,
+          companyId: row.companyId as CompanyId,
+          allocationId: row.allocationId,
+          program: row.program as unknown as SourceReference,
+          previousQuantity: amount(row.previousQuantity),
+          newQuantity: amount(row.newQuantity),
+          costAmount: amount(row.costAmount),
+          postingDate: row.postingDate.toISOString().slice(0, 10),
+          status: row.status as AllocationCostEffect['status'],
+          ownerReference: row.ownerReference ?? undefined,
+          requestHash: row.requestHash,
+          createdAt: iso(row.createdAt),
+          completedAt: row.completedAt ? iso(row.completedAt) : undefined,
+        }
+      : null;
+  }
+
+  async completeCostEffect(
+    companyId: CompanyId,
+    effectId: string,
+    ownerReference: string,
+  ): Promise<AllocationCostEffect> {
+    await this.db.tciAllocationCostEffect.updateMany({
+      where: {
+        companyId,
+        id: effectId,
+        status: 'PENDING',
+      },
+      data: {
+        status: 'COMPLETED',
+        ownerReference,
+        completedAt: new Date(),
+      },
+    });
+    const value = await this.costEffect(companyId, effectId);
+    if (!value) throw new Error('allocation cost effect not found for company');
+    if (value.status !== 'COMPLETED') throw new Error('allocation cost effect was not completed');
+    if (value.ownerReference !== ownerReference) {
+      throw new Error('allocation cost effect owner reference conflict');
+    }
+    return value;
+  }
+
+  async consumeFlight(
+    input: ConsumeFlightBlockInput,
+    key: string | undefined,
+    hash: string,
+  ): Promise<FlightBlockConsumption> {
+    return this.command(input.companyId, key, hash, async (tx) => {
+      const block = await tx.tciFlightBlock.findUnique({
+        where: {
+          companyId_id: {
+            companyId: input.companyId,
+            id: input.flightBlockId,
+          },
+        },
+      });
+      if (!block) throw new Error('flight block not found for company');
+      const updated = await tx.tciFlightBlock.updateMany({
+        where: {
+          companyId: input.companyId,
+          id: input.flightBlockId,
+          availableSeats: { gte: input.seats },
+        },
+        data: {
+          consumedSeats: { increment: input.seats },
+          availableSeats: { decrement: input.seats },
+        },
+      });
+      if (updated.count !== 1) throw new Error('insufficient shared flight seats');
+      const row = await tx.tciFlightBlockConsumption.create({
+        data: {
+          id: randomUUID(),
+          companyId: input.companyId,
+          flightBlockId: input.flightBlockId,
+          program: json(input.program),
+          consumedSeats: input.seats,
+          sourceReference: json(input.flightSegmentReference),
+        },
+      });
+      return {
+        id: row.id,
+        companyId: row.companyId as CompanyId,
+        flightBlockId: row.flightBlockId,
+        program: row.program as unknown as SourceReference,
+        consumedSeats: amount(row.consumedSeats),
+        consumedAt: iso(row.consumedAt),
+        sourceReference: source(row.sourceReference),
+      };
+    });
+  }
+
+  async internalFirst(
+    input: InternalFirstFulfillmentInput,
+    key: string | undefined,
+    hash: string,
+  ): Promise<AllocationResult> {
+    return this.command(input.companyId, key, hash, async (tx) => {
+      const available = await this.resourceAvailable(
+        tx,
+        {
+          companyId: input.companyId,
+          contractId: '',
+          resourceType: input.contractType,
+          resourceId: input.resourceId,
+          serviceDate: input.serviceDate,
+          periodEnd: input.periodEnd,
+        },
+        false,
+      );
+      const take = Prisma.Decimal.min(
+        new Prisma.Decimal(available),
+        new Prisma.Decimal(input.requiredQuantity),
+      );
+      const result: AllocationResult = {};
+
+      if (take.gt(0)) {
+        const resourceContract = await this.resourceContract(
+          tx,
+          input.companyId,
+          input.contractType,
+          input.resourceId,
+        );
+        if (!resourceContract) throw new Error('internal resource not found');
+        Object.assign(
+          result,
+          await this.allocateTx(tx, {
+            ...input,
+            contractId: resourceContract,
+            resourceType: input.contractType,
+            quantity: amount(take),
+          }),
+        );
+      }
+
+      const residual = new Prisma.Decimal(input.requiredQuantity).sub(take);
+      if (residual.gt(0)) {
+        const request: ProcurementRequest = {
+          id: randomUUID(),
+          companyId: input.companyId,
+          program: input.program,
+          residualQuantity: amount(residual),
+          procurementType: input.contractType,
+          externalReference: '',
+          referenceData: input.referenceData,
+          createdAt: new Date().toISOString(),
+          sourceReference: input.sourceReference,
+        };
+        await tx.tciProcurementRequest.create({
+          data: {
+            id: request.id,
+            companyId: input.companyId,
+            program: json(input.program),
+            residualQuantity: request.residualQuantity,
+            procurementType: input.contractType,
+            externalReference: null,
+            referenceData: json(input.referenceData),
+            sourceReference: input.sourceReference
+              ? json(input.sourceReference)
+              : Prisma.JsonNull,
+          },
+        });
+        return { ...result, procurementRequest: request };
+      }
+      return result;
+    });
+  }
+
+  async attachProcurementReference(
+    companyId: CompanyId,
+    requestId: string,
+    externalReference: string,
+  ): Promise<void> {
+    const updated = await this.db.tciProcurementRequest.updateMany({
+      where: { companyId, id: requestId },
+      data: { externalReference },
+    });
+    if (updated.count !== 1) throw new Error('procurement evidence not found for company');
+  }
+
+  async registerEconomicEvidence(
+    input: RegisterAllocationEconomicEvidenceInput,
+    key: string | undefined,
+    hash: string,
+  ): Promise<AllocationEconomicEvidence> {
+    return this.command(input.companyId, key, hash, async (tx) => {
+      const allocationRow = await tx.tciAllocation.findUnique({
+        where: {
+          companyId_id: {
+            companyId: input.companyId,
+            id: input.allocationId,
+          },
+        },
+      });
+      if (!allocationRow) throw new Error('allocation not found for company');
+      const evidenceKey = idempotencyHash(input.evidence);
+      const old = await tx.tciAllocationEconomicEvidence.findUnique({
+        where: {
+          companyId_allocationId_evidenceKey: {
+            companyId: input.companyId,
+            allocationId: input.allocationId,
+            evidenceKey,
+          },
+        },
+      });
+      if (old) {
+        if (old.kind !== input.kind) throw new Error('conflicting economic evidence replay');
+        return {
+          id: old.id,
+          companyId: old.companyId as CompanyId,
+          allocationId: old.allocationId,
+          kind: old.kind,
+          evidence: old.evidence as unknown as SourceReference,
+          createdAt: iso(old.createdAt),
+        };
+      }
+      const row = await tx.tciAllocationEconomicEvidence.create({
+        data: {
+          id: randomUUID(),
+          companyId: input.companyId,
+          allocationId: input.allocationId,
+          kind: input.kind,
+          evidenceKey,
+          evidence: json(input.evidence),
+        },
+      });
+      return {
+        id: row.id,
+        companyId: row.companyId as CompanyId,
+        allocationId: row.allocationId,
+        kind: row.kind,
+        evidence: row.evidence as unknown as SourceReference,
+        createdAt: iso(row.createdAt),
+      };
+    });
+  }
+
+  async protectCoverage(
+    input: ProtectAllocationCoverageInput,
+    key: string | undefined,
+    hash: string,
+  ): Promise<AllocationCoverageRequirement> {
+    return this.command(input.companyId, key, hash, async (tx) => {
+      const allocationRow = await tx.tciAllocation.findUnique({
+        where: {
+          companyId_id: {
+            companyId: input.companyId,
+            id: input.allocationId,
+          },
+        },
+      });
+      if (!allocationRow) throw new Error('allocation not found for company');
+      if (new Prisma.Decimal(input.minimumQuantity).gt(allocationRow.quantity)) {
+        throw new Error('coverage minimum exceeds current allocation');
+      }
+
+      const requirementKey = idempotencyHash(input.requirementReference);
+      const old = await tx.tciAllocationCoverageRequirement.findUnique({
+        where: {
+          companyId_allocationId_requirementKey: {
+            companyId: input.companyId,
+            allocationId: input.allocationId,
+            requirementKey,
+          },
+        },
+      });
+      if (old) {
+        if (!old.minimumQuantity.equals(input.minimumQuantity)) {
+          throw new Error('conflicting coverage requirement replay');
+        }
+        const row = old.active
+          ? old
+          : await tx.tciAllocationCoverageRequirement.update({
+              where: {
+                companyId_allocationId_requirementKey: {
+                  companyId: input.companyId,
+                  allocationId: input.allocationId,
+                  requirementKey,
+                },
+              },
+              data: { active: true, releasedAt: null },
+            });
+        return this.coverage(row);
+      }
+
+      const row = await tx.tciAllocationCoverageRequirement.create({
+        data: {
+          id: randomUUID(),
+          companyId: input.companyId,
+          allocationId: input.allocationId,
+          minimumQuantity: input.minimumQuantity,
+          requirementKey,
+          requirementReference: json(input.requirementReference),
+          active: true,
+        },
+      });
+      return this.coverage(row);
+    });
+  }
+
+  async releaseCoverage(
+    input: ReleaseAllocationCoverageInput,
+    key: string | undefined,
+    hash: string,
+  ): Promise<AllocationCoverageRequirement> {
+    return this.command(input.companyId, key, hash, async (tx) => {
+      const requirementKey = idempotencyHash(input.requirementReference);
+      const old = await tx.tciAllocationCoverageRequirement.findUnique({
+        where: {
+          companyId_allocationId_requirementKey: {
+            companyId: input.companyId,
+            allocationId: input.allocationId,
+            requirementKey,
+          },
+        },
+      });
+      if (!old) throw new Error('coverage requirement not found for company');
+      const row = old.active
+        ? await tx.tciAllocationCoverageRequirement.update({
+            where: {
+              companyId_allocationId_requirementKey: {
+                companyId: input.companyId,
+                allocationId: input.allocationId,
+                requirementKey,
+              },
+            },
+            data: { active: false, releasedAt: new Date() },
+          })
+        : old;
+      return this.coverage(row);
+    });
+  }
+
+  async releaseBlockers(
+    companyId: CompanyId,
+    allocationId: string,
+  ): Promise<ReleaseBlocker[]> {
+    const row = await this.db.tciAllocation.findUnique({
+      where: { companyId_id: { companyId, id: allocationId } },
+    });
+    if (!row) throw new Error('allocation not found for company');
+    return this.releaseBlockersTx(this.db, row);
+  }
+
+  async idempotency(
+    companyId: CompanyId,
+    key: string,
+  ): Promise<{ requestHash: string; result: Record<string, unknown> } | null> {
+    const row = await this.db.tciIdempotencyKey.findUnique({
+      where: { companyId_key: { companyId, key } },
+    });
+    return row
+      ? {
+          requestHash: row.requestHash,
+          result: row.result as Record<string, unknown>,
+        }
+      : null;
+  }
+
+  private async releaseBlockersTx(
+    db: Tx | PrismaClient,
+    row: AllocationRow,
+    proposedRemaining?: Prisma.Decimal,
+  ): Promise<ReleaseBlocker[]> {
+    const blockers: ReleaseBlocker[] = [];
+    if (row.status === 'CONSUMED') {
+      blockers.push({
+        code: 'CONSUMED',
+        message: 'allocation has already been consumed',
+      });
+    }
+
+    const evidence = await db.tciAllocationEconomicEvidence.findFirst({
+      where: { companyId: row.companyId, allocationId: row.id },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (evidence) {
+      blockers.push({
+        code: 'FINANCIAL_HISTORY',
+        message: `allocation has protected economic history: ${evidence.kind}`,
+        evidence: evidence.evidence as unknown as SourceReference,
+      });
+    }
+
+    const completedCost = await db.tciAllocationCostEffect.findFirst({
+      where: {
+        companyId: row.companyId,
+        allocationId: row.id,
+        status: 'COMPLETED',
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (completedCost) {
+      blockers.push({
+        code: 'FINANCIAL_HISTORY',
+        message: `allocation has completed cost effect ${completedCost.id}`,
+      });
+    }
+
+    const coverageRows = await db.tciAllocationCoverageRequirement.findMany({
+      where: {
+        companyId: row.companyId,
+        allocationId: row.id,
+        active: true,
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+    for (const coverageRow of coverageRows) {
+      if (
+        proposedRemaining === undefined ||
+        proposedRemaining.lt(coverageRow.minimumQuantity)
+      ) {
+        blockers.push({
+          code: 'PROGRAM_COVERAGE',
+          message: 'release would violate required active program coverage',
+          evidence: coverageRow.requirementReference as unknown as SourceReference,
+        });
+      }
+    }
+    return blockers;
+  }
+
+  private async restore(
+    tx: Tx,
+    type: ContractType,
+    id: string,
+    companyId: CompanyId,
+    quantity: DecimalAmount,
+  ): Promise<void> {
+    if (type === 'HOTEL') {
+      await tx.tciHotelInventory.update({
+        where: { companyId_id: { companyId, id } },
+        data: {
+          allocatedQuantity: { decrement: quantity },
+          availableQuantity: { increment: quantity },
+        },
+      });
+    } else if (type === 'FLIGHT_BLOCK') {
+      await tx.tciFlightBlock.update({
+        where: { companyId_id: { companyId, id } },
+        data: {
+          consumedSeats: { decrement: quantity },
+          availableSeats: { increment: quantity },
+        },
+      });
+    } else if (type === 'VISA') {
+      await tx.tciVisaQuota.update({
+        where: { companyId_id: { companyId, id } },
+        data: {
+          quotaConsumed: { decrement: quantity },
+          quotaRemaining: { increment: quantity },
+        },
+      });
+    }
+    // Transport availability is derived from overlapping active allocations, so no scalar restore exists.
+  }
+
+  private async resourceAvailable(
+    db: Tx | PrismaClient,
+    input: CheckAvailabilityInput,
+    matchContract = true,
+  ): Promise<DecimalAmount> {
+    const contractFilter = matchContract ? { contractId: input.contractId } : {};
+    if (input.resourceType === 'HOTEL') {
+      const row = await db.tciHotelInventory.findFirst({
+        where: {
+          companyId: input.companyId,
+          id: input.resourceId,
+          ...contractFilter,
+          serviceDate: new Date(input.serviceDate),
+          status: 'ACTIVE',
+        },
+      });
+      return row ? amount(row.availableQuantity) : decimalAmount('0');
+    }
+    if (input.resourceType === 'FLIGHT_BLOCK') {
+      const row = await db.tciFlightBlock.findFirst({
+        where: {
+          companyId: input.companyId,
+          id: input.resourceId,
+          ...contractFilter,
+          departureDate: new Date(input.serviceDate),
+        },
+      });
+      return row ? amount(row.availableSeats) : decimalAmount('0');
+    }
+    if (input.resourceType === 'VISA') {
+      const row = await db.tciVisaQuota.findFirst({
+        where: {
+          companyId: input.companyId,
+          id: input.resourceId,
+          ...contractFilter,
+          effectiveFrom: { lte: new Date(input.serviceDate) },
+          effectiveTo: { gte: new Date(input.serviceDate) },
+        },
+      });
+      return row ? amount(row.quotaRemaining) : decimalAmount('0');
+    }
+
+    const capacity = await db.tciTransportCapacity.findFirst({
+      where: {
+        companyId: input.companyId,
+        id: input.resourceId,
+        ...contractFilter,
+      },
+    });
+    if (!capacity || !input.periodEnd) return decimalAmount('0');
+    const used = await db.tciAllocation.aggregate({
+      _sum: { quantity: true },
+      where: {
+        companyId: input.companyId,
+        resourceType: 'TRANSPORT',
+        resourceId: input.resourceId,
+        status: { in: ['CONFIRMED', 'PARTIALLY_RELEASED', 'CONSUMED'] },
+        serviceDate: { lt: new Date(input.periodEnd) },
+        periodEnd: { gt: new Date(input.serviceDate) },
+      },
+    });
+    return amount(
+      Prisma.Decimal.max(
+        new Prisma.Decimal(0),
+        capacity.capacityUnits.sub(used._sum.quantity ?? 0),
+      ),
+    );
+  }
+
+  private async resourceContract(
+    tx: Tx,
+    companyId: CompanyId,
+    type: ContractType,
+    id: string,
+  ): Promise<string | undefined> {
+    if (type === 'HOTEL') {
+      return (
+        await tx.tciHotelInventory.findUnique({
+          where: { companyId_id: { companyId, id } },
+        })
+      )?.contractId;
+    }
+    if (type === 'FLIGHT_BLOCK') {
+      return (
+        await tx.tciFlightBlock.findUnique({
+          where: { companyId_id: { companyId, id } },
+        })
+      )?.contractId;
+    }
+    if (type === 'TRANSPORT') {
+      return (
+        await tx.tciTransportCapacity.findUnique({
+          where: { companyId_id: { companyId, id } },
+        })
+      )?.contractId;
+    }
+    return (
+      await tx.tciVisaQuota.findUnique({
+        where: { companyId_id: { companyId, id } },
+      })
+    )?.contractId;
+  }
+
+  private async requireContract(
+    tx: Tx,
+    companyId: CompanyId,
+    id: string,
+    type?: ContractType,
+  ): Promise<void> {
+    const row = await tx.tciContract.findUnique({
+      where: { companyId_id: { companyId, id } },
+    });
+    if (!row || (type && row.type !== type)) {
+      throw new Error('matching contract not found for company');
+    }
+  }
+
+  private async history(
+    tx: Tx,
+    companyId: CompanyId,
+    contractId: string,
+    kind: string,
+    aggregateId: string,
+  ) {
+    return tx.tciContractHistory.create({
+      data: {
+        id: randomUUID(),
+        companyId,
+        contractId,
+        kind,
+        aggregateId,
+        evidence: json({}),
+      },
+    });
+  }
+
+  private coverage(row: {
+    id: string;
+    companyId: string;
+    allocationId: string;
+    minimumQuantity: Prisma.Decimal;
+    requirementReference: Prisma.JsonValue;
+    active: boolean;
+    createdAt: Date;
+    releasedAt: Date | null;
+  }): AllocationCoverageRequirement {
+    return {
+      id: row.id,
+      companyId: row.companyId as CompanyId,
+      allocationId: row.allocationId,
+      minimumQuantity: amount(row.minimumQuantity),
+      requirementReference: row.requirementReference as unknown as SourceReference,
+      active: row.active,
+      createdAt: iso(row.createdAt),
+      releasedAt: row.releasedAt ? iso(row.releasedAt) : undefined,
+    };
+  }
+
+  private async findVisaBatchAllocation(
+    companyId: CompanyId,
+    visaBatchKey: string,
+  ): Promise<Allocation | null> {
+    const row = await this.db.tciAllocation.findUnique({
+      where: {
+        companyId_visaBatchKey: {
+          companyId,
+          visaBatchKey,
+        },
+      },
+    });
+    return row ? allocation(row) : null;
+  }
+
+  private sameVisaAllocation(
+    prior: Allocation,
+    input: AllocateCapacityInput,
+  ): boolean {
+    return (
+      prior.resourceType === 'VISA' &&
+      prior.contractId === input.contractId &&
+      prior.resourceId === input.resourceId &&
+      prior.serviceDate === new Date(input.serviceDate).toISOString() &&
+      prior.quantity === input.quantity &&
+      sameSource(prior.program, input.program)
+    );
+  }
 }
