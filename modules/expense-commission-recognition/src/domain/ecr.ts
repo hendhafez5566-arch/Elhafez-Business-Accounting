@@ -35,6 +35,6 @@ export interface SupplierAdvanceSettlement {
 }
 export interface Accrual {
   id:string; companyId:CompanyId; sourceType:string; sourceId:string; amount:DecimalAmount; serviceDate:string;
-  status:'POSTED'|'CLEARED'; journalId:string; accruedRevenueAccountId:string; revenueAccountId:string;
+  status:'POSTED'|'CLEARED'; journalId:string; requestHash:string; accruedRevenueAccountId:string; revenueAccountId:string;
   billingInvoiceId?:string; clearingJournalId?:string;
 }
