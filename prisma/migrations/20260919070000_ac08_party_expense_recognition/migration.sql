@@ -156,6 +156,7 @@ CREATE TABLE "ecr_commission_payments" (
     "status" TEXT NOT NULL,
     "amount" DECIMAL(38,18) NOT NULL,
     "payment_currency" TEXT NOT NULL,
+    "claim_amount_applied" DECIMAL(38,18) NOT NULL,
     "settlement_base_amount" DECIMAL(38,18) NOT NULL,
     "carrying_base_amount" DECIMAL(38,18) NOT NULL,
     "realized_fx" DECIMAL(38,18) NOT NULL,
@@ -163,6 +164,23 @@ CREATE TABLE "ecr_commission_payments" (
     "treasury_voucher_id" TEXT,
 
     CONSTRAINT "ecr_commission_payments_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ecr_supplier_advance_settlements" (
+    "id" TEXT NOT NULL,
+    "company_id" TEXT NOT NULL,
+    "kind" TEXT NOT NULL,
+    "advance_id" TEXT NOT NULL,
+    "supplier_party_id" TEXT NOT NULL,
+    "amount" DECIMAL(38,18) NOT NULL,
+    "request_hash" TEXT NOT NULL,
+    "status" TEXT NOT NULL,
+    "treasury_voucher_id" TEXT,
+    "journal_id" TEXT,
+    "failure_reason" TEXT,
+
+    CONSTRAINT "ecr_supplier_advance_settlements_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -232,6 +250,9 @@ CREATE UNIQUE INDEX "ecr_commission_payments_company_id_id_key" ON "ecr_commissi
 CREATE UNIQUE INDEX "ecr_commission_payments_company_id_treasury_voucher_id_key" ON "ecr_commission_payments"("company_id", "treasury_voucher_id");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "ecr_supplier_advance_settlements_company_id_id_key" ON "ecr_supplier_advance_settlements"("company_id", "id");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "ecr_accruals_company_id_id_key" ON "ecr_accruals"("company_id", "id");
 
 -- CreateIndex
@@ -263,5 +284,6 @@ ALTER TABLE "ecr_expenses" ADD CONSTRAINT "ecr_expenses_amounts_positive" CHECK 
 ALTER TABLE "ecr_recognition_schedules" ADD CONSTRAINT "ecr_recognition_schedule_amounts_positive" CHECK ("source_amount" > 0 AND "base_amount" > 0);
 ALTER TABLE "ecr_recognition_parts" ADD CONSTRAINT "ecr_recognition_parts_amount_positive" CHECK ("amount" > 0);
 ALTER TABLE "ecr_commission_claims" ADD CONSTRAINT "ecr_commission_claims_amounts_positive" CHECK ("amount" > 0 AND "base_carrying_amount" > 0);
-ALTER TABLE "ecr_commission_payments" ADD CONSTRAINT "ecr_commission_payments_amounts_positive" CHECK ("amount" > 0 AND "settlement_base_amount" > 0 AND "carrying_base_amount" > 0);
+ALTER TABLE "ecr_commission_payments" ADD CONSTRAINT "ecr_commission_payments_amounts_positive" CHECK ("amount" > 0 AND "claim_amount_applied" > 0 AND "settlement_base_amount" > 0 AND "carrying_base_amount" > 0);
 ALTER TABLE "ecr_accruals" ADD CONSTRAINT "ecr_accruals_amount_positive" CHECK ("amount" > 0);
+ALTER TABLE "ecr_supplier_advance_settlements" ADD CONSTRAINT "ecr_supplier_advance_settlements_amount_positive" CHECK ("amount" > 0);
