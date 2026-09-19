@@ -118,6 +118,7 @@ CREATE TABLE "ecr_recognition_parts" (
     "service_date" DATE NOT NULL,
     "amount" DECIMAL(38,18) NOT NULL,
     "status" TEXT NOT NULL,
+    "cycle" INTEGER NOT NULL DEFAULT 0,
     "journal_id" TEXT,
     "reversal_journal_id" TEXT,
 
