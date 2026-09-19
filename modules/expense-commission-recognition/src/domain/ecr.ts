@@ -23,8 +23,15 @@ export interface CommissionClaim {
 }
 export interface CommissionPayment {
   id:string; requestHash:string; status:'RESERVED'|'POSTED'; amount:DecimalAmount; paymentCurrency:string;
+  /** Portion of the commission obligation settled, expressed in the claim currency. */
+  claimAmountApplied:DecimalAmount;
   settlementBaseAmount:DecimalAmount; carryingBaseAmount:DecimalAmount; realizedFx:DecimalAmount;
   fxRateId?:string; treasuryVoucherId?:string;
+}
+export interface SupplierAdvanceSettlement {
+  id:string; companyId:CompanyId; kind:'REFUND'|'CANCELLATION_PENALTY'; advanceId:string; supplierPartyId:string;
+  amount:DecimalAmount; requestHash:string; status:'PROCESSING'|'RECOVERABLE_ERROR'|'POSTED';
+  treasuryVoucherId?:string; journalId?:string; failureReason?:string;
 }
 export interface Accrual {
   id:string; companyId:CompanyId; sourceType:string; sourceId:string; amount:DecimalAmount; serviceDate:string;
