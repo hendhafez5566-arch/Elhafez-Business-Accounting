@@ -1,0 +1,26 @@
+{
+  "name": "tourism-contract-inventory",
+  "publicApi": [
+    "src/public/index.ts"
+  ],
+  "ownedTables": [
+    "tci_contracts",
+    "tci_contract_versions",
+    "tci_hotel_inventory",
+    "tci_flight_blocks",
+    "tci_flight_block_consumption",
+    "tci_transport_capacity",
+    "tci_visa_quotas",
+    "tci_stop_sales",
+    "tci_allocations",
+    "tci_allocation_releases",
+    "tci_procurement_requests",
+    "tci_idempotency_keys",
+    "tci_contract_history"
+  ],
+  "allowedDependencies": [
+    "@elhafez/contracts",
+    "@elhafez/procurement-finance",
+    "@elhafez/cost-budget-accounting"
+  ]
+}
