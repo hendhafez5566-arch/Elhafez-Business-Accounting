@@ -970,6 +970,7 @@ model EcrAccrual {
  serviceDate DateTime @map("service_date") @db.Date
  status String
  journalId String @map("journal_id")
+ requestHash String @map("request_hash")
  accruedRevenueAccountId String @map("accrued_revenue_account_id")
  revenueAccountId String @map("revenue_account_id")
  billingInvoiceId String? @map("billing_invoice_id")
