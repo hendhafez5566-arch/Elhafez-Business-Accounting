@@ -157,6 +157,7 @@ CREATE TABLE "ecr_commission_payments" (
     "amount" DECIMAL(38,18) NOT NULL,
     "payment_currency" TEXT NOT NULL,
     "claim_amount_applied" DECIMAL(38,18) NOT NULL,
+    "claim_fx_rate_id" TEXT,
     "settlement_base_amount" DECIMAL(38,18) NOT NULL,
     "carrying_base_amount" DECIMAL(38,18) NOT NULL,
     "realized_fx" DECIMAL(38,18) NOT NULL,
