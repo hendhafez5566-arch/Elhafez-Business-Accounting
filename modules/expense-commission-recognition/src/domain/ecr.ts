@@ -7,7 +7,7 @@ export interface Expense {
   status: 'DRAFT' | 'POSTED'; requestHash: string; expenseAccountId?: string; prepaidAccountId?: string;
   billingInvoiceId?: string; treasuryVoucherId?: string; journalId?: string; approvalRequestId?: string;
 }
-export interface SchedulePart { id: string; serviceDate: string; amount: DecimalAmount; status: 'PENDING'|'POSTED'|'REVERSED'; journalId?: string; reversalJournalId?: string }
+export interface SchedulePart { id: string; serviceDate: string; amount: DecimalAmount; status: 'PENDING'|'POSTED'; cycle:number; journalId?: string; reversalJournalId?: string }
 export type RecognitionKind = 'PREPAID_EXPENSE'|'DEFERRED_REVENUE'|'DEFERRED_COST';
 export interface RecognitionSchedule {
   id:string; companyId:CompanyId; kind:RecognitionKind; sourceType:string; sourceId:string; sourceInvoiceId?:string;
