@@ -515,4 +515,71 @@ export class ProcurementFinanceApplicationService {
   async getHistory(companyId: CompanyId, id: string) {
     return this.repo.history(companyId, id);
   }
+
+  /**
+   * BLOCKER-2: Public owner-controlled cleanup for program cancellation.
+   * Procurement internally decides:
+   * - AUTO DRAFT empty PO => dispose
+   * - Other cancellable PO => cancel
+   * - When canceling commitment, safely process linked clean POs
+   * - Reject received/invoiced/economically active state
+   * - Idempotent when already DISPOSED/CANCELLED
+   * Compatible with BR-067/BR-069/BR-070/BR-071.
+   */
+  async cleanupForProgramCancellation(
+    companyId: CompanyId,
+    reference: { purchaseOrderId?: string; commitmentId?: string },
+  ) {
+    if (!reference.purchaseOrderId && !reference.commitmentId) {
+      throw new ContractValidationError('reference', 'purchaseOrderId or commitmentId required');
+    }
+
+    if (reference.purchaseOrderId) {
+      const po = await this.getPurchaseOrder(companyId, reference.purchaseOrderId);
+      // BR-070: received/invoiced blocks
+      const blockers = await this.getCancellationBlockers(companyId, { purchaseOrderId: po.id });
+      if (blockers.length) {
+        throw new ContractValidationError(
+          'purchaseOrder',
+          'supplier execution or invoice blocks cleanup',
+        );
+      }
+      // Already cleaned
+      if (po.status === 'DISPOSED' || po.status === 'CANCELLED') {
+        return { id: po.id, status: po.status };
+      }
+      // BR-069: AUTO DRAFT empty => dispose
+      if (po.origin === 'AUTO' && po.status === 'DRAFT') {
+        return this.disposeDraftAutoPurchaseOrder(companyId, po.id);
+      }
+      // Other cancellable => cancel
+      return this.cancelPurchaseOrder(companyId, po.id);
+    }
+
+    // Commitment cleanup
+    const commitment = await this.getSupplierCommitment(companyId, reference.commitmentId!);
+    if (commitment.status === 'CANCELLED') {
+      return { id: commitment.id, status: commitment.status };
+    }
+    const linkedPOs = await this.repo.posByCommitment(companyId, commitment.id);
+    // Clean linked POs first
+    for (const po of linkedPOs) {
+      const poBlockers = await this.getCancellationBlockers(companyId, { purchaseOrderId: po.id });
+      if (poBlockers.length) {
+        throw new ContractValidationError(
+          'commitment',
+          'linked PO has supplier execution or invoice',
+        );
+      }
+      if (po.status !== 'DISPOSED' && po.status !== 'CANCELLED') {
+        if (po.origin === 'AUTO' && po.status === 'DRAFT') {
+          await this.disposeDraftAutoPurchaseOrder(companyId, po.id);
+        } else {
+          await this.cancelPurchaseOrder(companyId, po.id);
+        }
+      }
+    }
+    // Cancel commitment
+    return this.cancelSupplierCommitment(companyId, commitment.id, 'program cancellation cleanup');
+  }
 }

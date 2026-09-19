@@ -490,3 +490,55 @@ test('AC-12 cancellation evidence distinguishes active settlement from retained 
   assert.equal(reversed.cancellationSafe, true);
   assert.deepEqual(reversed.activeAllocationIds, []);
 });
+
+test('BLOCKER-6 unrelated customer advance does not block invoice A cancellation', async () => {
+  const service = createService();
+  // Create invoice A
+  const invoiceA = await service.createDraft({
+    id: 'invoice-A',
+    companyId: company,
+    type: 'CUSTOMER_INVOICE',
+    partyId: 'customer-1',
+    number: 'INV-A',
+    postingDate: '2026-09-19',
+    currency: 'EGP',
+    controlAccountId: 'ar',
+    lines: [{ id: 'line-A', amount: decimalAmount('100'), accountId: 'revenue' }],
+  });
+  await service.postInvoice(company, invoiceA.id);
+  // Create invoice B for same customer
+  const invoiceB = await service.createDraft({
+    id: 'invoice-B',
+    companyId: company,
+    type: 'CUSTOMER_INVOICE',
+    partyId: 'customer-1',
+    number: 'INV-B',
+    postingDate: '2026-09-19',
+    currency: 'EGP',
+    controlAccountId: 'ar',
+    lines: [{ id: 'line-B', amount: decimalAmount('200'), accountId: 'revenue' }],
+  });
+  await service.postInvoice(company, invoiceB.id);
+  // Create advance related to invoice B only
+  const allocationB = await service.applyEconomicAllocation({
+    id: 'alloc-B',
+    companyId: company,
+    invoiceId: invoiceB.id,
+    amount: decimalAmount('50'),
+    sourceType: 'TREASURY_VOUCHER',
+    sourceId: 'voucher-B',
+    baseCurrency: 'EGP',
+    documentCurrency: 'EGP',
+    baseAmount: decimalAmount('50'),
+    settlementRate: decimalAmount('1'),
+  });
+  assert.ok(allocationB.advanceId, 'should create advance from excess payment');
+  // Invoice A should be cancellation-safe despite customer having advance from B
+  const evidenceA = await service.getCancellationEvidence(company, invoiceA.id);
+  assert.equal(evidenceA.cancellationSafe, true, 'invoice A should be safe - advance is not related');
+  assert.equal(evidenceA.hasAvailableAdvance, false, 'invoice A should not see unrelated advance');
+  // Invoice B should show the related advance
+  const evidenceB = await service.getCancellationEvidence(company, invoiceB.id);
+  assert.equal(evidenceB.cancellationSafe, false, 'invoice B should not be safe - has related advance');
+  assert.equal(evidenceB.hasAvailableAdvance, true, 'invoice B should see its related advance');
+});

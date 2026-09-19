@@ -144,8 +144,16 @@ export class BillingSubledgersApplicationService {
     const invoice = await this.requiredInvoice(companyId, invoiceId);
     const allocations = await this.repo.allocations(companyId, invoiceId);
     const activeAllocations = allocations.filter((value) => !value.reversedAt);
+    // BLOCKER-6: Scope to invoice-related advances only, not all customer advances
+    const relatedAdvanceIds = new Set<string>();
+    for (const allocation of allocations) {
+      if (allocation.advanceId) {
+        relatedAdvanceIds.add(allocation.advanceId);
+      }
+    }
     const advances = await this.repo.advances(companyId, expectedPartyKind(invoice.type), invoice.partyId);
-    const hasAvailableAdvance = advances.some((value) => !value.reversedAt && scaled18(value.available) > 0n);
+    const relatedAdvances = advances.filter((adv) => relatedAdvanceIds.has(adv.id));
+    const hasAvailableAdvance = relatedAdvances.some((value) => !value.reversedAt && scaled18(value.available) > 0n);
     const settlementRequired = activeAllocations.length > 0 || hasAvailableAdvance;
     return Object.freeze({
       invoiceId: invoice.id,

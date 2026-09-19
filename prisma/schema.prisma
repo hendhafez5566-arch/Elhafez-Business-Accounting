@@ -1697,6 +1697,7 @@ model TfoBookingReference {
  commissionClaimId String? @map("commission_claim_id")
  depositVoucherIds Json @map("deposit_voucher_ids")
  workflowId String @map("workflow_id")
+ financialSetup Json? @map("financial_setup")
  workflow TfoWorkflow @relation(fields:[companyId,workflowId],references:[companyId,id],onDelete:Restrict)
  @@unique([companyId,id])
  @@unique([companyId,bookingType,bookingId])

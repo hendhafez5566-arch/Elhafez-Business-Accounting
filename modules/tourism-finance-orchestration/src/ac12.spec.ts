@@ -15,7 +15,7 @@ function fixture(repo = new FailingRepository()) {
   const commission: CommissionPort = { async create(input) { once(input.id, 'commission'); return { id: input.id }; }, async evidence() { return { hasPostedPaymentHistory: commissionPaid, reversible: !commissionPaid }; }, async reverse(_company, id) { return { id }; } };
   const cost: CostPort = { async ensureProgram(_company, _program, id) { return { costCenterId: id }; }, async resolveProgram() { if (!costLinked) throw new Error('missing'); return { costCenterId: 'cc-1' }; }, async actualize(input) { once(input.id, 'cost'); return { id: input.id }; } };
   const inventory: InventoryPort = { async allocate(input) { once(`inventory:${input.allocationId}`, 'allocation'); return { allocationId: input.allocationId }; }, async blockers() { return inventoryBlocked ? [{ type: 'FINANCIAL_HISTORY' }] : []; }, async release(_company, id, _quantity, key) { once(`release:${key}`, 'release'); return { success: true, id }; } };
-  const procurement: ProcurementPort = { async blockers() { const value = procurementSequence.length > 1 ? procurementSequence.shift()! : procurementSequence[0]!; return value === 'NONE' ? [] : [{ type: value, purchaseOrderId: 'po-1', lineId: 'line-1' }]; }, async cleanup(_company, reference) { once(`cleanup:${reference.purchaseOrderId ?? reference.commitmentId}`, 'cleanup'); return { id: reference.purchaseOrderId ?? reference.commitmentId!, status: 'CANCELLED' }; } };
+  const procurement: ProcurementPort = { async blockers() { const value = procurementSequence.length > 1 ? procurementSequence.shift()! : procurementSequence[0]!; return value === 'NONE' ? [] : [{ type: value, purchaseOrderId: 'po-1', lineId: 'line-1' }]; }, async cleanupForProgramCancellation(_company, reference) { once(`cleanup:${reference.purchaseOrderId ?? reference.commitmentId}`, 'cleanup'); return { id: reference.purchaseOrderId ?? reference.commitmentId!, status: 'CANCELLED' }; } };
   const controls: ControlsPort = { async authorizeDiscount() { if (!approval) throw new Error('denied'); }, async approvalResolved() { return approval; } };
   const create = () => new TourismFinanceOrchestrationApplicationService(repo, billing, treasury, commission, cost, inventory, procurement, controls); const service = create();
   const setup = () => service.configureFinancialSetup({ id: 'setup-hotel', companyId: company, category: 'HOTEL', receivableAccountId: 'ar', customerAdvanceAccountId: 'advance', revenueAccountId: 'revenue', costAccountId: 'cost', commissionExpenseAccountId: 'commission-expense', commissionLiabilityAccountId: 'commission-payable', active: true });
@@ -46,3 +46,87 @@ test('Procurement provider success/local save failure resumes aggregate cancella
   await f.create().cancelProgram(input);
   assert.equal(f.calls.cleanup, 1);
 });
+
+test('BLOCKER-1 child booking blocker after initial precheck prevents PROGRAM CANCELLED history', async () => {
+  const f = fixture(); await f.setup(); await f.confirm();
+  f.setPaid(false); // Initial precheck passes
+  const input = { companyId: company, branchId: 'branch-1', commandKey: 'race-blocker', program, bookings: [{ booking, travelStarted: false, travelEvidence: 'none' }], postingDate: '2026-09-19' };
+  // Simulate race: payment arrives after precheck but before child cancellation
+  f.setPaid(true);
+  const result = await f.service.cancelProgram(input) as { blockers?: { type: string }[]; cancelled?: boolean };
+  assert.ok(result.blockers && result.blockers.length > 0, 'should have blockers');
+  assert.ok(result.blockers.some((item) => item.type === 'CUSTOMER_SETTLEMENT_REQUIRED'), 'should be settlement blocker');
+  assert.equal(result.cancelled, undefined, 'must not be marked cancelled');
+  // Verify no CANCELLED history was written
+  const eligibility = await f.service.getProgramDeletionEligibility(company, program);
+  assert.equal(eligibility.deletable, false, 'program should not be deletable when child is blocked');
+  assert.equal(eligibility.reason, 'PROGRAM_CANCELLATION_NOT_COMPLETED', 'should indicate cancellation not completed');
+});
+
+test('BLOCKER-3 readiness derives scope from persisted state and cannot be bypassed by omitted references', async () => {
+  const f = fixture(); await f.setup();
+  // Confirm booking with commission
+  await f.confirm({ commission: { agentPartyId: 'agent', amount: decimalAmount('5') } });
+  // Set commission as paid - this is a blocker
+  f.setCommissionPaid(true);
+  // Caller tries to omit the booking/allocation references
+  const result = await f.service.evaluateFinancialReadiness({
+    companyId: company,
+    program,
+    requiredCategories: ['HOTEL'],
+    // Deliberately omitting allocationIds, approvalRequestIds, procurementReferences
+  });
+  // Should still detect the blocker from persisted booking allocations
+  assert.equal(result.ready, false, 'must not be ready when persisted allocation has blocker');
+  assert.ok(result.blockers.length > 0, 'must detect blockers from persisted state');
+  // Should include allocation evidence even though caller didn't supply it
+  assert.ok(result.evidenceReferences.some((ref) => ref.includes('allocation')), 'should include persisted allocation reference');
+});
+
+test('BLOCKER-5 confirmed booking preserves financial setup snapshot for later deposits', async () => {
+  const f = fixture(); await f.setup();
+  const bookingA = sourceReference('TOURISM_BOOKING', 'booking-A');
+  const bookingB = sourceReference('TOURISM_BOOKING', 'booking-B');
+  // Confirm booking A with setup V1
+  await f.confirm({ commandKey: 'A', booking: bookingA, invoiceNumber: 'INV-A', inventory: { ...f.confirm().inventory, allocationId: 'alloc-A' } });
+  // Change setup to V2
+  await f.service.configureFinancialSetup({
+    id: 'setup-hotel-v2',
+    companyId: company,
+    category: 'HOTEL',
+    receivableAccountId: 'ar-v2',
+    customerAdvanceAccountId: 'advance-v2',
+    revenueAccountId: 'revenue-v2',
+    costAccountId: 'cost-v2',
+    commissionExpenseAccountId: 'commission-expense-v2',
+    commissionLiabilityAccountId: 'commission-payable-v2',
+    active: true,
+  });
+  // Confirm booking B with setup V2
+  await f.confirm({ commandKey: 'B', booking: bookingB, invoiceNumber: 'INV-B', inventory: { ...f.confirm().inventory, allocationId: 'alloc-B' } });
+  // Deposit for booking A should use V1 accounts
+  const depositA = await f.service.recordBookingDeposit({
+    companyId: company,
+    branchId: 'branch-1',
+    commandKey: 'deposit-A',
+    booking: bookingA,
+    treasuryId: 'cash',
+    number: 'R-A',
+    postingDate: '2026-09-19',
+    amount: decimalAmount('10'),
+  });
+  assert.ok(depositA, 'booking A deposit should succeed with V1 setup');
+  // Deposit for booking B should use V2 accounts
+  const depositB = await f.service.recordBookingDeposit({
+    companyId: company,
+    branchId: 'branch-1',
+    commandKey: 'deposit-B',
+    booking: bookingB,
+    treasuryId: 'cash',
+    number: 'R-B',
+    postingDate: '2026-09-19',
+    amount: decimalAmount('10'),
+  });
+  assert.ok(depositB, 'booking B deposit should succeed with V2 setup');
+});
+

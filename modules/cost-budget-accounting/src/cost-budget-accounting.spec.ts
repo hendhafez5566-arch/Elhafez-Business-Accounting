@@ -137,3 +137,46 @@ test('BR-068 Tourism service actualization is semantic, idempotent and conflict 
   assert.equal(first.service.sourceId, 'ticket-1');
   assert.equal(first.evidence.sourceId, 'segment-1');
 });
+
+test('BLOCKER-4 concurrent Tourism service actualization converges for identical requests', async () => {
+  const service = createService();
+  const program = sourceReference('TOURISM_PROGRAM', 'program-1');
+  await service.ensureProgramCostCenter(company, program, 'cc-001');
+  const input = {
+    id: 'actualize-concurrent',
+    companyId: company,
+    program,
+    service: sourceReference('TOURISM_SERVICE', 'service-1'),
+    evidence: sourceReference('VISA_ALLOCATION', 'visa-1'),
+    amount: decimalAmount('150'),
+    postingDate: '2026-09-19',
+  };
+  // Concurrent identical requests
+  const [first, second] = await Promise.all([
+    service.recordTourismServiceActualization(input),
+    service.recordTourismServiceActualization(input),
+  ]);
+  assert.equal(first.id, second.id, 'should converge to same record');
+  assert.equal(first.requestHash, second.requestHash, 'should have identical hash');
+});
+
+test('BLOCKER-4 concurrent Tourism service actualization rejects conflicting payloads', async () => {
+  const service = createService();
+  const program = sourceReference('TOURISM_PROGRAM', 'program-2');
+  await service.ensureProgramCostCenter(company, program, 'cc-002');
+  const base = {
+    id: 'actualize-conflict',
+    companyId: company,
+    program,
+    service: sourceReference('TOURISM_SERVICE', 'service-2'),
+    evidence: sourceReference('VISA_ALLOCATION', 'visa-2'),
+    postingDate: '2026-09-19',
+  };
+  // First request succeeds
+  await service.recordTourismServiceActualization({ ...base, amount: decimalAmount('100') });
+  // Second request with different amount conflicts
+  await assert.rejects(
+    service.recordTourismServiceActualization({ ...base, amount: decimalAmount('200') }),
+    /conflicting replay/
+  );
+});
