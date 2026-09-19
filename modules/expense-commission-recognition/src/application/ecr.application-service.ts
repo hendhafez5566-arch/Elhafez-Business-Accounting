@@ -165,7 +165,16 @@ export class ExpenseCommissionRecognitionApplicationService {
  async payCommission(input:{companyId:CompanyId;claimId:string;paymentId:string;treasuryId:string;amount:DecimalAmount;paymentCurrency:string;postingDate:string;number:string;realizedFxGainAccountId?:string;realizedFxLossAccountId?:string}){
   let claim=await this.requiredClaim(input.companyId,input.claimId);
   if(claim.status!=='APPROVED'&&claim.status!=='PARTIALLY_PAID')throw new ContractValidationError('claim','approved outstanding claim required');
-  const amount=pos(input.amount),paymentCurrency=currencyCode(input.paymentCurrency),requestHash=h({...input,amount,paymentCurrency}),base=await this.fx.getBaseCurrency(input.companyId),at=input.postingDate+'T23:59:59.999Z';
+  const amount=pos(input.amount),paymentCurrency=currencyCode(input.paymentCurrency),requestHash=h({...input,amount,paymentCurrency});
+  const existing=claim.payments.find(p=>p.id===input.paymentId);
+  if(existing){
+   if(existing.requestHash!==requestHash)throw new ContractValidationError('paymentId','conflicting replay');
+   if(existing.status==='POSTED')return existing;
+   const voucher=await this.treasury.postOwnerPayment({id:input.paymentId,companyId:input.companyId,...(claim.branchId?{branchId:claim.branchId}:{}),treasuryId:input.treasuryId,ownerType:'COMMISSION',ownerId:claim.id,partyId:claim.agentPartyId,debitPartyId:claim.agentPartyId,number:input.number,postingDate:input.postingDate,amount:existing.amount,paymentCurrency:existing.paymentCurrency,carryingBaseAmount:existing.carryingBaseAmount,settlementBaseAmount:existing.settlementBaseAmount,liabilityAccountId:claim.liabilityAccountId,...(input.realizedFxGainAccountId?{realizedFxGainAccountId:input.realizedFxGainAccountId}:{}),...(input.realizedFxLossAccountId?{realizedFxLossAccountId:input.realizedFxLossAccountId}:{}),fxRateId:existing.fxRateId});
+   if(voucher.status!=='POSTED'||!voucher.journalId)throw new ContractValidationError('voucher','commission payment did not complete');
+   const posted={...existing,status:'POSTED' as const,treasuryVoucherId:voucher.id};await this.repo.finalizeCommissionPayment(input.companyId,input.claimId,posted);return posted;
+  }
+  const base=await this.fx.getBaseCurrency(input.companyId),at=input.postingDate+'T23:59:59.999Z';
   const claimAppliedConversion=paymentCurrency===claim.currency?{converted:money(amount,currencyCode(claim.currency)),rate:{rateId:'SAME_CURRENCY'}}:await this.fx.calculateSettlement(input.companyId,money(amount,paymentCurrency),currencyCode(claim.currency),at);
   const claimAmountApplied=pos(claimAppliedConversion.converted.amount);
   const conversion=paymentCurrency===base.code?{converted:money(amount,base.code),rate:{rateId:'SAME_CURRENCY'}}:await this.fx.calculateSettlement(input.companyId,money(amount,paymentCurrency),base.code,at);
