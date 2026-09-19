@@ -493,7 +493,7 @@ test('AC-12 cancellation evidence distinguishes active settlement from retained 
 
 test('BLOCKER-6 unrelated customer advance does not block invoice A cancellation', async () => {
   const service = createService();
-  // Create invoice A
+  // Create invoice A (outstanding = 100)
   const invoiceA = await service.createDraft({
     id: 'invoice-A',
     companyId: company,
@@ -506,7 +506,7 @@ test('BLOCKER-6 unrelated customer advance does not block invoice A cancellation
     lines: [{ id: 'line-A', amount: decimalAmount('100'), accountId: 'revenue' }],
   });
   await service.postInvoice(company, invoiceA.id);
-  // Create invoice B for same customer
+  // Create invoice B (outstanding = 200)
   const invoiceB = await service.createDraft({
     id: 'invoice-B',
     companyId: company,
@@ -519,26 +519,33 @@ test('BLOCKER-6 unrelated customer advance does not block invoice A cancellation
     lines: [{ id: 'line-B', amount: decimalAmount('200'), accountId: 'revenue' }],
   });
   await service.postInvoice(company, invoiceB.id);
-  // Create advance related to invoice B only
-  const allocationB = await service.applyEconomicAllocation({
+  // Create advance related to invoice B by paying more than outstanding (250 > 200)
+  // This creates a genuine related advance/prefund of 50
+  const allocationB = await service.applyAllocation({
     id: 'alloc-B',
     companyId: company,
+    partyKind: 'CUSTOMER',
+    partyId: 'customer-1',
     invoiceId: invoiceB.id,
-    amount: decimalAmount('50'),
+    amount: decimalAmount('250'),
     sourceType: 'TREASURY_VOUCHER',
     sourceId: 'voucher-B',
-    baseCurrency: 'EGP',
-    documentCurrency: 'EGP',
-    baseAmount: decimalAmount('50'),
-    settlementRate: decimalAmount('1'),
   });
   assert.ok(allocationB.advanceId, 'should create advance from excess payment');
+  assert.equal(allocationB.advanceAmount, '50', 'advance amount should be excess over invoice');
   // Invoice A should be cancellation-safe despite customer having advance from B
   const evidenceA = await service.getCancellationEvidence(company, invoiceA.id);
   assert.equal(evidenceA.cancellationSafe, true, 'invoice A should be safe - advance is not related');
   assert.equal(evidenceA.hasAvailableAdvance, false, 'invoice A should not see unrelated advance');
-  // Invoice B should show the related advance
+  // Invoice B should show the related advance and be blocked
   const evidenceB = await service.getCancellationEvidence(company, invoiceB.id);
   assert.equal(evidenceB.cancellationSafe, false, 'invoice B should not be safe - has related advance');
   assert.equal(evidenceB.hasAvailableAdvance, true, 'invoice B should see its related advance');
+  // Verify reversal removes the active blocker
+  await service.reverseAllocation(company, allocationB.id);
+  const evidenceBAfter = await service.getCancellationEvidence(company, invoiceB.id);
+  assert.equal(evidenceBAfter.cancellationSafe, true, 'after reversal, invoice B should be safe');
+  // Verify historical evidence is retained
+  const evidenceBHistory = await service.getCancellationEvidence(company, invoiceB.id);
+  assert.equal(evidenceBHistory.hasHistoricalAllocationEvidence, true, 'historical allocation evidence retained');
 });

@@ -87,8 +87,9 @@ test('BLOCKER-5 confirmed booking preserves financial setup snapshot for later d
   const f = fixture(); await f.setup();
   const bookingA = sourceReference('TOURISM_BOOKING', 'booking-A');
   const bookingB = sourceReference('TOURISM_BOOKING', 'booking-B');
+  const inventoryTemplate = { allocationId: 'alloc-1', contractId: 'contract-1', resourceType: 'HOTEL', resourceId: 'room-1', serviceDate: '2026-10-01', quantity: decimalAmount('2') };
   // Confirm booking A with setup V1
-  await f.confirm({ commandKey: 'A', booking: bookingA, invoiceNumber: 'INV-A', inventory: { ...f.confirm().inventory, allocationId: 'alloc-A' } });
+  await f.confirm({ commandKey: 'A', booking: bookingA, invoiceNumber: 'INV-A', inventory: { ...inventoryTemplate, allocationId: 'alloc-A' } });
   // Change setup to V2
   await f.service.configureFinancialSetup({
     id: 'setup-hotel-v2',
@@ -103,7 +104,7 @@ test('BLOCKER-5 confirmed booking preserves financial setup snapshot for later d
     active: true,
   });
   // Confirm booking B with setup V2
-  await f.confirm({ commandKey: 'B', booking: bookingB, invoiceNumber: 'INV-B', inventory: { ...f.confirm().inventory, allocationId: 'alloc-B' } });
+  await f.confirm({ commandKey: 'B', booking: bookingB, invoiceNumber: 'INV-B', inventory: { ...inventoryTemplate, allocationId: 'alloc-B' } });
   // Deposit for booking A should use V1 accounts
   const depositA = await f.service.recordBookingDeposit({
     companyId: company,

@@ -201,21 +201,24 @@ export class CostBudgetAccountingApplicationService {
     if (scaled(amount) < 0n) throw new ContractValidationError('amount', 'must not be negative');
     const normalized = { ...input, costCenterId: center.id, amount };
     const requestHash = fingerprint(normalized);
-    // BLOCKER-4: Use create-first pattern to handle concurrency races
     const value = { ...normalized, requestHash, createdAt: new Date().toISOString() };
     try {
       await this.repository.saveTourismServiceActualization(value);
       return value;
     } catch (error) {
-      // Unique constraint violation - check if it's the same request
-      const existing = await this.repository.tourismServiceActualization(input.companyId, input.id);
-      if (!existing) throw error; // Different error, not concurrency
-      if (existing.requestHash !== requestHash) {
+      // Check if this is a unique constraint violation (concurrency race)
+      if (error && typeof error === 'object' && 'code' in error && (error as any).code === 'P2002') {
         // Same ID but different payload = conflict
-        throw new ContractValidationError('tourismActualization', 'conflicting replay');
+        const existing = await this.repository.tourismServiceActualization(input.companyId, input.id);
+        if (!existing) throw error;
+        if (existing.requestHash !== requestHash) {
+          throw new ContractValidationError('tourismActualization', 'conflicting replay');
+        }
+        // Same request converged
+        return existing;
       }
-      // Same request converged
-      return existing;
+      // Non-unique error - rethrow original
+      throw error;
     }
   }
 }

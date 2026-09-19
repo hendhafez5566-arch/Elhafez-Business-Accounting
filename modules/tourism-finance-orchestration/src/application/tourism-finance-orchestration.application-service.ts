@@ -36,13 +36,18 @@ export class TourismFinanceOrchestrationApplicationService {
     if (claimed.confirmationPayloadHash !== confirmationPayloadHash) throw new ContractValidationError('booking', 'conflicting financial confirmation replay');
     if (claimed.workflowId !== workflow.id) { const canonical = await this.repo.workflowById(input.companyId, claimed.workflowId); if (!canonical) throw new ContractValidationError('booking', 'canonical confirmation workflow is missing'); workflow = canonical; }
     if (workflow.status === 'COMPLETED') return workflow.result;
+    // BLOCKER-4: Resolve setup and build snapshot BEFORE any external effects
     const setup = await this.repo.setup(input.companyId, input.category); if (!setup?.active) throw new ContractValidationError('financialSetup', `missing ${input.category} setup`);
+    const financialSetup = { receivableAccountId: setup.receivableAccountId, customerAdvanceAccountId: setup.customerAdvanceAccountId, revenueAccountId: setup.revenueAccountId, ...(setup.commissionExpenseAccountId ? { commissionExpenseAccountId: setup.commissionExpenseAccountId } : {}), ...(setup.commissionLiabilityAccountId ? { commissionLiabilityAccountId: setup.commissionLiabilityAccountId } : {}) };
+    // Save booking with snapshot before first external effect
+    const bookingWithSnapshot: BookingReference = { ...claimed, status: 'ACTIVE', invoiceId: undefined, allocations: [], commissionClaimId: undefined, depositVoucherIds: [], financialSetup };
+    await this.repo.saveBooking(bookingWithSnapshot);
     if (discount !== '0') await this.controls.authorizeDiscount({ companyId: input.companyId, ...(input.branchId ? { branchId: input.branchId } : {}), booking: input.booking, amount: discount, ...(input.approvalRequestId ? { approvalRequestId: input.approvalRequestId } : {}) });
     await this.effect(workflow, 'COST_CENTER', () => this.cost.ensureProgram(input.companyId, input.program, input.costCenterId), (value) => value.costCenterId);
     const allocation = await this.effect(workflow, 'INVENTORY', (key) => this.inventory.allocate({ companyId: input.companyId, ...input.inventory, program: input.program }, key), (value) => value.allocationId ?? value.procurementReference);
     const invoice = await this.effect(workflow, 'BILLING', () => this.billing.createBookingInvoice({ id: `tfo-invoice:${workflow.id}`, companyId: input.companyId, ...(input.branchId ? { branchId: input.branchId } : {}), partyId: input.customerPartyId, number: input.invoiceNumber, postingDate: input.postingDate, dueDate: input.dueDate, currency: input.currency, sourceId: workflow.id, receivableAccountId: setup.receivableAccountId, revenueAccountId: setup.revenueAccountId, amount: net }), (value) => value.id);
     let commissionClaimId = claimed.commissionClaimId; if (input.commission) { if (!setup.commissionExpenseAccountId || !setup.commissionLiabilityAccountId) throw new ContractValidationError('financialSetup', 'commission accounts required'); const claim = await this.effect(workflow, 'COMMISSION', () => this.commission.create({ id: `tfo-commission:${workflow.id}`, companyId: input.companyId, ...(input.branchId ? { branchId: input.branchId } : {}), agentPartyId: input.commission!.agentPartyId, sourceId: workflow.id, currency: input.currency, amount: input.commission!.amount, expenseAccountId: setup.commissionExpenseAccountId!, liabilityAccountId: setup.commissionLiabilityAccountId! }), (value) => value.id); commissionClaimId = claim.id; }
-    const booking: BookingReference = { ...claimed, status: 'ACTIVE', invoiceId: invoice.id, allocations: allocation.allocationId ? [{ id: allocation.allocationId, quantity: input.inventory.quantity }] : [], ...(commissionClaimId ? { commissionClaimId } : {}), financialSetup: { receivableAccountId: setup.receivableAccountId, customerAdvanceAccountId: setup.customerAdvanceAccountId, revenueAccountId: setup.revenueAccountId, ...(setup.commissionExpenseAccountId ? { commissionExpenseAccountId: setup.commissionExpenseAccountId } : {}), ...(setup.commissionLiabilityAccountId ? { commissionLiabilityAccountId: setup.commissionLiabilityAccountId } : {}) } }; await this.repo.saveBooking(booking); return (await this.complete(workflow, booking)).result;
+    const finalBooking: BookingReference = { ...bookingWithSnapshot, invoiceId: invoice.id, allocations: allocation.allocationId ? [{ id: allocation.allocationId, quantity: input.inventory.quantity }] : [], ...(commissionClaimId ? { commissionClaimId } : {}) }; await this.repo.saveBooking(finalBooking); return (await this.complete(workflow, finalBooking)).result;
   }
 
   async recordBookingDeposit(input: { companyId: CompanyId; branchId?: string; commandKey: string; booking: SourceReference; treasuryId: string; number: string; postingDate: string; amount: DecimalAmount }) { const booking = await this.repo.booking(input.companyId, input.booking); if (!booking?.invoiceId) throw new ContractValidationError('booking', 'confirmed financial reference not found'); this.assertBranch(booking, input.branchId); const amount = nonNegative(input.amount, 'amount'); if (amount === '0') throw new ContractValidationError('amount', 'must be positive'); const setup = await this.requiredSetupForBooking(booking); const workflow = await this.workflow('BOOKING_DEPOSIT', input, input.booking, { ...input, amount }); if (workflow.status === 'COMPLETED') return workflow.result; const voucher = await this.effect(workflow, 'TREASURY_DEPOSIT', () => this.treasury.postDeposit({ id: `tfo-deposit:${workflow.id}`, companyId: input.companyId, ...(input.branchId ? { branchId: input.branchId } : {}), treasuryId: input.treasuryId, partyId: booking.customerPartyId, invoiceId: booking.invoiceId!, number: input.number, postingDate: input.postingDate, amount, controlAccountId: setup.receivableAccountId, advanceAccountId: setup.customerAdvanceAccountId }), (value) => value.id); if (!booking.depositVoucherIds.includes(voucher.id)) await this.repo.saveBooking({ ...booking, depositVoucherIds: [...booking.depositVoucherIds, voucher.id] }); return (await this.complete(workflow, { workflowId: workflow.id, voucherId: voucher.id, invoiceId: booking.invoiceId })).result; }
@@ -77,9 +82,29 @@ export class TourismFinanceOrchestrationApplicationService {
     blockers = await evaluate(); if (blockers.length) return (await this.complete(workflow, { workflowId: workflow.id, blockers }, 'BLOCKED')).result;
     const procurementReferences = input.bookings.flatMap((item) => item.procurement ? [item.procurement] : []);
     for (const reference of procurementReferences) { const fresh = await this.procurement.blockers(input.companyId, reference); if (fresh.length) return (await this.complete(workflow, { workflowId: workflow.id, blockers: fresh }, 'BLOCKED')).result; try { await this.effect(workflow, `PROCUREMENT_CLEANUP:${reference.purchaseOrderId ?? reference.commitmentId}`, () => this.procurement.cleanupForProgramCancellation(input.companyId, reference), (value) => value.id); } catch (error) { if (error instanceof ContractValidationError) return (await this.complete(workflow, { workflowId: workflow.id, blockers: [{ type: 'PROCUREMENT_CLEANUP_REJECTED', reference: reference.purchaseOrderId ?? reference.commitmentId, detail: error.message }] }, 'BLOCKED')).result; throw error; } }
-    const childResults: Array<{ booking: SourceReference; result: unknown }> = [];
-    for (const item of input.bookings) { const childResult = await this.effect(workflow, `BOOKING:${refKey(item.booking)}`, () => this.cancelBooking({ companyId: input.companyId, ...(input.branchId ? { branchId: input.branchId } : {}), commandKey: `${input.commandKey}:${refKey(item.booking)}`, booking: item.booking, travelStarted: false, travelEvidence: item.travelEvidence, postingDate: input.postingDate }), () => refKey(item.booking)); childResults.push({ booking: item.booking, result: childResult }); }
-    const childBlockers = childResults.filter((item) => { const result = item.result as { blockers?: CancellationBlocker[]; cancelled?: boolean }; return result.blockers && result.blockers.length > 0; });
+    // BLOCKER-2: Execute child bookings directly without effect() wrapper to allow retry on BLOCKED/SETTLEMENT_REQUIRED
+    const childResults: Array<{ booking: SourceReference; result: unknown; status: 'BLOCKED'|'SETTLEMENT_REQUIRED'|'CANCELLED' }> = [];
+    for (const item of input.bookings) {
+      const childWorkflow = await this.workflow('BOOKING_CANCELLATION', { ...input, commandKey: `${input.commandKey}:${refKey(item.booking)}` }, item.booking, { ...item });
+      if (childWorkflow.status === 'COMPLETED') {
+        childResults.push({ booking: item.booking, result: childWorkflow.result, status: 'CANCELLED' as const });
+      } else {
+        const evidence = await this.getBookingCancellationBlockers({ companyId: input.companyId, ...(input.branchId ? { branchId: input.branchId } : {}), booking: item.booking, travelStarted: false, travelEvidence: item.travelEvidence, procurement: item.procurement });
+        if (evidence.blockers.length) {
+          const settlement = evidence.blockers.some((item) => item.type === 'CUSTOMER_SETTLEMENT_REQUIRED');
+          const status = settlement ? 'SETTLEMENT_REQUIRED' : 'BLOCKED';
+          childResults.push({ booking: item.booking, result: { workflowId: childWorkflow.id, blockers: evidence.blockers }, status });
+        } else {
+          const booking = evidence.booking;
+          if (booking.commissionClaimId) await this.effect(workflow, `COMMISSION:${refKey(item.booking)}`, () => this.commission.reverse(input.companyId, booking.commissionClaimId!, input.postingDate, `C-${workflow.id}`), () => booking.commissionClaimId!);
+          await this.effect(workflow, `CANCEL_INVOICE:${refKey(item.booking)}`, () => this.billing.cancelInvoice(input.companyId, booking.invoiceId!, input.postingDate, `C-${workflow.id}`), (value) => value.id);
+          for (const allocation of booking.allocations) await this.effect(workflow, `RELEASE:${allocation.id}`, async (key) => { const released = await this.inventory.release(input.companyId, allocation.id, allocation.quantity, key); if (!released.success) throw new ContractValidationError('inventory', 'owner rejected full allocation release'); return released; }, () => allocation.id);
+          await this.repo.saveBooking({ ...booking, status: 'CANCELLED' });
+          childResults.push({ booking: item.booking, result: { cancelled: true }, status: 'CANCELLED' as const });
+        }
+      }
+    }
+    const childBlockers = childResults.filter((item) => item.status === 'BLOCKED' || item.status === 'SETTLEMENT_REQUIRED');
     if (childBlockers.length) { const allBlockers = childBlockers.flatMap((item) => { const result = item.result as { blockers: CancellationBlocker[] }; return result.blockers.map((blocker) => ({ ...blocker, booking: item.booking })); }); const requiresSettlement = allBlockers.some((item) => item.type === 'CUSTOMER_SETTLEMENT_REQUIRED'); return (await this.complete(workflow, { workflowId: workflow.id, blockers: allBlockers, childFailures: childBlockers.map((item) => refKey(item.booking)) }, requiresSettlement ? 'SETTLEMENT_REQUIRED' : 'BLOCKED')).result; }
     await this.repo.saveProgramHistory({ id: hash([workflow.id, 'CANCELLED']).slice(0, 32), companyId: input.companyId, program: input.program, kind: 'CANCELLED', workflowId: workflow.id, evidence: { bookings: input.bookings.map((item) => item.booking) }, createdAt: new Date().toISOString() }); return (await this.complete(workflow, { workflowId: workflow.id, cancelled: true })).result;
   }
@@ -87,26 +112,96 @@ export class TourismFinanceOrchestrationApplicationService {
   async getProgramDeletionEligibility(companyId: CompanyId, program: SourceReference) { const history = await this.repo.programHistory(companyId, program); const bookings = await this.repo.bookingsForProgram(companyId, program); const cancelled = history.some((item) => item.kind === 'CANCELLED'); const active = bookings.filter((item) => item.status !== 'CANCELLED'); return { deletable: cancelled && active.length === 0, retainedEvidenceReferences: [...history.map((item) => item.id), ...bookings.flatMap((item) => [item.invoiceId, item.commissionClaimId, ...item.allocations.map((allocation) => allocation.id)].filter((value): value is string => Boolean(value)))], ...(cancelled && active.length === 0 ? {} : { reason: cancelled ? 'ACTIVE_BOOKING_FINANCIAL_STATE' : 'PROGRAM_CANCELLATION_NOT_COMPLETED' }) }; }
   async evaluateFinancialReadiness(input: { companyId: CompanyId; program: SourceReference; requiredCategories: readonly ServiceCategory[]; approvalRequestIds?: readonly string[]; allocationIds?: readonly string[]; procurementReferences?: readonly ProcurementReference[] }) {
     const blockers: string[] = []; const evidenceReferences: string[] = [refKey(input.program)];
-    // BR-053: Derive financial scope from persisted program/booking/workflow state
+    // BR-053: Derive authoritative financial scope from persisted program/booking/workflow state
     const bookings = await this.repo.bookingsForProgram(input.companyId, input.program);
     const workflows = await this.repo.workflowsForProgram(input.companyId, input.program);
-    // Check required category setup
-    for (const category of input.requiredCategories) { const setup = await this.repo.setup(input.companyId, category); if (!setup?.active) blockers.push(`MISSING_SETUP:${category}`); else evidenceReferences.push(setup.id); }
-    // Check program cost center association
-    try { const center = await this.cost.resolveProgram(input.companyId, input.program); evidenceReferences.push(center.costCenterId); } catch { blockers.push('MISSING_PROGRAM_COST_CENTER'); }
-    // Check all persisted allocations from bookings
-    const allAllocationIds = new Set([...bookings.flatMap((b) => b.allocations.map((a) => a.id)), ...(input.allocationIds ?? [])]);
-    for (const allocationId of allAllocationIds) { const ownerBlockers = await this.inventory.blockers(input.companyId, allocationId); blockers.push(...ownerBlockers.map((item) => `INVENTORY:${allocationId}:${item.type}`)); evidenceReferences.push(allocationId); }
-    // Check persisted procurement references from workflows
+    
+    // 1. Check required category setup (persisted)
+    for (const category of input.requiredCategories) {
+      const setup = await this.repo.setup(input.companyId, category);
+      if (!setup?.active) blockers.push(`MISSING_SETUP:${category}`);
+      else evidenceReferences.push(setup.id);
+    }
+    
+    // 2. Check program Cost Center association (from Cost owned data)
+    try { const center = await this.cost.resolveProgram(input.companyId, input.program); evidenceReferences.push(center.costCenterId); }
+    catch { blockers.push('MISSING_PROGRAM_COST_CENTER'); }
+    
+    // 3. Check all persisted allocations from bookings
+    const allAllocationIds = new Set<string>();
+    for (const booking of bookings) {
+      for (const allocation of booking.allocations) allAllocationIds.add(allocation.id);
+    }
+    for (const id of (input.allocationIds ?? [])) allAllocationIds.add(id);
+    for (const allocationId of allAllocationIds) {
+      const ownerBlockers = await this.inventory.blockers(input.companyId, allocationId);
+      blockers.push(...ownerBlockers.map((item) => `INVENTORY:${allocationId}:${item.type}`));
+      evidenceReferences.push(allocationId);
+    }
+    
+    // 4. Check persisted commission claim references from bookings
+    for (const booking of bookings) {
+      if (booking.commissionClaimId) {
+        const commEvidence = await this.commission.evidence(input.companyId, booking.commissionClaimId);
+        if (commEvidence.hasPostedPaymentHistory) blockers.push(`PAID_COMMISSION:${booking.commissionClaimId}`);
+        evidenceReferences.push(booking.commissionClaimId);
+      }
+    }
+    
+    // 5. Check persisted procurement references from workflows
     const allProcurementRefs = new Map<string, ProcurementReference>();
-    for (const workflow of workflows) { if (workflow.kind === 'BOOKING_CONFIRMATION' || workflow.kind === 'BOOKING_CANCELLATION') { const payload = workflow.payload as { procurement?: ProcurementReference } | undefined; if (payload?.procurement) { const key = payload.procurement.purchaseOrderId ?? payload.procurement.commitmentId!; allProcurementRefs.set(key, payload.procurement); } } }
-    for (const ref of input.procurementReferences ?? []) { const key = ref.purchaseOrderId ?? ref.commitmentId!; allProcurementRefs.set(key, ref); }
-    for (const reference of allProcurementRefs.values()) { const ownerBlockers = await this.procurement.blockers(input.companyId, reference); blockers.push(...ownerBlockers.map((item) => `PROCUREMENT:${item.type}:${item.purchaseOrderId}`)); evidenceReferences.push(reference.purchaseOrderId ?? reference.commitmentId!); }
-    // Check unresolved workflows
+    for (const workflow of workflows) {
+      if (workflow.kind === 'BOOKING_CONFIRMATION') {
+        const payload = workflow.payload as { procurement?: ProcurementReference } | undefined;
+        if (payload?.procurement) {
+          const key = payload.procurement.purchaseOrderId ?? payload.procurement.commitmentId!;
+          allProcurementRefs.set(key, payload.procurement);
+        }
+      }
+    }
+    for (const ref of input.procurementReferences ?? []) {
+      const key = ref.purchaseOrderId ?? ref.commitmentId!;
+      allProcurementRefs.set(key, ref);
+    }
+    for (const reference of allProcurementRefs.values()) {
+      const ownerBlockers = await this.procurement.blockers(input.companyId, reference);
+      blockers.push(...ownerBlockers.map((item) => `PROCUREMENT:${item.type}:${item.purchaseOrderId}`));
+      evidenceReferences.push(reference.purchaseOrderId ?? reference.commitmentId!);
+    }
+    
+    // 6. Check unresolved workflows (from AC-12 owned data)
     const unresolvedWorkflows = workflows.filter((w) => w.status === 'RUNNING' || w.status === 'BLOCKED' || w.status === 'SETTLEMENT_REQUIRED');
-    for (const workflow of unresolvedWorkflows) { blockers.push(`UNRESOLVED_WORKFLOW:${workflow.kind}:${workflow.id}`); evidenceReferences.push(workflow.id); }
-    // Check caller-supplied approval evidence (operational concern allowed)
-    for (const requestId of input.approvalRequestIds ?? []) { if (!(await this.controls.approvalResolved(input.companyId, requestId))) blockers.push(`APPROVAL_UNRESOLVED:${requestId}`); else evidenceReferences.push(requestId); }
+    for (const workflow of unresolvedWorkflows) {
+      blockers.push(`UNRESOLVED_WORKFLOW:${workflow.kind}:${workflow.id}`);
+      evidenceReferences.push(workflow.id);
+    }
+    
+    // 7. Check booking financial/cancellation state (from bookings owned state)
+    for (const booking of bookings) {
+      if (booking.status === 'CANCELLED') {
+        const history = await this.repo.programHistory(input.companyId, input.program);
+        if (history.some((h) => h.kind === 'CANCELLED')) continue;
+        // Booking cancelled but program not yet cancelled - this indicates partial state
+        blockers.push(`BOOKING_CANCELLATION_INCOMPLETE:${booking.id}`);
+        evidenceReferences.push(booking.id);
+      }
+    }
+    
+    // 8. Check approval requestId from booking confirmation evidence (from Controls owned data)
+    // Extract approvalRequestIds from booking confirmations
+    const approvalRequestIdsFromBookings = new Set<string>();
+    for (const workflow of workflows) {
+      if (workflow.kind === 'BOOKING_CONFIRMATION') {
+        const payload = workflow.payload as { approvalRequestId?: string } | undefined;
+        if (payload?.approvalRequestId) approvalRequestIdsFromBookings.add(payload.approvalRequestId);
+      }
+    }
+    const allApprovalRequestIds = new Set([...approvalRequestIdsFromBookings, ...(input.approvalRequestIds ?? [])]);
+    for (const requestId of allApprovalRequestIds) {
+      if (!(await this.controls.approvalResolved(input.companyId, requestId))) blockers.push(`APPROVAL_UNRESOLVED:${requestId}`);
+      else evidenceReferences.push(requestId);
+    }
+    
     return { ready: blockers.length === 0, blockers, warnings: [], evidenceReferences };
   }
 
