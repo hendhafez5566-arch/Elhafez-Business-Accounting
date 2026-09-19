@@ -24,7 +24,7 @@ export interface CommissionClaim {
 export interface CommissionPayment {
   id:string; requestHash:string; status:'RESERVED'|'POSTED'; amount:DecimalAmount; paymentCurrency:string;
   /** Portion of the commission obligation settled, expressed in the claim currency. */
-  claimAmountApplied:DecimalAmount;
+  claimAmountApplied:DecimalAmount; claimFxRateId?:string;
   settlementBaseAmount:DecimalAmount; carryingBaseAmount:DecimalAmount; realizedFx:DecimalAmount;
   fxRateId?:string; treasuryVoucherId?:string;
 }
