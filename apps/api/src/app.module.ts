@@ -8,7 +8,9 @@ import { BillingSubledgersModule } from '@elhafez/billing-subledgers';
 import { TreasurySettlementModule } from '@elhafez/treasury-settlement';
 import { PartyAccountingModule } from '@elhafez/party-accounting';
 import { ExpenseCommissionRecognitionModule } from '@elhafez/expense-commission-recognition';
+import { AssetsFinancingModule } from '@elhafez/assets-financing';
+import { CostBudgetAccountingModule } from '@elhafez/cost-budget-accounting';
 
 /** Composition root only. Business modules are registered here through public module APIs. */
-@Module({ imports: [PlatformCoreModule, PeriodControlModule, GeneralLedgerModule, FinancialControlsModule, TaxModule, BillingSubledgersModule, TreasurySettlementModule, PartyAccountingModule, ExpenseCommissionRecognitionModule] })
+@Module({ imports: [PlatformCoreModule, PeriodControlModule, GeneralLedgerModule, FinancialControlsModule, TaxModule, BillingSubledgersModule, TreasurySettlementModule, PartyAccountingModule, ExpenseCommissionRecognitionModule, CostBudgetAccountingModule, AssetsFinancingModule] })
 export class AppModule {}

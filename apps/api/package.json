@@ -21,5 +21,7 @@
     "@elhafez/treasury-settlement": "workspace:*",
     "@elhafez/party-accounting": "workspace:*",
     "@elhafez/expense-commission-recognition": "workspace:*"
+    ,"@elhafez/assets-financing": "workspace:*",
+    "@elhafez/cost-budget-accounting": "workspace:*"
   }
 }
