@@ -262,7 +262,7 @@ function git(args: string[]): string {
 function matches(pattern: string, path: string): boolean {
   const escaped = [...pattern]
     .map((character) =>
-      '.+^$(){}|[]\\\\'.includes(character) ? '\\\\' + character : character,
+      '.+^$(){}|[]\\\\'.includes(character) ? '\\' + character : character,
     )
     .join('');
   const regex = escaped
