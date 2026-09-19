@@ -28,6 +28,17 @@ For accounting/financial changes also read:
 
 Then inspect the actual owning module and its tests before editing.
 
+### Machine-enforced preflight
+
+Every pull request must add exactly one `.changes/<change-id>.json` manifest. It declares:
+- the requested change summary;
+- the allowed owning modules;
+- the non-module paths that may change;
+- any protected global paths that genuinely must change and why;
+- whether a breaking public API removal is explicitly authorized.
+
+CI compares that declaration with the real Git diff. Undeclared blast radius fails the PR.
+
 ## 2. Define the change boundary first
 
 Write down internally before editing:
@@ -196,10 +207,28 @@ A change is incomplete without tests proving:
 
 Do not replace behavioral tests with source-code regex checks.
 
-## 12. Required gates
+## 12. Machine-enforced anti-patching guards
+
+The repository enforces these rules in CI:
+- change scope / blast-radius allowlist;
+- protected global paths;
+- generated-artifact rejection;
+- accepted migration immutability;
+- backward-compatible module public API by default;
+- unique table ownership;
+- module dependency DAG / cycle rejection;
+- domain-layer framework/ORM isolation;
+- direct Prisma access cannot cross module ownership;
+- route IDs and paths are unique;
+- global shell structure has regression tests.
+
+These checks are not a substitute for review; they are a hard floor that coding tools cannot bypass by merely claiming compliance.
+
+## 13. Required gates
 
 Before declaring completion:
 - `pnpm install --frozen-lockfile`
+- `pnpm change-safety:check`
 - `pnpm prisma:generate` when Prisma is touched or generated client is required
 - focused module typecheck/tests
 - `pnpm typecheck`
@@ -211,7 +240,7 @@ Before declaring completion:
 
 If a gate cannot run, state `NOT RUN` and why. Never claim PASS without execution/evidence.
 
-## 13. Final diff review
+## 14. Final diff review
 
 Before publishing:
 - inspect `git status`;
@@ -230,7 +259,7 @@ Remove:
 - unrelated lockfile changes;
 - broad config rewrites not required by the task.
 
-## 14. Completion report
+## 15. Completion report
 
 Every coding agent must report:
 - exact requested behavior implemented;
@@ -243,7 +272,7 @@ Every coding agent must report:
 - any unresolved blocker;
 - confirmation that unrelated modules were not changed except where explicitly justified.
 
-## 15. Stop conditions
+## 16. Stop conditions
 
 Stop and report `BLOCKED` instead of improvising when:
 - the required owner/public API does not exist and adding one would change architecture;
@@ -255,7 +284,7 @@ Stop and report `BLOCKED` instead of improvising when:
 
 Never “make it work” by breaking the architecture.
 
-## 16. Principle of minimum blast radius
+## 17. Principle of minimum blast radius
 
 The safest successful change is the smallest clean change that:
 - satisfies the requirement;
