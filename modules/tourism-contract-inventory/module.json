@@ -14,6 +14,9 @@
     "tci_stop_sales",
     "tci_allocations",
     "tci_allocation_releases",
+    "tci_allocation_economic_evidence",
+    "tci_allocation_coverage_requirements",
+    "tci_allocation_cost_effects",
     "tci_procurement_requests",
     "tci_idempotency_keys",
     "tci_contract_history"
