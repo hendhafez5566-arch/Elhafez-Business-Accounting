@@ -81,12 +81,15 @@ export class ExpenseCommissionRecognitionApplicationService {
     if(invoice.partyKind!==expected||invoice.status!=='POSTED'||!invoice.deferred)throw new ContractValidationError('invoice','posted explicitly deferred '+expected+' invoice required');
     if(n(baseAmount)>n(invoice.baseTotal))throw new ContractValidationError('amount','schedule exceeds invoice economic amount');
    }else{
+    if(input.sourceType!=='EXPENSE')throw new ContractValidationError('sourceType','prepaid schedules must use the ECR EXPENSE source identity');
     const expense=await this.repo.expense(input.companyId,input.sourceId);
     if(!expense||expense.form!=='PREPAID'||expense.status!=='POSTED')throw new ContractValidationError('expense','posted prepaid expense required');
-    if(n(baseAmount)>n(expense.baseAmount))throw new ContractValidationError('amount','schedule exceeds prepaid expense');
+    if(normalized.currency!==expense.currency||sourceAmount!==expense.amount||baseAmount!==expense.baseAmount)throw new ContractValidationError('amount','prepaid schedule must preserve the full posted prepaid economic amount');
    }
    const base=await this.fx.getBaseCurrency(input.companyId);
    if(input.precision!==undefined&&input.precision!==base.precision)throw new ContractValidationError('precision','recognition parts must use base-currency precision');
+   const quantum=10n**BigInt(18-base.precision);
+   if(n(baseAmount)%quantum!==0n)throw new ContractValidationError('baseAmount','must conform to base-currency precision');
    const amounts=split(baseAmount,input.serviceDates.length,base.precision);
    value={id:input.id,companyId:input.companyId,kind:input.kind,sourceType:input.sourceType,sourceId:input.sourceId,...(input.sourceInvoiceId?{sourceInvoiceId:input.sourceInvoiceId}:{}),currency:normalized.currency,sourceAmount,baseAmount,deferredAccountId:input.deferredAccountId,recognitionAccountId:input.recognitionAccountId,requestHash,parts:input.serviceDates.map((serviceDate,i)=>({id:input.id+':'+(i+1),serviceDate,amount:amounts[i]!,status:'PENDING'}))};
    try{await this.repo.saveSchedule(value)}catch(error){
