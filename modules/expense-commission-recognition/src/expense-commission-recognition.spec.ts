@@ -43,6 +43,7 @@ test('BR-035 cross-currency commission applies payment in claim currency, not ra
  const first=await service.payCommission({companyId:companyId('c'),claimId:'fxc',paymentId:'fx-p1',treasuryId:'t',amount:decimalAmount('2500'),paymentCurrency:'EGP',postingDate:'2026-09-18',number:'FX-P1'});
  assert.equal(first.claimAmountApplied,'50');
  assert.equal(first.carryingBaseAmount,'2500');
+ assert.equal(first.claimFxRateId,'EGP-USD');
  assert.equal((await repo.claim(companyId('c'),'fxc'))!.status,'PARTIALLY_PAID');
  const second=await service.payCommission({companyId:companyId('c'),claimId:'fxc',paymentId:'fx-p2',treasuryId:'t',amount:decimalAmount('2500'),paymentCurrency:'EGP',postingDate:'2026-09-18',number:'FX-P2'});
  assert.equal(second.claimAmountApplied,'50');
