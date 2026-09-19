@@ -6,7 +6,8 @@ Last verified: 2026-09-19
 
 - Repository: `mhafez300300-byte/Elhafez-Business-Accounting`
 - Source of Truth: GitHub
-- Current accepted main SHA: `6fd8d019568f3c1927b64f7dffc4c30b301a74e9`
+- Last accepted business implementation baseline SHA (AC-11 merge): `6fd8d019568f3c1927b64f7dffc4c30b301a74e9`
+- Always verify the live `main` HEAD before execution; governance-only commits may follow the business baseline.
 - Current closed phase: **AC-11**
 - Next phase: **AC-12**
 
@@ -108,7 +109,7 @@ Important AC-12 integration acceptance rules are listed in the build sequence an
 
 Whoever closes the next phase must update this file:
 1. date;
-2. accepted main SHA;
+2. accepted business implementation baseline SHA;
 3. closed/current phase;
 4. next phase;
 5. final PR number;
