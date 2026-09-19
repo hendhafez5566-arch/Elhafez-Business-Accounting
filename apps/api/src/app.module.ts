@@ -11,7 +11,8 @@ import { ExpenseCommissionRecognitionModule } from '@elhafez/expense-commission-
 import { AssetsFinancingModule } from '@elhafez/assets-financing';
 import { CostBudgetAccountingModule } from '@elhafez/cost-budget-accounting';
 import { ProcurementFinanceModule } from '@elhafez/procurement-finance';
+import { TourismContractInventoryModule } from '@elhafez/tourism-contract-inventory';
 
 /** Composition root only. Business modules are registered here through public module APIs. */
-@Module({ imports: [PlatformCoreModule, PeriodControlModule, GeneralLedgerModule, FinancialControlsModule, TaxModule, BillingSubledgersModule, TreasurySettlementModule, PartyAccountingModule, ExpenseCommissionRecognitionModule, CostBudgetAccountingModule, AssetsFinancingModule, ProcurementFinanceModule] })
+@Module({ imports: [PlatformCoreModule, PeriodControlModule, GeneralLedgerModule, FinancialControlsModule, TaxModule, BillingSubledgersModule, TreasurySettlementModule, PartyAccountingModule, ExpenseCommissionRecognitionModule, CostBudgetAccountingModule, AssetsFinancingModule, ProcurementFinanceModule, TourismContractInventoryModule] })
 export class AppModule {}
