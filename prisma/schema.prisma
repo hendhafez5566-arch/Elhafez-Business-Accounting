@@ -1319,3 +1319,227 @@ model ProcInvoiceConversion {
  @@index([companyId,purchaseOrderId,status])
  @@map("proc_invoice_conversions")
 }
+
+model TciContract {
+ id String @id
+ companyId String @map("company_id")
+ type String
+ status String
+ supplierId String? @map("supplier_id")
+ effectiveFrom DateTime @map("effective_from")
+ effectiveTo DateTime @map("effective_to")
+ createdAt DateTime @default(now()) @map("created_at")
+ sourceReference Json? @map("source_reference")
+ versions TciContractVersion[]
+ hotelInventories TciHotelInventory[]
+ flightBlocks TciFlightBlock[]
+ transportCapacities TciTransportCapacity[]
+ visaQuotas TciVisaQuota[]
+ stopSales TciStopSale[]
+ allocations TciAllocation[]
+ history TciContractHistory[]
+ @@unique([companyId, id])
+ @@index([companyId, status])
+ @@index([companyId, type])
+ @@map("tci_contracts")
+}
+
+model TciContractVersion {
+ id String @id
+ companyId String @map("company_id")
+ contractId String @map("contract_id")
+ versionNumber Int @map("version_number")
+ effectiveFrom DateTime @map("effective_from")
+ effectiveTo DateTime? @map("effective_to")
+ terms Json
+ createdAt DateTime @default(now()) @map("created_at")
+ isCurrent Boolean @default(false) @map("is_current")
+ contract TciContract @relation(fields:[companyId,contractId],references:[companyId,id],onDelete:Restrict)
+ @@unique([companyId, id])
+ @@unique([companyId, contractId, versionNumber])
+ @@index([companyId, contractId, isCurrent])
+ @@map("tci_contract_versions")
+}
+
+model TciHotelInventory {
+ id String @id
+ companyId String @map("company_id")
+ contractId String @map("contract_id")
+ hotelId String @map("hotel_id")
+ roomId String? @map("room_id")
+ serviceDate DateTime @map("service_date")
+ contractedQuantity Decimal @map("contracted_quantity") @db.Decimal(38,18)
+ allocatedQuantity Decimal @map("allocated_quantity") @db.Decimal(38,18)
+ availableQuantity Decimal @map("available_quantity") @db.Decimal(38,18)
+ status String
+ contract TciContract @relation(fields:[companyId,contractId],references:[companyId,id],onDelete:Restrict)
+ allocations TciAllocation[]
+ @@unique([companyId, id])
+ @@unique([companyId, contractId, hotelId, serviceDate])
+ @@index([companyId, contractId, status])
+ @@index([companyId, serviceDate, status])
+ @@map("tci_hotel_inventory")
+}
+
+model TciFlightBlock {
+ id String @id
+ companyId String @map("company_id")
+ contractId String @map("contract_id")
+ flightNumber String @map("flight_number")
+ origin String
+ destination String
+ departureDate DateTime @map("departure_date")
+ totalSeats Decimal @map("total_seats") @db.Decimal(38,18)
+ consumedSeats Decimal @map("consumed_seats") @db.Decimal(38,18)
+ availableSeats Decimal @map("available_seats") @db.Decimal(38,18)
+ contract TciContract @relation(fields:[companyId,contractId],references:[companyId,id],onDelete:Restrict)
+ consumptions TciFlightBlockConsumption[]
+ @@unique([companyId, id])
+ @@unique([companyId, contractId, flightNumber, departureDate])
+ @@index([companyId, contractId])
+ @@index([companyId, flightNumber, departureDate])
+ @@map("tci_flight_blocks")
+}
+
+model TciFlightBlockConsumption {
+ id String @id
+ companyId String @map("company_id")
+ flightBlockId String @map("flight_block_id")
+ program Json
+ consumedSeats Decimal @map("consumed_seats") @db.Decimal(38,18)
+ consumedAt DateTime @default(now()) @map("consumed_at")
+ sourceReference Json? @map("source_reference")
+ flightBlock TciFlightBlock @relation(fields:[companyId,flightBlockId],references:[companyId,id],onDelete:Restrict)
+ @@unique([companyId, id])
+ @@index([companyId, flightBlockId])
+ @@map("tci_flight_block_consumption")
+}
+
+model TciTransportCapacity {
+ id String @id
+ companyId String @map("company_id")
+ contractId String @map("contract_id")
+ vehicleId String @map("vehicle_id")
+ capacityUnits Decimal @map("capacity_units") @db.Decimal(38,18)
+ periodStart DateTime @map("period_start")
+ periodEnd DateTime @map("period_end")
+ consumedUnits Decimal @map("consumed_units") @db.Decimal(38,18)
+ contract TciContract @relation(fields:[companyId,contractId],references:[companyId,id],onDelete:Restrict)
+ allocations TciAllocation[]
+ @@unique([companyId, id])
+ @@unique([companyId, contractId, vehicleId, periodStart, periodEnd])
+ @@index([companyId, periodStart, periodEnd])
+ @@map("tci_transport_capacity")
+}
+
+model TciVisaQuota {
+ id String @id
+ companyId String @map("company_id")
+ contractId String @map("contract_id")
+ visaType String @map("visa_type")
+ nationality String?
+ quotaTotal Decimal @map("quota_total") @db.Decimal(38,18)
+ quotaConsumed Decimal @map("quota_consumed") @db.Decimal(38,18)
+ quotaRemaining Decimal @map("quota_remaining") @db.Decimal(38,18)
+ effectiveFrom DateTime @map("effective_from")
+ effectiveTo DateTime @map("effective_to")
+ contract TciContract @relation(fields:[companyId,contractId],references:[companyId,id],onDelete:Restrict)
+ allocations TciAllocation[]
+ @@unique([companyId, id])
+ @@unique([companyId, contractId, visaType, nationality, effectiveFrom, effectiveTo])
+ @@index([companyId, visaType, status])
+ @@map("tci_visa_quotas")
+}
+
+model TciStopSale {
+ id String @id
+ companyId String @map("company_id")
+ contractId String @map("contract_id")
+ reason String
+ effectiveFrom DateTime @map("effective_from")
+ effectiveTo DateTime @map("effective_to")
+ createdAt DateTime @default(now()) @map("created_at")
+ isActive Boolean @default(true) @map("is_active")
+ contract TciContract @relation(fields:[companyId,contractId],references:[companyId,id],onDelete:Restrict)
+ @@unique([companyId, id])
+ @@index([companyId, contractId, isActive])
+ @@index([companyId, effectiveFrom, effectiveTo])
+ @@map("tci_stop_sales")
+}
+
+model TciAllocation {
+ id String @id
+ companyId String @map("company_id")
+ contractId String @map("contract_id")
+ program Json
+ serviceDate DateTime @map("service_date")
+ quantity Decimal @db.Decimal(38,18)
+ status String
+ releaseBlockerReason String? @map("release_blocker_reason")
+ createdAt DateTime @default(now()) @map("created_at")
+ sourceReference Json? @map("source_reference")
+ hotelInventory TciHotelInventory? @relation(fields:[companyId,contractId],references:[companyId,id])
+ transportCapacity TciTransportCapacity? @relation(fields:[companyId,contractId],references:[companyId,id])
+ visaQuota TciVisaQuota? @relation(fields:[companyId,contractId],references:[companyId,id])
+ contract TciContract @relation(fields:[companyId,contractId],references:[companyId,id],onDelete:Restrict)
+ releases TciAllocationRelease[]
+ @@unique([companyId, id])
+ @@index([companyId, contractId, status])
+ @@index([companyId, program, status])
+ @@map("tci_allocations")
+}
+
+model TciAllocationRelease {
+ id String @id
+ companyId String @map("company_id")
+ allocationId String @map("allocation_id")
+ releasedQuantity Decimal @map("released_quantity") @db.Decimal(38,18)
+ blockerEvidence String? @map("blocker_evidence")
+ releasedAt DateTime @default(now()) @map("released_at")
+ status String
+ allocation TciAllocation @relation(fields:[companyId,allocationId],references:[companyId,id],onDelete:Restrict)
+ @@unique([companyId, id])
+ @@index([companyId, allocationId])
+ @@map("tci_allocation_releases")
+}
+
+model TciProcurementRequest {
+ id String @id
+ companyId String @map("company_id")
+ program Json
+ residualQuantity Decimal @map("residual_quantity") @db.Decimal(38,18)
+ procurementType String @map("procurement_type")
+ referenceData Json @map("reference_data")
+ createdAt DateTime @default(now()) @map("created_at")
+ sourceReference Json? @map("source_reference")
+ @@unique([companyId, id])
+ @@index([companyId, program, createdAt])
+ @@map("tci_procurement_requests")
+}
+
+model TciIdempotencyKey {
+ id String @id
+ companyId String @map("company_id")
+ key String
+ requestHash String @map("request_hash")
+ result Json
+ createdAt DateTime @default(now()) @map("created_at")
+ @@unique([companyId, id])
+ @@unique([companyId, key])
+ @@map("tci_idempotency_keys")
+}
+
+model TciContractHistory {
+ id String @id
+ companyId String @map("company_id")
+ contractId String @map("contract_id")
+ kind String
+ aggregateId String @map("aggregate_id")
+ sourceReference String? @map("source_reference")
+ createdAt DateTime @default(now()) @map("created_at")
+ contract TciContract @relation(fields:[companyId,contractId],references:[companyId,id],onDelete:Restrict)
+ @@unique([companyId, id])
+ @@index([companyId, contractId, createdAt])
+ @@map("tci_contract_history")
+}
+
