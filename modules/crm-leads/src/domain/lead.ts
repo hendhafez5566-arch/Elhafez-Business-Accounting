@@ -1,6 +1,4 @@
 import { ContractValidationError, type BranchId, type CompanyId } from '@elhafez/contracts';
-import type { AgentId } from '@elhafez/agent-management';
-import type { CustomerId } from '@elhafez/customer-management';
 
 declare const leadIdBrand:unique symbol;
 export type LeadId=string&{readonly[leadIdBrand]:'LeadId'};
@@ -11,9 +9,9 @@ export interface Lead {
  readonly phone:string|null; readonly whatsappNumber:string|null; readonly email:string|null; readonly address:string|null;
  readonly nationalIdentity:string|null; readonly taxIdentity:string|null;
  readonly source:string; readonly requestedService:string|null; readonly expectedValue:string|null; readonly currency:string|null;
- readonly status:LeadStatus; readonly responsibleUserId:string|null; readonly referralAgentId:AgentId|null; readonly notes:string|null;
+ readonly status:LeadStatus; readonly responsibleUserId:string|null; readonly referralAgentId:string|null; readonly notes:string|null;
  readonly lostReason:string|null; readonly preLostStatus:Exclude<LeadStatus,'LOST'>|null; readonly quotationReference:string|null;
- readonly convertedCustomerId:CustomerId|null; readonly createdAt:string; readonly updatedAt:string;
+ readonly convertedCustomerId:string|null; readonly createdAt:string; readonly updatedAt:string;
 }
 export type LeadHistoryKind='CREATED'|'UPDATED'|'STATUS_CHANGED'|'LOST'|'REOPENED'|'QUOTED'|'CONVERTED';
 export interface LeadHistory { readonly id:string; readonly companyId:CompanyId; readonly branchId:BranchId; readonly leadId:LeadId; readonly kind:LeadHistoryKind; readonly fromStatus:LeadStatus|null; readonly toStatus:LeadStatus|null; readonly detail:string|null; readonly actorId:string; readonly occurredAt:string; }
