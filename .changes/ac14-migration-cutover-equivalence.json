@@ -1,6 +1,6 @@
 {
   "id": "ac14-migration-cutover-equivalence",
-  "summary": "Complete AC-14 owner-scoped immutable historical persistence, production composition and CLI, full dry-run validation, existing-run verification, exact owner equivalence, executable GS-001..GS-040 evidence, and readiness gating.",
+  "summary": "Complete AC-14 canonical owner restoration, independently-derived legacy equivalence (including exact GL and FX/reversal evidence), authoritative reporting rebuild, and strict 40/40 cutover readiness.",
   "type": "phase",
   "allowedModules": [
     "platform-core",
@@ -54,7 +54,9 @@
     "apps/api/src/ac14-migration/main.ts",
     "apps/api/src/app.module.ts",
     "apps/api/package.json",
-    "pnpm-lock.yaml"
+    "pnpm-lock.yaml",
+    ".changes/20260920-ac13-state-close.json",
+    "PROJECT_STATE.md"
   ],
   "protectedPaths": [
     "modules/platform-core/module.json",
@@ -72,9 +74,10 @@
     "modules/procurement-finance/module.json",
     "modules/financial-controls/module.json",
     "modules/tourism-contract-inventory/module.json",
-    "modules/tourism-finance-orchestration/module.json"
+    "modules/tourism-finance-orchestration/module.json",
+    "PROJECT_STATE.md"
   ],
-  "protectedReason": "AC-14 adds one additive owner-owned immutable historical import table to each participating accounting module; each protected module manifest truthfully declares only its own table. Prisma changes are additive and the accepted AC-14A migration is untouched.",
+  "protectedReason": "AC-14 adds additive owner-owned historical provenance while restoring canonical owner tables. Prisma/module manifests and the pre-existing AC-13 closure state in this published branch are declared truthfully; no accepted migration is edited.",
   "allowBreakingPublicApi": false,
   "publicApiBreakingReason": ""
 }
