@@ -5,7 +5,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "tsx --test src/**/*.spec.ts",
+    "test": "tsx --tsconfig tsconfig.json --test src/**/*.spec.ts",
     "ac14": "tsx src/ac14-migration/main.ts"
   },
   "dependencies": {
