@@ -202,7 +202,9 @@ export class MigrationControlApplicationService {
           existing.implementationVersion === input.implementationVersion &&
           existing.targetCompanyId === config.targetCompanyId &&
           existing.actorId === config.actorId &&
-          existing.mode === input.mode &&
+          (existing.mode === input.mode ||
+            (existing.mode === 'EXECUTE' && input.mode === 'RESUME') ||
+            (existing.mode === 'RESUME' && input.mode === 'EXECUTE')) &&
           existing.configSnapshotHash === configSnapshotHash;
         if (!sameProvenance) {
           failMigration('TARGET_CONFLICT', 'runId is already in use by a run with conflicting provenance', {

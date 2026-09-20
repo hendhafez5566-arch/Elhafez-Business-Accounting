@@ -1,6 +1,6 @@
 {
   "id": "ac14-migration-cutover-equivalence",
-  "summary": "AC-14A: add Platform Core-owned migration-control metadata (run/crosswalk/checkpoint/issue/equivalence), raw-snapshot hashing, migration-config validation, and a thin non-writing AC-14 dry-run preflight skeleton in apps/api. No accounting-owner historical import, Tourism migration, equivalence engine, or cutover is implemented in this batch.",
+  "summary": "Complete the remaining AC-14 deterministic historical-import orchestration, exact legacy GL normalization, owner-boundary contract, equivalence/readiness checks, 40-scenario regression registry, non-HTTP runner, and cutover runbook while retaining the accepted AC-14A control plane.",
   "type": "phase",
   "allowedModules": [
     "platform-core"
@@ -25,7 +25,15 @@
     "apps/api/src/ac14-migration/preflight.service.ts",
     "apps/api/src/ac14-migration/preflight.service.spec.ts",
     "apps/api/src/ac14-migration/ac14-migration.module.ts",
-    "apps/api/src/ac14-migration/ac14a-boundaries.spec.ts"
+    "apps/api/src/ac14-migration/ac14a-boundaries.spec.ts",
+    "apps/api/src/ac14-migration/stages.ts",
+    "apps/api/src/ac14-migration/owner-import.gateway.ts",
+    "apps/api/src/ac14-migration/golden-scenario.registry.ts",
+    "apps/api/src/ac14-migration/legacy-journal.ts",
+    "apps/api/src/ac14-migration/coordinator.service.ts",
+    "apps/api/src/ac14-migration/cli.ts",
+    "apps/api/src/ac14-migration/ac14-remaining.spec.ts",
+    "docs/accounting/AC14-CUTOVER-RUNBOOK.md"
   ],
   "protectedPaths": [
     "modules/platform-core/module.json",

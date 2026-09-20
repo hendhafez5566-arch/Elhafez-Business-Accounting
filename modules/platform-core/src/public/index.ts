@@ -7,7 +7,7 @@ export type { AuditEntry, Branch, Company, Notification, StoredFile, User } from
 export { PlatformError } from '../domain/platform.types.js';
 
 /** AC-14A — migration-control metadata only. Never accounting source truth. */
-export { MigrationControlApplicationService } from '../application/migration-control.application-service.js';
+export { MigrationControlApplicationService, AC14_CANONICAL_TARGET_BASELINE_SHA } from '../application/migration-control.application-service.js';
 export type {
   AcceptedSourceIdentity,
   CreateRunInput,
