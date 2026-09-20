@@ -420,7 +420,7 @@ test('a non-uniqueness repository failure during crosswalk reservation is NOT co
   const repo = new InMemoryMigrationControlRepository();
   const originalReserve = repo.reserveCrosswalk.bind(repo);
   let calls = 0;
-  repo.reserveCrosswalk = async (c) => {
+  repo.reserveCrosswalk = async () => {
     calls += 1;
     throw new Error('ECONNREFUSED: simulated database outage');
   };
