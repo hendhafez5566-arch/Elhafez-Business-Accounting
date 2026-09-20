@@ -26,6 +26,7 @@
     "@elhafez/procurement-finance": "workspace:*",
     "@elhafez/tourism-contract-inventory": "workspace:*",
     "@elhafez/tourism-finance-orchestration": "workspace:*",
-    "@elhafez/financial-reporting": "workspace:*"
+    "@elhafez/financial-reporting": "workspace:*",
+    "@elhafez/contracts": "workspace:*"
   }
 }

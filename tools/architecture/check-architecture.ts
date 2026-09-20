@@ -52,7 +52,7 @@ for (const name of moduleNames) {
   if (!metadata.publicApi?.includes('src/public/index.ts')) {
     errors.push(`modules/${name}: must expose src/public/index.ts as its public API.`);
   }
-  if (!Array.isArray(metadata.ownedTables)) {
+  if (!metadata.ownedTables?.length) {
     errors.push(`modules/${name}: must declare ownedTables.`);
   }
 }

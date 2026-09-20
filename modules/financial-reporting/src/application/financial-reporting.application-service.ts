@@ -17,8 +17,15 @@ export class FinancialReportingApplicationService {
       if (fingerprint(existing) !== fingerprint(normalized)) throw new ContractValidationError('evidenceId', 'conflicting immutable reporting evidence');
       return { status: 'DUPLICATE', evidenceId: existing.evidenceId };
     }
-    await this.repository.save(normalized);
-    return { status: 'INGESTED', evidenceId: normalized.evidenceId };
+    try {
+      await this.repository.save(normalized);
+      return { status: 'INGESTED', evidenceId: normalized.evidenceId };
+    } catch (error) {
+      if (!isUniqueConflict(error)) throw error;
+      const concurrent = await this.repository.find(normalized.companyId, normalized.evidenceId);
+      if (!concurrent || fingerprint(concurrent) !== fingerprint(normalized)) throw new ContractValidationError('evidenceId', 'conflicting immutable reporting evidence');
+      return { status: 'DUPLICATE', evidenceId: concurrent.evidenceId };
+    }
   }
 
   async rebuild(companyId: ReportingEvidence['companyId'], evidence: readonly ReportingEvidence[]) {
@@ -99,3 +106,5 @@ function scaled(value: DecimalAmount): bigint { const negative = value.startsWit
 function decimal(value: bigint): DecimalAmount { const negative = value < 0n; const absolute = negative ? -value : value; const whole = absolute / 10n ** 18n; const fraction = absolute % 10n ** 18n; return decimalAmount(`${negative ? '-' : ''}${whole}${fraction ? `.${fraction.toString().padStart(18, '0').replace(/0+$/, '')}` : ''}`); }
 function sum(values: readonly DecimalAmount[]) { return decimal(values.reduce((total, value) => total + scaled(value), 0n)); }
 function subtract(left: DecimalAmount, right: DecimalAmount) { return decimal(scaled(left) - scaled(right)); }
+
+function isUniqueConflict(error: unknown): error is { code: 'P2002' } { return typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002'; }

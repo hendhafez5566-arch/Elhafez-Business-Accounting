@@ -14,7 +14,8 @@ import { ProcurementFinanceModule } from '@elhafez/procurement-finance';
 import { TourismContractInventoryModule } from '@elhafez/tourism-contract-inventory';
 import { TourismFinanceOrchestrationModule } from '@elhafez/tourism-finance-orchestration';
 import { FinancialReportingModule } from '@elhafez/financial-reporting';
+import { FinancialReportingEvidenceAdapter } from './financial-reporting-evidence.adapter.js';
 
 /** Composition root only. Business modules are registered here through public module APIs. */
-@Module({ imports: [PlatformCoreModule, PeriodControlModule, GeneralLedgerModule, FinancialControlsModule, TaxModule, BillingSubledgersModule, TreasurySettlementModule, PartyAccountingModule, ExpenseCommissionRecognitionModule, CostBudgetAccountingModule, AssetsFinancingModule, ProcurementFinanceModule, TourismContractInventoryModule, TourismFinanceOrchestrationModule, FinancialReportingModule] })
+@Module({ imports: [PlatformCoreModule, PeriodControlModule, GeneralLedgerModule, FinancialControlsModule, TaxModule, BillingSubledgersModule, TreasurySettlementModule, PartyAccountingModule, ExpenseCommissionRecognitionModule, CostBudgetAccountingModule, AssetsFinancingModule, ProcurementFinanceModule, TourismContractInventoryModule, TourismFinanceOrchestrationModule, FinancialReportingModule], providers: [FinancialReportingEvidenceAdapter] })
 export class AppModule {}

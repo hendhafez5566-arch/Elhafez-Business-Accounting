@@ -11,14 +11,16 @@
     "apps/api/src/app.module.ts",
     "apps/api/package.json",
     "pnpm-lock.yaml",
-    "tools/architecture/check-architecture.ts"
+    "prisma/schema.prisma",
+    "prisma/migrations/20260920120000_ac13_financial_reporting_projection/migration.sql",
+    "apps/api/src/financial-reporting-evidence.adapter.ts"
   ],
   "protectedPaths": [
     "modules/financial-reporting/module.json",
     "apps/api/src/app.module.ts",
-    "tools/architecture/check-architecture.ts"
+    "prisma/schema.prisma"
   ],
-  "protectedReason": "AC-13 requires the canonical Financial Reporting module manifest with no business-module dependencies, production registration through its package-root public API, and architecture validation that distinguishes a declared empty ownedTables array from an omitted ownership declaration for a legitimately persistence-free module.",
+  "protectedReason": "AC-13 requires the canonical Financial Reporting module manifest, production registration, and one additive Reporting-owned rebuildable projection table.",
   "allowBreakingPublicApi": false,
   "publicApiBreakingReason": ""
 }

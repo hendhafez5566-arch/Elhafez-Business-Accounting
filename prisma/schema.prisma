@@ -1764,3 +1764,22 @@ model CbaTourismServiceActualization {
  @@index([companyId,serviceSourceType,serviceSourceId])
  @@map("cba_tourism_service_actualizations")
 }
+
+/// Disposable, rebuildable Financial Reporting projection evidence. Never accounting source truth.
+model FrReportingEvidence {
+ id String @id
+ companyId String @map("company_id")
+ evidenceId String @map("evidence_id")
+ branchId String? @map("branch_id")
+ kind String
+ postingDate DateTime @map("posting_date") @db.Date
+ payload String
+ payloadHash String @map("payload_hash")
+ authoritativeSourceType String @map("authoritative_source_type")
+ authoritativeSourceId String @map("authoritative_source_id")
+ createdAt DateTime @default(now()) @map("created_at")
+ @@unique([companyId,evidenceId])
+ @@index([companyId,branchId,postingDate])
+ @@index([companyId,kind,postingDate])
+ @@map("fr_reporting_evidence")
+}
