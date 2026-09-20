@@ -1,4 +1,8 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
 import { AC14_STAGES } from './stages.js';
 import { GOLDEN_SCENARIO_EVIDENCE, assertCompleteGoldenScenarioRegistry } from './golden-scenario.registry.js';
@@ -382,4 +386,202 @@ test('non-empty Umrah activity and outbox roots are explicitly classified and ne
     assert.equal(coverage[0]?.state, 'CLASSIFIED');
     assert.equal(coverage[0]?.issueCode, 'UNSUPPORTED_LEGACY_CONSTRUCT');
   }
+});
+
+
+const resumeSourceHash = createHash('sha256')
+  .update(JSON.stringify({ code: 'USD', id: 'USD' }))
+  .digest('hex');
+
+async function runResumeFixture(options: {
+  existingHash?: string;
+  importStatus?: 'IMPORTED' | 'CONVERGED';
+  repeat?: boolean;
+}) {
+  const directory = await mkdtemp(join(tmpdir(), 'ac14-resume-'));
+  const snapshotPath = join(directory, 'snapshot.json');
+  await writeFile(snapshotPath, JSON.stringify({ currencies: [{ id: 'USD', code: 'USD' }] }));
+  const checkpoints = new Map<string, { stage: string; processedCount: number; status: 'IN_PROGRESS' | 'COMPLETE' | 'FAILED'; cursor: string | null }>();
+  checkpoints.set('currencies', {
+    stage: 'currencies',
+    processedCount: 0,
+    status: 'IN_PROGRESS',
+    cursor: null,
+  });
+  const crosswalks: Array<{
+    sourceCollection: string;
+    sourceId: string;
+    targetOwner: string;
+    targetKind: string;
+    targetId: string;
+    sourcePayloadHash: string;
+  }> = options.existingHash
+    ? [{
+        sourceCollection: 'currencies',
+        sourceId: 'USD',
+        targetOwner: 'CurrencyFx',
+        targetKind: 'currency',
+        targetId: 'USD',
+        sourcePayloadHash: options.existingHash,
+      }]
+    : [];
+  const issues: Array<{ code: string; stage?: string | null; sourceCollection?: string | null; sourceId?: string | null }> = [];
+  const equivalence = new Map<string, { scope: string; checkKey: string; expectedValue: string; actualValue: string; status: 'MATCH' | 'MISMATCH' }>();
+  const run = {
+    id: 'resume-run',
+    sourceRepository: 'mhafez300300-byte/Elhafez-Tourism-Offline',
+    sourceCommit: 'e97fa6d9cb52acb22b676e1b975c1b2332bc9a13',
+    sourceVersion: 'v32.5.66',
+    sourceSha256: null,
+    targetBaselineSha: '9b30440f33a2237f22deaa202028dfabb02c0e2b',
+    implementationVersion: 'test',
+    targetCompanyId: 'company',
+    actorId: 'actor',
+    mode: 'EXECUTE' as const,
+    status: 'RUNNING' as const,
+    configSnapshotHash: 'config',
+    processedCount: 0,
+    rejectedCount: 0,
+    startedAt: new Date(0),
+    completedAt: null,
+    createdAt: new Date(0),
+    updatedAt: new Date(0),
+  };
+  let importCalls = 0;
+  const control = {
+    validateSourceIdentity: () => undefined,
+    validateConfig: () => undefined,
+    createRun: async () => run,
+    registerSourceSha256: async () => run,
+    getCheckpoint: async (_runId: string, stage: string) => checkpoints.get(stage),
+    recordCheckpoint: async (input: { stage: string; processedCount: number; status: 'IN_PROGRESS' | 'COMPLETE' | 'FAILED'; cursor?: string | null }) => {
+      const prior = checkpoints.get(input.stage);
+      const processedCount = Math.max(prior?.processedCount ?? 0, input.processedCount);
+      const stored = {
+        stage: input.stage,
+        processedCount,
+        status: input.status === 'COMPLETE' ? 'COMPLETE' as const : prior?.status ?? input.status,
+        cursor: processedCount > (prior?.processedCount ?? -1)
+          ? input.cursor ?? prior?.cursor ?? null
+          : prior?.cursor ?? input.cursor ?? null,
+      };
+      checkpoints.set(input.stage, stored);
+      return stored;
+    },
+    getCrosswalk: async (
+      _runId: string,
+      sourceCollection: string,
+      sourceIdValue: string,
+      targetOwner: string,
+      targetKind: string,
+    ) => crosswalks.find((row) =>
+      row.sourceCollection === sourceCollection &&
+      row.sourceId === sourceIdValue &&
+      row.targetOwner === targetOwner &&
+      row.targetKind === targetKind),
+    listCrosswalks: async () => crosswalks,
+    recordCrosswalk: async (input: typeof crosswalks[number] & { runId: string }) => {
+      const existing = crosswalks.find((row) =>
+        row.sourceCollection === input.sourceCollection &&
+        row.sourceId === input.sourceId &&
+        row.targetOwner === input.targetOwner &&
+        row.targetKind === input.targetKind);
+      if (existing) return existing;
+      const row = {
+        sourceCollection: input.sourceCollection,
+        sourceId: input.sourceId,
+        targetOwner: input.targetOwner,
+        targetKind: input.targetKind,
+        targetId: input.targetId,
+        sourcePayloadHash: input.sourcePayloadHash,
+      };
+      crosswalks.push(row);
+      return row;
+    },
+    recordIssue: async (input: typeof issues[number]) => {
+      issues.push(input);
+      return input;
+    },
+    listIssues: async () => issues,
+    reconcileRunCounts: async () => run,
+    transitionRunStatus: async () => run,
+    recordEquivalence: async (input: { scope: string; checkKey: string; expectedValue: string; actualValue: string; status: 'MATCH' | 'MISMATCH' }) => {
+      equivalence.set(input.scope + ':' + input.checkKey, input);
+      return input;
+    },
+    listEquivalence: async () => [...equivalence.values()],
+    listCheckpoints: async () => [...checkpoints.values()],
+    getRun: async () => run,
+  };
+  const owners = {
+    validateUnit: () => undefined,
+    importUnit: async () => {
+      importCalls++;
+      return {
+        status: options.importStatus ?? 'IMPORTED',
+        targetKind: 'currency',
+        targetId: 'USD',
+      } as const;
+    },
+    rebuildReporting: async () => ({ evidenceCount: '1' }),
+    ownerEquivalence: async () => ({
+      records: '1',
+      payloadDigest: 'canonical',
+      debit: '0',
+      credit: '0',
+      amount: '0',
+    }),
+    ownerNames: () => ['CurrencyFx'],
+  };
+  const coordinator = new Ac14MigrationCoordinator(control as never, owners as never);
+  const request = {
+    snapshotPath,
+    targetBaselineSha: run.targetBaselineSha,
+    implementationVersion: 'test',
+    declaredSourceIdentity: {
+      sourceRepository: run.sourceRepository,
+      sourceCommit: run.sourceCommit,
+      sourceVersion: run.sourceVersion,
+    },
+    config: {
+      targetCompanyId: 'company',
+      actorId: 'actor',
+      branchMap: {},
+      allowUnscopedSourceRecords: true,
+      runId: run.id,
+    },
+    mode: 'RESUME' as const,
+  };
+  try {
+    await coordinator.run(request);
+    if (options.repeat) await coordinator.run(request);
+    return { importCalls, checkpoints, crosswalks, issues };
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+}
+
+test('resume skips an already crosswalked role and resynchronizes checkpoint count from durable truth', async () => {
+  const result = await runResumeFixture({
+    existingHash: resumeSourceHash,
+    repeat: true,
+  });
+  assert.equal(result.importCalls, 0);
+  assert.equal(result.crosswalks.length, 1);
+  assert.equal(result.checkpoints.get('currencies')?.processedCount, 1);
+});
+
+test('resume after canonical import but before crosswalk converges owner once and establishes one role', async () => {
+  const result = await runResumeFixture({ importStatus: 'CONVERGED' });
+  assert.equal(result.importCalls, 1);
+  assert.equal(result.crosswalks.length, 1);
+  assert.equal(result.checkpoints.get('currencies')?.processedCount, 1);
+});
+
+test('resume rejects a conflicting payload hash for an already completed role without owner replay', async () => {
+  const result = await runResumeFixture({ existingHash: 'b'.repeat(64) });
+  assert.equal(result.importCalls, 0);
+  assert.equal(result.crosswalks.length, 1);
+  assert.ok(result.issues.some((issue) => issue.code === 'TARGET_CONFLICT'));
+  assert.equal(result.checkpoints.get('currencies')?.processedCount, 1);
 });
