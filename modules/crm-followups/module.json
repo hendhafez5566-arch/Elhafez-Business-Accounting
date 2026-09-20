@@ -1,0 +1,6 @@
+{
+  "name": "crm-followups",
+  "publicApi": ["src/public/index.ts"],
+  "ownedTables": ["cf_followups", "cf_followup_history"],
+  "allowedDependencies": ["@elhafez/contracts", "@elhafez/core", "@elhafez/platform-core", "@elhafez/crm-leads"]
+}

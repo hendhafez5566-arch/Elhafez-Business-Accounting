@@ -1,0 +1,49 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { executionContext, type ExecutionContext } from '@elhafez/contracts';
+import { agentId, type Agent, type AgentId } from '@elhafez/agent-management';
+import { partyId, type DuplicateCandidate, type Party, type PartyDraft, type PartyId, type PartyRole } from '@elhafez/party-registry';
+import type { CustomerAccess } from './application/customer-access.js';
+import type { CustomerAgentPort, CustomerPartyRegistryPort, CustomerPartyResolveResult } from './application/customer-dependencies.port.js';
+import { CustomerManagementApplicationService } from './application/customer-management.application-service.js';
+import { InMemoryCustomerManagementRepository } from './infrastructure/in-memory-customer-management.repository.js';
+
+class Access implements CustomerAccess { async requireBranch(c:ExecutionContext){if(c.branchId==='blocked')throw new Error('branch access denied');} async requirePermission():Promise<void>{} async audit():Promise<void>{} }
+class Parties implements CustomerPartyRegistryPort {
+ private readonly rows=new Map<string,Party>(); private readonly rolesByParty=new Map<string,Set<PartyRole>>(); private seq=0; review:readonly DuplicateCandidate[]|null=null;
+ async resolveOrCreateForIntegration(c:ExecutionContext,input:PartyDraft):Promise<CustomerPartyResolveResult>{if(this.review)return{status:'REVIEW_REQUIRED',candidates:this.review};const strong=input.nationalIdentity?.replace(/[\s-]/g,'').toUpperCase();const existing=[...this.rows.values()].find(p=>p.companyId===c.companyId&&!!strong&&p.nationalIdentityNormalized===strong);if(existing)return{status:'MATCHED',party:existing};const now='2026-09-20T12:00:00.000Z',id=partyId('p'+(++this.seq));const party:Party={id,companyId:c.companyId,kind:input.kind,displayName:input.displayName.trim(),legalName:null,phone:input.phone?.trim()||null,phoneNormalized:input.phone?.replace(/[^0-9]/g,'')||null,whatsappNumber:null,whatsappNormalized:null,email:input.email?.trim().toLowerCase()||null,emailNormalized:input.email?.trim().toLowerCase()||null,address:null,nationalIdentity:input.nationalIdentity?.trim()||null,nationalIdentityNormalized:strong||null,taxIdentity:null,taxIdentityNormalized:null,status:'ACTIVE',createdAt:now,updatedAt:now};this.rows.set(c.companyId+'|'+id,party);return{status:'CREATED',party};}
+ async ensureRoleForIntegration(c:ExecutionContext,id:PartyId,role:PartyRole){const k=c.companyId+'|'+id,s=this.rolesByParty.get(k)??new Set<PartyRole>();s.add(role);this.rolesByParty.set(k,s);}
+ async removeRoleForIntegration(c:ExecutionContext,id:PartyId,role:PartyRole){this.rolesByParty.get(c.companyId+'|'+id)?.delete(role);}
+ async getForIntegration(c:ExecutionContext,id:PartyId){const p=this.rows.get(c.companyId+'|'+id);if(!p)throw new Error('party missing');return p;}
+ async searchForIntegration(c:ExecutionContext,query:string){const q=query.trim().toLowerCase();return [...this.rows.values()].filter(p=>p.companyId===c.companyId&&[p.displayName,p.phone,p.email].some(value=>value?.toLowerCase().includes(q)));}
+ async updateForIntegration(c:ExecutionContext,id:PartyId,input:PartyDraft){const p=await this.getForIntegration(c,id),n={...p,displayName:input.displayName.trim()};this.rows.set(c.companyId+'|'+id,n);return n;}
+ roles(c:ExecutionContext,id:PartyId){return [...(this.rolesByParty.get(c.companyId+'|'+id)??[])];}
+}
+class Agents implements CustomerAgentPort {
+ private readonly rows=new Map<string,Agent>(); private readonly refs=new Set<string>();
+ seed(c:ExecutionContext,status:Agent['status']='ACTIVE'){const id=agentId('agent-1'),now='2026-09-20T12:00:00.000Z';this.rows.set(c.companyId+'|'+id,{id,companyId:c.companyId,partyId:partyId('agent-party'),number:'AGT-1',status,notes:null,commission:{kind:'PERCENT',value:'1',currency:null},createdAt:now,updatedAt:now});return id;}
+ async requireActiveForIntegration(c:ExecutionContext,id:AgentId){const a=this.rows.get(c.companyId+'|'+id);if(!a||a.status!=='ACTIVE')throw new Error('agent is suspended');return a;}
+ async registerReferenceForIntegration(c:ExecutionContext,id:AgentId,t:string,s:string){await this.requireActiveForIntegration(c,id);this.refs.add(c.companyId+'|'+id+'|'+t+'|'+s);}
+ async releaseReferenceForIntegration(c:ExecutionContext,id:AgentId,t:string,s:string){this.refs.delete(c.companyId+'|'+id+'|'+t+'|'+s);}
+}
+function fixture(){let n=0;const parties=new Parties(),agents=new Agents(),repo=new InMemoryCustomerManagementRepository(),customers=new CustomerManagementApplicationService(repo,parties,agents,new Access(),()=>new Date('2026-09-20T12:00:00Z'),()=> 'c'+(++n));return{customers,agents,parties,repo};}
+const ctx=executionContext('co','br','user');
+test('customer creation reuses a matching party/customer and stable number',async()=>{const{customers}=fixture();const one=await customers.create(ctx,{party:{kind:'PERSON',displayName:'Customer',nationalIdentity:'111'},commercialNotes:'vip'});if(one.status==='REVIEW_REQUIRED')assert.fail('customer should be created');assert.equal(one.status,'CREATED');assert.equal(one.value.customer.number,'CUS-000001');const replay=await customers.create(ctx,{party:{kind:'PERSON',displayName:'Customer 2',nationalIdentity:'111'}});if(replay.status==='REVIEW_REQUIRED')assert.fail('replay should match existing customer');assert.equal(replay.status,'EXISTING');assert.equal(replay.value.customer.id,one.value.customer.id);});
+test('existing party without customer profile gains customer role once',async()=>{const{customers,parties}=fixture();const first=await parties.resolveOrCreateForIntegration(ctx,{kind:'PERSON',displayName:'Party Only',nationalIdentity:'222'});if(first.status==='REVIEW_REQUIRED')return;const c=await customers.create(ctx,{party:{kind:'PERSON',displayName:'Party Only',nationalIdentity:'222'}});assert.equal(c.status,'CREATED');assert.deepEqual(parties.roles(ctx,first.party.id),['CUSTOMER']);});
+test('ambiguous candidate result prevents customer creation',async()=>{const{customers,parties}=fixture();const now='2026-09-20T12:00:00.000Z';const p:Party={id:partyId('amb'),companyId:ctx.companyId,kind:'PERSON',displayName:'Ambiguous',legalName:null,phone:null,phoneNormalized:null,whatsappNumber:null,whatsappNormalized:null,email:null,emailNormalized:null,address:null,nationalIdentity:null,nationalIdentityNormalized:null,taxIdentity:null,taxIdentityNormalized:null,status:'ACTIVE',createdAt:now,updatedAt:now};parties.review=[{party:p,evidence:['PHONE']}];const r=await customers.create(ctx,{party:{kind:'PERSON',displayName:'X',phone:'01000000001'}});assert.equal(r.status,'REVIEW_REQUIRED');});
+test('assigned suspended agent is rejected',async()=>{const{customers,agents}=fixture();const id=agents.seed(ctx,'SUSPENDED');await assert.rejects(()=>customers.create(ctx,{party:{kind:'PERSON',displayName:'C'},assignedAgentId:id}),/suspended/);});
+test('safe hard delete requires suspension and no references',async()=>{const{customers}=fixture();const r=await customers.create(ctx,{party:{kind:'PERSON',displayName:'C',nationalIdentity:'333'}});if(r.status==='REVIEW_REQUIRED')return;const id=r.value.customer.id;await assert.rejects(()=>customers.hardDelete(ctx,id),/suspended/);await customers.registerReferenceForIntegration(ctx,id,'BOOKING','1');await customers.suspend(ctx,id);await assert.rejects(()=>customers.hardDelete(ctx,id),/referenced/);await customers.releaseReferenceForIntegration(ctx,id,'BOOKING','1');await customers.hardDelete(ctx,id);await assert.rejects(()=>customers.requireActiveForIntegration(ctx,id));});
+test('company and branch isolation remain enforced',async()=>{const{customers}=fixture();const r=await customers.create(ctx,{party:{kind:'PERSON',displayName:'C'}});if(r.status==='REVIEW_REQUIRED')return;await assert.rejects(()=>customers.requireActiveForIntegration(executionContext('other','x','u'),r.value.customer.id));await assert.rejects(()=>customers.list(executionContext('co','blocked','u')),/branch access denied/);});
+
+test('customer search includes Party display name, phone and email through the public Party boundary',async()=>{
+  const{customers}=fixture();
+  const created=await customers.create(ctx,{party:{kind:'PERSON',displayName:'Searchable Mohamed',phone:'01012345678',email:'Search.Me@Example.com'},commercialNotes:'corporate'});
+  if(created.status==='REVIEW_REQUIRED')assert.fail('customer should be created');
+  for(const query of ['Searchable Mohamed','01012345678','search.me@example.com']){
+    const results=await customers.list(ctx,undefined,query);
+    assert.equal(results.length,1);
+    assert.equal(results[0]?.customer.id,created.value.customer.id);
+  }
+  assert.equal((await customers.list(ctx,undefined,created.value.customer.number)).length,1);
+  assert.equal((await customers.list(ctx,undefined,'corporate')).length,1);
+});

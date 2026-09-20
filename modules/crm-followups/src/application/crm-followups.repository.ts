@@ -1,0 +1,13 @@
+import type { BranchId, CompanyId } from '@elhafez/contracts';
+import type { Followup, FollowupHistory, FollowupId } from '../domain/followup.js';
+
+export interface CrmFollowupsRepository {
+  create(v:Followup,h:FollowupHistory):Promise<void>;
+  update(v:Followup,h:FollowupHistory):Promise<void>;
+  completeWithOptionalNext(completed:Followup,completedHistory:FollowupHistory,next:Followup|null,nextHistory:FollowupHistory|null):Promise<void>;
+  find(c:CompanyId,b:BranchId,id:FollowupId):Promise<Followup|undefined>;
+  listForLead(c:CompanyId,b:BranchId,leadId:string):Promise<Followup[]>;
+  scheduledThrough(c:CompanyId,b:BranchId,through:string,responsibleUserId?:string):Promise<Followup[]>;
+  history(c:CompanyId,b:BranchId,id:FollowupId):Promise<FollowupHistory[]>;
+}
+export const CRM_FOLLOWUPS_REPOSITORY=Symbol('CRM_FOLLOWUPS_REPOSITORY');

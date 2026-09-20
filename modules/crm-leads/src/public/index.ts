@@ -1,0 +1,1 @@
+export{CrmLeadsApplicationService,CRM_LEAD_PERMISSIONS}from'../application/crm-leads.application-service.js';export type{LeadConversionResult}from'../application/crm-leads.application-service.js';export{leadId}from'../domain/lead.js';export type{LeadId,LeadStatus,Lead,LeadHistory,LeadHistoryKind,CreateLeadInput,UpdateLeadInput}from'../domain/lead.js';

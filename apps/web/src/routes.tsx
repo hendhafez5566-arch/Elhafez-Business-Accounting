@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { AgentsPage, CustomersPage, FollowupsPage, LeadsPage } from './crm-core-pages.js';
 
 export interface AppRoute {
   readonly id: string;
@@ -21,9 +22,13 @@ export function defineRoutes(...routes: readonly AppRoute[]): readonly AppRoute[
   return Object.freeze([...routes]);
 }
 
-export const foundationRoutes = defineRoutes({
-  id: 'foundation', path: '/', label: 'الرئيسية', element: 'مساحة العمل جاهزة للوحدات المستقبلية.'
-});
+export const foundationRoutes = defineRoutes(
+  { id: 'foundation', path: '/', label: 'الرئيسية', element: 'مساحة العمل جاهزة للوحدات.' },
+  { id: 'crm-customers', path: '/crm/customers', label: 'العملاء', group: 'العملاء والمبيعات', element: <CustomersPage /> },
+  { id: 'crm-agents', path: '/crm/agents', label: 'الوكلاء', group: 'العملاء والمبيعات', element: <AgentsPage /> },
+  { id: 'crm-leads', path: '/crm/leads', label: 'العملاء المحتملون', group: 'العملاء والمبيعات', element: <LeadsPage /> },
+  { id: 'crm-followups', path: '/crm/followups', label: 'المتابعات', group: 'العملاء والمبيعات', element: <FollowupsPage /> },
+);
 
 export function findRoute(pathname: string, routes: readonly AppRoute[] = foundationRoutes): AppRoute {
   return routes.find((route) => route.path === pathname) ?? routes[0]!;

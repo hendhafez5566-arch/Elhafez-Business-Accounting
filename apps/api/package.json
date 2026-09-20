@@ -5,7 +5,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "tsx --test src/**/*.spec.ts",
+    "test": "tsx --tsconfig tsconfig.json --test src/**/*.spec.ts",
     "ac14": "tsx src/ac14-migration/main.ts"
   },
   "dependencies": {
@@ -29,6 +29,11 @@
     "@elhafez/tourism-finance-orchestration": "workspace:*",
     "@elhafez/financial-reporting": "workspace:*",
     "@elhafez/contracts": "workspace:*",
-    "@elhafez/currency-fx": "workspace:*"
+    "@elhafez/currency-fx": "workspace:*",
+    "@elhafez/party-registry": "workspace:*",
+    "@elhafez/agent-management": "workspace:*",
+    "@elhafez/customer-management": "workspace:*",
+    "@elhafez/crm-leads": "workspace:*",
+    "@elhafez/crm-followups": "workspace:*"
   }
 }

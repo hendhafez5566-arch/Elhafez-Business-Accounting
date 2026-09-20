@@ -1,0 +1,1 @@
+import type{ExecutionContext}from'@elhafez/contracts';import type{Lead,LeadId}from'@elhafez/crm-leads';export interface FollowupLeadPort{getForIntegration(c:ExecutionContext,id:LeadId):Promise<Lead>;}

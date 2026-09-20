@@ -1,0 +1,1 @@
+import type{ExecutionContext}from'@elhafez/contracts';export interface CrmFollowupsAccess{requireBranch(c:ExecutionContext):Promise<void>;requirePermission(c:ExecutionContext,p:string):Promise<void>;audit(c:ExecutionContext,a:string,r:string,e:string|null,m?:Record<string,unknown>):Promise<void>;}export const CRM_FOLLOWUPS_ACCESS=Symbol('CRM_FOLLOWUPS_ACCESS');

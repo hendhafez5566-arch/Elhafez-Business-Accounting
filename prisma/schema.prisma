@@ -2146,3 +2146,244 @@ model TourismFinanceOrchestrationHistoricalImport {
  @@index([runId,companyId])
  @@map("tfo_historical_imports")
 }
+
+/// CS-01 CRM Core — company-wide identity root.
+model PrParty {
+  id                         String        @id @default(uuid())
+  companyId                  String        @map("company_id")
+  kind                       String
+  displayName                String        @map("display_name")
+  legalName                  String?       @map("legal_name")
+  phone                      String?
+  phoneNormalized            String?       @map("phone_normalized")
+  whatsappNumber             String?       @map("whatsapp_number")
+  whatsappNormalized         String?       @map("whatsapp_normalized")
+  email                      String?
+  emailNormalized            String?       @map("email_normalized")
+  address                    String?
+  nationalIdentity           String?       @map("national_identity")
+  nationalIdentityNormalized String?       @map("national_identity_normalized")
+  taxIdentity                String?       @map("tax_identity")
+  taxIdentityNormalized      String?       @map("tax_identity_normalized")
+  status                     String        @default("ACTIVE")
+  createdAt                  DateTime      @default(now()) @map("created_at")
+  updatedAt                  DateTime      @updatedAt @map("updated_at")
+  roles                      PrPartyRole[]
+
+  @@unique([companyId, id], name: "companyId_id")
+  @@unique([companyId, nationalIdentityNormalized], name: "companyId_nationalIdentityNormalized")
+  @@unique([companyId, taxIdentityNormalized], name: "companyId_taxIdentityNormalized")
+  @@index([companyId, phoneNormalized])
+  @@index([companyId, emailNormalized])
+  @@index([companyId, displayName])
+  @@map("pr_parties")
+}
+
+model PrPartyRole {
+  companyId String   @map("company_id")
+  partyId   String   @map("party_id")
+  role      String
+  createdAt DateTime @default(now()) @map("created_at")
+  party     PrParty  @relation(fields: [companyId, partyId], references: [companyId, id], onDelete: Cascade)
+
+  @@id([companyId, partyId, role])
+  @@map("pr_party_roles")
+}
+
+/// CS-01 CRM Core — company-wide Agent commercial profile.
+model AmAgent {
+  id                 String             @id @default(uuid())
+  companyId          String             @map("company_id")
+  partyId            String             @map("party_id")
+  number             String
+  status             String             @default("ACTIVE")
+  notes              String?
+  commissionKind     String             @map("commission_kind")
+  commissionValue    Decimal            @map("commission_value") @db.Decimal(24, 6)
+  commissionCurrency String?            @map("commission_currency")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+  references         AmAgentReference[]
+
+  @@unique([companyId, id], name: "companyId_id")
+  @@unique([companyId, partyId], name: "companyId_partyId")
+  @@unique([companyId, number], name: "companyId_number")
+  @@index([companyId, status])
+  @@map("am_agents")
+}
+
+model AmAgentReference {
+  companyId  String   @map("company_id")
+  agentId    String   @map("agent_id")
+  sourceType String   @map("source_type")
+  sourceId   String   @map("source_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+  agent      AmAgent  @relation(fields: [companyId, agentId], references: [companyId, id], onDelete: Restrict)
+
+  @@id([companyId, agentId, sourceType, sourceId])
+  @@index([companyId, sourceType, sourceId])
+  @@map("am_agent_references")
+}
+
+model AmNumberCounter {
+  companyId String @id @map("company_id")
+  nextValue Int    @default(0) @map("next_value")
+
+  @@map("am_number_counters")
+}
+
+/// CS-01 CRM Core — company-wide Customer commercial profile.
+model CmCustomer {
+  id                String                @id @default(uuid())
+  companyId         String                @map("company_id")
+  partyId           String                @map("party_id")
+  number            String
+  status            String                @default("ACTIVE")
+  assignedAgentId   String?               @map("assigned_agent_id")
+  commercialNotes   String?               @map("commercial_notes")
+  createdAt         DateTime              @default(now()) @map("created_at")
+  updatedAt         DateTime              @updatedAt @map("updated_at")
+  references        CmCustomerReference[]
+
+  @@unique([companyId, id], name: "companyId_id")
+  @@unique([companyId, partyId], name: "companyId_partyId")
+  @@unique([companyId, number], name: "companyId_number")
+  @@index([companyId, status])
+  @@index([companyId, assignedAgentId])
+  @@map("cm_customers")
+}
+
+model CmCustomerReference {
+  companyId  String     @map("company_id")
+  customerId String     @map("customer_id")
+  sourceType String     @map("source_type")
+  sourceId   String     @map("source_id")
+  createdAt  DateTime   @default(now()) @map("created_at")
+  customer   CmCustomer @relation(fields: [companyId, customerId], references: [companyId, id], onDelete: Restrict)
+
+  @@id([companyId, customerId, sourceType, sourceId])
+  @@index([companyId, sourceType, sourceId])
+  @@map("cm_customer_references")
+}
+
+model CmNumberCounter {
+  companyId String @id @map("company_id")
+  nextValue Int    @default(0) @map("next_value")
+
+  @@map("cm_number_counters")
+}
+
+/// CS-01 CRM Core — branch-scoped Lead / Opportunity truth.
+model ClLead {
+  id                      String          @id @default(uuid())
+  companyId               String          @map("company_id")
+  branchId                String          @map("branch_id")
+  number                  String
+  partyKind               String          @map("party_kind")
+  displayName             String          @map("display_name")
+  legalName               String?         @map("legal_name")
+  phone                   String?
+  whatsappNumber          String?         @map("whatsapp_number")
+  email                   String?
+  address                 String?
+  nationalIdentity        String?         @map("national_identity")
+  taxIdentity             String?         @map("tax_identity")
+  source                  String
+  requestedService        String?         @map("requested_service")
+  expectedValue           Decimal?        @map("expected_value") @db.Decimal(24, 6)
+  currency                String?
+  status                  String          @default("NEW")
+  responsibleUserId       String?         @map("responsible_user_id")
+  referralAgentId         String?         @map("referral_agent_id")
+  notes                   String?
+  lostReason              String?         @map("lost_reason")
+  preLostStatus           String?         @map("pre_lost_status")
+  quotationReference      String?         @map("quotation_reference")
+  convertedCustomerId     String?         @map("converted_customer_id")
+  createdAt               DateTime        @default(now()) @map("created_at")
+  updatedAt               DateTime        @updatedAt @map("updated_at")
+  history                 ClLeadHistory[]
+
+  @@unique([companyId, branchId, id], name: "companyId_branchId_id")
+  @@unique([companyId, branchId, number], name: "companyId_branchId_number")
+  @@index([companyId, branchId, status, updatedAt])
+  @@index([companyId, branchId, responsibleUserId, status])
+  @@index([companyId, branchId, phone])
+  @@index([companyId, branchId, email])
+  @@index([companyId, convertedCustomerId])
+  @@map("cl_leads")
+}
+
+model ClLeadHistory {
+  id         String   @id @default(uuid())
+  companyId  String   @map("company_id")
+  branchId   String   @map("branch_id")
+  leadId     String   @map("lead_id")
+  kind       String
+  fromStatus String?  @map("from_status")
+  toStatus   String?  @map("to_status")
+  detail     String?
+  actorId    String   @map("actor_id")
+  occurredAt DateTime @default(now()) @map("occurred_at")
+  lead       ClLead   @relation(fields: [companyId, branchId, leadId], references: [companyId, branchId, id], onDelete: Restrict)
+
+  @@index([companyId, branchId, leadId, occurredAt])
+  @@map("cl_lead_history")
+}
+
+model ClNumberCounter {
+  companyId String @map("company_id")
+  branchId  String @map("branch_id")
+  nextValue Int    @default(0) @map("next_value")
+
+  @@id([companyId, branchId])
+  @@map("cl_number_counters")
+}
+
+/// CS-01 CRM Core — branch-scoped scheduled tasks and immutable interaction evidence.
+model CfFollowup {
+  id                   String              @id @default(uuid())
+  companyId            String              @map("company_id")
+  branchId             String              @map("branch_id")
+  leadId               String              @map("lead_id")
+  responsibleUserId    String              @map("responsible_user_id")
+  interactionType      String              @map("interaction_type")
+  scheduledAt          DateTime            @map("scheduled_at")
+  status               String              @default("SCHEDULED")
+  outcome              String?
+  nextAction           String?             @map("next_action")
+  previousFollowupId   String?             @map("previous_followup_id")
+  completedAt          DateTime?           @map("completed_at")
+  cancelledAt          DateTime?           @map("cancelled_at")
+  completionVoidedAt   DateTime?           @map("completion_voided_at")
+  completionVoidReason String?              @map("completion_void_reason")
+  createdAt            DateTime            @default(now()) @map("created_at")
+  updatedAt            DateTime            @updatedAt @map("updated_at")
+  history              CfFollowupHistory[]
+
+  @@unique([companyId, branchId, id], name: "companyId_branchId_id")
+  @@index([companyId, branchId, status, scheduledAt])
+  @@index([companyId, branchId, responsibleUserId, status, scheduledAt])
+  @@index([companyId, branchId, leadId, scheduledAt])
+  @@map("cf_followups")
+}
+
+model CfFollowupHistory {
+  id                  String     @id @default(uuid())
+  companyId           String     @map("company_id")
+  branchId            String     @map("branch_id")
+  followupId          String     @map("followup_id")
+  leadId              String     @map("lead_id")
+  kind                String
+  detail              String?
+  previousScheduledAt DateTime?  @map("previous_scheduled_at")
+  scheduledAt         DateTime?  @map("scheduled_at")
+  actorId             String     @map("actor_id")
+  occurredAt          DateTime   @default(now()) @map("occurred_at")
+  followup            CfFollowup @relation(fields: [companyId, branchId, followupId], references: [companyId, branchId, id], onDelete: Restrict)
+
+  @@index([companyId, branchId, followupId, occurredAt])
+  @@index([companyId, branchId, leadId, occurredAt])
+  @@map("cf_followup_history")
+}
+
