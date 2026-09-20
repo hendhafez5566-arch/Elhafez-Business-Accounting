@@ -8,8 +8,10 @@ Last verified: 2026-09-20
 - Source of Truth: GitHub
 - Last accepted business implementation baseline SHA (AC-14 merge): `350ba7dfc5e9e46e355a805a2c3dada1420ca53b`
 - Always verify the live `main` HEAD before execution; governance-only commits may follow the business baseline.
-- Current closed phase: **AC-14**
-- Next phase: **None in the approved accounting build sequence.** Any future accounting scope requires a separately approved change/phase.
+- Current closed accounting phase: **AC-14**
+- Accounting next phase: **None. There is no approved AC-15.**
+- Post-AC-14 Business Platform architecture: **OWNER APPROVED** and defined by `docs/BUSINESS-MODULE-ARCHITECTURE.md` + `docs/BUSINESS-MODULE-ROUTING.md` (governance PR #55).
+- Next business implementation phase: **NOT STARTED**. It must be selected from the canonical PLANNED module map; do not invent ownership from menu labels.
 
 ## Closed / accepted foundation
 
@@ -181,6 +183,35 @@ Final AC-14 hardening includes:
 - company/branch isolation, exact-decimal behavior, module ownership and compile-time DAG preserved.
 
 Final cumulative PR #52 and final main-targeting PR #53 both passed CI for frozen install, Change Safety, Prisma generation, typecheck, lint, architecture check and full tests.
+
+## Post-AC-14 Business Platform architecture
+
+Owner decision:
+- continue the repository as the broader **ELHAFEZ Business Platform** while preserving the closed Accounting & Finance subsystem;
+- organize the product into large user-facing suites, each composed of independently owned modules;
+- allow shared modules to appear in multiple suites without duplicating code/data ownership;
+- make canonical module routing mandatory for every coding tool before edits.
+
+Canonical files:
+- `docs/BUSINESS-MODULE-ARCHITECTURE.md`
+- `docs/BUSINESS-MODULE-ROUTING.md`
+
+Canonical top-level suites:
+1. Hajj & Umrah
+2. Tourism & Services
+3. CRM & Sales
+4. Suppliers & Procurement
+5. Accounting & Finance — CLOSED / ACCEPTED
+6. Management & Control
+7. System Administration
+
+Important accepted routing:
+- `tourism-contract-inventory` remains the shared owner for contracts/allotment/capacity/inventory;
+- existing Accounting modules remain sole owners of financial truth;
+- `platform-core` remains owner of its accepted platform capabilities;
+- future operational modules are created only from the canonical PLANNED owner map.
+
+Governance record: PR #55.
 
 ## Post-AC-14 state
 
