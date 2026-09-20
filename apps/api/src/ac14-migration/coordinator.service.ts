@@ -120,7 +120,7 @@ export class Ac14MigrationCoordinator {
     for (const [stage, owner, collections] of AC14_STAGES) {
       if (!owner) continue;
       const prior = await this.control.getCheckpoint(created.id, stage);
-      if (write && prior?.status === "COMPLETE") continue;
+      const priorComplete = write && prior?.status === "COMPLETE";
       const durableCount = write
         ? await this.stageRoleCount(created.id, stage, owner, collections)
         : 0;
@@ -134,7 +134,7 @@ export class Ac14MigrationCoordinator {
           null,
           "checkpoint processedCount exceeds durable unique crosswalk roles",
         );
-      if (write)
+      if (write && !priorComplete)
         await this.control.recordCheckpoint({
           runId: created.id,
           stage,
@@ -288,13 +288,14 @@ export class Ac14MigrationCoordinator {
                 count,
                 await this.stageRoleCount(created.id, stage, owner, collections),
               );
-              await this.control.recordCheckpoint({
-                runId: created.id,
-                stage,
-                cursor: `${collection}:${id}:${owner}:${unit.targetKind}`,
-                processedCount: count,
-                status: "IN_PROGRESS",
-              });
+              if (!priorComplete)
+                await this.control.recordCheckpoint({
+                  runId: created.id,
+                  stage,
+                  cursor: `${collection}:${id}:${owner}:${unit.targetKind}`,
+                  processedCount: count,
+                  status: "IN_PROGRESS",
+                });
             }
           } catch (error) {
             await this.issue(
