@@ -34,7 +34,6 @@ import {
   type CommissionClaim,
   type Expense,
   type RecognitionSchedule,
-  type SupplierAdvanceSettlement,
 } from '@elhafez/expense-commission-recognition';
 import {
   ProcurementFinanceApplicationService,
@@ -498,7 +497,8 @@ function ecrFixture() {
   const schedules = new Map<string, RecognitionSchedule>();
   const claims = new Map<string, CommissionClaim>();
   const accruals = new Map<string, Accrual>();
-  const supplierSettlements = new Map<string, SupplierAdvanceSettlement>();
+  type SupplierSettlement = NonNullable<Awaited<ReturnType<Repo['supplierSettlement']>>>;
+  const supplierSettlements = new Map<string, SupplierSettlement>();
 
   const repo: Repo = {
     async expense(companyId, id) {
