@@ -6,10 +6,10 @@ Last verified: 2026-09-20
 
 - Repository: `mhafez300300-byte/Elhafez-Business-Accounting`
 - Source of Truth: GitHub
-- Last accepted business implementation baseline SHA (AC-12 merge): `343489c21f229b5dbc36a1515f466d15d19b5597`
+- Last accepted business implementation baseline SHA (AC-13 merge): `00883570188764f9791bdc5ecf0de4f2ec510b7a`
 - Always verify the live `main` HEAD before execution; governance-only commits may follow the business baseline.
-- Current closed phase: **AC-12**
-- Next phase: **AC-13**
+- Current closed phase: **AC-13**
+- Next phase: **AC-14** — requires separate owner approval before start.
 
 ## Closed / accepted foundation
 
@@ -31,6 +31,7 @@ Last verified: 2026-09-20
 | AC-10 — Procurement Finance | CLOSED / MERGED | PR #31 |
 | AC-11 — Tourism Contract Inventory | CLOSED / MERGED | PR #35 |
 | AC-12 — Tourism/Hajj/Umrah Financial Orchestration | CLOSED / MERGED | PR #41 |
+| AC-13 — Financial Reporting & Cross-Module Integration Acceptance | CLOSED / MERGED | PR #44 |
 
 ## AC-11 final accepted state
 
@@ -111,31 +112,67 @@ Final AC-12 hardening includes:
 
 Final implementation, phase and main PR CI was green for install, Change Safety, Prisma generation, typecheck, lint, architecture check and tests.
 
-## Next phase — AC-13
+## AC-13 final accepted state
+
+Final main integration:
+- PR #44 — `AC-13: merge Financial Reporting and integration acceptance into main`
+- Main merge SHA: `00883570188764f9791bdc5ecf0de4f2ec510b7a`
+- Phase branch merge SHA before main: `5bc237c9e2f8a7750a600013ce838f6cfc3a3275`
+- Final reviewed implementation head: `2528c4673b40847ca49cc2fe1bfbaef7fea2fcf5`
+
+Canonical new rules:
+- none — AC-13 is integration/regression only.
+
+Canonical new golden scenarios:
+- none — existing scenarios remain owned by their original phases and are regression evidence only.
+
+Accepted integration rules:
+- BR-072 — server independently protects financial immutability;
+- BR-073 — permanent financial collections cannot be directly deleted;
+- BR-074 — branch access is enforced on changed financial records;
+- BR-075 — audit auto-fix remains intentionally narrow.
+
+Final AC-13 hardening includes:
+- canonical `@elhafez/financial-reporting` module with zero business-module compile-time dependencies;
+- Reporting-owned durable/rebuildable `fr_reporting_evidence` projection, never accounting source truth;
+- production Prisma Reporting repository with duplicate-delivery convergence, conflict detection and deterministic rebuild;
+- exact-decimal, currency-separated trial balance, ledger, statements, aging, treasury, supplier, tax and program accounting reporting;
+- trusted composition-root projection adapter fed by authoritative owner public results;
+- GL journal lines carry the opaque Cost Center identity required by the canonical program-accounting architecture;
+- program revenue and program cost/profit derive from authoritative posted GL lines tagged with the owned Cost Center, not operational estimates or non-GL actualization evidence;
+- real owner evidence acceptance across GL, Billing, Treasury, Cost/Cost Center identity and Tax;
+- behavioral BR-072..BR-075 integration acceptance through real Controls/Treasury application boundaries;
+- company and branch scope preservation;
+- architecture checker retained at its pre-AC-13 safety baseline.
+
+Final implementation and phase-to-main CI was green for install, Change Safety, Prisma generation, typecheck, lint, architecture check and full tests.
+
+## Next phase — AC-14
+
+Status:
+**NOT STARTED — separate owner approval required before execution.**
 
 Canonical source:
 `docs/accounting/ACCOUNTING-BUILD-SEQUENCE.md`
 
 Scope:
-**Reporting and cross-module financial integration acceptance.**
+**Migration / cutover / equivalence after separate approval.**
 
 Prerequisites:
-AC-04 through AC-12.
+All implementation phases through AC-13.
 
 Canonical new rules:
-- none — integration/regression only.
+- none — migration/regression only.
 
-Canonical new golden scenarios:
-- none — regression only.
-
-Integration acceptance:
-- BR-072 through BR-075.
+Canonical golden scenarios:
+- none new;
+- replay all 40 existing Golden Scenarios as REGRESSION ONLY.
 
 Explicit restrictions:
-- no new source balance;
-- no rule reimplementation;
-- reporting must consume authoritative owner data/contracts rather than become a second accounting engine;
-- relevant cross-module scenarios are rerun as REGRESSION ONLY.
+- do not start AC-14 without separate owner approval;
+- unresolved statutory, bank and consolidation features remain outside this phase unless separately approved;
+- no source-of-truth redesign during migration/cutover;
+- equivalence must be evidence-based and preserve accepted accounting ownership.
 
 ## Update protocol
 
