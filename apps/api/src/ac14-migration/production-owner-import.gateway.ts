@@ -386,18 +386,18 @@ const adaptLegacyPayload = (unit: HistoricalImportUnit): Readonly<Record<string,
       };
     case "PREPAID_SCHEDULE":
       return {
-        kind: "COST",
+        ...p,
+        form: "PREPAYMENT",
         sourceType: "PREPAID_SCHEDULE",
         sourceId: unit.sourceId,
         currency: text(p.currency, "USD"),
-        sourceAmount: decimalText(p.amount),
-        baseAmount: decimalText(p.amount),
-        deferredAccountId: "1300",
-        recognitionAccountId: "historical",
         amount: decimalText(p.amount),
+        baseAmount: decimalText(p.amount),
+        status: text(p.status, "POSTED").toUpperCase(),
+        prepaidAccountId: text(p.prepaidAccountId, "1300"),
+        expenseAccountId: text(p.expenseAccountId, "historical"),
         legacyExpenseId: p.expenseId,
         legacyServiceDate: p.date,
-        legacyStatus: p.status,
       };
     case "DEFERRED_REVENUE":
     case "DEFERRED_COST":
