@@ -571,6 +571,13 @@ test('resume skips an already crosswalked role and resynchronizes checkpoint cou
   assert.equal(result.checkpoints.get('currencies')?.processedCount, 1);
 });
 
+test('resume after a crash before owner import establishes the role exactly once', async () => {
+  const result = await runResumeFixture({ importStatus: 'IMPORTED' });
+  assert.equal(result.importCalls, 1);
+  assert.equal(result.crosswalks.length, 1);
+  assert.equal(result.checkpoints.get('currencies')?.processedCount, 1);
+});
+
 test('resume after canonical import but before crosswalk converges owner once and establishes one role', async () => {
   const result = await runResumeFixture({ importStatus: 'CONVERGED' });
   assert.equal(result.importCalls, 1);
