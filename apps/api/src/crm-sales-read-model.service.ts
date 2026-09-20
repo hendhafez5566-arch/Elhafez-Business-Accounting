@@ -65,7 +65,7 @@ export class CrmSalesReadModelService {
     const agent = await this.agents.get(context, agentId(id));
     const customers = (await this.customers.list(context)).filter((item) => item.customer.assignedAgentId === id);
     const leads = (await this.leads.list(context)).filter((lead) => lead.referralAgentId === id);
-    const customerIds = new Set(customers.map((item) => item.customer.id));
+    const customerIds = new Set<string>(customers.map((item) => item.customer.id));
     const leadIds = new Set<string>(leads.map((lead) => lead.id));
     const quotations = (await this.quotations.list(context)).filter((quote) =>
       (quote.customerId !== null && customerIds.has(quote.customerId)) ||
