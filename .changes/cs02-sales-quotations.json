@@ -1,0 +1,32 @@
+{
+  "id": "cs02-sales-quotations",
+  "summary": "Implement CS-02 quotations as the canonical owner of branch-scoped commercial quotation lifecycle, revisions, approval evidence, CRM integration, Billing conversion, persistence, API composition, and Arabic-first web routes.",
+  "type": "phase",
+  "allowedModules": [
+    "quotations"
+  ],
+  "allowedPaths": [
+    ".changes/cs02-sales-quotations.json",
+    "apps/api/package.json",
+    "apps/api/src/app.module.ts",
+    "apps/api/src/cs02-sales-quotations.spec.ts",
+    "apps/web/src/quotation-client.ts",
+    "apps/web/src/quotation-pages.tsx",
+    "apps/web/src/quotations.spec.ts",
+    "apps/web/src/routes.tsx",
+    "docs/crm/CS-02-SALES-QUOTATIONS.md",
+    "pnpm-lock.yaml",
+    "prisma/schema.prisma",
+    "prisma/migrations/20260920210000_cs02_sales_quotations/migration.sql",
+    "apps/web/src/crm-core.spec.ts"
+  ],
+  "protectedPaths": [
+    "modules/quotations/module.json",
+    "apps/api/src/app.module.ts",
+    "apps/web/src/routes.tsx",
+    "prisma/schema.prisma"
+  ],
+  "protectedReason": "CS-02 creates the owner-approved quotations module, registers its isolated Nest composition and real browser routes, and adds only quotation-owned Prisma models through one forward migration.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": ""
+}

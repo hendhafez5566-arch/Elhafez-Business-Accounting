@@ -2340,6 +2340,104 @@ model ClNumberCounter {
   @@map("cl_number_counters")
 }
 
+/// CS-02 Sales — branch-scoped quotation aggregate and conversion evidence.
+model QtQuotation {
+  id                    String       @id @default(uuid())
+  companyId             String       @map("company_id")
+  branchId              String       @map("branch_id")
+  number                String
+  sourceLeadId          String?      @map("source_lead_id")
+  customerId            String?      @map("customer_id")
+  customerDisplayName   String       @map("customer_display_name")
+  customerContactName   String?      @map("customer_contact_name")
+  customerPhone         String?      @map("customer_phone")
+  customerEmail         String?      @map("customer_email")
+  currency              String
+  status                String       @default("DRAFT")
+  approvalStatus        String       @default("NOT_REQUIRED") @map("approval_status")
+  approvalActorId       String?      @map("approval_actor_id")
+  approvalAt            DateTime?    @map("approval_at")
+  approvalReason        String?      @map("approval_reason")
+  currentRevisionId     String       @map("current_revision_id")
+  acceptedRevisionId    String?      @map("accepted_revision_id")
+  rejectedRevisionId    String?      @map("rejected_revision_id")
+  rejectionReason       String?      @map("rejection_reason")
+  billingInvoiceId      String?      @map("billing_invoice_id")
+  createdAt             DateTime     @default(now()) @map("created_at")
+  updatedAt             DateTime     @updatedAt @map("updated_at")
+  revisions             QtRevision[]
+  history               QtHistory[]
+
+  @@unique([companyId, branchId, id], name: "companyId_branchId_id")
+  @@unique([companyId, branchId, number], name: "companyId_branchId_number")
+  @@unique([companyId, billingInvoiceId], name: "companyId_billingInvoiceId")
+  @@index([companyId, branchId, status, updatedAt])
+  @@index([companyId, branchId, sourceLeadId])
+  @@index([companyId, customerId])
+  @@map("qt_quotations")
+}
+
+model QtRevision {
+  id             String           @id @default(uuid())
+  quotationId    String           @map("quotation_id")
+  number         Int
+  validityDate   DateTime         @db.Date @map("validity_date")
+  notes          String?
+  terms          String?
+  subtotal       Decimal          @db.Decimal(24, 6)
+  discountTotal  Decimal          @db.Decimal(24, 6) @map("discount_total")
+  total          Decimal          @db.Decimal(24, 6)
+  createdAt      DateTime         @default(now()) @map("created_at")
+  sentAt         DateTime?        @map("sent_at")
+  quotation      QtQuotation      @relation(fields: [quotationId], references: [id], onDelete: Restrict)
+  lines          QtRevisionLine[]
+
+  @@unique([quotationId, number], name: "quotationId_number")
+  @@map("qt_revisions")
+}
+
+model QtRevisionLine {
+  id                       String     @default(uuid())
+  revisionId               String     @map("revision_id")
+  description              String
+  quantity                 Decimal    @db.Decimal(24, 6)
+  unitPrice                Decimal    @db.Decimal(24, 6) @map("unit_price")
+  discount                 Decimal    @default(0) @db.Decimal(24, 6)
+  taxCode                  String?    @map("tax_code")
+  total                    Decimal    @db.Decimal(24, 6)
+  manualPriceOverride      Boolean    @default(false) @map("manual_price_override")
+  discountRequiresApproval Boolean    @default(false) @map("discount_requires_approval")
+  revision                 QtRevision @relation(fields: [revisionId], references: [id], onDelete: Restrict)
+
+  @@id([revisionId, id])
+  @@map("qt_revision_lines")
+}
+
+model QtHistory {
+  id          String      @id @default(uuid())
+  companyId   String      @map("company_id")
+  branchId    String      @map("branch_id")
+  quotationId String      @map("quotation_id")
+  kind        String
+  revisionId  String?     @map("revision_id")
+  actorId     String      @map("actor_id")
+  detail      String?
+  occurredAt  DateTime    @default(now()) @map("occurred_at")
+  quotation   QtQuotation @relation(fields: [companyId, branchId, quotationId], references: [companyId, branchId, id], onDelete: Restrict)
+
+  @@index([companyId, branchId, quotationId, occurredAt])
+  @@map("qt_history")
+}
+
+model QtNumberCounter {
+  companyId String @map("company_id")
+  branchId  String @map("branch_id")
+  nextValue Int    @default(0) @map("next_value")
+
+  @@id([companyId, branchId])
+  @@map("qt_number_counters")
+}
+
 /// CS-01 CRM Core — branch-scoped scheduled tasks and immutable interaction evidence.
 model CfFollowup {
   id                   String              @id @default(uuid())
@@ -2386,4 +2484,3 @@ model CfFollowupHistory {
   @@index([companyId, branchId, leadId, occurredAt])
   @@map("cf_followup_history")
 }
-

@@ -11,7 +11,7 @@ test('CS-01 registers only CRM Core routes and keeps Arabic-first labels', () =>
   assert.ok(paths.includes('/crm/agents'));
   assert.ok(paths.includes('/crm/leads'));
   assert.ok(paths.includes('/crm/followups'));
-  assert.ok(!paths.some((path)=>path.includes('quot')));
+  assert.ok(paths.includes('/crm/quotations')); // CS-02 extends the suite without changing CS-01 owners.
 });
 test('customer and agent pages expose lifecycle/edit controls without financial ownership fields', () => {
   const customers=renderToStaticMarkup(createElement(CustomersPage));
