@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { AgentsPage, CustomersPage, FollowupsPage, LeadsPage } from './crm-core-pages.js';
 import { QuotationsPage } from './quotation-pages.js';
+import { SuppliersPage } from './supplier-pages.js';
 
 export interface AppRoute {
   readonly id: string;
@@ -29,6 +30,7 @@ export const foundationRoutes = defineRoutes(
   { id: 'crm-agents', path: '/crm/agents', label: 'الوكلاء', group: 'العملاء والمبيعات', element: <AgentsPage /> },
   { id: 'crm-leads', path: '/crm/leads', label: 'العملاء المحتملون', group: 'العملاء والمبيعات', element: <LeadsPage /> },
   { id: 'crm-quotations', path: '/crm/quotations', label: 'عروض الأسعار', group: 'العملاء والمبيعات', element: <QuotationsPage /> },
+  { id: 'supplier-management', path: '/procurement/suppliers', label: 'الموردون', group: 'المشتريات والموردون', element: <SuppliersPage /> },
   { id: 'crm-followups', path: '/crm/followups', label: 'المتابعات', group: 'العملاء والمبيعات', element: <FollowupsPage /> },
 );
 
