@@ -1,15 +1,15 @@
 # PROJECT STATE — UPDATE AFTER EVERY ACCEPTED PHASE MERGE
 
-Last verified: 2026-09-19
+Last verified: 2026-09-20
 
 ## Repository
 
 - Repository: `mhafez300300-byte/Elhafez-Business-Accounting`
 - Source of Truth: GitHub
-- Last accepted business implementation baseline SHA (AC-11 merge): `6fd8d019568f3c1927b64f7dffc4c30b301a74e9`
+- Last accepted business implementation baseline SHA (AC-12 merge): `343489c21f229b5dbc36a1515f466d15d19b5597`
 - Always verify the live `main` HEAD before execution; governance-only commits may follow the business baseline.
-- Current closed phase: **AC-11**
-- Next phase: **AC-12**
+- Current closed phase: **AC-12**
+- Next phase: **AC-13**
 
 ## Closed / accepted foundation
 
@@ -30,6 +30,7 @@ Last verified: 2026-09-19
 | AC-09 — Assets & Financing | CLOSED / MERGED | PR #28 |
 | AC-10 — Procurement Finance | CLOSED / MERGED | PR #31 |
 | AC-11 — Tourism Contract Inventory | CLOSED / MERGED | PR #35 |
+| AC-12 — Tourism/Hajj/Umrah Financial Orchestration | CLOSED / MERGED | PR #41 |
 
 ## AC-11 final accepted state
 
@@ -63,47 +64,78 @@ Final hardening includes:
 
 Final phase/main PR CI was green for install, Prisma generation, typecheck, lint, architecture check and tests.
 
-## Next phase — AC-12
+## AC-12 final accepted state
 
-Canonical source:
-`docs/accounting/ACCOUNTING-BUILD-SEQUENCE.md`
+Final main integration:
+- PR #41 — `AC-12: merge tourism finance orchestration into main`
+- Main merge SHA: `343489c21f229b5dbc36a1515f466d15d19b5597`
+- Phase branch merge SHA before main: `0cb76718b8d194c7af0247348bacbf5886f436a3`
+- Final reviewed implementation head: `310ee882a9ede2342332b7f08928b7ac7c982829`
+- Final real-provider integration acceptance head: `cabded23af72520d332e54bcb881fa076db0e0ee`
 
-Scope:
-**Tourism / Hajj / Umrah financial orchestration, milestone actualization and aggregate cancellation.**
-
-Prerequisites:
-AC-06 through AC-11.
-
-Canonical rules:
-- BR-043
-- BR-044
-- BR-045
-- BR-046
-- BR-047
-- BR-048
-- BR-049
-- BR-050
-- BR-051
+Accepted AC-12 canonical rules:
+- BR-043 through BR-051
 - BR-053
 - BR-054
 - BR-066
 - BR-068
 
-Canonical golden scenarios:
-- GS-023 — Umrah booking confirmation
-- GS-024 — Umrah booking deposit
-- GS-025 — paid booking cancellation requires settlement
-- GS-026 — unpaid booking/program cancellation
-- GS-027 — supplier execution blocks program cancellation
-- GS-028 — supplier invoice blocks program cancellation
+Accepted AC-12 canonical golden scenarios:
+- GS-023 through GS-028
 
-Explicit exclusions:
-- no redesign of Tourism operational domain;
-- no reimplementation of rules owned by prior modules;
-- durable outbox remains an open/later concern unless formally resolved;
-- do not start AC-13 Reporting.
+Accepted prior-owner integration rules:
+- BR-021
+- BR-037
+- BR-042
+- BR-052
+- BR-055
+- BR-056 through BR-065
+- BR-067
+- BR-069 through BR-071
 
-Important AC-12 integration acceptance rules are listed in the build sequence and include prior-owner rules such as BR-021, BR-037, BR-042, BR-052, BR-055, BR-056–BR-065, BR-067, BR-069–BR-071. These remain owned by their original modules.
+Final AC-12 hardening includes:
+- durable booking financial identity and idempotent confirmation workflows;
+- immutable per-booking FinancialSetup snapshots reserved before provider financial effects;
+- due-date-aware Billing confirmation and setup-owned account references;
+- durable booking deposits, settlement/reversal and retained financial history;
+- controlled booking and aggregate program cancellation with resumable child workflows;
+- Procurement-owner cancellation cleanup policy with retry-safe delegation;
+- authoritative financial readiness derived from persisted booking/program state;
+- persisted approval, allocation, commission and Procurement evidence;
+- readiness coverage for unresolved BOOKING_CONFIRMATION, BOOKING_DEPOSIT, BOOKING_SETTLEMENT and BOOKING_CANCELLATION workflows;
+- semantic Cost actualization with concurrency-safe idempotency;
+- invoice-scoped Billing advance cancellation evidence;
+- exact-decimal and company/branch isolation preservation;
+- real ApplicationService integration acceptance across Billing, Treasury, ECR, Procurement, Financial Controls and Cost, plus the public Tourism Contract Inventory boundary;
+- Tourism Finance Orchestration acceptance suite at 31/31 passing tests.
+
+Final implementation, phase and main PR CI was green for install, Change Safety, Prisma generation, typecheck, lint, architecture check and tests.
+
+## Next phase — AC-13
+
+Canonical source:
+`docs/accounting/ACCOUNTING-BUILD-SEQUENCE.md`
+
+Scope:
+**Reporting and cross-module financial integration acceptance.**
+
+Prerequisites:
+AC-04 through AC-12.
+
+Canonical new rules:
+- none — integration/regression only.
+
+Canonical new golden scenarios:
+- none — regression only.
+
+Integration acceptance:
+- BR-072 through BR-075.
+
+Explicit restrictions:
+- no new source balance;
+- no rule reimplementation;
+- reporting must consume authoritative owner data/contracts rather than become a second accounting engine;
+- relevant cross-module scenarios are rerun as REGRESSION ONLY.
 
 ## Update protocol
 
