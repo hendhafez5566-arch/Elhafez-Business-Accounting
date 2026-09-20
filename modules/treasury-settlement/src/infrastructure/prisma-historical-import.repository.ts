@@ -1,13 +1,281 @@
-import { createHash } from 'node:crypto';
-import type { Prisma, PrismaClient } from '@prisma/client';
-import type { HistoricalEquivalence, HistoricalImportRecord } from '../application/historical-import.application-service.js';
-import type { HistoricalImportRepository } from '../application/historical-import.repository.js';
-const s=(v:unknown,f='')=>typeof v==='string'&&v?v:f;const n=(v:unknown,f='0')=>typeof v==='string'&&/^-?\d+(?:\.\d+)?$/.test(v)?v:f;const d=(v:unknown)=>new Date(s(v,'1970-01-01'));const o=(v:unknown):string|undefined=>typeof v==='string'&&v?v:undefined;
-const add=(a:string,b:string)=>{const z=Math.max((a.split('.')[1]??'').length,(b.split('.')[1]??'').length),u=10n**BigInt(z),p=(v:string)=>{const q=v.startsWith('-'),[i='0',f='']=(q?v.slice(1):v).split('.'),x=BigInt(i)*u+BigInt(f.padEnd(z,'0'));return q?-x:x},x=p(a)+p(b),q=x<0n,y=q?-x:x,t=y.toString().padStart(z+1,'0');return `${q?'-':''}${z?`${t.slice(0,-z)}.${t.slice(-z)}`:t}`};
+import { createHash } from "node:crypto";
+import type { Prisma, PrismaClient } from "@prisma/client";
+import type {
+  HistoricalEquivalence,
+  HistoricalImportRecord,
+} from "../application/historical-import.application-service.js";
+import type { HistoricalImportRepository } from "../application/historical-import.repository.js";
+const s = (v: unknown, f = "") => (typeof v === "string" && v ? v : f);
+const n = (v: unknown, f = "0") =>
+  typeof v === "string" && /^-?\d+(?:\.\d+)?$/.test(v) ? v : f;
+const d = (v: unknown) => new Date(s(v, "1970-01-01"));
+const o = (v: unknown): string | undefined =>
+  typeof v === "string" && v ? v : undefined;
+const add = (a: string, b: string) => {
+  const z = Math.max(
+      (a.split(".")[1] ?? "").length,
+      (b.split(".")[1] ?? "").length,
+    ),
+    u = 10n ** BigInt(z),
+    p = (v: string) => {
+      const q = v.startsWith("-"),
+        [i = "0", f = ""] = (q ? v.slice(1) : v).split("."),
+        x = BigInt(i) * u + BigInt(f.padEnd(z, "0"));
+      return q ? -x : x;
+    },
+    x = p(a) + p(b),
+    q = x < 0n,
+    y = q ? -x : x,
+    t = y.toString().padStart(z + 1, "0");
+  return `${q ? "-" : ""}${z ? `${t.slice(0, -z)}.${t.slice(-z)}` : t}`;
+};
 export class PrismaHistoricalImportRepository implements HistoricalImportRepository {
- constructor(private readonly db:PrismaClient){}
- async find(runId:string,collection:string,sourceId:string){const v=await this.db.treasurySettlementHistoricalImport.findUnique({where:{runId_collection_sourceId:{runId,collection,sourceId}}});return v?{...v,owner:'Treasury',payload:v.payload as Record<string,unknown>,branchId:v.branchId??undefined,debit:v.debit.toString(),credit:v.credit.toString(),amount:v.amount.toString()} as HistoricalImportRecord:undefined}
- async create(r:HistoricalImportRecord){await this.db.$transaction(async tx=>{await this.restore(tx,r);await tx.treasurySettlementHistoricalImport.create({data:{id:r.id,runId:r.runId,collection:r.collection,sourceId:r.sourceId,sourcePayloadHash:r.sourcePayloadHash,companyId:r.companyId,branchId:r.branchId,payload:r.payload as object,payloadJson:r.payloadJson,debit:r.debit,credit:r.credit,amount:r.amount}})})}
- private async restore(tx:Prisma.TransactionClient,r:HistoricalImportRecord){const p=r.payload,c=r.collection;if(c==='treasuries')await tx.treasuryTreasury.create({data:{id:r.sourceId,companyId:r.companyId,code:s(p.code,r.sourceId),name:s(p.name,r.sourceId),type:s(p.type,'CASH'),currency:s(p.currency,'USD'),glAccountId:s(p.glAccountId,'historical'),active:p.active!==false}});else if(['receipts','payments','vouchers'].includes(c))await tx.treasuryVoucher.create({data:{id:r.sourceId,companyId:r.companyId,branchId:r.branchId,treasuryId:s(p.treasuryId),kind:s(p.kind,c==='receipts'?'RECEIPT':'PAYMENT'),partyKind:s(p.partyKind,'OTHER'),partyId:s(p.partyId,'historical'),number:s(p.number,r.sourceId),postingDate:d(p.postingDate??p.date),currency:s(p.currency,'USD'),amount:n(p.amount),sourceType:s(p.sourceType,'HISTORICAL'),sourceId:s(p.sourceId,r.sourceId),requestHash:r.sourcePayloadHash,status:s(p.status,'POSTED'),allocationIds:Array.isArray(p.allocationIds)?p.allocationIds:[]}});else if(c==='transfers')await tx.treasuryTransfer.create({data:{id:r.sourceId,companyId:r.companyId,sourceTreasuryId:s(p.sourceTreasuryId),destinationTreasuryId:s(p.destinationTreasuryId),amount:n(p.amount),postingDate:d(p.postingDate??p.date),sourceType:s(p.sourceType,'HISTORICAL'),sourceId:s(p.sourceId,r.sourceId),requestHash:r.sourcePayloadHash,status:s(p.status,'POSTED')}});else if(c==='cheques')await tx.treasuryCheque.create({data:{id:r.sourceId,companyId:r.companyId,voucherId:s(p.voucherId),direction:s(p.direction,'OUT'),bankTreasuryId:o(p.bankTreasuryId),number:s(p.number,r.sourceId),amount:n(p.amount),currency:s(p.currency,'USD'),issueDate:d(p.issueDate??p.date),dueDate:p.dueDate?d(p.dueDate):null,status:s(p.status,'ISSUED'),history:p.history??[]}});else if(c==='cashCounts')await tx.treasuryCashCount.create({data:{id:r.sourceId,companyId:r.companyId,treasuryId:s(p.treasuryId),countedAmount:n(p.countedAmount),bookAmount:n(p.bookAmount),difference:n(p.difference),countDate:d(p.countDate??p.date)}});else if(c==='bankStatementLines')await tx.treasuryBankStatementLine.create({data:{id:r.sourceId,companyId:r.companyId,treasuryId:s(p.treasuryId),currency:s(p.currency,'USD'),signedAmount:n(p.signedAmount??p.amount),valueDate:d(p.valueDate??p.date),reference:o(p.reference),status:s(p.status,'UNMATCHED')}});else if(c==='bankMatches')await tx.treasuryBankMatch.create({data:{id:r.sourceId,companyId:r.companyId,lineId:s(p.lineId),voucherId:s(p.voucherId),mode:s(p.mode,'MANUAL'),matchedAt:d(p.matchedAt??p.date)}});else if(c==='bankReconciliations')return;else throw new Error(`unsupported Treasury historical collection ${c}`)}
- async equivalence(runId:string,companyId:string):Promise<HistoricalEquivalence>{const provenance=await this.db.treasurySettlementHistoricalImport.findMany({where:{runId,companyId}}),ids=(c:string)=>provenance.filter(x=>x.collection===c).map(x=>x.sourceId);const [treasuries,vouchers,transfers,cheques,counts,lines,matches]=await Promise.all([this.db.treasuryTreasury.findMany({where:{companyId,id:{in:ids('treasuries')}}}),this.db.treasuryVoucher.findMany({where:{companyId,id:{in:[...ids('receipts'),...ids('payments'),...ids('vouchers')]}}}),this.db.treasuryTransfer.findMany({where:{companyId,id:{in:ids('transfers')}}}),this.db.treasuryCheque.findMany({where:{companyId,id:{in:ids('cheques')}}}),this.db.treasuryCashCount.findMany({where:{companyId,id:{in:ids('cashCounts')}}}),this.db.treasuryBankStatementLine.findMany({where:{companyId,id:{in:ids('bankStatementLines')}}}),this.db.treasuryBankMatch.findMany({where:{companyId,id:{in:ids('bankMatches')}}})]);const canonical=[...treasuries,...vouchers,...transfers,...cheques,...counts,...lines,...matches].map(x=>JSON.stringify(x,(_,v)=>typeof v==='object'&&v?.constructor?.name==='Decimal'?v.toString():v)).sort();const amounts=[...vouchers.map(x=>x.amount.toString()),...transfers.map(x=>x.amount.toString()),...cheques.map(x=>x.amount.toString()),...lines.map(x=>x.signedAmount.toString())];return{records:String(canonical.length),payloadDigest:createHash('sha256').update(canonical.join('\n')).digest('hex'),debit:'0',credit:'0',amount:amounts.reduce(add,'0')}}
+  constructor(private readonly db: PrismaClient) {}
+  async find(runId: string, collection: string, sourceId: string) {
+    const v = await this.db.treasurySettlementHistoricalImport.findUnique({
+      where: { runId_collection_sourceId: { runId, collection, sourceId } },
+    });
+    return v
+      ? ({
+          ...v,
+          owner: "Treasury",
+          payload: v.payload as Record<string, unknown>,
+          branchId: v.branchId ?? undefined,
+          debit: v.debit.toString(),
+          credit: v.credit.toString(),
+          amount: v.amount.toString(),
+        } as HistoricalImportRecord)
+      : undefined;
+  }
+  async create(r: HistoricalImportRecord) {
+    await this.db.$transaction(async (tx) => {
+      await this.restore(tx, r);
+      await tx.treasurySettlementHistoricalImport.create({
+        data: {
+          id: r.id,
+          runId: r.runId,
+          collection: r.collection,
+          sourceId: r.sourceId,
+          sourcePayloadHash: r.sourcePayloadHash,
+          companyId: r.companyId,
+          branchId: r.branchId,
+          payload: r.payload as object,
+          payloadJson: r.payloadJson,
+          debit: r.debit,
+          credit: r.credit,
+          amount: r.amount,
+        },
+      });
+    });
+  }
+  private async restore(
+    tx: Prisma.TransactionClient,
+    r: HistoricalImportRecord,
+  ) {
+    const p = r.payload,
+      c = r.collection;
+    if (c === "treasuries")
+      await tx.treasuryTreasury.create({
+        data: {
+          id: r.sourceId,
+          companyId: r.companyId,
+          code: s(p.code, r.sourceId),
+          name: s(p.name, r.sourceId),
+          type: s(p.type, "CASH"),
+          currency: s(p.currency, "USD"),
+          glAccountId: s(p.glAccountId, "historical"),
+          active: p.active !== false,
+        },
+      });
+    else if (["receipts", "payments", "vouchers"].includes(c))
+      await tx.treasuryVoucher.create({
+        data: {
+          id: r.sourceId,
+          companyId: r.companyId,
+          branchId: r.branchId,
+          treasuryId: s(p.treasuryId),
+          kind: s(p.kind, c === "receipts" ? "RECEIPT" : "PAYMENT"),
+          partyKind: s(p.partyKind, "OTHER"),
+          partyId: s(p.partyId, "historical"),
+          number: s(p.number, r.sourceId),
+          postingDate: d(p.postingDate ?? p.date),
+          currency: s(p.currency, "USD"),
+          amount: n(p.amount),
+          sourceType: s(p.sourceType, "HISTORICAL"),
+          sourceId: s(p.sourceId, r.sourceId),
+          requestHash: r.sourcePayloadHash,
+          status: s(p.status, "POSTED"),
+          allocationIds: Array.isArray(p.allocationIds) ? p.allocationIds : [],
+        },
+      });
+    else if (c === "transfers")
+      await tx.treasuryTransfer.create({
+        data: {
+          id: r.sourceId,
+          companyId: r.companyId,
+          sourceTreasuryId: s(p.sourceTreasuryId),
+          destinationTreasuryId: s(p.destinationTreasuryId),
+          amount: n(p.amount),
+          postingDate: d(p.postingDate ?? p.date),
+          sourceType: s(p.sourceType, "HISTORICAL"),
+          sourceId: s(p.sourceId, r.sourceId),
+          requestHash: r.sourcePayloadHash,
+          status: s(p.status, "POSTED"),
+        },
+      });
+    else if (c === "cheques")
+      await tx.treasuryCheque.create({
+        data: {
+          id: r.sourceId,
+          companyId: r.companyId,
+          voucherId: s(p.voucherId),
+          direction: s(p.direction, "OUT"),
+          bankTreasuryId: o(p.bankTreasuryId),
+          number: s(p.number, r.sourceId),
+          amount: n(p.amount),
+          currency: s(p.currency, "USD"),
+          issueDate: d(p.issueDate ?? p.date),
+          dueDate: p.dueDate ? d(p.dueDate) : null,
+          status: s(p.status, "ISSUED"),
+          history: p.history ?? [],
+        },
+      });
+    else if (c === "cashCounts")
+      await tx.treasuryCashCount.create({
+        data: {
+          id: r.sourceId,
+          companyId: r.companyId,
+          treasuryId: s(p.treasuryId),
+          countedAmount: n(p.countedAmount),
+          bookAmount: n(p.bookAmount),
+          difference: n(p.difference),
+          countDate: d(p.countDate ?? p.date),
+        },
+      });
+    else if (c === "bankStatementLines")
+      await tx.treasuryBankStatementLine.create({
+        data: {
+          id: r.sourceId,
+          companyId: r.companyId,
+          treasuryId: s(p.treasuryId),
+          currency: s(p.currency, "USD"),
+          signedAmount: n(p.signedAmount ?? p.amount),
+          valueDate: d(p.valueDate ?? p.date),
+          reference: o(p.reference),
+          status: s(p.status, "UNMATCHED"),
+        },
+      });
+    else if (c === "bankMatches")
+      await tx.treasuryBankMatch.create({
+        data: {
+          id: r.sourceId,
+          companyId: r.companyId,
+          lineId: s(p.lineId),
+          voucherId: s(p.voucherId),
+          mode: s(p.mode, "MANUAL"),
+          matchedAt: d(p.matchedAt ?? p.date),
+        },
+      });
+    else if (c === "bankReconciliations") return;
+    else throw new Error(`unsupported Treasury historical collection ${c}`);
+  }
+  async canonicalRecords(runId: string, companyId: string) {
+    const provenance =
+        await this.db.treasurySettlementHistoricalImport.findMany({
+          where: { runId, companyId },
+        }),
+      ids = provenance
+        .filter((x) =>
+          ["receipts", "payments", "vouchers"].includes(x.collection),
+        )
+        .map((x) => x.sourceId);
+    const rows = await this.db.treasuryVoucher.findMany({
+      where: { companyId, id: { in: ids } },
+      orderBy: { id: "asc" },
+    });
+    return rows.map((x) => ({
+      collection: "vouchers",
+      sourceId: x.id,
+      companyId: x.companyId,
+      branchId: x.branchId ?? undefined,
+      payload: {
+        id: x.id,
+        postingDate: x.postingDate.toISOString(),
+        currency: x.currency,
+        amount: x.amount.toString(),
+      },
+    }));
+  }
+  async equivalence(
+    runId: string,
+    companyId: string,
+  ): Promise<HistoricalEquivalence> {
+    const provenance =
+        await this.db.treasurySettlementHistoricalImport.findMany({
+          where: { runId, companyId },
+        }),
+      ids = (c: string) =>
+        provenance.filter((x) => x.collection === c).map((x) => x.sourceId);
+    const [treasuries, vouchers, transfers, cheques, counts, lines, matches] =
+      await Promise.all([
+        this.db.treasuryTreasury.findMany({
+          where: { companyId, id: { in: ids("treasuries") } },
+        }),
+        this.db.treasuryVoucher.findMany({
+          where: {
+            companyId,
+            id: {
+              in: [...ids("receipts"), ...ids("payments"), ...ids("vouchers")],
+            },
+          },
+        }),
+        this.db.treasuryTransfer.findMany({
+          where: { companyId, id: { in: ids("transfers") } },
+        }),
+        this.db.treasuryCheque.findMany({
+          where: { companyId, id: { in: ids("cheques") } },
+        }),
+        this.db.treasuryCashCount.findMany({
+          where: { companyId, id: { in: ids("cashCounts") } },
+        }),
+        this.db.treasuryBankStatementLine.findMany({
+          where: { companyId, id: { in: ids("bankStatementLines") } },
+        }),
+        this.db.treasuryBankMatch.findMany({
+          where: { companyId, id: { in: ids("bankMatches") } },
+        }),
+      ]);
+    const canonical = [
+      ...treasuries,
+      ...vouchers,
+      ...transfers,
+      ...cheques,
+      ...counts,
+      ...lines,
+      ...matches,
+    ]
+      .map((x) =>
+        JSON.stringify(x, (_, v) =>
+          typeof v === "object" && v?.constructor?.name === "Decimal"
+            ? v.toString()
+            : v,
+        ),
+      )
+      .sort();
+    const amounts = [
+      ...vouchers.map((x) => x.amount.toString()),
+      ...transfers.map((x) => x.amount.toString()),
+      ...cheques.map((x) => x.amount.toString()),
+      ...lines.map((x) => x.signedAmount.toString()),
+    ];
+    return {
+      records: String(canonical.length),
+      payloadDigest: createHash("sha256")
+        .update(canonical.join("\n"))
+        .digest("hex"),
+      debit: "0",
+      credit: "0",
+      amount: amounts.reduce(add, "0"),
+    };
+  }
 }

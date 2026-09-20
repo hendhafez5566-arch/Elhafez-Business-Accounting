@@ -1,6 +1,300 @@
-import { createHash } from 'node:crypto';
-import type { PrismaClient } from '@prisma/client';
-import type { HistoricalEquivalence, HistoricalImportRecord } from '../application/historical-import.application-service.js';
-import type { HistoricalImportRepository } from '../application/historical-import.repository.js';
-const add=(a:string,b:string):string=>{const scale=Math.max((a.split('.')[1]??'').length,(b.split('.')[1]??'').length);const unit=10n**BigInt(scale);const parse=(v:string)=>{const negative=v.startsWith('-'),parts=(negative?v.slice(1):v).split('.'),i=parts[0]??'0',f=parts[1]??'';const n=BigInt(i)*unit+BigInt((f+'0'.repeat(scale)).slice(0,scale));return negative?-n:n};const n=parse(a)+parse(b),sign=n<0n?'-':'',abs=n<0n?-n:n,s=abs.toString().padStart(scale+1,'0');return scale?`${sign}${s.slice(0,-scale)}.${s.slice(-scale)}`:`${sign}${s}`};
-export class PrismaHistoricalImportRepository implements HistoricalImportRepository { constructor(private readonly db:PrismaClient){} async find(runId:string,collection:string,sourceId:string){const v=await this.db.billingSubledgersHistoricalImport.findUnique({where:{runId_collection_sourceId:{runId,collection,sourceId}}});return v?{...v,owner:'historical-owner',payload:v.payload as Record<string,unknown>,branchId:v.branchId??undefined,debit:v.debit.toString(),credit:v.credit.toString(),amount:v.amount.toString()} as HistoricalImportRecord:undefined} async create(r:HistoricalImportRecord){await this.db.$transaction(async tx=>{const p=r.payload;if(r.collection==='invoices'){await tx.billingInvoice.create({data:{id:r.sourceId,companyId:r.companyId,branchId:r.branchId,type:String(p.type??'CUSTOMER'),status:String(p.status??'POSTED'),partyId:String(p.partyId),number:String(p.number??r.sourceId),externalInvoiceNumber:typeof p.externalInvoiceNumber==='string'?p.externalInvoiceNumber:undefined,postingDate:new Date(String(p.postingDate??p.date)),dueDate:p.dueDate?new Date(String(p.dueDate)):undefined,currency:String(p.currency),fxRateId:typeof p.fxRateId==='string'?p.fxRateId:undefined,sourceType:String(p.sourceType??'HISTORICAL'),sourceId:String(p.sourceId??r.sourceId),requestHash:r.sourcePayloadHash,controlAccountId:String(p.controlAccountId),baseTotal:String(p.baseTotal??p.amount??'0'),outstanding:String(p.outstanding??p.baseTotal??p.amount??'0'),journalId:typeof p.journalId==='string'?p.journalId:undefined,reversalJournalId:typeof p.reversalJournalId==='string'?p.reversalJournalId:undefined,recognitionReference:typeof p.recognitionReference==='string'?p.recognitionReference:undefined,deferred:p.deferred===true}});const lines=Array.isArray(p.lines)?p.lines:[];if(lines.length)await tx.billingInvoiceLine.createMany({data:lines.map((raw,index)=>{const l=raw as Record<string,unknown>;return{id:String(l.id??`${r.sourceId}:line:${index+1}`),companyId:r.companyId,invoiceId:r.sourceId,accountId:String(l.accountId),amount:String(l.amount),taxCode:typeof l.taxCode==='string'?l.taxCode:undefined,taxSnapshotId:typeof l.taxSnapshotId==='string'?l.taxSnapshotId:undefined,taxAmount:l.taxAmount===undefined?undefined:String(l.taxAmount),taxAccountId:typeof l.taxAccountId==='string'?l.taxAccountId:undefined}})});}else if(r.collection==='invoiceAdjustments'||r.collection==='adjustments')await tx.billingAdjustment.create({data:{id:r.sourceId,companyId:r.companyId,invoiceId:String(p.invoiceId),kind:String(p.kind),amount:String(p.amount),appliedAmount:String(p.appliedAmount??p.amount??'0'),advanceAmount:String(p.advanceAmount??'0'),sourceType:String(p.sourceType??'HISTORICAL'),sourceId:String(p.sourceId??r.sourceId),requestHash:r.sourcePayloadHash,journalId:String(p.journalId),advanceId:typeof p.advanceId==='string'?p.advanceId:undefined,reversedAt:p.reversedAt?new Date(String(p.reversedAt)):undefined}});else if(r.collection==='advances')await tx.billingAdvance.create({data:{id:r.sourceId,companyId:r.companyId,partyKind:String(p.partyKind),partyId:String(p.partyId),amount:String(p.amount),available:String(p.available??p.amount),sourceType:String(p.sourceType??'HISTORICAL'),sourceId:String(p.sourceId??r.sourceId),restrictionSourceType:typeof p.restrictionSourceType==='string'?p.restrictionSourceType:undefined,restrictionSourceId:typeof p.restrictionSourceId==='string'?p.restrictionSourceId:undefined,generatedByAdjustmentId:typeof p.generatedByAdjustmentId==='string'?p.generatedByAdjustmentId:undefined,reversedAt:p.reversedAt?new Date(String(p.reversedAt)):undefined}});else if(r.collection==='allocations'||r.collection==='settlements')await tx.billingAllocation.create({data:{id:r.sourceId,companyId:r.companyId,partyKind:String(p.partyKind),partyId:String(p.partyId),invoiceId:typeof p.invoiceId==='string'?p.invoiceId:undefined,amount:String(p.amount),appliedAmount:String(p.appliedAmount??p.amount??'0'),advanceAmount:String(p.advanceAmount??'0'),sourceType:String(p.sourceType??'HISTORICAL'),sourceId:String(p.sourceId??r.sourceId),settlementId:typeof p.settlementId==='string'?p.settlementId:undefined,settlementSequence:typeof p.settlementSequence==='number'?p.settlementSequence:undefined,carryingBaseAmount:p.carryingBaseAmount===undefined?undefined:String(p.carryingBaseAmount),settlementBaseAmount:p.settlementBaseAmount===undefined?undefined:String(p.settlementBaseAmount),realizedFx:p.realizedFx===undefined?undefined:String(p.realizedFx),settlementFxRateId:typeof p.settlementFxRateId==='string'?p.settlementFxRateId:undefined,prefundingBaseAmount:p.prefundingBaseAmount===undefined?undefined:String(p.prefundingBaseAmount),prefundingAccountId:typeof p.prefundingAccountId==='string'?p.prefundingAccountId:undefined,reclassificationJournalId:typeof p.reclassificationJournalId==='string'?p.reclassificationJournalId:undefined,reclassificationReversalJournalId:typeof p.reclassificationReversalJournalId==='string'?p.reclassificationReversalJournalId:undefined,restrictionSourceType:typeof p.restrictionSourceType==='string'?p.restrictionSourceType:undefined,restrictionSourceId:typeof p.restrictionSourceId==='string'?p.restrictionSourceId:undefined,requestHash:r.sourcePayloadHash,reversedAt:p.reversedAt?new Date(String(p.reversedAt)):undefined}});else throw new Error(`unsupported Billing historical collection ${r.collection}`);await tx.billingSubledgersHistoricalImport.create({data:{id:r.id,runId:r.runId,collection:r.collection,sourceId:r.sourceId,sourcePayloadHash:r.sourcePayloadHash,companyId:r.companyId,branchId:r.branchId,payload:r.payload as object,payloadJson:r.payloadJson,debit:r.debit,credit:r.credit,amount:r.amount}});})} async equivalence(runId:string,companyId:string):Promise<HistoricalEquivalence>{const rows=await this.db.billingSubledgersHistoricalImport.findMany({where:{runId,companyId},orderBy:[{collection:'asc'},{sourceId:'asc'}]});return {records:String(rows.length),payloadDigest:createHash('sha256').update(rows.map(x=>x.payloadJson).join('\n')).digest('hex'),debit:rows.reduce((a,x)=>add(a,x.debit.toString()),'0'),credit:rows.reduce((a,x)=>add(a,x.credit.toString()),'0'),amount:rows.reduce((a,x)=>add(a,x.amount.toString()),'0')}} }
+import { createHash } from "node:crypto";
+import type { PrismaClient } from "@prisma/client";
+import type {
+  HistoricalEquivalence,
+  HistoricalImportRecord,
+} from "../application/historical-import.application-service.js";
+import type { HistoricalImportRepository } from "../application/historical-import.repository.js";
+const add = (a: string, b: string): string => {
+  const scale = Math.max(
+    (a.split(".")[1] ?? "").length,
+    (b.split(".")[1] ?? "").length,
+  );
+  const unit = 10n ** BigInt(scale);
+  const parse = (v: string) => {
+    const negative = v.startsWith("-"),
+      parts = (negative ? v.slice(1) : v).split("."),
+      i = parts[0] ?? "0",
+      f = parts[1] ?? "";
+    const n =
+      BigInt(i) * unit + BigInt((f + "0".repeat(scale)).slice(0, scale));
+    return negative ? -n : n;
+  };
+  const n = parse(a) + parse(b),
+    sign = n < 0n ? "-" : "",
+    abs = n < 0n ? -n : n,
+    s = abs.toString().padStart(scale + 1, "0");
+  return scale
+    ? `${sign}${s.slice(0, -scale)}.${s.slice(-scale)}`
+    : `${sign}${s}`;
+};
+export class PrismaHistoricalImportRepository implements HistoricalImportRepository {
+  constructor(private readonly db: PrismaClient) {}
+  async find(runId: string, collection: string, sourceId: string) {
+    const v = await this.db.billingSubledgersHistoricalImport.findUnique({
+      where: { runId_collection_sourceId: { runId, collection, sourceId } },
+    });
+    return v
+      ? ({
+          ...v,
+          owner: "historical-owner",
+          payload: v.payload as Record<string, unknown>,
+          branchId: v.branchId ?? undefined,
+          debit: v.debit.toString(),
+          credit: v.credit.toString(),
+          amount: v.amount.toString(),
+        } as HistoricalImportRecord)
+      : undefined;
+  }
+  async create(r: HistoricalImportRecord) {
+    await this.db.$transaction(async (tx) => {
+      const p = r.payload;
+      if (r.collection === "invoices") {
+        await tx.billingInvoice.create({
+          data: {
+            id: r.sourceId,
+            companyId: r.companyId,
+            branchId: r.branchId,
+            type: String(p.type ?? "CUSTOMER"),
+            status: String(p.status ?? "POSTED"),
+            partyId: String(p.partyId),
+            number: String(p.number ?? r.sourceId),
+            externalInvoiceNumber:
+              typeof p.externalInvoiceNumber === "string"
+                ? p.externalInvoiceNumber
+                : undefined,
+            postingDate: new Date(String(p.postingDate ?? p.date)),
+            dueDate: p.dueDate ? new Date(String(p.dueDate)) : undefined,
+            currency: String(p.currency),
+            fxRateId: typeof p.fxRateId === "string" ? p.fxRateId : undefined,
+            sourceType: String(p.sourceType ?? "HISTORICAL"),
+            sourceId: String(p.sourceId ?? r.sourceId),
+            requestHash: r.sourcePayloadHash,
+            controlAccountId: String(p.controlAccountId),
+            baseTotal: String(p.baseTotal ?? p.amount ?? "0"),
+            outstanding: String(
+              p.outstanding ?? p.baseTotal ?? p.amount ?? "0",
+            ),
+            journalId:
+              typeof p.journalId === "string" ? p.journalId : undefined,
+            reversalJournalId:
+              typeof p.reversalJournalId === "string"
+                ? p.reversalJournalId
+                : undefined,
+            recognitionReference:
+              typeof p.recognitionReference === "string"
+                ? p.recognitionReference
+                : undefined,
+            deferred: p.deferred === true,
+          },
+        });
+        const lines = Array.isArray(p.lines) ? p.lines : [];
+        if (lines.length)
+          await tx.billingInvoiceLine.createMany({
+            data: lines.map((raw, index) => {
+              const l = raw as Record<string, unknown>;
+              return {
+                id: String(l.id ?? `${r.sourceId}:line:${index + 1}`),
+                companyId: r.companyId,
+                invoiceId: r.sourceId,
+                accountId: String(l.accountId),
+                amount: String(l.amount),
+                taxCode: typeof l.taxCode === "string" ? l.taxCode : undefined,
+                taxSnapshotId:
+                  typeof l.taxSnapshotId === "string"
+                    ? l.taxSnapshotId
+                    : undefined,
+                taxAmount:
+                  l.taxAmount === undefined ? undefined : String(l.taxAmount),
+                taxAccountId:
+                  typeof l.taxAccountId === "string"
+                    ? l.taxAccountId
+                    : undefined,
+              };
+            }),
+          });
+      } else if (
+        r.collection === "invoiceAdjustments" ||
+        r.collection === "adjustments"
+      )
+        await tx.billingAdjustment.create({
+          data: {
+            id: r.sourceId,
+            companyId: r.companyId,
+            invoiceId: String(p.invoiceId),
+            kind: String(p.kind),
+            amount: String(p.amount),
+            appliedAmount: String(p.appliedAmount ?? p.amount ?? "0"),
+            advanceAmount: String(p.advanceAmount ?? "0"),
+            sourceType: String(p.sourceType ?? "HISTORICAL"),
+            sourceId: String(p.sourceId ?? r.sourceId),
+            requestHash: r.sourcePayloadHash,
+            journalId: String(p.journalId),
+            advanceId:
+              typeof p.advanceId === "string" ? p.advanceId : undefined,
+            reversedAt: p.reversedAt
+              ? new Date(String(p.reversedAt))
+              : undefined,
+          },
+        });
+      else if (r.collection === "advances")
+        await tx.billingAdvance.create({
+          data: {
+            id: r.sourceId,
+            companyId: r.companyId,
+            partyKind: String(p.partyKind),
+            partyId: String(p.partyId),
+            amount: String(p.amount),
+            available: String(p.available ?? p.amount),
+            sourceType: String(p.sourceType ?? "HISTORICAL"),
+            sourceId: String(p.sourceId ?? r.sourceId),
+            restrictionSourceType:
+              typeof p.restrictionSourceType === "string"
+                ? p.restrictionSourceType
+                : undefined,
+            restrictionSourceId:
+              typeof p.restrictionSourceId === "string"
+                ? p.restrictionSourceId
+                : undefined,
+            generatedByAdjustmentId:
+              typeof p.generatedByAdjustmentId === "string"
+                ? p.generatedByAdjustmentId
+                : undefined,
+            reversedAt: p.reversedAt
+              ? new Date(String(p.reversedAt))
+              : undefined,
+          },
+        });
+      else if (r.collection === "allocations" || r.collection === "settlements")
+        await tx.billingAllocation.create({
+          data: {
+            id: r.sourceId,
+            companyId: r.companyId,
+            partyKind: String(p.partyKind),
+            partyId: String(p.partyId),
+            invoiceId:
+              typeof p.invoiceId === "string" ? p.invoiceId : undefined,
+            amount: String(p.amount),
+            appliedAmount: String(p.appliedAmount ?? p.amount ?? "0"),
+            advanceAmount: String(p.advanceAmount ?? "0"),
+            sourceType: String(p.sourceType ?? "HISTORICAL"),
+            sourceId: String(p.sourceId ?? r.sourceId),
+            settlementId:
+              typeof p.settlementId === "string" ? p.settlementId : undefined,
+            settlementSequence:
+              typeof p.settlementSequence === "number"
+                ? p.settlementSequence
+                : undefined,
+            carryingBaseAmount:
+              p.carryingBaseAmount === undefined
+                ? undefined
+                : String(p.carryingBaseAmount),
+            settlementBaseAmount:
+              p.settlementBaseAmount === undefined
+                ? undefined
+                : String(p.settlementBaseAmount),
+            realizedFx:
+              p.realizedFx === undefined ? undefined : String(p.realizedFx),
+            settlementFxRateId:
+              typeof p.settlementFxRateId === "string"
+                ? p.settlementFxRateId
+                : undefined,
+            prefundingBaseAmount:
+              p.prefundingBaseAmount === undefined
+                ? undefined
+                : String(p.prefundingBaseAmount),
+            prefundingAccountId:
+              typeof p.prefundingAccountId === "string"
+                ? p.prefundingAccountId
+                : undefined,
+            reclassificationJournalId:
+              typeof p.reclassificationJournalId === "string"
+                ? p.reclassificationJournalId
+                : undefined,
+            reclassificationReversalJournalId:
+              typeof p.reclassificationReversalJournalId === "string"
+                ? p.reclassificationReversalJournalId
+                : undefined,
+            restrictionSourceType:
+              typeof p.restrictionSourceType === "string"
+                ? p.restrictionSourceType
+                : undefined,
+            restrictionSourceId:
+              typeof p.restrictionSourceId === "string"
+                ? p.restrictionSourceId
+                : undefined,
+            requestHash: r.sourcePayloadHash,
+            reversedAt: p.reversedAt
+              ? new Date(String(p.reversedAt))
+              : undefined,
+          },
+        });
+      else
+        throw new Error(
+          `unsupported Billing historical collection ${r.collection}`,
+        );
+      await tx.billingSubledgersHistoricalImport.create({
+        data: {
+          id: r.id,
+          runId: r.runId,
+          collection: r.collection,
+          sourceId: r.sourceId,
+          sourcePayloadHash: r.sourcePayloadHash,
+          companyId: r.companyId,
+          branchId: r.branchId,
+          payload: r.payload as object,
+          payloadJson: r.payloadJson,
+          debit: r.debit,
+          credit: r.credit,
+          amount: r.amount,
+        },
+      });
+    });
+  }
+  async canonicalRecords(runId: string, companyId: string) {
+    const provenance = await this.db.billingSubledgersHistoricalImport.findMany(
+        { where: { runId, companyId } },
+      ),
+      ids = provenance
+        .filter((x) => x.collection === "invoices")
+        .map((x) => x.sourceId);
+    const rows = await this.db.billingInvoice.findMany({
+      where: { companyId, id: { in: ids } },
+      orderBy: { id: "asc" },
+    });
+    return rows.map((x) => ({
+      collection: "invoices",
+      sourceId: x.id,
+      companyId: x.companyId,
+      branchId: x.branchId ?? undefined,
+      payload: {
+        id: x.id,
+        postingDate: x.postingDate.toISOString(),
+        dueDate: x.dueDate?.toISOString(),
+        currency: x.currency,
+        amount: x.baseTotal.toString(),
+        openAmount: x.outstanding.toString(),
+        partyId: x.partyId,
+        side: x.type,
+      },
+    }));
+  }
+  async equivalence(
+    runId: string,
+    companyId: string,
+  ): Promise<HistoricalEquivalence> {
+    const rows = await this.db.billingSubledgersHistoricalImport.findMany({
+      where: { runId, companyId },
+      orderBy: [{ collection: "asc" }, { sourceId: "asc" }],
+    });
+    return {
+      records: String(rows.length),
+      payloadDigest: createHash("sha256")
+        .update(rows.map((x) => x.payloadJson).join("\n"))
+        .digest("hex"),
+      debit: rows.reduce((a, x) => add(a, x.debit.toString()), "0"),
+      credit: rows.reduce((a, x) => add(a, x.credit.toString()), "0"),
+      amount: rows.reduce((a, x) => add(a, x.amount.toString()), "0"),
+    };
+  }
+}
