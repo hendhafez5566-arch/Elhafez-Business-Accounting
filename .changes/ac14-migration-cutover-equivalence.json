@@ -1,0 +1,37 @@
+{
+  "id": "ac14-migration-cutover-equivalence",
+  "summary": "AC-14A: add Platform Core-owned migration-control metadata (run/crosswalk/checkpoint/issue/equivalence), raw-snapshot hashing, migration-config validation, and a thin non-writing AC-14 dry-run preflight skeleton in apps/api. No accounting-owner historical import, Tourism migration, equivalence engine, or cutover is implemented in this batch.",
+  "type": "phase",
+  "allowedModules": [
+    "platform-core"
+  ],
+  "allowedPaths": [
+    ".changes/ac14-migration-cutover-equivalence.json",
+    "prisma/schema.prisma",
+    "prisma/migrations/20260920140000_ac14a_migration_control/migration.sql",
+    "modules/platform-core/module.json",
+    "modules/platform-core/src/domain/migration-control.types.ts",
+    "modules/platform-core/src/application/migration-control.repository.ts",
+    "modules/platform-core/src/application/migration-control.application-service.ts",
+    "modules/platform-core/src/infrastructure/in-memory-migration-control.repository.ts",
+    "modules/platform-core/src/infrastructure/prisma-migration-control.repository.ts",
+    "modules/platform-core/src/platform-core.module.ts",
+    "modules/platform-core/src/public/index.ts",
+    "modules/platform-core/src/migration-control.spec.ts",
+    "modules/platform-core/src/platform-core.composition.spec.ts",
+    "apps/api/src/ac14-migration/config.ts",
+    "apps/api/src/ac14-migration/snapshot-reader.ts",
+    "apps/api/src/ac14-migration/snapshot-reader.spec.ts",
+    "apps/api/src/ac14-migration/preflight.service.ts",
+    "apps/api/src/ac14-migration/preflight.service.spec.ts",
+    "apps/api/src/ac14-migration/ac14-migration.module.ts",
+    "apps/api/src/ac14-migration/ac14a-boundaries.spec.ts"
+  ],
+  "protectedPaths": [
+    "modules/platform-core/module.json",
+    "prisma/schema.prisma"
+  ],
+  "protectedReason": "AC-14A requires Platform Core to truthfully declare five new additive pc_migration_* owned tables in module.json, and the corresponding models in prisma/schema.prisma. Both changes are additive only: no existing table, model, or accepted migration is altered.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": ""
+}
