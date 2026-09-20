@@ -91,7 +91,7 @@ export const AC14_FROZEN_SOURCE_REGISTRY: readonly FrozenSourceRegistration[] = 
   process("partyNettings", "party-accounting", "PartyAccounting", "netting", "nettings", "PARTY_NETTING"),
 
   process("expenses", "expenses", "ExpenseRecognition", "expense", "expenses"),
-  process("prepaidSchedules", "prepayments", "ExpenseRecognition", "prepayment", "recognitionSchedules", "PREPAID_SCHEDULE"),
+  process("prepaidSchedules", "prepayments", "ExpenseRecognition", "prepayment", "prepayments", "PREPAID_SCHEDULE"),
   process("commissions", "commissions", "ExpenseRecognition", "commission", "commissions"),
   process("deferredRevenueSchedules", "deferred-revenue-cost", "ExpenseRecognition", "deferred-revenue", "deferredRevenue", "DEFERRED_REVENUE"),
   process("deferredCostSchedules", "deferred-revenue-cost", "ExpenseRecognition", "deferred-cost", "deferredCost", "DEFERRED_COST"),
