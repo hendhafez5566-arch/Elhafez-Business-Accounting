@@ -1169,7 +1169,7 @@ test('AC-12 -> Inventory exercises the legitimate public service boundary for al
       allocationByKey.set(id, result);
       return result;
     },
-    async getReleaseBlockers(_companyId, _allocationId) {
+    async getReleaseBlockers() {
       return [];
     },
     async releaseAllocation(value, idempotencyKey) {
