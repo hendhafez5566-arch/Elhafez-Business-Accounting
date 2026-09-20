@@ -444,7 +444,7 @@ export class Ac14MigrationCoordinator {
           const allocations = Array.isArray(raw.allocations)
             ? raw.allocations.filter(objectRecord)
             : [];
-          target.records = addInteger(target.records, allocations.length);
+          target.records = addInteger(target.records ?? "0", allocations.length);
           target.amount = allocations.reduce(
             (sum, allocation) =>
               addDecimal(
@@ -455,15 +455,15 @@ export class Ac14MigrationCoordinator {
                     allocation.appliedAmount,
                 ),
               ),
-            target.amount,
+            target.amount ?? "0",
           );
           continue;
         }
-        target.records = addInteger(target.records, 1);
-        target.debit = addDecimal(target.debit, decimalFrom(raw.debit));
-        target.credit = addDecimal(target.credit, decimalFrom(raw.credit));
+        target.records = addInteger(target.records ?? "0", 1);
+        target.debit = addDecimal(target.debit ?? "0", decimalFrom(raw.debit));
+        target.credit = addDecimal(target.credit ?? "0", decimalFrom(raw.credit));
         target.amount = addDecimal(
-          target.amount,
+          target.amount ?? "0",
           expectedAmount(registration, raw),
         );
       }
@@ -609,8 +609,13 @@ const expectedAmount = (
         allocation.pax ??
         payload.quantity;
       if (direct !== undefined) return decimalFrom(direct);
-      const rooms = objectRecord(allocation.rooms) ? Object.values(allocation.rooms) : [];
-      return rooms.reduce((sum, value) => addDecimal(sum, decimalFrom(value)), "0");
+      const rooms = objectRecord(allocation.rooms)
+        ? Object.values(allocation.rooms)
+        : [];
+      return rooms.reduce<string>(
+        (sum, value) => addDecimal(sum, decimalFrom(value)),
+        "0",
+      );
     }
     default:
       return decimalFrom(payload.amount);
