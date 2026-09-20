@@ -643,6 +643,25 @@ const expectedAmount = (
   registration: FrozenSourceRegistration,
   payload: Readonly<Record<string, unknown>>,
 ): string => {
+  if (
+    registration.owner === "CurrencyFx" ||
+    registration.owner === "PeriodControl" ||
+    registration.owner === "Procurement" ||
+    registration.owner === "TourismFinance"
+  )
+    return "0";
+  if (registration.owner === "Treasury") {
+    return ["receipts", "payments", "transfers", "cheques", "bankStatementLines"].includes(
+      registration.sourceCollection,
+    )
+      ? decimalFrom(payload.amount ?? payload.signedAmount)
+      : "0";
+  }
+  if (
+    registration.owner === "FinancialControls" &&
+    registration.sourceCollection !== "approvals"
+  )
+    return "0";
   switch (registration.strategy) {
     case "TAX_CODE":
     case "BANK_RECONCILIATION":
