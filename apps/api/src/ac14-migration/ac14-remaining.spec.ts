@@ -153,6 +153,8 @@ test('every manager-verified actual Umrah collection is processed or explicitly 
     'umrahOperationTasks',
     'umrahIncidents',
     'umrahSupplierCommitments',
+    'umrahActivity',
+    'umrahOutbox',
   ];
   for (const sourceCollection of umrahCollections) {
     assert.ok(AC14_KNOWN_FROZEN_COLLECTIONS.includes(sourceCollection as never));
@@ -260,7 +262,7 @@ test('sourceCollection remains the exact legacy key while targetKind may differ'
 test('production owner adapter fans a legacy receipt into Billing allocations only while Treasury receives one cash voucher', async () => {
   const calls: Array<{ owner: string; command: Record<string, unknown> }> = [];
   const boundary = (owner: string) => ({
-    validate: (_command: Record<string, unknown>) => undefined,
+    validate: () => undefined,
     importHistorical: async (command: Record<string, unknown>) => {
       calls.push({ owner, command });
       return {
@@ -355,4 +357,29 @@ test('production owner adapter fans a legacy receipt into Billing allocations on
     'receipts',
   );
   assert.equal(calls.some((call) => call.owner === 'GeneralLedger'), false);
+});
+
+
+test('non-empty Umrah activity and outbox roots are explicitly classified and never processed', () => {
+  for (const sourceCollection of ['umrahActivity', 'umrahOutbox']) {
+    const entries = registrationsForSource(sourceCollection);
+    assert.equal(entries.length, 1);
+    assert.equal(entries[0]?.disposition, 'CLASSIFY');
+    assert.equal(entries[0]?.issueCode, 'UNSUPPORTED_LEGACY_CONSTRUCT');
+    assert.equal(entries[0]?.owner, null);
+    assert.equal(
+      AC14_FROZEN_SOURCE_REGISTRY.some(
+        (entry) =>
+          entry.sourceCollection === sourceCollection &&
+          entry.disposition === 'PROCESS',
+      ),
+      false,
+    );
+    const coverage = inspectFrozenSourceCoverage(
+      { [sourceCollection]: [{ id: sourceCollection + '-1' }] },
+      [sourceCollection],
+    );
+    assert.equal(coverage[0]?.state, 'CLASSIFIED');
+    assert.equal(coverage[0]?.issueCode, 'UNSUPPORTED_LEGACY_CONSTRUCT');
+  }
 });
