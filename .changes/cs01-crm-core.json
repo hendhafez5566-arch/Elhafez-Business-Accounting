@@ -20,7 +20,10 @@
     "prisma/schema.prisma",
     "prisma/migrations/20260920200000_cs01_crm_core/migration.sql",
     "pnpm-lock.yaml",
-    "docs/crm/CS-01-CRM-CORE.md"
+    "docs/crm/CS-01-CRM-CORE.md",
+    "apps/web/src/index.tsx",
+    "apps/web/src/app-entry-path.ts",
+    "apps/web/src/app-entry-path.spec.tsx"
   ],
   "protectedPaths": [
     "modules/party-registry/module.json",

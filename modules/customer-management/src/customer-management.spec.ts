@@ -15,6 +15,7 @@ class Parties implements CustomerPartyRegistryPort {
  async ensureRoleForIntegration(c:ExecutionContext,id:PartyId,role:PartyRole){const k=c.companyId+'|'+id,s=this.rolesByParty.get(k)??new Set<PartyRole>();s.add(role);this.rolesByParty.set(k,s);}
  async removeRoleForIntegration(c:ExecutionContext,id:PartyId,role:PartyRole){this.rolesByParty.get(c.companyId+'|'+id)?.delete(role);}
  async getForIntegration(c:ExecutionContext,id:PartyId){const p=this.rows.get(c.companyId+'|'+id);if(!p)throw new Error('party missing');return p;}
+ async searchForIntegration(c:ExecutionContext,query:string){const q=query.trim().toLowerCase();return [...this.rows.values()].filter(p=>p.companyId===c.companyId&&[p.displayName,p.phone,p.email].some(value=>value?.toLowerCase().includes(q)));}
  async updateForIntegration(c:ExecutionContext,id:PartyId,input:PartyDraft){const p=await this.getForIntegration(c,id),n={...p,displayName:input.displayName.trim()};this.rows.set(c.companyId+'|'+id,n);return n;}
  roles(c:ExecutionContext,id:PartyId){return [...(this.rolesByParty.get(c.companyId+'|'+id)??[])];}
 }
@@ -33,3 +34,16 @@ test('ambiguous candidate result prevents customer creation',async()=>{const{cus
 test('assigned suspended agent is rejected',async()=>{const{customers,agents}=fixture();const id=agents.seed(ctx,'SUSPENDED');await assert.rejects(()=>customers.create(ctx,{party:{kind:'PERSON',displayName:'C'},assignedAgentId:id}),/suspended/);});
 test('safe hard delete requires suspension and no references',async()=>{const{customers}=fixture();const r=await customers.create(ctx,{party:{kind:'PERSON',displayName:'C',nationalIdentity:'333'}});if(r.status==='REVIEW_REQUIRED')return;const id=r.value.customer.id;await assert.rejects(()=>customers.hardDelete(ctx,id),/suspended/);await customers.registerReferenceForIntegration(ctx,id,'BOOKING','1');await customers.suspend(ctx,id);await assert.rejects(()=>customers.hardDelete(ctx,id),/referenced/);await customers.releaseReferenceForIntegration(ctx,id,'BOOKING','1');await customers.hardDelete(ctx,id);await assert.rejects(()=>customers.requireActiveForIntegration(ctx,id));});
 test('company and branch isolation remain enforced',async()=>{const{customers}=fixture();const r=await customers.create(ctx,{party:{kind:'PERSON',displayName:'C'}});if(r.status==='REVIEW_REQUIRED')return;await assert.rejects(()=>customers.requireActiveForIntegration(executionContext('other','x','u'),r.value.customer.id));await assert.rejects(()=>customers.list(executionContext('co','blocked','u')),/branch access denied/);});
+
+test('customer search includes Party display name, phone and email through the public Party boundary',async()=>{
+  const{customers}=fixture();
+  const created=await customers.create(ctx,{party:{kind:'PERSON',displayName:'Searchable Mohamed',phone:'01012345678',email:'Search.Me@Example.com'},commercialNotes:'corporate'});
+  if(created.status==='REVIEW_REQUIRED')assert.fail('customer should be created');
+  for(const query of ['Searchable Mohamed','01012345678','search.me@example.com']){
+    const results=await customers.list(ctx,undefined,query);
+    assert.equal(results.length,1);
+    assert.equal(results[0]?.customer.id,created.value.customer.id);
+  }
+  assert.equal((await customers.list(ctx,undefined,created.value.customer.number)).length,1);
+  assert.equal((await customers.list(ctx,undefined,'corporate')).length,1);
+});

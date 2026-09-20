@@ -17,6 +17,7 @@ class PartyAdapter implements CustomerPartyRegistryPort {
  ensureRoleForIntegration(...args:Parameters<CustomerPartyRegistryPort['ensureRoleForIntegration']>){return this.service.ensureRoleForIntegration(...args);}
  removeRoleForIntegration(...args:Parameters<CustomerPartyRegistryPort['removeRoleForIntegration']>){return this.service.removeRoleForIntegration(...args);}
  getForIntegration(...args:Parameters<CustomerPartyRegistryPort['getForIntegration']>){return this.service.getForIntegration(...args);}
+ searchForIntegration(...args:Parameters<CustomerPartyRegistryPort['searchForIntegration']>){return this.service.searchForIntegration(...args);}
  updateForIntegration(...args:Parameters<CustomerPartyRegistryPort['updateForIntegration']>){return this.service.updateForIntegration(...args);}
 }
 class AgentAdapter implements CustomerAgentPort {

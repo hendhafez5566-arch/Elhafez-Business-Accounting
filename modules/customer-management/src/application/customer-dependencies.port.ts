@@ -11,6 +11,7 @@ export interface CustomerPartyRegistryPort {
   ensureRoleForIntegration(context:ExecutionContext,id:PartyId,role:PartyRole):Promise<void>;
   removeRoleForIntegration(context:ExecutionContext,id:PartyId,role:PartyRole):Promise<void>;
   getForIntegration(context:ExecutionContext,id:PartyId):Promise<Party>;
+  searchForIntegration(context:ExecutionContext,query:string):Promise<Party[]>;
   updateForIntegration(context:ExecutionContext,id:PartyId,input:PartyDraft):Promise<Party>;
 }
 export interface CustomerAgentPort {

@@ -102,6 +102,12 @@ export class PartyRegistryApplicationService {
     return this.repository.list(context.companyId,query?.trim());
   }
 
+  async searchForIntegration(context:ExecutionContext,query:string):Promise<Party[]>{
+    await this.branch(context);
+    const normalized=query.trim();
+    return normalized ? this.repository.list(context.companyId,normalized) : [];
+  }
+
   async update(context:ExecutionContext,id:PartyId,input:PartyDraft):Promise<Party>{
     await this.permission(context,PARTY_REGISTRY_PERMISSIONS.manage);
     return this.updateForIntegration(context,id,input);

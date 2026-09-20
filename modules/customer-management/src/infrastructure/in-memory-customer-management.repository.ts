@@ -1,1 +1,24 @@
-import type{CompanyId}from'@elhafez/contracts';import type{PartyId}from'@elhafez/party-registry';import type{CustomerManagementRepository}from'../application/customer-management.repository.js';import type{Customer,CustomerId,CustomerReference}from'../domain/customer.js';export class InMemoryCustomerManagementRepository implements CustomerManagementRepository{private readonly rows=new Map<string,Customer>();private readonly refs=new Map<string,CustomerReference>();private readonly seq=new Map<string,number>();private k(c:CompanyId,i:CustomerId){return c+'|'+i;}async nextNumber(c:CompanyId){const n=(this.seq.get(c)??0)+1;this.seq.set(c,n);return n;}async create(v:Customer){if([...this.rows.values()].some(x=>x.companyId===v.companyId&&x.partyId===v.partyId))throw new Error('duplicate customer party');if([...this.rows.values()].some(x=>x.companyId===v.companyId&&x.number===v.number))throw new Error('duplicate number');this.rows.set(this.k(v.companyId,v.id),v);}async update(v:Customer){this.rows.set(this.k(v.companyId,v.id),v);}async find(c:CompanyId,i:CustomerId){return this.rows.get(this.k(c,i));}async findByParty(c:CompanyId,p:PartyId){return[...this.rows.values()].find(x=>x.companyId===c&&x.partyId===p);}async list(c:CompanyId,s?:Customer['status'],q?:string){const z=q?.toLowerCase();return[...this.rows.values()].filter(x=>x.companyId===c&&(!s||x.status===s)&&(!z||x.number.toLowerCase().includes(z)||x.commercialNotes?.toLowerCase().includes(z)));}async delete(c:CompanyId,i:CustomerId){if(await this.referenceCount(c,i)>0)throw new Error('referenced');this.rows.delete(this.k(c,i));}async addReference(v:CustomerReference){this.refs.set(v.companyId+'|'+v.customerId+'|'+v.sourceType+'|'+v.sourceId,v);}async removeReference(c:CompanyId,i:CustomerId,t:string,s:string){this.refs.delete(c+'|'+i+'|'+t+'|'+s);}async referenceCount(c:CompanyId,i:CustomerId){return[...this.refs.values()].filter(x=>x.companyId===c&&x.customerId===i).length;}}
+import type { CompanyId } from '@elhafez/contracts';
+import type { CustomerManagementRepository } from '../application/customer-management.repository.js';
+import type { Customer, CustomerId, CustomerReference } from '../domain/customer.js';
+
+export class InMemoryCustomerManagementRepository implements CustomerManagementRepository {
+  private readonly rows=new Map<string,Customer>();
+  private readonly refs=new Map<string,CustomerReference>();
+  private readonly seq=new Map<string,number>();
+  private k(c:CompanyId,i:CustomerId){return c+'|'+i;}
+  async nextNumber(c:CompanyId){const n=(this.seq.get(c)??0)+1;this.seq.set(c,n);return n;}
+  async create(v:Customer){if([...this.rows.values()].some(x=>x.companyId===v.companyId&&x.partyId===v.partyId))throw new Error('duplicate customer party');if([...this.rows.values()].some(x=>x.companyId===v.companyId&&x.number===v.number))throw new Error('duplicate number');this.rows.set(this.k(v.companyId,v.id),v);}
+  async update(v:Customer){this.rows.set(this.k(v.companyId,v.id),v);}
+  async find(c:CompanyId,i:CustomerId){return this.rows.get(this.k(c,i));}
+  async findByParty(c:CompanyId,p:string){return [...this.rows.values()].find(x=>x.companyId===c&&x.partyId===p);}
+  async list(c:CompanyId,s?:Customer['status'],q?:string,partyIds:readonly string[]=[]){
+    const z=q?.toLowerCase();
+    const partySet=new Set(partyIds);
+    return [...this.rows.values()].filter(x=>x.companyId===c&&(!s||x.status===s)&&(!z||x.number.toLowerCase().includes(z)||x.commercialNotes?.toLowerCase().includes(z)||partySet.has(x.partyId)));
+  }
+  async delete(c:CompanyId,i:CustomerId){if(await this.referenceCount(c,i)>0)throw new Error('referenced');this.rows.delete(this.k(c,i));}
+  async addReference(v:CustomerReference){this.refs.set(v.companyId+'|'+v.customerId+'|'+v.sourceType+'|'+v.sourceId,v);}
+  async removeReference(c:CompanyId,i:CustomerId,t:string,s:string){this.refs.delete(c+'|'+i+'|'+t+'|'+s);}
+  async referenceCount(c:CompanyId,i:CustomerId){return [...this.refs.values()].filter(x=>x.companyId===c&&x.customerId===i).length;}
+}
