@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { decimalAmount, sourceReference, type BranchId, type CurrencyCode, type DecimalAmount } from '@elhafez/contracts';
-import type { AccountClassification, Journal } from '@elhafez/general-ledger';
+import type { Account, Journal } from '@elhafez/general-ledger';
 import type { Invoice, Advance } from '@elhafez/billing-subledgers';
 import type { Voucher } from '@elhafez/treasury-settlement';
-import type { TourismServiceActualization } from '@elhafez/cost-budget-accounting';
+import type { ProgramCostCenterAssociation, TourismServiceActualization } from '@elhafez/cost-budget-accounting';
 import type { TaxSnapshot } from '@elhafez/tax';
 import type { FinancialReportingApplicationService } from '@elhafez/financial-reporting';
 
@@ -11,8 +11,15 @@ import type { FinancialReportingApplicationService } from '@elhafez/financial-re
 @Injectable()
 export class FinancialReportingEvidenceAdapter {
   constructor(private readonly reporting: FinancialReportingApplicationService) {}
-  async consumeJournal(journal: Journal, branchId: BranchId | undefined, currency: CurrencyCode, classifications: Readonly<Record<string, AccountClassification>>) {
-    return Promise.all(journal.lines.map((line) => this.reporting.ingest({ evidenceId: `GL:${journal.id}:${line.id}`, companyId: journal.companyId, ...(branchId ? { branchId } : {}), occurredAt: `${journal.postingDate}T00:00:00.000Z`, postingDate: journal.postingDate, currency, kind: 'GL_LINE', source: sourceReference('JOURNAL', journal.id), authoritativeReference: sourceReference('JOURNAL_LINE', line.id), amount: subtract(line.debit ?? decimalAmount('0'), line.credit ?? decimalAmount('0')), accountId: line.accountId, accountClass: classifications[line.accountId] ?? fail(`missing classification for ${line.accountId}`), ...(journal.reversalOfId ? { reversesEvidenceId: `GL:${journal.reversalOfId}:${line.id}` } : {}) })));
+  async consumeJournal(journal: Journal, branchId: BranchId | undefined, baseCurrency: Readonly<{ code: CurrencyCode }>, accounts: readonly Account[]) {
+    const classifications = new Map(accounts.map((account) => [account.id, account.classification]));
+    return Promise.all(journal.lines.map((line) => this.reporting.ingest({ evidenceId: `GL:${journal.id}:${line.id}`, companyId: journal.companyId, ...(branchId ? { branchId } : {}), occurredAt: `${journal.postingDate}T00:00:00.000Z`, postingDate: journal.postingDate, currency: baseCurrency.code, kind: 'GL_LINE', source: sourceReference('JOURNAL', journal.id), authoritativeReference: sourceReference('JOURNAL_LINE', line.id), amount: subtract(line.debit ?? decimalAmount('0'), line.credit ?? decimalAmount('0')), accountId: line.accountId, accountClass: classifications.get(line.accountId) ?? fail(`missing classification for ${line.accountId}`), ...(journal.reversalOfId ? { reversesEvidenceId: `GL:${journal.reversalOfId}:${line.id}` } : {}) })));
+  }
+  async consumeProgramRevenue(journal: Journal, association: ProgramCostCenterAssociation, baseCurrency: Readonly<{ code: CurrencyCode }>, accounts: readonly Account[]) {
+    const classifications = new Map(accounts.map((account) => [account.id, account.classification]));
+    const revenue = journal.lines.filter((line) => line.costCenterId === association.costCenterId && classifications.get(line.accountId) === 'REVENUE');
+    if (!revenue.length) throw new Error('journal has no authoritative program revenue evidence');
+    return Promise.all(revenue.map((line) => this.reporting.ingest({ evidenceId: `PROGRAM_REVENUE:${journal.id}:${line.id}`, companyId: journal.companyId, occurredAt: `${journal.postingDate}T00:00:00.000Z`, postingDate: journal.postingDate, currency: baseCurrency.code, kind: 'PROGRAM_ACCOUNTING', source: sourceReference('JOURNAL', journal.id), authoritativeReference: sourceReference('JOURNAL_LINE', line.id), amount: subtract(line.credit ?? decimalAmount('0'), line.debit ?? decimalAmount('0')), programId: association.program.sourceId, costCenterId: association.costCenterId, programDimension: 'REVENUE' })));
   }
   consumeInvoicePosition(invoice: Invoice) { return this.reporting.ingest({ evidenceId: `BILLING_POSITION:${invoice.id}`, companyId: invoice.companyId, ...(invoice.branchId ? { branchId: invoice.branchId as BranchId } : {}), occurredAt: invoice.createdAt, postingDate: invoice.postingDate, currency: invoice.currency as CurrencyCode, kind: 'BILLING_POSITION', source: sourceReference('INVOICE', invoice.id), authoritativeReference: sourceReference('BILLING_POSITION', invoice.id), amount: invoice.outstanding, partyId: invoice.partyId, positionKind: invoice.type === 'SUPPLIER' ? 'PAYABLE' : 'RECEIVABLE', ...(invoice.dueDate ? { dueDate: invoice.dueDate } : {}), openAmount: invoice.outstanding }); }
   consumeAdvance(advance: Advance, postingDate: string, currency: CurrencyCode, branchId?: BranchId) { return this.reporting.ingest({ evidenceId: `BILLING_ADVANCE:${advance.id}`, companyId: advance.companyId, ...(branchId ? { branchId } : {}), occurredAt: `${postingDate}T00:00:00.000Z`, postingDate, currency, kind: 'BILLING_POSITION', source: sourceReference('BILLING_ADVANCE', advance.id), authoritativeReference: sourceReference('BILLING_ADVANCE', advance.id), amount: advance.available, partyId: advance.partyId, positionKind: advance.partyKind === 'SUPPLIER' ? 'SUPPLIER_ADVANCE' : 'CUSTOMER_ADVANCE', openAmount: advance.available }); }

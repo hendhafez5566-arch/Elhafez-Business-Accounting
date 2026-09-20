@@ -303,6 +303,7 @@ model GlJournalLine {
   debit           Decimal?  @db.Decimal(38, 18)
   credit          Decimal?  @db.Decimal(38, 18)
   partyId         String?   @map("party_id")
+  costCenterId    String?   @map("cost_center_id")
   foreignAmount   Decimal?  @map("foreign_amount") @db.Decimal(38, 18)
   foreignCurrency String?   @map("foreign_currency")
   fxRateId        String?   @map("fx_rate_id")
@@ -312,6 +313,7 @@ model GlJournalLine {
 
   @@index([companyId, journalId])
   @@index([companyId, accountId])
+  @@index([companyId, costCenterId])
   @@map("gl_journal_lines")
 }
 

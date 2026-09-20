@@ -32,6 +32,7 @@ export interface PostingLine {
   debit?: DecimalAmount;
   credit?: DecimalAmount;
   partyId?: string;
+  costCenterId?: string;
   foreignAmount?: DecimalAmount;
   foreignCurrency?: string;
 }
@@ -284,6 +285,7 @@ export class GeneralLedgerApplicationService {
           debit: line.credit,
           credit: line.debit,
           partyId: line.partyId,
+          costCenterId: line.costCenterId,
           foreignAmount: line.foreignAmount,
           foreignCurrency: line.foreignCurrency,
         })),
