@@ -283,18 +283,72 @@ export class PrismaHistoricalImportRepository implements HistoricalImportReposit
     runId: string,
     companyId: string,
   ): Promise<HistoricalEquivalence> {
-    const rows = await this.db.billingSubledgersHistoricalImport.findMany({
+    const provenance = await this.db.billingSubledgersHistoricalImport.findMany({
       where: { runId, companyId },
-      orderBy: [{ collection: "asc" }, { sourceId: "asc" }],
     });
+    const ids = (collections: readonly string[]) =>
+      provenance
+        .filter((row) => collections.includes(row.collection))
+        .map((row) => row.sourceId);
+    const [invoices, adjustments, advances, allocations] = await Promise.all([
+      this.db.billingInvoice.findMany({
+        where: { companyId, id: { in: ids(["invoices"]) } },
+        orderBy: { id: "asc" },
+      }),
+      this.db.billingAdjustment.findMany({
+        where: {
+          companyId,
+          id: { in: ids(["invoiceAdjustments", "adjustments"]) },
+        },
+        orderBy: { id: "asc" },
+      }),
+      this.db.billingAdvance.findMany({
+        where: { companyId, id: { in: ids(["advances"]) } },
+        orderBy: { id: "asc" },
+      }),
+      this.db.billingAllocation.findMany({
+        where: {
+          companyId,
+          id: { in: ids(["allocations", "settlements"]) },
+        },
+        orderBy: { id: "asc" },
+      }),
+    ]);
+    const rows = [
+      ...invoices.map((row) => ({
+        value: row,
+        amount: row.baseTotal.toString(),
+      })),
+      ...adjustments.map((row) => ({
+        value: row,
+        amount: row.amount.toString(),
+      })),
+      ...advances.map((row) => ({
+        value: row,
+        amount: row.amount.toString(),
+      })),
+      ...allocations.map((row) => ({
+        value: row,
+        amount: row.amount.toString(),
+      })),
+    ];
     return {
       records: String(rows.length),
       payloadDigest: createHash("sha256")
-        .update(rows.map((x) => x.payloadJson).join("\n"))
+        .update(
+          rows
+            .map(({ value }) =>
+              JSON.stringify(value, (_, v) =>
+                typeof v === "object" && v?.constructor?.name === "Decimal"
+                  ? v.toString()
+                  : v,
+              ),
+            )
+            .join("\n"),
+        )
         .digest("hex"),
-      debit: rows.reduce((a, x) => add(a, x.debit.toString()), "0"),
-      credit: rows.reduce((a, x) => add(a, x.credit.toString()), "0"),
-      amount: rows.reduce((a, x) => add(a, x.amount.toString()), "0"),
+      debit: "0",
+      credit: "0",
+      amount: rows.reduce((total, row) => add(total, row.amount), "0"),
     };
-  }
-}
+  }}
