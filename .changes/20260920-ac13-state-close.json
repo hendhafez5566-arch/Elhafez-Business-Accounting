@@ -1,0 +1,16 @@
+{
+  "id": "20260920-ac13-state-close",
+  "summary": "Record the accepted AC-13 main merge and mark AC-14 as the next phase pending separate owner approval.",
+  "type": "governance",
+  "allowedModules": [],
+  "allowedPaths": [
+    ".changes/20260920-ac13-state-close.json",
+    "PROJECT_STATE.md"
+  ],
+  "protectedPaths": [
+    "PROJECT_STATE.md"
+  ],
+  "protectedReason": "This governance-only change records the already merged and accepted AC-13 phase closure and identifies AC-14 as the next phase without starting it.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": ""
+}
