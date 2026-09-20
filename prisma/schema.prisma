@@ -303,6 +303,7 @@ model GlJournalLine {
   debit           Decimal?  @db.Decimal(38, 18)
   credit          Decimal?  @db.Decimal(38, 18)
   partyId         String?   @map("party_id")
+  costCenterId    String?   @map("cost_center_id")
   foreignAmount   Decimal?  @map("foreign_amount") @db.Decimal(38, 18)
   foreignCurrency String?   @map("foreign_currency")
   fxRateId        String?   @map("fx_rate_id")
@@ -312,6 +313,7 @@ model GlJournalLine {
 
   @@index([companyId, journalId])
   @@index([companyId, accountId])
+  @@index([companyId, costCenterId])
   @@map("gl_journal_lines")
 }
 
@@ -1763,4 +1765,23 @@ model CbaTourismServiceActualization {
  @@index([companyId,programSourceType,programSourceId,postingDate])
  @@index([companyId,serviceSourceType,serviceSourceId])
  @@map("cba_tourism_service_actualizations")
+}
+
+/// Disposable, rebuildable Financial Reporting projection evidence. Never accounting source truth.
+model FrReportingEvidence {
+ id String @id
+ companyId String @map("company_id")
+ evidenceId String @map("evidence_id")
+ branchId String? @map("branch_id")
+ kind String
+ postingDate DateTime @map("posting_date") @db.Date
+ payload String
+ payloadHash String @map("payload_hash")
+ authoritativeSourceType String @map("authoritative_source_type")
+ authoritativeSourceId String @map("authoritative_source_id")
+ createdAt DateTime @default(now()) @map("created_at")
+ @@unique([companyId,evidenceId])
+ @@index([companyId,branchId,postingDate])
+ @@index([companyId,kind,postingDate])
+ @@map("fr_reporting_evidence")
 }

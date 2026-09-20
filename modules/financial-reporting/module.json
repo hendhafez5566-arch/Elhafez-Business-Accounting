@@ -1,0 +1,6 @@
+{
+  "name": "financial-reporting",
+  "publicApi": ["src/public/index.ts"],
+  "ownedTables": ["fr_reporting_evidence"],
+  "allowedDependencies": ["@elhafez/contracts", "@elhafez/core"]
+}

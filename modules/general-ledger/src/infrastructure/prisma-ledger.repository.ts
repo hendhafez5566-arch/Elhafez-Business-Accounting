@@ -86,6 +86,7 @@ export class PrismaLedgerRepository implements LedgerRepository {
           debit: line.debit?.toString(),
           credit: line.credit?.toString(),
           partyId: line.partyId ?? undefined,
+          costCenterId: line.costCenterId ?? undefined,
           foreignAmount: line.foreignAmount?.toString(),
           foreignCurrency: line.foreignCurrency ?? undefined,
           fxRateId: line.fxRateId ?? undefined,

@@ -20,6 +20,8 @@ export interface JournalLine {
   debit?: DecimalAmount;
   credit?: DecimalAmount;
   partyId?: string;
+  /** Opaque Cost-owner identity carried on authoritative accounting evidence. */
+  costCenterId?: string;
   foreignAmount?: DecimalAmount;
   foreignCurrency?: string;
   fxRateId?: string;
