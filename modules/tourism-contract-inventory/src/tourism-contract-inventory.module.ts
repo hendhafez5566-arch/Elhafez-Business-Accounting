@@ -66,9 +66,12 @@ class ProcurementPublicAdapter implements ProcurementPort {
   }
 }
 
+import { HistoricalImportApplicationService } from './application/historical-import.application-service.js';
+import { HISTORICAL_IMPORT_REPOSITORY, type HistoricalImportRepository } from './application/historical-import.repository.js';
+import { PrismaHistoricalImportRepository } from './infrastructure/prisma-historical-import.repository.js';
 @Module({
   imports: [CostBudgetAccountingModule, ProcurementFinanceModule],
-  providers: [
+  providers: [{ provide: HISTORICAL_IMPORT_REPOSITORY, useFactory: (p: PrismaClient) => new PrismaHistoricalImportRepository(p), inject: [PrismaClient] }, { provide: HistoricalImportApplicationService, useFactory: (r: HistoricalImportRepository) => new HistoricalImportApplicationService(r), inject: [HISTORICAL_IMPORT_REPOSITORY] },
     PrismaClient,
     {
       provide: TOURISM_INVENTORY_REPOSITORY,
@@ -94,6 +97,6 @@ class ProcurementPublicAdapter implements ProcurementPort {
       ],
     },
   ],
-  exports: [TOURISM_CONTRACT_INVENTORY_SERVICE],
+  exports: [HistoricalImportApplicationService, TOURISM_CONTRACT_INVENTORY_SERVICE],
 })
 export class TourismContractInventoryModule {}

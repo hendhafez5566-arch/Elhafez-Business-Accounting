@@ -452,7 +452,7 @@ test('GS-003 BR-010 settlement allocates multiple invoices by explicit oldest du
   await assert.rejects(f.service.settle({...command,amount:amount('101')}),/conflicting replay/);
 });
 
-test('GS-004/005/006 prefunding remains Billing-owned and source restricted', async()=>{
+test('GS-004/GS-005/GS-006 prefunding remains Billing-owned and source restricted', async()=>{
  const f=fixture(); await f.service.createDraft(invoice({dueDate:'2026-10-01'}));
  const result=await f.service.settle({id:'pre',companyId:company,partyKind:'CUSTOMER',partyId:'party',amount:amount('120'),settlementCurrency:'EGP',settlementDate:'2026-09-01',explicitDraftInvoiceId:'i1',prefundingAccountId:'customer-advance'});
  assert.equal(result.allocations[0]?.invoiceId,'i1');

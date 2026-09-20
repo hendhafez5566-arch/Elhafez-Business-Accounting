@@ -19,7 +19,8 @@
     "tci_allocation_cost_effects",
     "tci_procurement_requests",
     "tci_idempotency_keys",
-    "tci_contract_history"
+    "tci_contract_history",
+    "tci_historical_imports"
   ],
   "allowedDependencies": [
     "@elhafez/contracts",

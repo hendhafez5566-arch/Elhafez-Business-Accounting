@@ -14,3 +14,6 @@ export type {
   AdvanceConsumption,
   Adjustment,
 } from '../domain/billing.js';
+
+export { HistoricalImportApplicationService } from '../application/historical-import.application-service.js';
+export type { HistoricalImportCommand, HistoricalImportResult, HistoricalEquivalence } from '../application/historical-import.application-service.js';

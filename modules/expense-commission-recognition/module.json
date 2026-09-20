@@ -10,7 +10,8 @@
     "ecr_recognition_schedules",
     "ecr_recognition_parts",
     "ecr_accruals",
-    "ecr_supplier_advance_settlements"
+    "ecr_supplier_advance_settlements",
+    "ecr_historical_imports"
   ],
   "allowedDependencies": [
     "@elhafez/contracts",
