@@ -83,6 +83,100 @@ test('BLOCKER-3 readiness derives scope from persisted state and cannot be bypas
   assert.ok(result.evidenceReferences.some((ref) => ref.includes('allocation')), 'should include persisted allocation reference');
 });
 
+test('readiness discovers persisted BOOKING_CANCELLATION settlement-required workflow without caller references', async () => {
+  const f = fixture(); await f.setup(); await f.confirm();
+  f.setPaid(true);
+  const result = await f.service.cancelBooking({
+    companyId: company,
+    branchId: 'branch-1',
+    commandKey: 'readiness-cancel',
+    booking,
+    travelStarted: false,
+    travelEvidence: 'not-started',
+    postingDate: '2026-09-20',
+  }) as { blockers?: { type: string }[] };
+  assert.ok(result.blockers?.some((item) => item.type === 'CUSTOMER_SETTLEMENT_REQUIRED'));
+  const readiness = await f.service.evaluateFinancialReadiness({
+    companyId: company,
+    program,
+    requiredCategories: ['HOTEL'],
+  });
+  assert.equal(readiness.ready, false);
+  assert.ok(readiness.blockers.some((item) => item.includes('UNRESOLVED_WORKFLOW:BOOKING_CANCELLATION:')));
+});
+
+test('readiness discovers unresolved BOOKING_DEPOSIT and BOOKING_SETTLEMENT workflows for persisted bookings', async () => {
+  for (const kind of ['BOOKING_DEPOSIT', 'BOOKING_SETTLEMENT'] as const) {
+    const f = fixture(); await f.setup(); await f.confirm();
+    const workflow = await f.repo.reserveWorkflow({
+      id: `readiness-${kind.toLowerCase()}`,
+      companyId: company,
+      branchId: 'branch-1',
+      kind,
+      commandKey: `readiness-${kind.toLowerCase()}`,
+      payloadHash: `hash-${kind}`,
+      sourceType: booking.sourceType,
+      sourceId: booking.sourceId,
+      status: 'RUNNING',
+      payload: { booking },
+      createdAt: '2026-09-20T00:00:00.000Z',
+      updatedAt: '2026-09-20T00:00:00.000Z',
+    });
+    const readiness = await f.service.evaluateFinancialReadiness({
+      companyId: company,
+      program,
+      requiredCategories: ['HOTEL'],
+    });
+    assert.equal(readiness.ready, false, `${kind} must block readiness`);
+    assert.ok(readiness.blockers.includes(`UNRESOLVED_WORKFLOW:${kind}:${workflow.id}`));
+  }
+});
+
+test('readiness becomes true after booking workflows complete and owner blockers are clear', async () => {
+  const f = fixture(); await f.setup(); await f.confirm();
+  const workflows = await Promise.all(
+    (['BOOKING_DEPOSIT', 'BOOKING_SETTLEMENT'] as const).map((kind) =>
+      f.repo.reserveWorkflow({
+        id: `completed-${kind.toLowerCase()}`,
+        companyId: company,
+        branchId: 'branch-1',
+        kind,
+        commandKey: `completed-${kind.toLowerCase()}`,
+        payloadHash: `hash-completed-${kind}`,
+        sourceType: booking.sourceType,
+        sourceId: booking.sourceId,
+        status: 'RUNNING',
+        payload: { booking },
+        createdAt: '2026-09-20T00:00:00.000Z',
+        updatedAt: '2026-09-20T00:00:00.000Z',
+      }),
+    ),
+  );
+  const blocked = await f.service.evaluateFinancialReadiness({
+    companyId: company,
+    program,
+    requiredCategories: ['HOTEL'],
+  });
+  assert.equal(blocked.ready, false);
+
+  for (const workflow of workflows) {
+    await f.repo.saveWorkflow({
+      ...workflow,
+      status: 'COMPLETED',
+      result: { completed: true },
+      updatedAt: '2026-09-20T01:00:00.000Z',
+    });
+  }
+
+  const ready = await f.service.evaluateFinancialReadiness({
+    companyId: company,
+    program,
+    requiredCategories: ['HOTEL'],
+  });
+  assert.equal(ready.ready, true);
+  assert.deepEqual(ready.blockers, []);
+});
+
 test('BLOCKER-5 confirmed booking preserves financial setup snapshot for later deposits', async () => {
   const f = fixture(); await f.setup();
   const bookingA = sourceReference('TOURISM_BOOKING', 'booking-A');

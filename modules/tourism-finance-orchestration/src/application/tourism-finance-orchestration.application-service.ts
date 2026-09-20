@@ -88,8 +88,8 @@ export class TourismFinanceOrchestrationApplicationService {
     // BR-053: Derive authoritative financial scope from persisted program/booking/workflow state
     const bookings = await this.repo.bookingsForProgram(input.companyId, input.program);
     const programWorkflows = await this.repo.workflowsForProgram(input.companyId, input.program);
-    const bookingWorkflows = await Promise.all(bookings.map((booking) => this.repo.workflowById(input.companyId, booking.workflowId)));
-    const workflows = [...new Map([...programWorkflows, ...bookingWorkflows.filter((item): item is Workflow => Boolean(item))].map((item) => [item.id, item])).values()];
+    const bookingWorkflows = (await Promise.all(bookings.map((booking) => this.repo.workflowsForBooking(input.companyId, booking.booking)))).flat();
+    const workflows = [...new Map([...programWorkflows, ...bookingWorkflows].map((item) => [item.id, item])).values()];
     
     // 1. Check required category setup (persisted)
     for (const category of input.requiredCategories) {
