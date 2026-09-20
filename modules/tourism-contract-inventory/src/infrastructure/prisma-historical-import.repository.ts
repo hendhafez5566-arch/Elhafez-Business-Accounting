@@ -267,9 +267,7 @@ export class PrismaHistoricalImportRepository implements HistoricalImportReposit
             .join("\n"),
         )
         .digest("hex"),
-      debit: provenance.reduce((a, x) => add(a, x.debit.toString()), "0"),
-      credit: provenance.reduce((a, x) => add(a, x.credit.toString()), "0"),
-      amount: rows.reduce((a, x) => add(a, x.amount), "0"),
+      debit: "0", credit: "0", amount: rows.reduce((a, x) => add(a, x.amount), "0"),
     };
   }
 }
