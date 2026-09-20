@@ -1,6 +1,6 @@
 # AI CHANGE PROTOCOL — MANDATORY FOR EVERY FUTURE MODIFICATION
 
-This is the permanent change discipline for **Elhafez Business Accounting**.
+This is the permanent change discipline for the **ELHAFEZ Business Platform**, including the accepted Accounting & Finance subsystem.
 
 It applies to ChatGPT Codex, Qwen Code, Claude, Antigravity, IDE agents, human developers, and any future coding tool.
 
@@ -16,6 +16,8 @@ Before changing any code, read:
 - `PROJECT_MANAGER_HANDOFF.md`
 - `PROJECT_STATE.md`
 - `docs/ARCHITECTURE.md`
+- `docs/BUSINESS-MODULE-ARCHITECTURE.md`
+- `docs/BUSINESS-MODULE-ROUTING.md`
 - `docs/MODULE-STANDARD.md`
 - `docs/TESTING-STANDARD.md`
 
@@ -26,7 +28,9 @@ For accounting/financial changes also read:
 - `docs/accounting/ACCOUNTING-CONTRACTS-CATALOG.md`
 - `docs/accounting/ACCOUNTING-AC00-COVERAGE-MATRIX.md`
 
-Then inspect the actual owning module and its tests before editing.
+Then route the request using `docs/BUSINESS-MODULE-ROUTING.md` and inspect the actual owning module and its tests before editing.
+
+A product suite/workspace is not a code owner. If the routing map does not identify a canonical owner, stop with `BLOCKED — OWNERSHIP DECISION REQUIRED` instead of creating a new location by guesswork.
 
 ### Machine-enforced preflight
 
@@ -43,7 +47,9 @@ CI compares that declaration with the real Git diff. Undeclared blast radius fai
 
 Write down internally before editing:
 - requested behavior;
-- owning module;
+- product suite/workspace where it is presented;
+- canonical owning module from the routing map;
+- whether that owner is EXISTING or PLANNED;
 - current public contract/API involved;
 - data/schema impact;
 - UI surface impact;

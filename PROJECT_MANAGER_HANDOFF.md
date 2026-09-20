@@ -1,4 +1,4 @@
-# PROJECT MANAGER HANDOFF — ELHAFEZ BUSINESS ACCOUNTING
+# PROJECT MANAGER HANDOFF — ELHAFEZ BUSINESS PLATFORM
 
 > This file is the permanent handoff entry point for a replacement ChatGPT/project-manager conversation.
 > It is intentionally stored in the repository so project continuity does not depend on one chat session.
@@ -8,17 +8,17 @@
 If the current manager chat is unavailable, the owner should tell the new manager:
 
 > Open the GitHub repository `mhafez300300-byte/Elhafez-Business-Accounting`.
-> Read `PROJECT_MANAGER_HANDOFF.md`, `PROJECT_STATE.md`, `AI_CHANGE_PROTOCOL.md`, `AGENTS.md`, and the accounting architecture documents before making any decision.
+> Read `PROJECT_MANAGER_HANDOFF.md`, `PROJECT_STATE.md`, `AI_CHANGE_PROTOCOL.md`, `AGENTS.md`, `docs/BUSINESS-MODULE-ARCHITECTURE.md`, `docs/BUSINESS-MODULE-ROUTING.md`, and the relevant accounting architecture documents before making any decision.
 > Continue from the current verified repository state. Do not restart completed phases.
 
 The replacement manager must **verify GitHub first**. Never trust this file blindly if the repository has moved forward. `PROJECT_STATE.md` is designed to be updated after every accepted phase merge.
 
 ## 2. Project identity
 
-- Product: **ELHAFEZ BUSINESS ACCOUNTING**
-- Repository: `mhafez300300-byte/Elhafez-Business-Accounting`
+- Product: **ELHAFEZ BUSINESS PLATFORM**
+- Repository: `mhafez300300-byte/Elhafez-Business-Accounting` (repository name is retained; the program now continues beyond the closed Accounting subsystem).
 - GitHub is the **Source of Truth** for implementation, history, accepted merges, and CI.
-- Product purpose: clean modular accounting for Hajj, Umrah, tourism and related service companies, with secure integration to tourism operations.
+- Product purpose: a clean modular business platform for Hajj, Umrah, tourism, CRM, suppliers/procurement, administration, reporting/control, and the accepted standalone Accounting & Finance subsystem.
 - Architecture: TypeScript monorepo, modular monolith, NestJS API, React web app, Prisma persistence.
 - Primary languages/product direction: Arabic-first UI with English support.
 - Commercial context: Egypt and Saudi Arabia, multi-company, multi-branch, multi-currency.
@@ -51,6 +51,8 @@ The owner prefers clean implementation over patches: **no patch-on-patch work**.
 
 Read these files before implementation:
 - `docs/ARCHITECTURE.md`
+- `docs/BUSINESS-MODULE-ARCHITECTURE.md`
+- `docs/BUSINESS-MODULE-ROUTING.md`
 - `docs/MODULE-STANDARD.md`
 - `docs/TESTING-STANDARD.md`
 - `docs/accounting/ACCOUNTING-ARCHITECTURE.md`
@@ -61,21 +63,22 @@ Read these files before implementation:
 - `docs/accounting/ACCOUNTING-AC00-COVERAGE-MATRIX.md`
 
 Core rules:
-1. Every business module owns its code, data lifecycle, tables and migrations.
-2. A module may not read/write another module's tables or repositories.
-3. Cross-module synchronous access is only through the provider's public package/application API.
-4. Cross-module async collaboration uses approved shared contracts/events.
-5. The compile-time/module import graph must remain a DAG.
-6. `packages/core` and `packages/contracts` never depend on business modules.
-7. Domain code does not import Prisma, Nest, HTTP, UI, or another module.
-8. API is a composition root, not a business layer.
-9. No core/shared architecture change may be used as a shortcut for a local module problem.
-10. Posted/economic history is not erased. Corrections use explicit reversal, adjustment, amendment, or versioning.
-11. Financial quantities use exact decimal semantics, not floating point.
-12. State-changing financial workflows require durable idempotency and concurrency safety where races matter.
-13. Company/branch isolation and server-side authorization are mandatory.
-14. Financial Controls detects/authorizes; it must not silently mutate another owner's economic records.
-15. Reporting consumes projections/read models and does not own source balances.
+1. Product suites/workspaces are presentation groupings, not code owners. Route every request through the canonical Business Module Architecture / Routing docs first.
+2. Every business module owns its code, data lifecycle, tables and migrations.
+3. A module may not read/write another module's tables or repositories.
+4. Cross-module synchronous access is only through the provider's public package/application API.
+5. Cross-module async collaboration uses approved shared contracts/events.
+6. The compile-time/module import graph must remain a DAG.
+7. `packages/core` and `packages/contracts` never depend on business modules.
+8. Domain code does not import Prisma, Nest, HTTP, UI, or another module.
+9. API is a composition root, not a business layer.
+10. No core/shared architecture change may be used as a shortcut for a local module problem.
+11. Posted/economic history is not erased. Corrections use explicit reversal, adjustment, amendment, or versioning.
+12. Financial quantities use exact decimal semantics, not floating point.
+13. State-changing financial workflows require durable idempotency and concurrency safety where races matter.
+14. Company/branch isolation and server-side authorization are mandatory.
+15. Financial Controls detects/authorizes; it must not silently mutate another owner's economic records.
+16. Reporting consumes projections/read models and does not own source balances.
 
 ## 5. Phase workflow
 
@@ -145,18 +148,24 @@ The architecture/build sequence in the repository is authoritative. Current acce
 
 Do not infer a later phase merely from old chat wording. Always use `docs/accounting/ACCOUNTING-BUILD-SEQUENCE.md` as the canonical sequence.
 
-## 8. Current handoff point at creation of this file
+## 8. Current handoff point
 
-At the time this file was created:
-- AC-11 is CLOSED / APPROVED / MERGED.
-- AC-11 final merge to main: PR #35.
-- Main merge SHA: `6fd8d019568f3c1927b64f7dffc4c30b301a74e9`.
-- Next phase: **AC-12 — Tourism / Hajj / Umrah Financial Orchestration**.
-- AC-12 canonical rules: BR-043–BR-051, BR-053, BR-054, BR-066, BR-068.
-- AC-12 canonical golden scenarios: GS-023–GS-028.
-- AC-12 integration acceptance also consumes prior-owner rules listed in the build sequence; it must not reimplement their ownership.
+Current verified program direction after AC-14:
 
-For the current truth, always read `PROJECT_STATE.md` after this section.
+- Accounting build sequence AC-00 through AC-14 is **CLOSED / ACCEPTED / MERGED**.
+- AC-14 business merge to main: PR #53, SHA `350ba7dfc5e9e46e355a805a2c3dada1420ca53b`.
+- Governance closure followed on main; always verify the live `main` HEAD and `PROJECT_STATE.md`.
+- There is **no AC-15** in the accepted accounting sequence.
+- The owner has approved continuation as the broader **ELHAFEZ Business Platform** using suite-level organization with independently owned modules underneath.
+- The canonical post-AC-14 business ownership map is:
+  - `docs/BUSINESS-MODULE-ARCHITECTURE.md`
+  - `docs/BUSINESS-MODULE-ROUTING.md`
+- Future tools must not create a giant Hajj & Umrah module or duplicate shared owners. Hajj & Umrah is a suite composed of bounded modules.
+- Existing `tourism-contract-inventory` remains the single accepted shared owner for contracts/allotment/capacity/inventory across Hajj/Umrah and Tourism.
+- Existing accounting owners remain the sole owners of financial truth.
+- The next business implementation phase must be selected from the canonical PLANNED module map and separately scoped; do not invent a module name or ownership boundary from a menu label.
+
+For current truth, always read `PROJECT_STATE.md` after this section.
 
 ## 9. How to recover if PROJECT_STATE.md is stale
 
