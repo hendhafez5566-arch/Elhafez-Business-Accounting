@@ -1,18 +1,24 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { executionContext, type ExecutionContext } from '@elhafez/contracts';
-import { PartyRegistryApplicationService } from '@elhafez/party-registry';
-import type { PartyAccess } from '../../party-registry/src/application/party-access.js';
-import { InMemoryPartyRegistryRepository } from '../../party-registry/src/infrastructure/in-memory-party-registry.repository.js';
+import { partyId, type DuplicateCandidate, type Party, type PartyDraft, type PartyId, type PartyRole } from '@elhafez/party-registry';
 import type { AgentAccess } from './application/agent-access.js';
 import { AgentManagementApplicationService } from './application/agent-management.application-service.js';
+import type { AgentPartyRegistryPort, PartyResolveResult } from './application/party-registry.port.js';
 import { InMemoryAgentManagementRepository } from './infrastructure/in-memory-agent-management.repository.js';
 
-class PartyA implements PartyAccess{async requireBranch(c:ExecutionContext){if(c.branchId==='blocked')throw new Error('branch access denied');}async requirePermission():Promise<void>{}async audit():Promise<void>{}}
-class AgentA implements AgentAccess{async requireBranch(c:ExecutionContext){if(c.branchId==='blocked')throw new Error('branch access denied');}async requirePermission():Promise<void>{}async audit():Promise<void>{}}
-function fixture(){let n=0;const parties=new PartyRegistryApplicationService(new InMemoryPartyRegistryRepository(),new PartyA(),()=>new Date('2026-09-20T12:00:00Z'),()=> 'p'+(++n));const repo=new InMemoryAgentManagementRepository();const service=new AgentManagementApplicationService(repo,parties,new AgentA(),()=>new Date('2026-09-20T12:00:00Z'),()=> 'a'+(++n));return{service,repo,parties};}
+class Access implements AgentAccess { async requireBranch(c:ExecutionContext){if(c.branchId==='blocked')throw new Error('branch access denied');} async requirePermission():Promise<void>{} async audit():Promise<void>{} }
+class Parties implements AgentPartyRegistryPort {
+  private readonly rows=new Map<string,Party>(); private readonly roleRows=new Map<string,Set<PartyRole>>(); private seq=0;
+  async resolveOrCreateForIntegration(c:ExecutionContext,input:PartyDraft):Promise<PartyResolveResult>{const strong=input.nationalIdentity?.replace(/[\s-]/g,'').toUpperCase();const existing=[...this.rows.values()].find(p=>p.companyId===c.companyId&&!!strong&&p.nationalIdentityNormalized===strong);if(existing)return{status:'MATCHED',party:existing};const now='2026-09-20T12:00:00.000Z',id=partyId('p'+(++this.seq));const party:Party={id,companyId:c.companyId,kind:input.kind,displayName:input.displayName.trim(),legalName:input.legalName?.trim()||null,phone:input.phone?.trim()||null,phoneNormalized:input.phone?.replace(/[^0-9]/g,'')||null,whatsappNumber:null,whatsappNormalized:null,email:input.email?.trim().toLowerCase()||null,emailNormalized:input.email?.trim().toLowerCase()||null,address:null,nationalIdentity:input.nationalIdentity?.trim()||null,nationalIdentityNormalized:strong||null,taxIdentity:null,taxIdentityNormalized:null,status:'ACTIVE',createdAt:now,updatedAt:now};this.rows.set(c.companyId+'|'+id,party);return{status:'CREATED',party};}
+  async ensureRoleForIntegration(c:ExecutionContext,id:PartyId,role:PartyRole){const key=c.companyId+'|'+id;const set=this.roleRows.get(key)??new Set<PartyRole>();set.add(role);this.roleRows.set(key,set);}
+  async removeRoleForIntegration(c:ExecutionContext,id:PartyId,role:PartyRole){this.roleRows.get(c.companyId+'|'+id)?.delete(role);}
+  async getForIntegration(c:ExecutionContext,id:PartyId){const p=this.rows.get(c.companyId+'|'+id);if(!p)throw new Error('party missing');return p;}
+  async updateForIntegration(c:ExecutionContext,id:PartyId,input:PartyDraft){const p=await this.getForIntegration(c,id);const next={...p,displayName:input.displayName.trim()};this.rows.set(c.companyId+'|'+id,next);return next;}
+  review(candidates:readonly DuplicateCandidate[]):PartyResolveResult{return{status:'REVIEW_REQUIRED',candidates};}
+}
+function fixture(){let n=0;const parties=new Parties(),repo=new InMemoryAgentManagementRepository(),service=new AgentManagementApplicationService(repo,parties,new Access(),()=>new Date('2026-09-20T12:00:00Z'),()=> 'a'+(++n));return{service,repo,parties};}
 const ctx=executionContext('c1','b1','u1');
-
 test('agent creation is company-wide, numbered, party-linked and commercial-only',async()=>{const{service}=fixture();const result=await service.create(ctx,{party:{kind:'PERSON',displayName:'Agent One',phone:'01000000001',email:'agent@example.com'},commission:{kind:'PERCENT',value:'5',currency:null},notes:'referrer'});assert.equal(result.status,'CREATED');if(result.status==='REVIEW_REQUIRED')return;assert.equal(result.value.agent.number,'AGT-000001');assert.equal(result.value.agent.commission.kind,'PERCENT');assert.equal(result.value.party.displayName,'Agent One');});
 test('agent must suspend before hard delete and references block deletion',async()=>{const{service}=fixture();const r=await service.create(ctx,{party:{kind:'PERSON',displayName:'Agent'},commission:{kind:'FIXED',value:'10.50',currency:'egp'}});if(r.status==='REVIEW_REQUIRED')return;const id=r.value.agent.id;await assert.rejects(()=>service.hardDelete(ctx,id),/suspended/);await service.registerReferenceForIntegration(ctx,id,'TEST','1');await service.suspend(ctx,id);await assert.rejects(()=>service.hardDelete(ctx,id),/referenced/);await service.releaseReferenceForIntegration(ctx,id,'TEST','1');await service.hardDelete(ctx,id);await assert.rejects(()=>service.requireActiveForIntegration(ctx,id));});
 test('suspended agent cannot be used as active and can be reactivated',async()=>{const{service}=fixture();const r=await service.create(ctx,{party:{kind:'PERSON',displayName:'Agent'},commission:{kind:'PERCENT',value:'3.5',currency:null}});if(r.status==='REVIEW_REQUIRED')return;await service.suspend(ctx,r.value.agent.id);await assert.rejects(()=>service.requireActiveForIntegration(ctx,r.value.agent.id),/suspended/);await service.reactivate(ctx,r.value.agent.id);assert.equal((await service.requireActiveForIntegration(ctx,r.value.agent.id)).status,'ACTIVE');});

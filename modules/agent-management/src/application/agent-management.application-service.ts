@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { ContractValidationError, type ExecutionContext } from '@elhafez/contracts';
-import { PartyRegistryApplicationService, type DuplicateCandidate, type Party, type PartyDraft } from '@elhafez/party-registry';
+import type { DuplicateCandidate, Party, PartyDraft } from '@elhafez/party-registry';
 import type { AgentAccess } from './agent-access.js';
 import type { AgentManagementRepository } from './agent-management.repository.js';
+import type { AgentPartyRegistryPort } from './party-registry.port.js';
 import { agentId, commissionTerms, type Agent, type AgentCommissionTerms, type AgentId, type AgentStatus } from '../domain/agent.js';
 
 export const AGENT_PERMISSIONS=Object.freeze({read:'crm.agent.read',manage:'crm.agent.manage',lifecycle:'crm.agent.lifecycle',delete:'crm.agent.delete'});
@@ -14,7 +15,7 @@ export type AgentCreateResult=
  | {readonly status:'REVIEW_REQUIRED';readonly candidates:readonly DuplicateCandidate[]};
 
 export class AgentManagementApplicationService{
- constructor(private readonly repository:AgentManagementRepository,private readonly parties:PartyRegistryApplicationService,private readonly access:AgentAccess,private readonly now:()=>Date=()=>new Date(),private readonly newId:()=>string=()=>randomUUID()){}
+ constructor(private readonly repository:AgentManagementRepository,private readonly parties:AgentPartyRegistryPort,private readonly access:AgentAccess,private readonly now:()=>Date=()=>new Date(),private readonly newId:()=>string=()=>randomUUID()){}
  private async branch(c:ExecutionContext){await this.access.requireBranch(c);}
  private async perm(c:ExecutionContext,p:string){await this.branch(c);await this.access.requirePermission(c,p);}
  async create(c:ExecutionContext,input:CreateAgentInput):Promise<AgentCreateResult>{await this.perm(c,AGENT_PERMISSIONS.manage);return this.resolveOrCreateForIntegration(c,input);}
