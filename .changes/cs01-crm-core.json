@@ -1,0 +1,36 @@
+{
+  "id": "cs01-crm-core",
+  "summary": "Implement CS-01 CRM Core with canonical party, customer, agent, lead and follow-up owners, Prisma persistence, public boundaries, authorization, API composition and Arabic-first web routes.",
+  "type": "phase",
+  "allowedModules": [
+    "party-registry",
+    "customer-management",
+    "agent-management",
+    "crm-leads",
+    "crm-followups"
+  ],
+  "allowedPaths": [
+    "apps/api/package.json",
+    "apps/api/src/app.module.ts",
+    "apps/api/src/cs01-crm-core.spec.ts",
+    "apps/web/src/crm-core-client.ts",
+    "apps/web/src/crm-core-pages.tsx",
+    "apps/web/src/crm-core.spec.ts",
+    "apps/web/src/routes.tsx",
+    "prisma/schema.prisma",
+    "prisma/migrations/20260920200000_cs01_crm_core/migration.sql",
+    "pnpm-lock.yaml",
+    "docs/crm/CS-01-CRM-CORE.md"
+  ],
+  "protectedPaths": [
+    "modules/party-registry/module.json",
+    "modules/customer-management/module.json",
+    "modules/agent-management/module.json",
+    "modules/crm-leads/module.json",
+    "modules/crm-followups/module.json",
+    "apps/web/src/routes.tsx"
+  ],
+  "protectedReason": "CS-01 explicitly creates the five owner-approved canonical modules from the repository module standard and must register their usable CRM routes in the protected route registry. No global shell, design token, accounting owner, workflow, or governance rule is changed.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": ""
+}
