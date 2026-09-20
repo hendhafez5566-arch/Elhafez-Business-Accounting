@@ -1,6 +1,160 @@
-import { createHash } from 'node:crypto';
-import type { PrismaClient } from '@prisma/client';
-import type { HistoricalEquivalence, HistoricalImportRecord } from '../application/historical-import.application-service.js';
-import type { HistoricalImportRepository } from '../application/historical-import.repository.js';
-const add=(a:string,b:string):string=>{const scale=Math.max((a.split('.')[1]??'').length,(b.split('.')[1]??'').length);const unit=10n**BigInt(scale);const parse=(v:string)=>{const negative=v.startsWith('-'),parts=(negative?v.slice(1):v).split('.'),i=parts[0]??'0',f=parts[1]??'';const n=BigInt(i)*unit+BigInt((f+'0'.repeat(scale)).slice(0,scale));return negative?-n:n};const n=parse(a)+parse(b),sign=n<0n?'-':'',abs=n<0n?-n:n,s=abs.toString().padStart(scale+1,'0');return scale?`${sign}${s.slice(0,-scale)}.${s.slice(-scale)}`:`${sign}${s}`};
-export class PrismaHistoricalImportRepository implements HistoricalImportRepository { constructor(private readonly db:PrismaClient){} async find(runId:string,collection:string,sourceId:string){const v=await this.db.costBudgetAccountingHistoricalImport.findUnique({where:{runId_collection_sourceId:{runId,collection,sourceId}}});return v?{...v,owner:'historical-owner',payload:v.payload as Record<string,unknown>,branchId:v.branchId??undefined,debit:v.debit.toString(),credit:v.credit.toString(),amount:v.amount.toString()} as HistoricalImportRecord:undefined} async create(r:HistoricalImportRecord){await this.db.$transaction(async tx=>{const p=r.payload;if(r.collection==='costCenters')await tx.cbaCostCenter.create({data:{id:r.sourceId,companyId:r.companyId,code:String(p.code??r.sourceId),name:String(p.name??r.sourceId),status:String(p.status??'ACTIVE'),parentId:typeof p.parentId==='string'?p.parentId:undefined}});else if(r.collection==='programCostCenters')await tx.cbaProgramCostCenter.create({data:{companyId:r.companyId,sourceType:String(p.sourceType??'PROGRAM'),sourceId:String(p.sourceId??r.sourceId),costCenterId:String(p.costCenterId)}});else if(r.collection==='budgets')await tx.cbaBudget.create({data:{id:r.sourceId,companyId:r.companyId,costCenterId:String(p.costCenterId),periodStart:new Date(String(p.periodStart??p.startDate)),periodEnd:new Date(String(p.periodEnd??p.endDate)),currency:String(p.currency),amount:String(p.amount),status:String(p.status??'ACTIVE'),requestHash:r.sourcePayloadHash}});else throw new Error(`unsupported CostBudget historical collection ${r.collection}`);await tx.costBudgetAccountingHistoricalImport.create({data:{id:r.id,runId:r.runId,collection:r.collection,sourceId:r.sourceId,sourcePayloadHash:r.sourcePayloadHash,companyId:r.companyId,branchId:r.branchId,payload:r.payload as object,payloadJson:r.payloadJson,debit:r.debit,credit:r.credit,amount:r.amount}});})} async equivalence(runId:string,companyId:string):Promise<HistoricalEquivalence>{const rows=await this.db.costBudgetAccountingHistoricalImport.findMany({where:{runId,companyId},orderBy:[{collection:'asc'},{sourceId:'asc'}]});return {records:String(rows.length),payloadDigest:createHash('sha256').update(rows.map(x=>x.payloadJson).join('\n')).digest('hex'),debit:rows.reduce((a,x)=>add(a,x.debit.toString()),'0'),credit:rows.reduce((a,x)=>add(a,x.credit.toString()),'0'),amount:rows.reduce((a,x)=>add(a,x.amount.toString()),'0')}} }
+import { createHash } from "node:crypto";
+import type { PrismaClient } from "@prisma/client";
+import type {
+  HistoricalEquivalence,
+  HistoricalImportRecord,
+} from "../application/historical-import.application-service.js";
+import type { HistoricalImportRepository } from "../application/historical-import.repository.js";
+
+const add = (a: string, b: string): string => {
+  const scale = Math.max(
+    (a.split(".")[1] ?? "").length,
+    (b.split(".")[1] ?? "").length,
+  );
+  const unit = 10n ** BigInt(scale);
+  const parse = (value: string) => {
+    const negative = value.startsWith("-"),
+      parts = (negative ? value.slice(1) : value).split("."),
+      whole = parts[0] ?? "0",
+      fraction = parts[1] ?? "";
+    const parsed =
+      BigInt(whole) * unit +
+      BigInt((fraction + "0".repeat(scale)).slice(0, scale));
+    return negative ? -parsed : parsed;
+  };
+  const value = parse(a) + parse(b),
+    sign = value < 0n ? "-" : "",
+    absolute = value < 0n ? -value : value,
+    text = absolute.toString().padStart(scale + 1, "0");
+  return scale
+    ? `${sign}${text.slice(0, -scale)}.${text.slice(-scale)}`
+    : `${sign}${text}`;
+};
+
+export class PrismaHistoricalImportRepository implements HistoricalImportRepository {
+  constructor(private readonly db: PrismaClient) {}
+
+  async find(runId: string, collection: string, sourceId: string) {
+    const value = await this.db.costBudgetAccountingHistoricalImport.findUnique({
+      where: { runId_collection_sourceId: { runId, collection, sourceId } },
+    });
+    return value
+      ? ({
+          ...value,
+          owner: "historical-owner",
+          payload: value.payload as Record<string, unknown>,
+          branchId: value.branchId ?? undefined,
+          debit: value.debit.toString(),
+          credit: value.credit.toString(),
+          amount: value.amount.toString(),
+        } as HistoricalImportRecord)
+      : undefined;
+  }
+
+  async create(record: HistoricalImportRecord) {
+    await this.db.$transaction(async (tx) => {
+      const payload = record.payload;
+      if (record.collection === "costCenters")
+        await tx.cbaCostCenter.create({
+          data: {
+            id: record.sourceId,
+            companyId: record.companyId,
+            code: String(payload.code ?? record.sourceId),
+            name: String(payload.name ?? record.sourceId),
+            status: String(payload.status ?? "ACTIVE"),
+            parentId:
+              typeof payload.parentId === "string" ? payload.parentId : undefined,
+          },
+        });
+      else if (record.collection === "programCostCenters")
+        await tx.cbaProgramCostCenter.create({
+          data: {
+            companyId: record.companyId,
+            sourceType: String(payload.sourceType ?? "PROGRAM"),
+            sourceId: String(payload.sourceId ?? record.sourceId),
+            costCenterId: String(payload.costCenterId),
+          },
+        });
+      else if (record.collection === "budgets")
+        await tx.cbaBudget.create({
+          data: {
+            id: record.sourceId,
+            companyId: record.companyId,
+            costCenterId: String(payload.costCenterId),
+            periodStart: new Date(String(payload.periodStart ?? payload.startDate)),
+            periodEnd: new Date(String(payload.periodEnd ?? payload.endDate)),
+            currency: String(payload.currency),
+            amount: String(payload.amount),
+            status: String(payload.status ?? "ACTIVE"),
+            requestHash: record.sourcePayloadHash,
+          },
+        });
+      else
+        throw new Error(
+          `unsupported CostBudget historical collection ${record.collection}`,
+        );
+
+      await tx.costBudgetAccountingHistoricalImport.create({
+        data: {
+          id: record.id,
+          runId: record.runId,
+          collection: record.collection,
+          sourceId: record.sourceId,
+          sourcePayloadHash: record.sourcePayloadHash,
+          companyId: record.companyId,
+          branchId: record.branchId,
+          payload: record.payload as object,
+          payloadJson: record.payloadJson,
+          debit: record.debit,
+          credit: record.credit,
+          amount: record.amount,
+        },
+      });
+    });
+  }
+
+  async equivalence(
+    runId: string,
+    companyId: string,
+  ): Promise<HistoricalEquivalence> {
+    const provenance = await this.db.costBudgetAccountingHistoricalImport.findMany({
+      where: { runId, companyId },
+    });
+    const ids = (collection: string) =>
+      provenance
+        .filter((row) => row.collection === collection)
+        .map((row) => row.sourceId);
+    const [costCenters, budgets] = await Promise.all([
+      this.db.cbaCostCenter.findMany({
+        where: { companyId, id: { in: ids("costCenters") } },
+        orderBy: { id: "asc" },
+      }),
+      this.db.cbaBudget.findMany({
+        where: { companyId, id: { in: ids("budgets") } },
+        orderBy: { id: "asc" },
+      }),
+    ]);
+    const canonical = [...costCenters, ...budgets]
+      .map((row) =>
+        JSON.stringify(row, (_, value) =>
+          typeof value === "object" && value?.constructor?.name === "Decimal"
+            ? value.toString()
+            : value,
+        ),
+      )
+      .sort();
+
+    return {
+      records: String(canonical.length),
+      payloadDigest: createHash("sha256")
+        .update(canonical.join("\n"))
+        .digest("hex"),
+      debit: "0",
+      credit: "0",
+      amount: budgets.reduce(
+        (total, budget) => add(total, budget.amount.toString()),
+        "0",
+      ),
+    };
+  }
+}
