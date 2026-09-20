@@ -1,6 +1,6 @@
 {
   "id": "ac14-migration-cutover-equivalence",
-  "summary": "Complete AC-14 final source alignment against frozen v32.5.66: deterministic source registry, exact legacy provenance, no-silent-omission coverage, real settlement/Umrah routing, canonical owner restoration, durable reporting, and source-vs-canonical equivalence.",
+  "summary": "Complete AC-14 final source alignment against frozen v32.5.66: deterministic source registry, exact legacy provenance, role-idempotent resume from durable crosswalks, no-silent-omission coverage including Umrah audit/outbox roots, canonical owner equivalence, durable reporting, and source-vs-canonical verification.",
   "type": "phase",
   "allowedModules": [
     "platform-core",
@@ -50,6 +50,10 @@
     "modules/billing-subledgers/src/application/historical-import.repository.ts",
     "modules/billing-subledgers/src/historical-import.spec.ts",
     "modules/billing-subledgers/src/infrastructure/prisma-historical-import.repository.ts",
+    "modules/cost-budget-accounting/src/historical-import.spec.ts",
+    "modules/cost-budget-accounting/src/infrastructure/prisma-historical-import.repository.ts",
+    "modules/currency-fx/src/historical-import.spec.ts",
+    "modules/currency-fx/src/infrastructure/prisma-historical-import.repository.ts",
     "modules/expense-commission-recognition/src/historical-import.spec.ts",
     "modules/expense-commission-recognition/src/infrastructure/prisma-historical-import.repository.ts",
     "modules/financial-controls/src/historical-import.spec.ts",
@@ -58,6 +62,8 @@
     "modules/general-ledger/src/application/historical-import.repository.ts",
     "modules/general-ledger/src/historical-import.spec.ts",
     "modules/general-ledger/src/infrastructure/prisma-historical-import.repository.ts",
+    "modules/period-control/src/historical-import.spec.ts",
+    "modules/period-control/src/infrastructure/prisma-historical-import.repository.ts",
     "modules/platform-core/module.json",
     "modules/platform-core/src/application/migration-control.application-service.ts",
     "modules/platform-core/src/application/migration-control.repository.ts",
