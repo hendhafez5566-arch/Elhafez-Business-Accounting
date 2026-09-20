@@ -2339,8 +2339,8 @@ model SmSupplierBankAccount {
   id            String            @id @default(uuid())
   companyId     String            @map("company_id")
   supplierId    String            @map("supplier_id")
-  bankName      String            @map("bank_name")
-  accountNumber String            @map("account_number")
+  bankName      String?           @map("bank_name")
+  accountNumber String?           @map("account_number")
   iban          String?
   currency      String?
   active        Boolean           @default(true)
