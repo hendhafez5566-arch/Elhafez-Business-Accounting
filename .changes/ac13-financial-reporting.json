@@ -1,0 +1,28 @@
+{
+  "id": "ac13-financial-reporting",
+  "summary": "Implement the AC-13 rebuildable financial reporting module and cross-module financial controls integration acceptance.",
+  "type": "feature",
+  "allowedModules": [
+    "financial-reporting",
+    "general-ledger"
+  ],
+  "allowedPaths": [
+    ".changes/ac13-financial-reporting.json",
+    "apps/api/src/ac13-financial-integration.spec.ts",
+    "apps/api/src/app.module.ts",
+    "apps/api/package.json",
+    "pnpm-lock.yaml",
+    "prisma/schema.prisma",
+    "prisma/migrations/20260920120000_ac13_financial_reporting_projection/migration.sql",
+    "prisma/migrations/20260920130000_ac13_gl_cost_center_evidence/migration.sql",
+    "apps/api/src/financial-reporting-evidence.adapter.ts"
+  ],
+  "protectedPaths": [
+    "modules/financial-reporting/module.json",
+    "apps/api/src/app.module.ts",
+    "prisma/schema.prisma"
+  ],
+  "protectedReason": "AC-13 requires the canonical Financial Reporting module manifest, production registration, and one additive Reporting-owned rebuildable projection table.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": ""
+}
