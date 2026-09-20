@@ -154,6 +154,109 @@ model PcConfiguration {
   @@map("pc_configuration")
 }
 
+/// AC-14A migration-control metadata only. Never accounting source truth.
+model PcMigrationRun {
+  id                   String    @id @default(uuid())
+  sourceRepository     String    @map("source_repository")
+  sourceCommit         String    @map("source_commit")
+  sourceVersion        String    @map("source_version")
+  sourceSha256         String?   @map("source_sha256")
+  targetBaselineSha    String    @map("target_baseline_sha")
+  implementationVersion String   @map("implementation_version")
+  targetCompanyId      String    @map("target_company_id")
+  actorId              String    @map("actor_id")
+  mode                 String
+  status               String    @default("PLANNED")
+  configSnapshotHash   String    @map("config_snapshot_hash")
+  processedCount       Int       @default(0) @map("processed_count")
+  rejectedCount         Int       @default(0) @map("rejected_count")
+  startedAt            DateTime? @map("started_at")
+  completedAt          DateTime? @map("completed_at")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  crosswalks    PcMigrationCrosswalk[]
+  checkpoints   PcMigrationCheckpoint[]
+  issues        PcMigrationIssue[]
+  equivalence   PcMigrationEquivalence[]
+
+  @@map("pc_migration_runs")
+}
+
+model PcMigrationCrosswalk {
+  id                String   @id @default(uuid())
+  runId             String   @map("run_id")
+  sourceCollection  String   @map("source_collection")
+  sourceId          String   @map("source_id")
+  targetOwner       String   @map("target_owner")
+  targetKind        String   @map("target_kind")
+  targetId          String   @map("target_id")
+  sourcePayloadHash String   @map("source_payload_hash")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  run PcMigrationRun @relation(fields: [runId], references: [id])
+
+  @@unique(
+    [runId, sourceCollection, sourceId, targetOwner, targetKind],
+    name: "runId_sourceCollection_sourceId_targetOwner_targetKind",
+    map: "pc_mig_xwalk_source_slot_key"
+  )
+  @@unique(
+    [runId, targetOwner, targetKind, targetId],
+    name: "runId_targetOwner_targetKind_targetId",
+    map: "pc_mig_xwalk_target_key"
+  )
+  @@map("pc_migration_crosswalks")
+}
+
+model PcMigrationCheckpoint {
+  id             String   @id @default(uuid())
+  runId          String   @map("run_id")
+  stage          String
+  cursor         String?
+  processedCount Int      @default(0) @map("processed_count")
+  status         String
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  run PcMigrationRun @relation(fields: [runId], references: [id])
+
+  @@unique([runId, stage], name: "runId_stage")
+  @@map("pc_migration_checkpoints")
+}
+
+model PcMigrationIssue {
+  id         String   @id @default(uuid())
+  runId      String   @map("run_id")
+  code       String
+  stage      String?
+  sourceCollection String? @map("source_collection")
+  sourceId   String?  @map("source_id")
+  detail     String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  run PcMigrationRun @relation(fields: [runId], references: [id])
+
+  @@map("pc_migration_issues")
+}
+
+model PcMigrationEquivalence {
+  id            String   @id @default(uuid())
+  runId         String   @map("run_id")
+  checkKey      String   @map("check_key")
+  /** Never null — an absent caller scope is normalized to "GLOBAL" before storage. */
+  scope         String   @default("GLOBAL")
+  expectedValue String   @map("expected_value")
+  actualValue   String   @map("actual_value")
+  status        String
+  detail        String?
+  checkedAt     DateTime @map("checked_at")
+
+  run PcMigrationRun @relation(fields: [runId], references: [id])
+
+  @@unique([runId, checkKey, scope], name: "runId_checkKey_scope")
+  @@map("pc_migration_equivalence")
+}
+
 model FxCurrency {
   companyId String  @map("company_id")
   code      String
