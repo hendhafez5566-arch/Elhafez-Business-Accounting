@@ -52,7 +52,7 @@ test('legacy GL rejects malformed decimals, missing accounts, broken reversals, 
 
 
 const realAlignmentCases = [
-  ['prepaidSchedules', 'ExpenseRecognition', 'prepayment', 'recognitionSchedules'],
+  ['prepaidSchedules', 'ExpenseRecognition', 'prepayment', 'prepayments'],
   ['deferredRevenueSchedules', 'ExpenseRecognition', 'deferred-revenue', 'deferredRevenue'],
   ['deferredCostSchedules', 'ExpenseRecognition', 'deferred-cost', 'deferredCost'],
   ['accruedRevenues', 'ExpenseRecognition', 'accrual', 'accruals'],
@@ -253,7 +253,7 @@ test('sourceCollection remains the exact legacy key while targetKind may differ'
   );
   assert.equal(registration?.sourceCollection, 'prepaidSchedules');
   assert.equal(registration?.targetKind, 'prepayment');
-  assert.equal(registration?.importKind, 'recognitionSchedules');
+  assert.equal(registration?.importKind, 'prepayments');
 });
 
 test('production owner adapter fans a legacy receipt into Billing allocations only while Treasury receives one cash voucher', async () => {
