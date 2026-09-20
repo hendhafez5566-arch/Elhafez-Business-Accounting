@@ -17,7 +17,7 @@ const ctxB=executionContext('company-b','branch-b','user-b');
 test('party registry normalizes, isolates companies and links roles', async()=>{
   let n=0; const access=new Access(); const service=new PartyRegistryApplicationService(new InMemoryPartyRegistryRepository(),access,()=>new Date('2026-09-20T12:00:00Z'),()=>String(++n));
   const created=await service.create(ctx,{kind:'PERSON',displayName:'  Mohamed   Hafez ',nationalIdentity:' 123-456 ',phone:'+20 100 200 3000',email:'TEST@EXAMPLE.COM'});
-  assert.equal(created.status,'CREATED'); if(created.status!=='CREATED') return;
+  if(created.status!=='CREATED') assert.fail('party should be created');
   assert.equal(created.party.displayName,'Mohamed Hafez');
   await service.ensureRoleForIntegration(ctx,created.party.id,'CUSTOMER');
   assert.deepEqual(await service.roles(ctx,created.party.id),['CUSTOMER']);
@@ -46,8 +46,7 @@ test('concurrent strong-identity resolve-or-create converges on one party', asyn
     service.resolveOrCreateForIntegration(ctx,{kind:'PERSON',displayName:'Concurrent',nationalIdentity:'998877'}),
     service.resolveOrCreateForIntegration(ctx,{kind:'PERSON',displayName:'Concurrent',nationalIdentity:'998877'}),
   ]);
-  assert.notEqual(a.status,'REVIEW_REQUIRED'); assert.notEqual(b.status,'REVIEW_REQUIRED');
-  if(a.status==='REVIEW_REQUIRED'||b.status==='REVIEW_REQUIRED') return;
+  if(a.status==='REVIEW_REQUIRED'||b.status==='REVIEW_REQUIRED') assert.fail('concurrent strong identity should converge');
   assert.equal(a.party.id,b.party.id);
 });
 

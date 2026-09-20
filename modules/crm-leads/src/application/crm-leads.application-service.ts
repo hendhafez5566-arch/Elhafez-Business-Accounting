@@ -8,9 +8,10 @@ import type { CrmLeadsRepository } from './crm-leads.repository.js';
 import { currencyCode, exactDecimal, leadId, optionalText, requiredText, type CreateLeadInput, type Lead, type LeadHistory, type LeadHistoryKind, type LeadId, type LeadStatus, type UpdateLeadInput } from '../domain/lead.js';
 
 export const CRM_LEAD_PERMISSIONS=Object.freeze({read:'crm.lead.read',manage:'crm.lead.manage',lifecycle:'crm.lead.lifecycle',convert:'crm.lead.convert'});
+export type LeadReviewCandidates = Extract<CustomerResolveResult,{status:'REVIEW_REQUIRED'}>['candidates'];
 export type LeadConversionResult =
  | { readonly status:'CONVERTED'|'ALREADY_CONVERTED'; readonly customerId:CustomerId }
- | { readonly status:'REVIEW_REQUIRED'; readonly reason:'AMBIGUOUS_DUPLICATE'|'SUSPENDED_CUSTOMER'; readonly candidates?:CustomerResolveResult extends {status:'REVIEW_REQUIRED';candidates:infer C}?C:never; readonly customerId?:CustomerId };
+ | { readonly status:'REVIEW_REQUIRED'; readonly reason:'AMBIGUOUS_DUPLICATE'|'SUSPENDED_CUSTOMER'; readonly candidates?:LeadReviewCandidates; readonly customerId?:CustomerId };
 
 const allowed:Readonly<Record<Exclude<LeadStatus,'LOST'|'QUOTED'|'WON'>,readonly LeadStatus[]>>=Object.freeze({NEW:['CONTACTED'],CONTACTED:['QUALIFIED'],QUALIFIED:[]});
 
