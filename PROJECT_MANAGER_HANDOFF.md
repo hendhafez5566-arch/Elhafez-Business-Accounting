@@ -8,7 +8,7 @@
 If the current manager chat is unavailable, the owner should tell the new manager:
 
 > Open the GitHub repository `mhafez300300-byte/Elhafez-Business-Accounting`.
-> Read `PROJECT_MANAGER_HANDOFF.md`, `PROJECT_STATE.md`, `AI_CHANGE_PROTOCOL.md`, `AGENTS.md`, and the accounting architecture documents before making any decision.
+> Read `PROJECT_MANAGER_HANDOFF.md`, `PROJECT_STATE.md`, `AI_CHANGE_PROTOCOL.md`, `AGENTS.md`, `docs/BUSINESS-MODULE-ARCHITECTURE.md`, `docs/BUSINESS-MODULE-ROUTING.md`, and the relevant accounting architecture documents before making any decision.
 > Continue from the current verified repository state. Do not restart completed phases.
 
 The replacement manager must **verify GitHub first**. Never trust this file blindly if the repository has moved forward. `PROJECT_STATE.md` is designed to be updated after every accepted phase merge.
