@@ -1,0 +1,24 @@
+{
+  "id": "20260920-business-platform-module-map",
+  "summary": "Formalize the post-AC-14 business platform suite/module architecture and mandatory AI routing map so future tools extend the canonical owner instead of creating duplicate or cross-owned implementations.",
+  "type": "governance",
+  "allowedModules": [],
+  "allowedPaths": [
+    ".changes/20260920-business-platform-module-map.json",
+    "docs/BUSINESS-MODULE-ARCHITECTURE.md",
+    "docs/BUSINESS-MODULE-ROUTING.md",
+    "docs/SYSTEM-BLUEPRINT.md",
+    "docs/MODULE-STANDARD.md",
+    "AGENTS.md",
+    "AI_CHANGE_PROTOCOL.md",
+    "PROJECT_STATE.md"
+  ],
+  "protectedPaths": [
+    "AGENTS.md",
+    "AI_CHANGE_PROTOCOL.md",
+    "PROJECT_STATE.md"
+  ],
+  "protectedReason": "Owner-approved governance change that makes business-suite/module ownership and AI routing canonical and mandatory before future module work. No business implementation code is changed.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": ""
+}
