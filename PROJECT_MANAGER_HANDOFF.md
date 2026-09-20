@@ -63,9 +63,9 @@ Read these files before implementation:
 - `docs/accounting/ACCOUNTING-AC00-COVERAGE-MATRIX.md`
 
 Core rules:
-1. Product suites/workspaces are presentation groupings, not code owners. Route every request through the canonical Business Module Architecture/ Routing docs first.
-3. Every business module owns its code, data lifecycle, tables and migrations.
-2. A module may not read/write another module's tables or repositories.
+1. Product suites/workspaces are presentation groupings, not code owners. Route every request through the canonical Business Module Architecture / Routing docs first.
+2. Every business module owns its code, data lifecycle, tables and migrations.
+3. A module may not read/write another module's tables or repositories.
 4. Cross-module synchronous access is only through the provider's public package/application API.
 5. Cross-module async collaboration uses approved shared contracts/events.
 6. The compile-time/module import graph must remain a DAG.
