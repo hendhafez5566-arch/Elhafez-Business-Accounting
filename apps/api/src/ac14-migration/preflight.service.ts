@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { MigrationControlApplicationService } from '@elhafez/platform-core';
 import type { MigrationRun } from '@elhafez/platform-core';
 import { ACCEPTED_LEGACY_SOURCE_IDENTITY, type Ac14PreflightRequest } from './config.js';
@@ -25,7 +25,10 @@ export interface Ac14PreflightResult {
  */
 @Injectable()
 export class Ac14PreflightService {
-  constructor(private readonly migrationControl: MigrationControlApplicationService) {}
+  constructor(
+    @Inject(MigrationControlApplicationService)
+    private readonly migrationControl: MigrationControlApplicationService,
+  ) {}
 
   async dryRunPreflight(request: Ac14PreflightRequest): Promise<Ac14PreflightResult> {
     this.migrationControl.validateSourceIdentity(
