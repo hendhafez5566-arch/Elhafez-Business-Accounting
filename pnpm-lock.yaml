@@ -41,6 +41,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@elhafez/currency-fx':
+        specifier: workspace:*
+        version: link:../../modules/currency-fx
       '@elhafez/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts

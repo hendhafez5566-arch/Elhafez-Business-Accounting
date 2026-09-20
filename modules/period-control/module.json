@@ -1,1 +1,16 @@
-{"name":"period-control","publicApi":["src/public/index.ts"],"ownedTables":["period_fiscal_years","period_accounting_periods","period_fiscal_close_history"],"allowedDependencies":["@elhafez/contracts","@elhafez/core"]}
+{
+  "name": "period-control",
+  "publicApi": [
+    "src/public/index.ts"
+  ],
+  "ownedTables": [
+    "period_fiscal_years",
+    "period_accounting_periods",
+    "period_fiscal_close_history",
+    "period_historical_imports"
+  ],
+  "allowedDependencies": [
+    "@elhafez/contracts",
+    "@elhafez/core"
+  ]
+}

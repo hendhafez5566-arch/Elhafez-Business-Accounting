@@ -1880,3 +1880,269 @@ model FrReportingEvidence {
  @@index([companyId,kind,postingDate])
  @@map("fr_reporting_evidence")
 }
+
+model CurrencyFxHistoricalImport {
+ id String @id
+ runId String @map("run_id")
+ collection String
+ sourceId String @map("source_id")
+ sourcePayloadHash String @map("source_payload_hash")
+ companyId String @map("company_id")
+ branchId String? @map("branch_id")
+ payload Json
+ payloadJson String @map("payload_json")
+ debit Decimal @db.Decimal(38,18)
+ credit Decimal @db.Decimal(38,18)
+ amount Decimal @db.Decimal(38,18)
+ createdAt DateTime @default(now()) @map("created_at")
+ @@unique([runId,collection,sourceId])
+ @@index([runId,companyId])
+ @@map("cfx_historical_imports")
+}
+
+model CostBudgetAccountingHistoricalImport {
+ id String @id
+ runId String @map("run_id")
+ collection String
+ sourceId String @map("source_id")
+ sourcePayloadHash String @map("source_payload_hash")
+ companyId String @map("company_id")
+ branchId String? @map("branch_id")
+ payload Json
+ payloadJson String @map("payload_json")
+ debit Decimal @db.Decimal(38,18)
+ credit Decimal @db.Decimal(38,18)
+ amount Decimal @db.Decimal(38,18)
+ createdAt DateTime @default(now()) @map("created_at")
+ @@unique([runId,collection,sourceId])
+ @@index([runId,companyId])
+ @@map("cba_historical_imports")
+}
+
+model PeriodControlHistoricalImport {
+ id String @id
+ runId String @map("run_id")
+ collection String
+ sourceId String @map("source_id")
+ sourcePayloadHash String @map("source_payload_hash")
+ companyId String @map("company_id")
+ branchId String? @map("branch_id")
+ payload Json
+ payloadJson String @map("payload_json")
+ debit Decimal @db.Decimal(38,18)
+ credit Decimal @db.Decimal(38,18)
+ amount Decimal @db.Decimal(38,18)
+ createdAt DateTime @default(now()) @map("created_at")
+ @@unique([runId,collection,sourceId])
+ @@index([runId,companyId])
+ @@map("period_historical_imports")
+}
+
+model GeneralLedgerHistoricalImport {
+ id String @id
+ runId String @map("run_id")
+ collection String
+ sourceId String @map("source_id")
+ sourcePayloadHash String @map("source_payload_hash")
+ companyId String @map("company_id")
+ branchId String? @map("branch_id")
+ payload Json
+ payloadJson String @map("payload_json")
+ debit Decimal @db.Decimal(38,18)
+ credit Decimal @db.Decimal(38,18)
+ amount Decimal @db.Decimal(38,18)
+ createdAt DateTime @default(now()) @map("created_at")
+ @@unique([runId,collection,sourceId])
+ @@index([runId,companyId])
+ @@map("gl_historical_imports")
+}
+
+model TaxHistoricalImport {
+ id String @id
+ runId String @map("run_id")
+ collection String
+ sourceId String @map("source_id")
+ sourcePayloadHash String @map("source_payload_hash")
+ companyId String @map("company_id")
+ branchId String? @map("branch_id")
+ payload Json
+ payloadJson String @map("payload_json")
+ debit Decimal @db.Decimal(38,18)
+ credit Decimal @db.Decimal(38,18)
+ amount Decimal @db.Decimal(38,18)
+ createdAt DateTime @default(now()) @map("created_at")
+ @@unique([runId,collection,sourceId])
+ @@index([runId,companyId])
+ @@map("tax_historical_imports")
+}
+
+model BillingSubledgersHistoricalImport {
+ id String @id
+ runId String @map("run_id")
+ collection String
+ sourceId String @map("source_id")
+ sourcePayloadHash String @map("source_payload_hash")
+ companyId String @map("company_id")
+ branchId String? @map("branch_id")
+ payload Json
+ payloadJson String @map("payload_json")
+ debit Decimal @db.Decimal(38,18)
+ credit Decimal @db.Decimal(38,18)
+ amount Decimal @db.Decimal(38,18)
+ createdAt DateTime @default(now()) @map("created_at")
+ @@unique([runId,collection,sourceId])
+ @@index([runId,companyId])
+ @@map("bill_historical_imports")
+}
+
+model TreasurySettlementHistoricalImport {
+ id String @id
+ runId String @map("run_id")
+ collection String
+ sourceId String @map("source_id")
+ sourcePayloadHash String @map("source_payload_hash")
+ companyId String @map("company_id")
+ branchId String? @map("branch_id")
+ payload Json
+ payloadJson String @map("payload_json")
+ debit Decimal @db.Decimal(38,18)
+ credit Decimal @db.Decimal(38,18)
+ amount Decimal @db.Decimal(38,18)
+ createdAt DateTime @default(now()) @map("created_at")
+ @@unique([runId,collection,sourceId])
+ @@index([runId,companyId])
+ @@map("treasury_historical_imports")
+}
+
+model PartyAccountingHistoricalImport {
+ id String @id
+ runId String @map("run_id")
+ collection String
+ sourceId String @map("source_id")
+ sourcePayloadHash String @map("source_payload_hash")
+ companyId String @map("company_id")
+ branchId String? @map("branch_id")
+ payload Json
+ payloadJson String @map("payload_json")
+ debit Decimal @db.Decimal(38,18)
+ credit Decimal @db.Decimal(38,18)
+ amount Decimal @db.Decimal(38,18)
+ createdAt DateTime @default(now()) @map("created_at")
+ @@unique([runId,collection,sourceId])
+ @@index([runId,companyId])
+ @@map("party_historical_imports")
+}
+
+model ExpenseCommissionRecognitionHistoricalImport {
+ id String @id
+ runId String @map("run_id")
+ collection String
+ sourceId String @map("source_id")
+ sourcePayloadHash String @map("source_payload_hash")
+ companyId String @map("company_id")
+ branchId String? @map("branch_id")
+ payload Json
+ payloadJson String @map("payload_json")
+ debit Decimal @db.Decimal(38,18)
+ credit Decimal @db.Decimal(38,18)
+ amount Decimal @db.Decimal(38,18)
+ createdAt DateTime @default(now()) @map("created_at")
+ @@unique([runId,collection,sourceId])
+ @@index([runId,companyId])
+ @@map("ecr_historical_imports")
+}
+
+model AssetsFinancingHistoricalImport {
+ id String @id
+ runId String @map("run_id")
+ collection String
+ sourceId String @map("source_id")
+ sourcePayloadHash String @map("source_payload_hash")
+ companyId String @map("company_id")
+ branchId String? @map("branch_id")
+ payload Json
+ payloadJson String @map("payload_json")
+ debit Decimal @db.Decimal(38,18)
+ credit Decimal @db.Decimal(38,18)
+ amount Decimal @db.Decimal(38,18)
+ createdAt DateTime @default(now()) @map("created_at")
+ @@unique([runId,collection,sourceId])
+ @@index([runId,companyId])
+ @@map("af_historical_imports")
+}
+
+model ProcurementFinanceHistoricalImport {
+ id String @id
+ runId String @map("run_id")
+ collection String
+ sourceId String @map("source_id")
+ sourcePayloadHash String @map("source_payload_hash")
+ companyId String @map("company_id")
+ branchId String? @map("branch_id")
+ payload Json
+ payloadJson String @map("payload_json")
+ debit Decimal @db.Decimal(38,18)
+ credit Decimal @db.Decimal(38,18)
+ amount Decimal @db.Decimal(38,18)
+ createdAt DateTime @default(now()) @map("created_at")
+ @@unique([runId,collection,sourceId])
+ @@index([runId,companyId])
+ @@map("proc_historical_imports")
+}
+
+model FinancialControlsHistoricalImport {
+ id String @id
+ runId String @map("run_id")
+ collection String
+ sourceId String @map("source_id")
+ sourcePayloadHash String @map("source_payload_hash")
+ companyId String @map("company_id")
+ branchId String? @map("branch_id")
+ payload Json
+ payloadJson String @map("payload_json")
+ debit Decimal @db.Decimal(38,18)
+ credit Decimal @db.Decimal(38,18)
+ amount Decimal @db.Decimal(38,18)
+ createdAt DateTime @default(now()) @map("created_at")
+ @@unique([runId,collection,sourceId])
+ @@index([runId,companyId])
+ @@map("fc_historical_imports")
+}
+
+model TourismContractInventoryHistoricalImport {
+ id String @id
+ runId String @map("run_id")
+ collection String
+ sourceId String @map("source_id")
+ sourcePayloadHash String @map("source_payload_hash")
+ companyId String @map("company_id")
+ branchId String? @map("branch_id")
+ payload Json
+ payloadJson String @map("payload_json")
+ debit Decimal @db.Decimal(38,18)
+ credit Decimal @db.Decimal(38,18)
+ amount Decimal @db.Decimal(38,18)
+ createdAt DateTime @default(now()) @map("created_at")
+ @@unique([runId,collection,sourceId])
+ @@index([runId,companyId])
+ @@map("tci_historical_imports")
+}
+
+model TourismFinanceOrchestrationHistoricalImport {
+ id String @id
+ runId String @map("run_id")
+ collection String
+ sourceId String @map("source_id")
+ sourcePayloadHash String @map("source_payload_hash")
+ companyId String @map("company_id")
+ branchId String? @map("branch_id")
+ payload Json
+ payloadJson String @map("payload_json")
+ debit Decimal @db.Decimal(38,18)
+ credit Decimal @db.Decimal(38,18)
+ amount Decimal @db.Decimal(38,18)
+ createdAt DateTime @default(now()) @map("created_at")
+ @@unique([runId,collection,sourceId])
+ @@index([runId,companyId])
+ @@map("tfo_historical_imports")
+}
