@@ -196,16 +196,8 @@ model PcMigrationCrosswalk {
 
   run PcMigrationRun @relation(fields: [runId], references: [id])
 
-  @@unique(
-    [runId, sourceCollection, sourceId, targetOwner, targetKind],
-    name: "runId_sourceCollection_sourceId_targetOwner_targetKind",
-    map: "pc_mig_xwalk_source_slot_key"
-  )
-  @@unique(
-    [runId, targetOwner, targetKind, targetId],
-    name: "runId_targetOwner_targetKind_targetId",
-    map: "pc_mig_xwalk_target_key"
-  )
+  @@unique([runId, sourceCollection, sourceId, targetOwner, targetKind], name: "runId_sourceCollection_sourceId_targetOwner_targetKind", map: "pc_mig_xwalk_source_slot_key")
+  @@unique([runId, targetOwner, targetKind, targetId], name: "runId_targetOwner_targetKind_targetId", map: "pc_mig_xwalk_target_key")
   @@map("pc_migration_crosswalks")
 }
 
