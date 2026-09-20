@@ -10,6 +10,13 @@ import { ACCEPTED_LEGACY_SOURCE_IDENTITY } from "./config.js";
 import { readRawSnapshot } from "./snapshot-reader.js";
 import { AC14_STAGES } from "./stages.js";
 import {
+  AC14_FROZEN_SOURCE_REGISTRY,
+  inspectFrozenSourceCoverage,
+  processingRegistration,
+  registrationAppliesToRecord,
+  type FrozenSourceRegistration,
+} from "./source-registry.js";
+import {
   AC14_OWNER_IMPORT_GATEWAY,
   type Ac14OwnerImportGateway,
   type EquivalenceValues,
@@ -84,6 +91,33 @@ export class Ac14MigrationCoordinator {
     const write = request.mode !== "DRY_RUN";
     if (write && (created.status === "PLANNED" || created.status === "PAUSED"))
       await this.control.transitionRunStatus(created.id, "RUNNING");
+
+    const coverage = inspectFrozenSourceCoverage(snapshot.root);
+    let coverageBlocked = false;
+    let coveredCollections = 0;
+    for (const finding of coverage) {
+      if (finding.state === "EMPTY" || finding.state === "MAPPED") {
+        coveredCollections++;
+        continue;
+      }
+      coverageBlocked = true;
+      await this.issue(
+        created.id,
+        finding.issueCode ?? "UNSUPPORTED_LEGACY_CONSTRUCT",
+        finding.stage ?? "source-preflight",
+        finding.sourceCollection,
+        null,
+        finding.detail ?? "frozen source collection is not safely accounted for",
+      );
+    }
+    if (write)
+      await this.control.recordCheckpoint({
+        runId: created.id,
+        stage: "source-preflight",
+        processedCount: coveredCollections,
+        status: coverageBlocked ? "FAILED" : "COMPLETE",
+      });
+
     for (const [stage, owner, collections] of AC14_STAGES) {
       if (!owner) continue;
       const prior = await this.control.getCheckpoint(created.id, stage);
@@ -98,6 +132,24 @@ export class Ac14MigrationCoordinator {
           status: "IN_PROGRESS",
         });
       for (const collection of collections) {
+        const registration = processingRegistration(stage, owner, collection);
+        if (
+          !registration ||
+          registration.disposition !== "PROCESS" ||
+          !registration.importKind ||
+          !registration.targetKind ||
+          !registration.strategy
+        ) {
+          await this.issue(
+            created.id,
+            "UNSUPPORTED_LEGACY_CONSTRUCT",
+            stage,
+            collection,
+            null,
+            "known non-empty frozen source collection has no executable mapping",
+          );
+          continue;
+        }
         const raw = snapshot.root[collection];
         if (raw === undefined) continue;
         if (!Array.isArray(raw)) {
@@ -123,6 +175,7 @@ export class Ac14MigrationCoordinator {
             );
             continue;
           }
+          if (!registrationAppliesToRecord(registration, value)) continue;
           const id = sourceId(value)!;
           const branch = this.resolveBranch(value.branchId, request.config);
           if (branch.error) {
@@ -159,7 +212,10 @@ export class Ac14MigrationCoordinator {
             runId: created.id,
             stage,
             owner,
-            collection,
+            sourceCollection: collection,
+            importKind: registration.importKind,
+            targetKind: registration.targetKind,
+            processingStrategy: registration.strategy,
             sourceId: id,
             sourcePayloadHash: hash(value),
             targetCompanyId: request.config.targetCompanyId,
@@ -186,7 +242,7 @@ export class Ac14MigrationCoordinator {
                 sourceCollection: collection,
                 sourceId: id,
                 targetOwner: owner,
-                targetKind: outcome.targetKind,
+                targetKind: unit.targetKind,
                 targetId: outcome.targetId,
                 sourcePayloadHash: unit.sourcePayloadHash,
               });
@@ -194,7 +250,7 @@ export class Ac14MigrationCoordinator {
               await this.control.recordCheckpoint({
                 runId: created.id,
                 stage,
-                cursor: `${collection}:${id}`,
+                cursor: `${collection}:${id}:${owner}:${unit.targetKind}`,
                 processedCount: count,
                 status: "IN_PROGRESS",
               });
@@ -371,70 +427,94 @@ export class Ac14MigrationCoordinator {
   private expectedEquivalence(
     root: Record<string, unknown>,
   ): ReadonlyMap<string, EquivalenceValues> {
-    const result = new Map<string, EquivalenceValues>();
-    for (const [, owner, collections] of AC14_STAGES) {
-      if (!owner) continue;
-      const rows = collections.flatMap((collection) => {
-        const value = root[collection];
-        return Array.isArray(value)
-          ? value
-              .filter(objectRecord)
-              .map((payload) => ({
-                collection,
-                payload:
-                  collection === "journals"
-                    ? normalizeLegacyJournal(payload)
-                    : payload,
-              }))
-          : [];
-      });
-      const sum = (field: string) =>
-        rows.reduce(
-          (total, row) => addDecimal(total, decimalFrom(row.payload[field])),
-          "0",
-        );
-      const values: Record<string, string> = {
-        records: String(rows.length),
-        debit: sum("debit"),
-        credit: sum("credit"),
-        amount: sum("amount"),
-      };
-      if (owner === "GeneralLedger") {
-        const journals = rows.filter((x) => x.collection === "journals");
-        const lines = journals.flatMap((x) =>
-          Array.isArray(x.payload.lines)
-            ? x.payload.lines.filter(objectRecord)
-            : [],
-        );
-        values.records = String(rows.length);
-        values.debit = lines.reduce(
-          (a, l) => addDecimal(a, decimalFrom(l.debit)),
-          "0",
-        );
-        values.credit = lines.reduce(
-          (a, l) => addDecimal(a, decimalFrom(l.credit)),
-          "0",
-        );
-        values.journalCount = String(journals.length);
-        values.foreignCurrencyEvidence = String(
-          lines.filter(
-            (l) => typeof l.foreignCurrency === "string" && l.foreignCurrency,
-          ).length,
-        );
-        values.fxRateEvidence = String(
-          lines.filter((l) => typeof l.fxRate === "string" && l.fxRate).length,
-        );
-        values.reversalLineage = String(
-          journals.filter(
-            (j) =>
-              j.payload.kind === "REVERSAL" &&
-              typeof j.payload.reversalSourceId === "string",
-          ).length,
+    const mutable = new Map<string, Record<string, string>>();
+    for (const owner of this.owners.ownerNames())
+      mutable.set(owner, { records: "0", debit: "0", credit: "0", amount: "0" });
+
+    for (const registration of AC14_FROZEN_SOURCE_REGISTRY) {
+      if (registration.disposition !== "PROCESS" || !registration.owner) continue;
+      const value = root[registration.sourceCollection];
+      if (!Array.isArray(value)) continue;
+      const target = mutable.get(registration.owner);
+      if (!target) continue;
+      for (const raw of value) {
+        if (!objectRecord(raw) || !sourceId(raw)) continue;
+        if (!registrationAppliesToRecord(registration, raw)) continue;
+        if (registration.strategy === "BILLING_ALLOCATIONS") {
+          const allocations = Array.isArray(raw.allocations)
+            ? raw.allocations.filter(objectRecord)
+            : [];
+          target.records = addInteger(target.records, allocations.length);
+          target.amount = allocations.reduce(
+            (sum, allocation) =>
+              addDecimal(
+                sum,
+                decimalFrom(
+                  allocation.invoiceAmount ??
+                    allocation.amount ??
+                    allocation.appliedAmount,
+                ),
+              ),
+            target.amount,
+          );
+          continue;
+        }
+        target.records = addInteger(target.records, 1);
+        target.debit = addDecimal(target.debit, decimalFrom(raw.debit));
+        target.credit = addDecimal(target.credit, decimalFrom(raw.credit));
+        target.amount = addDecimal(
+          target.amount,
+          expectedAmount(registration, raw),
         );
       }
-      result.set(owner, values);
     }
-    return result;
+
+    const gl = mutable.get("GeneralLedger");
+    if (gl) {
+      const journalsRaw = root.journals;
+      const journals = Array.isArray(journalsRaw)
+        ? journalsRaw.filter(objectRecord).map(normalizeLegacyJournal)
+        : [];
+      const lines = journals.flatMap((journal) =>
+        Array.isArray(journal.lines) ? journal.lines.filter(objectRecord) : [],
+      );
+      gl.debit = lines.reduce(
+        (sum, line) => addDecimal(sum, decimalFrom(line.debit)),
+        "0",
+      );
+      gl.credit = lines.reduce(
+        (sum, line) => addDecimal(sum, decimalFrom(line.credit)),
+        "0",
+      );
+      gl.amount = "0";
+      gl.journalCount = String(journals.length);
+      gl.foreignCurrencyEvidence = String(
+        lines.filter(
+          (line) =>
+            typeof line.foreignCurrency === "string" &&
+            line.foreignCurrency.length > 0,
+        ).length,
+      );
+      gl.fxRateEvidence = String(
+        lines.filter(
+          (line) => typeof line.fxRate === "string" && line.fxRate.length > 0,
+        ).length,
+      );
+      gl.reversalLineage = String(
+        journals.filter(
+          (journal) =>
+            journal.kind === "REVERSAL" &&
+            typeof journal.reversalSourceId === "string",
+        ).length,
+      );
+    }
+
+    return new Map(
+      [...mutable.entries()].map(([owner, values]) => [
+        owner,
+        Object.freeze({ ...values }),
+      ]),
+    );
   }
   private requiredRunId(config: MigrationConfig) {
     if (!config.runId) throw new Error("runId is required");
@@ -460,6 +540,17 @@ export class Ac14MigrationCoordinator {
     id: string | null,
     detail: string,
   ) {
+    const existing = await this.control.listIssues(runId);
+    if (
+      existing.some(
+        (issue) =>
+          issue.code === code &&
+          issue.stage === stage &&
+          issue.sourceCollection === collection &&
+          issue.sourceId === id,
+      )
+    )
+      return;
     await this.control.recordIssue({
       runId,
       code,
@@ -470,8 +561,61 @@ export class Ac14MigrationCoordinator {
     });
   }
 }
-const decimalFrom = (value: unknown) =>
-  typeof value === "string" && /^-?\d+(?:\.\d+)?$/.test(value) ? value : "0";
+const decimalFrom = (value: unknown) => {
+  if (typeof value === "string" && /^-?\d+(?:\.\d+)?$/.test(value))
+    return value;
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  return "0";
+};
+const addInteger = (value: string, increment: number) =>
+  String(Number.parseInt(value, 10) + increment);
+const expectedAmount = (
+  registration: FrozenSourceRegistration,
+  payload: Readonly<Record<string, unknown>>,
+): string => {
+  switch (registration.strategy) {
+    case "TAX_CODE":
+    case "BANK_RECONCILIATION":
+    case "UMRAH_CONTRACT":
+    case "UMRAH_SUPPLIER_COMMITMENT":
+      return "0";
+    case "PREPAID_SCHEDULE":
+    case "ACCRUED_REVENUE":
+    case "ASSET_DEPRECIATION":
+    case "PROVISION":
+    case "ALLOWANCE":
+    case "PARTY_NETTING":
+      return decimalFrom(payload.amount);
+    case "DEFERRED_REVENUE":
+    case "DEFERRED_COST":
+      return decimalFrom(payload.total ?? payload.amount);
+    case "FIXED_ASSET":
+      return decimalFrom(payload.cost ?? payload.acquisitionValue ?? payload.amount);
+    case "LOAN":
+      return decimalFrom(payload.principal ?? payload.amount);
+    case "LOAN_INSTALLMENT":
+      return decimalFrom(payload.principal ?? payload.amount);
+    case "PAYROLL_RUN":
+      return decimalFrom(payload.gross ?? payload.expenseTotal ?? payload.amount);
+    case "BUDGET":
+      return decimalFrom(payload.amount);
+    case "UMRAH_RESERVATION": {
+      const allocation = objectRecord(payload.allocation) ? payload.allocation : {};
+      const direct =
+        allocation.quantity ??
+        allocation.units ??
+        allocation.seats ??
+        allocation.visas ??
+        allocation.pax ??
+        payload.quantity;
+      if (direct !== undefined) return decimalFrom(direct);
+      const rooms = objectRecord(allocation.rooms) ? Object.values(allocation.rooms) : [];
+      return rooms.reduce((sum, value) => addDecimal(sum, decimalFrom(value)), "0");
+    }
+    default:
+      return decimalFrom(payload.amount);
+  }
+};
 const addDecimal = (a: string, b: string) => {
   const scale = Math.max(
       (a.split(".")[1] ?? "").length,
