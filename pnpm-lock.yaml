@@ -122,9 +122,6 @@ importers:
       reflect-metadata:
         specifier: ^0.2.2
         version: 0.2.2
-      path-to-regexp:
-        specifier: 8.4.2
-        version: 8.4.2
       rxjs:
         specifier: ^7.8.1
         version: 7.8.2
