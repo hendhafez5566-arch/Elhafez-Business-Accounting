@@ -114,6 +114,7 @@ export const AC14_FROZEN_SOURCE_REGISTRY: readonly FrozenSourceRegistration[] = 
   process("umrahFlightBlocks", "tourism-contract-inventory", "TourismContractInventory", "flight-contract", "tourismContracts", "UMRAH_CONTRACT"),
   process("umrahTransportContracts", "tourism-contract-inventory", "TourismContractInventory", "transport-contract", "tourismContracts", "UMRAH_CONTRACT"),
   process("umrahVisaContracts", "tourism-contract-inventory", "TourismContractInventory", "visa-contract", "tourismContracts", "UMRAH_CONTRACT"),
+  process("umrahServiceContracts", "tourism-contract-inventory", "TourismContractInventory", "service-contract", "tourismContracts", "UMRAH_CONTRACT"),
   process("umrahContractReservations", "tourism-contract-inventory", "TourismContractInventory", "historical-allocation", "inventoryAllocations", "UMRAH_RESERVATION"),
   process("umrahSupplierCommitments", "procurement", "Procurement", "supplier-commitment", "supplierCommitments", "UMRAH_SUPPLIER_COMMITMENT"),
 
@@ -153,7 +154,7 @@ export const AC14_KNOWN_FROZEN_COLLECTIONS = [
   "assetDepreciations","loans","loanSchedules","provisions","doubtfulAllowances","payrollRuns",
   "accountBudgets","openingBalanceBatches","approvals","fiscalYears","periods",
   "umrahSeasons","umrahHotelContracts","umrahFlightBlocks","umrahTransportContracts",
-  "umrahVisaContracts","umrahContractReservations","umrahPrograms","umrahProgramSegments",
+  "umrahVisaContracts","umrahServiceContracts","umrahContractReservations","umrahPrograms","umrahProgramSegments",
   "umrahProgramCosts","umrahBookings","umrahTravelers","umrahHotelRooms","umrahVisaBatches",
   "umrahVisaItems","umrahTickets","umrahBusRuns","umrahOperationTasks","umrahIncidents",
   "umrahSupplierCommitments",
