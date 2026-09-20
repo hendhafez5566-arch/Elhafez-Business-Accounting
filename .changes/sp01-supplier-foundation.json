@@ -1,0 +1,30 @@
+{
+  "id": "sp01-supplier-foundation",
+  "summary": "Implement SP-01 supplier operational profiles, approval and lifecycle governance, bank accounts, legacy identity import, public contracts, API composition, persistence, and Arabic-first web routes.",
+  "type": "phase",
+  "allowedModules": [
+    "supplier-management"
+  ],
+  "allowedPaths": [
+    ".changes/sp01-supplier-foundation.json",
+    "apps/api/package.json",
+    "apps/api/src/app.module.ts",
+    "apps/api/src/sp01-supplier-management.spec.ts",
+    "apps/web/src/routes.tsx",
+    "apps/web/src/supplier-client.ts",
+    "apps/web/src/supplier-pages.tsx",
+    "apps/web/src/suppliers.spec.ts",
+    "pnpm-lock.yaml",
+    "prisma/schema.prisma",
+    "prisma/migrations/20260920220000_sp01_supplier_management/migration.sql"
+  ],
+  "protectedPaths": [
+    "modules/supplier-management/module.json",
+    "apps/api/src/app.module.ts",
+    "apps/web/src/routes.tsx",
+    "prisma/schema.prisma"
+  ],
+  "protectedReason": "SP-01 creates the owner-approved supplier-management module, registers its isolated Nest composition and browser routes, and adds only supplier-owned Prisma models through one forward migration.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": ""
+}

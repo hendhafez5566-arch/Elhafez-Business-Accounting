@@ -2273,6 +2273,115 @@ model CmNumberCounter {
   @@map("cm_number_counters")
 }
 
+/// SP-01 — company-wide supplier operational governance (Party identity remains external/opaque).
+model SmSupplierProfile {
+  id              String                    @id @default(uuid())
+  companyId       String                    @map("company_id")
+  partyId         String                    @map("party_id")
+  supplierCode    String                    @map("supplier_code")
+  status          String                    @default("ACTIVE")
+  approvalStatus  String                    @default("PENDING") @map("approval_status")
+  defaultCurrency String                    @map("default_currency")
+  creditDays      Int                       @default(0) @map("credit_days")
+  contactPerson   String?                   @map("contact_person")
+  notes           String?
+  createdAt       DateTime                  @default(now()) @map("created_at")
+  updatedAt       DateTime                  @updatedAt @map("updated_at")
+  categories      SmSupplierCategoryLink[]
+  approvals       SmSupplierApproval[]
+  bankAccounts    SmSupplierBankAccount[]
+  legacyRefs      SmSupplierLegacyReference[]
+  history         SmSupplierHistory[]
+
+  @@unique([companyId, id], name: "companyId_id")
+  @@unique([companyId, partyId], name: "companyId_partyId")
+  @@unique([companyId, supplierCode], name: "companyId_supplierCode")
+  @@index([companyId, status, approvalStatus])
+  @@map("sm_supplier_profiles")
+}
+
+model SmSupplierCategory {
+  id        String                   @id @default(uuid())
+  companyId String                   @map("company_id")
+  code      String
+  label     String
+  links     SmSupplierCategoryLink[]
+  @@unique([companyId, code], name: "companyId_code")
+  @@map("sm_supplier_categories")
+}
+
+model SmSupplierCategoryLink {
+  companyId    String             @map("company_id")
+  supplierId   String             @map("supplier_id")
+  categoryCode String             @map("category_code")
+  supplier     SmSupplierProfile  @relation(fields: [companyId, supplierId], references: [companyId, id], onDelete: Restrict)
+  category     SmSupplierCategory @relation(fields: [companyId, categoryCode], references: [companyId, code], onDelete: Restrict)
+  @@id([companyId, supplierId, categoryCode])
+  @@index([companyId, categoryCode])
+  @@map("sm_supplier_category_links")
+}
+
+model SmSupplierApproval {
+  id         String            @id @default(uuid())
+  companyId  String            @map("company_id")
+  supplierId String            @map("supplier_id")
+  decision   String
+  source     String
+  actorId    String            @map("actor_id")
+  reason     String?
+  decidedAt  DateTime          @map("decided_at")
+  supplier   SmSupplierProfile @relation(fields: [companyId, supplierId], references: [companyId, id], onDelete: Restrict)
+  @@index([companyId, supplierId, decidedAt])
+  @@map("sm_supplier_approvals")
+}
+
+model SmSupplierBankAccount {
+  id            String            @id @default(uuid())
+  companyId     String            @map("company_id")
+  supplierId    String            @map("supplier_id")
+  bankName      String            @map("bank_name")
+  accountNumber String            @map("account_number")
+  iban          String?
+  currency      String?
+  active        Boolean           @default(true)
+  isDefault     Boolean           @default(false) @map("is_default")
+  createdBy     String            @map("created_by")
+  updatedBy     String            @map("updated_by")
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+  supplier      SmSupplierProfile @relation(fields: [companyId, supplierId], references: [companyId, id], onDelete: Restrict)
+  @@unique([companyId, id], name: "companyId_id")
+  @@index([companyId, supplierId, active])
+  @@map("sm_supplier_bank_accounts")
+}
+
+model SmSupplierLegacyReference {
+  companyId       String            @map("company_id")
+  source          String
+  legacySupplierId String           @map("legacy_supplier_id")
+  supplierId      String            @map("supplier_id")
+  partyId         String            @map("party_id")
+  fingerprint     String
+  createdAt       DateTime          @default(now()) @map("created_at")
+  supplier        SmSupplierProfile @relation(fields: [companyId, supplierId], references: [companyId, id], onDelete: Restrict)
+  @@id([companyId, source, legacySupplierId])
+  @@index([companyId, supplierId])
+  @@map("sm_supplier_legacy_refs")
+}
+
+model SmSupplierHistory {
+  id         String            @id @default(uuid())
+  companyId  String            @map("company_id")
+  supplierId String            @map("supplier_id")
+  action     String
+  actorId    String            @map("actor_id")
+  occurredAt DateTime          @map("occurred_at")
+  metadata   Json
+  supplier   SmSupplierProfile @relation(fields: [companyId, supplierId], references: [companyId, id], onDelete: Restrict)
+  @@index([companyId, supplierId, occurredAt])
+  @@map("sm_supplier_history")
+}
+
 /// CS-01 CRM Core — branch-scoped Lead / Opportunity truth.
 model ClLead {
   id                      String          @id @default(uuid())
