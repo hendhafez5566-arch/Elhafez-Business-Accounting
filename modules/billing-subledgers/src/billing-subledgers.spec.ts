@@ -473,3 +473,82 @@ test('GS-008 BR-011 foreign settlement preserves carrying/current base and reali
  assert.equal(result.carryingBaseAmount,'100'); assert.equal(result.settlementBaseAmount,'120'); assert.equal(result.realizedFx,'20'); assert.equal(result.fxRateId,'usd-egp');
  assert.equal(result.allocations[0]?.carryingBaseAmount,'100'); assert.equal(result.allocations[0]?.settlementFxRateId,'usd-egp');
 });
+
+test('AC-12 cancellation evidence distinguishes active settlement from retained reversed history', async () => {
+  const f = fixture();
+  const draft = await f.service.createDraft(invoice({ dueDate: '2026-09-30' }));
+  await f.service.postInvoice(company, draft.id);
+  await f.service.applyAllocation({ id: 'payment-1', companyId: company, partyKind: 'CUSTOMER', partyId: 'party', invoiceId: draft.id, amount: amount('25'), sourceType: 'TREASURY_SETTLEMENT', sourceId: 'voucher-1' });
+  const active = await f.service.getCancellationEvidence(company, draft.id);
+  assert.equal(active.hasHistoricalAllocationEvidence, true);
+  assert.equal(active.settlementRequired, true);
+  assert.deepEqual(active.activeAllocationIds, ['payment-1']);
+  await f.service.reverseAllocation(company, 'payment-1');
+  const reversed = await f.service.getCancellationEvidence(company, draft.id);
+  assert.equal(reversed.hasHistoricalAllocationEvidence, true);
+  assert.equal(reversed.settlementRequired, false);
+  assert.equal(reversed.cancellationSafe, true);
+  assert.deepEqual(reversed.activeAllocationIds, []);
+});
+
+test('BLOCKER-6 unrelated customer advance does not block invoice A cancellation', async () => {
+  const service = fixture().service;
+  // Create invoice A (outstanding = 100)
+  const invoiceA = await service.createDraft({
+    id: 'invoice-A',
+    companyId: company,
+    type: 'CUSTOMER',
+    partyId: 'customer-1',
+    number: 'INV-A',
+    postingDate: '2026-09-19',
+    currency: 'EGP',
+    controlAccountId: 'ar',
+    sourceType: 'TOURISM_PROGRAM',
+    sourceId: 'program-A',
+    lines: [{ id: 'line-A', amount: decimalAmount('100'), accountId: 'revenue' }],
+  });
+  await service.postInvoice(company, invoiceA.id);
+  // Create invoice B (outstanding = 200)
+  const invoiceB = await service.createDraft({
+    id: 'invoice-B',
+    companyId: company,
+    type: 'CUSTOMER',
+    partyId: 'customer-1',
+    number: 'INV-B',
+    postingDate: '2026-09-19',
+    currency: 'EGP',
+    controlAccountId: 'ar',
+    sourceType: 'TOURISM_PROGRAM',
+    sourceId: 'program-B',
+    lines: [{ id: 'line-B', amount: decimalAmount('200'), accountId: 'revenue' }],
+  });
+  await service.postInvoice(company, invoiceB.id);
+  // Create advance related to invoice B by paying more than outstanding (250 > 200)
+  // This creates a genuine related advance/prefund of 50
+  const allocationB = await service.applyAllocation({
+    id: 'alloc-B',
+    companyId: company,
+    partyKind: 'CUSTOMER',
+    partyId: 'customer-1',
+    invoiceId: invoiceB.id,
+    amount: decimalAmount('250'),
+    sourceType: 'TREASURY_VOUCHER',
+    sourceId: 'voucher-B',
+  });
+  assert.equal(allocationB.advanceAmount, '50', 'advance amount should be excess over invoice');
+  // Invoice A should be cancellation-safe despite customer having advance from B
+  const evidenceA = await service.getCancellationEvidence(company, invoiceA.id);
+  assert.equal(evidenceA.cancellationSafe, true, 'invoice A should be safe - advance is not related');
+  assert.equal(evidenceA.hasAvailableAdvance, false, 'invoice A should not see unrelated advance');
+  // Invoice B should show the related advance and be blocked
+  const evidenceB = await service.getCancellationEvidence(company, invoiceB.id);
+  assert.equal(evidenceB.cancellationSafe, false, 'invoice B should not be safe - has related advance');
+  assert.equal(evidenceB.hasAvailableAdvance, true, 'invoice B should see its related advance');
+  // Verify reversal removes the active blocker
+  await service.reverseAllocation(company, allocationB.id);
+  const evidenceBAfter = await service.getCancellationEvidence(company, invoiceB.id);
+  assert.equal(evidenceBAfter.cancellationSafe, true, 'after reversal, invoice B should be safe');
+  // Verify historical evidence is retained
+  const evidenceBHistory = await service.getCancellationEvidence(company, invoiceB.id);
+  assert.equal(evidenceBHistory.hasHistoricalAllocationEvidence, true, 'historical allocation evidence retained');
+});

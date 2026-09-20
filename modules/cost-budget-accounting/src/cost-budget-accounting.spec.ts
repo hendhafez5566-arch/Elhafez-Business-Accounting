@@ -125,3 +125,62 @@ test('BR-061 Cost owner records allocation cost effects idempotently without fak
   );
   assert.equal(await service.getProgramAllocationCostEffect(other, effect.id), undefined);
 });
+
+test('BR-068 Tourism service actualization is semantic, idempotent and conflict safe', async () => {
+  const service = new CostBudgetAccountingApplicationService(new InMemoryCostCenterRepository());
+  await service.create(input);
+  await service.ensureProgramCostCenter(company, program, id);
+  const command = { id: 'milestone-1', companyId: company, program, service: sourceReference('TOURISM_SERVICE', 'ticket-1'), evidence: sourceReference('FLIGHT_SEGMENT', 'segment-1'), amount: decimalAmount('75.25'), postingDate: '2026-09-19' };
+  const first = await service.recordTourismServiceActualization(command);
+  assert.deepEqual(await service.recordTourismServiceActualization(command), first);
+  await assert.rejects(service.recordTourismServiceActualization({ ...command, amount: decimalAmount('76') }), /conflicting replay/);
+  assert.equal(first.service.sourceId, 'ticket-1');
+  assert.equal(first.evidence.sourceId, 'segment-1');
+});
+
+test('BLOCKER-4 concurrent Tourism service actualization converges for identical requests', async () => {
+  const service = new CostBudgetAccountingApplicationService(new InMemoryCostCenterRepository());
+  const program = sourceReference('TOURISM_PROGRAM', 'program-1');
+  const costCenter = costCenterId('cc-001');
+  await service.create({ ...input, id: costCenter });
+  await service.ensureProgramCostCenter(company, program, costCenter);
+  const command = {
+    id: 'actualize-concurrent',
+    companyId: company,
+    program,
+    service: sourceReference('TOURISM_SERVICE', 'service-1'),
+    evidence: sourceReference('VISA_ALLOCATION', 'visa-1'),
+    amount: decimalAmount('150'),
+    postingDate: '2026-09-19',
+  };
+  // Concurrent identical requests
+  const [first, second] = await Promise.all([
+    service.recordTourismServiceActualization(command),
+    service.recordTourismServiceActualization(command),
+  ]);
+  assert.equal(first.id, second.id, 'should converge to same record');
+  assert.equal(first.requestHash, second.requestHash, 'should have identical hash');
+});
+
+test('BLOCKER-4 concurrent Tourism service actualization rejects conflicting payloads', async () => {
+  const service = new CostBudgetAccountingApplicationService(new InMemoryCostCenterRepository());
+  const program = sourceReference('TOURISM_PROGRAM', 'program-2');
+  const costCenter = costCenterId('cc-002');
+  await service.create({ ...input, id: costCenter });
+  await service.ensureProgramCostCenter(company, program, costCenter);
+  const base = {
+    id: 'actualize-conflict',
+    companyId: company,
+    program,
+    service: sourceReference('TOURISM_SERVICE', 'service-2'),
+    evidence: sourceReference('VISA_ALLOCATION', 'visa-2'),
+    postingDate: '2026-09-19',
+  };
+  // First request succeeds
+  await service.recordTourismServiceActualization({ ...base, amount: decimalAmount('100') });
+  // Second request with different amount conflicts
+  await assert.rejects(
+    service.recordTourismServiceActualization({ ...base, amount: decimalAmount('200') }),
+    /conflicting replay/
+  );
+});

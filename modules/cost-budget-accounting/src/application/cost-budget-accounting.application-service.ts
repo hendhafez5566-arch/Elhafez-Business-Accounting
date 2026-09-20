@@ -191,6 +191,36 @@ export class CostBudgetAccountingApplicationService {
   ): Promise<ProgramAllocationCostEffect | undefined> {
     return this.repository.programAllocationCostEffect(companyId, id);
   }
+
+  async recordTourismServiceActualization(input: {
+    id: string; companyId: CompanyId; program: SourceReference; service: SourceReference;
+    evidence: SourceReference; amount: DecimalAmount; postingDate: string;
+  }) {
+    const center = await this.resolveProgramCostCenter(input.companyId, input.program);
+    const amount = decimalAmount(input.amount);
+    if (scaled(amount) < 0n) throw new ContractValidationError('amount', 'must not be negative');
+    const normalized = { ...input, costCenterId: center.id, amount };
+    const requestHash = fingerprint(normalized);
+    const value = { ...normalized, requestHash, createdAt: new Date().toISOString() };
+    try {
+      await this.repository.saveTourismServiceActualization(value);
+      return (await this.repository.tourismServiceActualization(input.companyId, input.id)) ?? value;
+    } catch (error) {
+      // Check if this is a unique constraint violation (concurrency race)
+      if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
+        // Same ID but different payload = conflict
+        const existing = await this.repository.tourismServiceActualization(input.companyId, input.id);
+        if (!existing) throw error;
+        if (existing.requestHash !== requestHash) {
+          throw new ContractValidationError('tourismActualization', 'conflicting replay');
+        }
+        // Same request converged
+        return existing;
+      }
+      // Non-unique error - rethrow original
+      throw error;
+    }
+  }
 }
 
 function fingerprint(value: unknown): string {

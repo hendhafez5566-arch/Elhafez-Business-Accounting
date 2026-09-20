@@ -53,6 +53,9 @@ importers:
       '@elhafez/tourism-contract-inventory':
         specifier: workspace:*
         version: link:../../modules/tourism-contract-inventory
+      '@elhafez/tourism-finance-orchestration':
+        specifier: workspace:*
+        version: link:../../modules/tourism-finance-orchestration
       '@elhafez/treasury-settlement':
         specifier: workspace:*
         version: link:../../modules/treasury-settlement
@@ -201,6 +204,39 @@ importers:
       '@elhafez/cost-budget-accounting':
         specifier: workspace:*
         version: link:../cost-budget-accounting
+      '@nestjs/common':
+        specifier: ^11.0.11
+        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@prisma/client':
+        specifier: 6.19.0
+        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
+
+  modules/tourism-finance-orchestration:
+    dependencies:
+      '@elhafez/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@elhafez/billing-subledgers':
+        specifier: workspace:*
+        version: link:../billing-subledgers
+      '@elhafez/treasury-settlement':
+        specifier: workspace:*
+        version: link:../treasury-settlement
+      '@elhafez/expense-commission-recognition':
+        specifier: workspace:*
+        version: link:../expense-commission-recognition
+      '@elhafez/procurement-finance':
+        specifier: workspace:*
+        version: link:../procurement-finance
+      '@elhafez/cost-budget-accounting':
+        specifier: workspace:*
+        version: link:../cost-budget-accounting
+      '@elhafez/financial-controls':
+        specifier: workspace:*
+        version: link:../financial-controls
+      '@elhafez/tourism-contract-inventory':
+        specifier: workspace:*
+        version: link:../tourism-contract-inventory
       '@nestjs/common':
         specifier: ^11.0.11
         version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)

@@ -8,4 +8,5 @@ export type {
   Budget,
   BudgetActual,
   ProgramAllocationCostEffect,
+  TourismServiceActualization,
 } from '../domain/cost-center.js';

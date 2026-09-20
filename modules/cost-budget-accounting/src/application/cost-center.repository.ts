@@ -6,6 +6,7 @@ import type {
   CostCenterId,
   ProgramAllocationCostEffect,
   ProgramCostCenterAssociation,
+  TourismServiceActualization,
 } from '../domain/cost-center.js';
 
 export interface CostCenterRepository {
@@ -21,6 +22,8 @@ export interface CostCenterRepository {
   actuals(companyId: CompanyId, costCenterId: CostCenterId): Promise<BudgetActual[]>;
   saveProgramAllocationCostEffect(value: ProgramAllocationCostEffect): Promise<void>;
   programAllocationCostEffect(companyId: CompanyId, id: string): Promise<ProgramAllocationCostEffect | undefined>;
+  saveTourismServiceActualization(value: TourismServiceActualization): Promise<void>;
+  tourismServiceActualization(companyId: CompanyId, id: string): Promise<TourismServiceActualization | undefined>;
 }
 
 export const COST_CENTER_REPOSITORY = Symbol('COST_CENTER_REPOSITORY');
