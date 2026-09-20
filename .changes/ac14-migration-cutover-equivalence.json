@@ -1,6 +1,6 @@
 {
   "id": "ac14-migration-cutover-equivalence",
-  "summary": "Complete AC-14 final closure hardening: canonical owner restoration for all remaining owners, durable canonical reporting evidence, independently-derived source-vs-canonical equivalence, replay/conflict tests, and strict readiness/40-of-40 Golden Scenario enforcement.",
+  "summary": "Complete AC-14 final source alignment against frozen v32.5.66: deterministic source registry, exact legacy provenance, no-silent-omission coverage, real settlement/Umrah routing, canonical owner restoration, durable reporting, and source-vs-canonical equivalence.",
   "type": "phase",
   "allowedModules": [
     "platform-core",
@@ -40,6 +40,7 @@
     "apps/api/src/ac14-migration/production-owner-import.gateway.ts",
     "apps/api/src/ac14-migration/snapshot-reader.spec.ts",
     "apps/api/src/ac14-migration/snapshot-reader.ts",
+    "apps/api/src/ac14-migration/source-registry.ts",
     "apps/api/src/ac14-migration/stages.ts",
     "apps/api/src/app.module.ts",
     "docs/accounting/AC14-CUTOVER-RUNBOOK.md",
