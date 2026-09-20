@@ -1,10 +1,10 @@
-import { Body, Controller, Delete, Get, Headers, Inject, Param, Patch, Post, Query, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, Query, UnauthorizedException } from '@nestjs/common';
 import { executionContext, type ExecutionContext } from '@elhafez/contracts';
 import { PlatformCoreApplicationService } from '@elhafez/platform-core';
 import { AgentManagementApplicationService, type CreateAgentInput, type UpdateAgentInput } from '../application/agent-management.application-service.js';
 import { agentId, type AgentStatus } from '../domain/agent.js';
 @Controller('crm/agents')
-export class AgentController{constructor(@Inject(AgentManagementApplicationService) private readonly service:AgentManagementApplicationService,@Inject(PlatformCoreApplicationService) private readonly platform:PlatformCoreApplicationService){}
+export class AgentController{static readonly runtimeDependencies=[AgentManagementApplicationService,PlatformCoreApplicationService] as const;constructor(private readonly service:AgentManagementApplicationService,private readonly platform:PlatformCoreApplicationService){}
  @Get() async list(@Headers('authorization')a:string|undefined,@Headers('x-company-id')c:string|undefined,@Headers('x-branch-id')b:string|undefined,@Query('status')s:AgentStatus|undefined,@Query('q')q:string|undefined){return this.service.list(await this.ctx(a,c,b),s,q);}
  @Post() async create(@Headers('authorization')a:string|undefined,@Headers('x-company-id')c:string|undefined,@Headers('x-branch-id')b:string|undefined,@Body()body:CreateAgentInput){return this.service.create(await this.ctx(a,c,b),body);}
  @Patch(':id') async update(@Headers('authorization')a:string|undefined,@Headers('x-company-id')c:string|undefined,@Headers('x-branch-id')b:string|undefined,@Param('id')id:string,@Body()body:UpdateAgentInput){return this.service.update(await this.ctx(a,c,b),agentId(id),body);}
