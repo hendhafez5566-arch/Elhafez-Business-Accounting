@@ -34,6 +34,7 @@
     "@elhafez/agent-management": "workspace:*",
     "@elhafez/customer-management": "workspace:*",
     "@elhafez/crm-leads": "workspace:*",
-    "@elhafez/crm-followups": "workspace:*"
+    "@elhafez/crm-followups": "workspace:*",
+    "@elhafez/quotations": "workspace:*"
   }
 }

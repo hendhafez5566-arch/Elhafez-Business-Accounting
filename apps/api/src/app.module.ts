@@ -21,7 +21,8 @@ import { AgentManagementModule } from '@elhafez/agent-management/nest';
 import { CustomerManagementModule } from '@elhafez/customer-management/nest';
 import { CrmLeadsModule } from '@elhafez/crm-leads/nest';
 import { CrmFollowupsModule } from '@elhafez/crm-followups/nest';
+import { QuotationsModule } from '@elhafez/quotations/nest';
 
 /** Composition root only. Business modules are registered here through public module APIs. */
-@Module({ imports: [PlatformCoreModule, PartyRegistryModule, AgentManagementModule, CustomerManagementModule, CrmLeadsModule, CrmFollowupsModule, PeriodControlModule, GeneralLedgerModule, FinancialControlsModule, TaxModule, BillingSubledgersModule, TreasurySettlementModule, PartyAccountingModule, ExpenseCommissionRecognitionModule, CostBudgetAccountingModule, AssetsFinancingModule, ProcurementFinanceModule, TourismContractInventoryModule, TourismFinanceOrchestrationModule, FinancialReportingModule, Ac14MigrationModule], providers: [FinancialReportingEvidenceAdapter] })
+@Module({ imports: [PlatformCoreModule, PartyRegistryModule, AgentManagementModule, CustomerManagementModule, CrmLeadsModule, CrmFollowupsModule, QuotationsModule, PeriodControlModule, GeneralLedgerModule, FinancialControlsModule, TaxModule, BillingSubledgersModule, TreasurySettlementModule, PartyAccountingModule, ExpenseCommissionRecognitionModule, CostBudgetAccountingModule, AssetsFinancingModule, ProcurementFinanceModule, TourismContractInventoryModule, TourismFinanceOrchestrationModule, FinancialReportingModule, Ac14MigrationModule], providers: [FinancialReportingEvidenceAdapter] })
 export class AppModule {}

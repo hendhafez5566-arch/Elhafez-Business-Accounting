@@ -1,0 +1,1 @@
+import type{ExecutionContext}from'@elhafez/contracts';export interface QuotationsAccess{requireBranch(c:ExecutionContext):Promise<void>;requirePermission(c:ExecutionContext,p:string):Promise<void>;audit(c:ExecutionContext,a:string,e:string,m?:Record<string,unknown>):Promise<void>;}export const QUOTATIONS_ACCESS=Symbol('QUOTATIONS_ACCESS');
