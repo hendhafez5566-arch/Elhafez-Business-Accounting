@@ -112,18 +112,37 @@ export class PrismaHistoricalImportRepository implements HistoricalImportReposit
     runId: string,
     companyId: string,
   ): Promise<HistoricalEquivalence> {
-    const rows = await this.db.taxHistoricalImport.findMany({
+    const provenance = await this.db.taxHistoricalImport.findMany({
       where: { runId, companyId },
-      orderBy: [{ collection: "asc" }, { sourceId: "asc" }],
+    });
+    const rows = await this.db.taxSnapshot.findMany({
+      where: {
+        companyId,
+        id: { in: provenance.map((row) => row.sourceId) },
+      },
+      orderBy: { id: "asc" },
     });
     return {
       records: String(rows.length),
       payloadDigest: createHash("sha256")
-        .update(rows.map((x) => x.payloadJson).join("\n"))
+        .update(
+          rows
+            .map((row) =>
+              JSON.stringify(row, (_, value) =>
+                typeof value === "object" &&
+                value?.constructor?.name === "Decimal"
+                  ? value.toString()
+                  : value,
+              ),
+            )
+            .join("\n"),
+        )
         .digest("hex"),
-      debit: rows.reduce((a, x) => add(a, x.debit.toString()), "0"),
-      credit: rows.reduce((a, x) => add(a, x.credit.toString()), "0"),
-      amount: rows.reduce((a, x) => add(a, x.amount.toString()), "0"),
+      debit: "0",
+      credit: "0",
+      amount: rows.reduce(
+        (total, row) => add(total, row.taxAmount.toString()),
+        "0",
+      ),
     };
-  }
-}
+  }}
