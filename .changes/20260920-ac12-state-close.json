@@ -1,0 +1,16 @@
+{
+  "id": "20260920-ac12-state-close",
+  "summary": "Record the accepted AC-12 main merge and advance the official project state to AC-13.",
+  "type": "governance",
+  "allowedModules": [],
+  "allowedPaths": [
+    ".changes/20260920-ac12-state-close.json",
+    "PROJECT_STATE.md"
+  ],
+  "protectedPaths": [
+    "PROJECT_STATE.md"
+  ],
+  "protectedReason": "This governance-only change records the already merged and accepted AC-12 phase closure and advances the official next phase pointer.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": ""
+}
