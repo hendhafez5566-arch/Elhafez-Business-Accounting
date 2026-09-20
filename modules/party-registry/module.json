@@ -1,0 +1,6 @@
+{
+  "name": "party-registry",
+  "publicApi": ["src/public/index.ts"],
+  "ownedTables": ["pr_parties", "pr_party_roles"],
+  "allowedDependencies": ["@elhafez/contracts", "@elhafez/core", "@elhafez/platform-core"]
+}

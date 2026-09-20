@@ -1,0 +1,19 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { executionContext, type ExecutionContext } from '@elhafez/contracts';
+import { PartyRegistryApplicationService } from '@elhafez/party-registry';
+import type { PartyAccess } from '../../party-registry/src/application/party-access.js';
+import { InMemoryPartyRegistryRepository } from '../../party-registry/src/infrastructure/in-memory-party-registry.repository.js';
+import type { AgentAccess } from './application/agent-access.js';
+import { AgentManagementApplicationService } from './application/agent-management.application-service.js';
+import { InMemoryAgentManagementRepository } from './infrastructure/in-memory-agent-management.repository.js';
+
+class PartyA implements PartyAccess{async requireBranch(c:ExecutionContext){if(c.branchId==='blocked')throw new Error('branch access denied');}async requirePermission():Promise<void>{}async audit():Promise<void>{}}
+class AgentA implements AgentAccess{async requireBranch(c:ExecutionContext){if(c.branchId==='blocked')throw new Error('branch access denied');}async requirePermission():Promise<void>{}async audit():Promise<void>{}}
+function fixture(){let n=0;const parties=new PartyRegistryApplicationService(new InMemoryPartyRegistryRepository(),new PartyA(),()=>new Date('2026-09-20T12:00:00Z'),()=> 'p'+(++n));const repo=new InMemoryAgentManagementRepository();const service=new AgentManagementApplicationService(repo,parties,new AgentA(),()=>new Date('2026-09-20T12:00:00Z'),()=> 'a'+(++n));return{service,repo,parties};}
+const ctx=executionContext('c1','b1','u1');
+
+test('agent creation is company-wide, numbered, party-linked and commercial-only',async()=>{const{service}=fixture();const result=await service.create(ctx,{party:{kind:'PERSON',displayName:'Agent One',phone:'01000000001',email:'agent@example.com'},commission:{kind:'PERCENT',value:'5',currency:null},notes:'referrer'});assert.equal(result.status,'CREATED');if(result.status==='REVIEW_REQUIRED')return;assert.equal(result.value.agent.number,'AGT-000001');assert.equal(result.value.agent.commission.kind,'PERCENT');assert.equal(result.value.party.displayName,'Agent One');});
+test('agent must suspend before hard delete and references block deletion',async()=>{const{service}=fixture();const r=await service.create(ctx,{party:{kind:'PERSON',displayName:'Agent'},commission:{kind:'FIXED',value:'10.50',currency:'egp'}});if(r.status==='REVIEW_REQUIRED')return;const id=r.value.agent.id;await assert.rejects(()=>service.hardDelete(ctx,id),/suspended/);await service.registerReferenceForIntegration(ctx,id,'TEST','1');await service.suspend(ctx,id);await assert.rejects(()=>service.hardDelete(ctx,id),/referenced/);await service.releaseReferenceForIntegration(ctx,id,'TEST','1');await service.hardDelete(ctx,id);await assert.rejects(()=>service.requireActiveForIntegration(ctx,id));});
+test('suspended agent cannot be used as active and can be reactivated',async()=>{const{service}=fixture();const r=await service.create(ctx,{party:{kind:'PERSON',displayName:'Agent'},commission:{kind:'PERCENT',value:'3.5',currency:null}});if(r.status==='REVIEW_REQUIRED')return;await service.suspend(ctx,r.value.agent.id);await assert.rejects(()=>service.requireActiveForIntegration(ctx,r.value.agent.id),/suspended/);await service.reactivate(ctx,r.value.agent.id);assert.equal((await service.requireActiveForIntegration(ctx,r.value.agent.id)).status,'ACTIVE');});
+test('company and branch isolation are enforced',async()=>{const{service}=fixture();const r=await service.create(ctx,{party:{kind:'PERSON',displayName:'Agent'},commission:{kind:'PERCENT',value:'1',currency:null}});if(r.status==='REVIEW_REQUIRED')return;await assert.rejects(()=>service.requireActiveForIntegration(executionContext('c2','b2','u2'),r.value.agent.id));await assert.rejects(()=>service.list(executionContext('c1','blocked','u1')),/branch access denied/);});

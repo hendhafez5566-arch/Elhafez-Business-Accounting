@@ -1,0 +1,1 @@
+import type{ExecutionContext}from'@elhafez/contracts';export interface CustomerAccess{requireBranch(c:ExecutionContext):Promise<void>;requirePermission(c:ExecutionContext,p:string):Promise<void>;audit(c:ExecutionContext,a:string,r:string,e:string|null,m?:Record<string,unknown>):Promise<void>;}export const CUSTOMER_ACCESS=Symbol('CUSTOMER_ACCESS');

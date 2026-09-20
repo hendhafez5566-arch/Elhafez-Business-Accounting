@@ -1,0 +1,6 @@
+{
+  "name": "agent-management",
+  "publicApi": ["src/public/index.ts"],
+  "ownedTables": ["am_agents", "am_agent_references", "am_number_counters"],
+  "allowedDependencies": ["@elhafez/contracts", "@elhafez/core", "@elhafez/platform-core", "@elhafez/party-registry"]
+}
