@@ -6,10 +6,10 @@ Last verified: 2026-09-20
 
 - Repository: `mhafez300300-byte/Elhafez-Business-Accounting`
 - Source of Truth: GitHub
-- Last accepted business implementation baseline SHA (AC-13 merge): `00883570188764f9791bdc5ecf0de4f2ec510b7a`
+- Last accepted business implementation baseline SHA (AC-14 merge): `350ba7dfc5e9e46e355a805a2c3dada1420ca53b`
 - Always verify the live `main` HEAD before execution; governance-only commits may follow the business baseline.
-- Current closed phase: **AC-13**
-- Next phase: **AC-14** — requires separate owner approval before start.
+- Current closed phase: **AC-14**
+- Next phase: **None in the approved accounting build sequence.** Any future accounting scope requires a separately approved change/phase.
 
 ## Closed / accepted foundation
 
@@ -32,6 +32,7 @@ Last verified: 2026-09-20
 | AC-11 — Tourism Contract Inventory | CLOSED / MERGED | PR #35 |
 | AC-12 — Tourism/Hajj/Umrah Financial Orchestration | CLOSED / MERGED | PR #41 |
 | AC-13 — Financial Reporting & Cross-Module Integration Acceptance | CLOSED / MERGED | PR #44 |
+| AC-14 — Migration / Cutover / Equivalence | CLOSED / MERGED | PR #53 |
 
 ## AC-11 final accepted state
 
@@ -147,42 +148,57 @@ Final AC-13 hardening includes:
 
 Final implementation and phase-to-main CI was green for install, Change Safety, Prisma generation, typecheck, lint, architecture check and full tests.
 
-## Next phase — AC-14
+## AC-14 final accepted state
 
-Status:
-**NOT STARTED — separate owner approval required before execution.**
-
-Canonical source:
-`docs/accounting/ACCOUNTING-BUILD-SEQUENCE.md`
-
-Scope:
-**Migration / cutover / equivalence after separate approval.**
-
-Prerequisites:
-All implementation phases through AC-13.
+Final main integration:
+- PR #53 — `AC-14: migration, cutover, and equivalence`
+- Main merge SHA: `350ba7dfc5e9e46e355a805a2c3dada1420ca53b`
+- Official phase branch cumulative integration PR: #52
+- Phase branch merge SHA before main: `70dab26c4c251088b041c4890647b4e6d668a853`
+- Final reviewed implementation head: `f6bb637db53c9e55648f1ab88f15325d1579ca6e`
+- Accepted AC-14A migration-control baseline on the phase branch: `c95ec1a4b2dbd2884a38758d0c89667f05e2d5b2`
 
 Canonical new rules:
-- none — migration/regression only.
+- none — AC-14 is migration/cutover/equivalence and regression only.
 
-Canonical golden scenarios:
+Canonical new golden scenarios:
 - none new;
-- replay all 40 existing Golden Scenarios as REGRESSION ONLY.
+- GS-001 through GS-040 remain owned by their original phases and were retained as executable regression/cutover evidence.
 
-Explicit restrictions:
-- do not start AC-14 without separate owner approval;
-- unresolved statutory, bank and consolidation features remain outside this phase unless separately approved;
-- no source-of-truth redesign during migration/cutover;
-- equivalence must be evidence-based and preserve accepted accounting ownership.
+Final AC-14 hardening includes:
+- durable Migration Control kernel with runs, source SHA-256, crosswalks, checkpoints, issues and equivalence evidence;
+- frozen legacy source identity pinned to `mhafez300300-byte/Elhafez-Tourism-Offline@e97fa6d9cb52acb22b676e1b975c1b2332bc9a13` / `v32.5.66`;
+- deterministic frozen-source registry using real exported legacy collection keys, with explicit sourceCollection versus targetKind/importKind separation;
+- no-silent-omission coverage: known non-empty legacy collections must be processed or explicitly classified and blocking where unsupported/ambiguous;
+- owner-scoped historical restore into canonical owner state, with `*_historical_imports` retained as provenance/audit rather than accounting truth;
+- canonical historical GL restore preserving exact historical base values, native-currency/FX evidence and reversal lineage without reposting economics;
+- Billing/Treasury settlement-role separation so cash movement and invoice allocation are not duplicated;
+- explicit handling/classification of advanced accounting and real Umrah/Hajj legacy collections, including operational-only state that must not be replayed as accounting effects;
+- resumable role-level idempotency keyed by run + source collection + source id + owner + target kind, with processed counts reconciled from durable crosswalk truth;
+- source-derived expected equivalence versus canonical owner actual state, with mismatches blocking readiness;
+- Financial Reporting rebuilt from durable canonical owner evidence and never from imported legacy reporting rows or process-local state;
+- cutover readiness requiring completed required stages, zero blocking issues, matching equivalence, reporting rebuild and GS-001..GS-040 evidence;
+- company/branch isolation, exact-decimal behavior, module ownership and compile-time DAG preserved.
+
+Final cumulative PR #52 and final main-targeting PR #53 both passed CI for frozen install, Change Safety, Prisma generation, typecheck, lint, architecture check and full tests.
+
+## Post-AC-14 state
+
+The approved accounting build sequence AC-00 through AC-14 is **CLOSED / ACCEPTED / MERGED**.
+
+There is currently **no approved AC-15**.
+
+Any future accounting work — including statutory e-invoicing, bank APIs/feeds, consolidation, HR/payroll calculation, or other new business scope — requires a separate owner-approved change/phase and must not be treated as unfinished AC-14 work.
 
 ## Update protocol
 
-Whoever closes the next phase must update this file:
+Whenever a future separately approved phase/change is closed, update this file with:
 1. date;
 2. accepted business implementation baseline SHA;
 3. closed/current phase;
-4. next phase;
+4. approved next phase, or explicitly state none;
 5. final PR number;
-6. phase merge SHA;
+6. phase merge SHA where applicable;
 7. final reviewed implementation SHA;
 8. concise accepted scope and blockers resolved.
 
