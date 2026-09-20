@@ -8,6 +8,7 @@ export class InMemoryTourismFinanceRepository implements TourismFinanceRepositor
   async workflow(companyId: CompanyId, commandKey: string) { return this.workflows.get(`${companyId}:${commandKey}`); }
   async workflowById(companyId: CompanyId, id: string) { return [...this.workflows.values()].find((item) => item.companyId === companyId && item.id === id); }
   async workflowsForProgram(companyId: CompanyId, program: SourceReference) { return [...this.workflows.values()].filter((item) => item.companyId === companyId && item.sourceType === program.sourceType && item.sourceId === program.sourceId); }
+  async workflowsForBooking(companyId: CompanyId, booking: SourceReference) { return [...this.workflows.values()].filter((item) => item.companyId === companyId && item.sourceType === booking.sourceType && item.sourceId === booking.sourceId); }
   async saveWorkflow(value: Workflow) { this.workflows.set(`${value.companyId}:${value.commandKey}`, value); }
   async step(companyId: CompanyId, workflowId: string, name: string) { return this.steps.get(`${companyId}:${workflowId}:${name}`); }
   async reserveStep(value: WorkflowStep) { const mapKey = `${value.companyId}:${value.workflowId}:${value.name}`; const old = this.steps.get(mapKey); if (old) return old; this.steps.set(mapKey, value); return value; }

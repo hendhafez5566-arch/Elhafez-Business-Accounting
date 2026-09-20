@@ -1694,6 +1694,8 @@ model TfoBookingReference {
  status String
  invoiceId String? @map("invoice_id")
  allocations Json
+ approvalRequestId String? @map("approval_request_id")
+ procurementReference Json? @map("procurement_reference")
  commissionClaimId String? @map("commission_claim_id")
  depositVoucherIds Json @map("deposit_voucher_ids")
  workflowId String @map("workflow_id")

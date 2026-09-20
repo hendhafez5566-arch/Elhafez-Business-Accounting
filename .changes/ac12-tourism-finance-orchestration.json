@@ -1,6 +1,6 @@
 {
   "id": "ac12-tourism-finance-orchestration",
-  "summary": "Implement AC-12 durable tourism financial orchestration, its minimal provider-owned capabilities, and final CI closure fixes.",
+  "summary": "Close final AC-12 blockers with real provider ApplicationService integration acceptance coverage and Change Safety evidence.",
   "type": "feature",
   "allowedModules": [
     "tourism-finance-orchestration",
