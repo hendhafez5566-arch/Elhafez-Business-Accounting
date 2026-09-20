@@ -138,6 +138,7 @@ test('every manager-verified actual Umrah collection is processed or explicitly 
     'umrahFlightBlocks',
     'umrahTransportContracts',
     'umrahVisaContracts',
+    'umrahServiceContracts',
     'umrahContractReservations',
     'umrahPrograms',
     'umrahProgramSegments',
