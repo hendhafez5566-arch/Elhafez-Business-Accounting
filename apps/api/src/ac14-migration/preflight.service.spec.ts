@@ -11,8 +11,9 @@ import {
   type MigrationCheckpoint,
   type MigrationIssue,
   type MigrationEquivalenceResult,
-  type Id,
 } from '@elhafez/platform-core';
+
+type Id = string;
 import { Ac14PreflightService } from './preflight.service.js';
 import { ACCEPTED_LEGACY_SOURCE_IDENTITY } from './config.js';
 
