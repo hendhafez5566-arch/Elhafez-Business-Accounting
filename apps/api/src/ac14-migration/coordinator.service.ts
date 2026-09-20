@@ -82,11 +82,10 @@ export class Ac14MigrationCoordinator {
     if (
       request.mode === "RESUME" &&
       created.status !== "PAUSED" &&
-      created.status !== "RUNNING" &&
-      created.status !== "FAILED"
+      created.status !== "RUNNING"
     )
       throw new Error(
-        "resume requires an existing paused, running, or failed run",
+        "resume requires an existing paused or running run; FAILED is terminal",
       );
     const write = request.mode !== "DRY_RUN";
     if (write && (created.status === "PLANNED" || created.status === "PAUSED"))
@@ -122,7 +121,19 @@ export class Ac14MigrationCoordinator {
       if (!owner) continue;
       const prior = await this.control.getCheckpoint(created.id, stage);
       if (write && prior?.status === "COMPLETE") continue;
-      let count = prior?.processedCount ?? 0;
+      const durableCount = write
+        ? await this.stageRoleCount(created.id, stage, owner, collections)
+        : 0;
+      let count = Math.max(prior?.processedCount ?? 0, durableCount);
+      if (write && prior && prior.processedCount > durableCount)
+        await this.issue(
+          created.id,
+          "TARGET_CONFLICT",
+          stage,
+          "checkpoint",
+          null,
+          "checkpoint processedCount exceeds durable unique crosswalk roles",
+        );
       if (write)
         await this.control.recordCheckpoint({
           runId: created.id,
@@ -177,6 +188,33 @@ export class Ac14MigrationCoordinator {
           }
           if (!registrationAppliesToRecord(registration, value)) continue;
           const id = sourceId(value)!;
+          const sourcePayloadHash = hash(value);
+          if (write) {
+            const existingRole = await this.control.getCrosswalk(
+              created.id,
+              collection,
+              id,
+              owner,
+              registration.targetKind,
+            );
+            if (existingRole) {
+              if (existingRole.sourcePayloadHash !== sourcePayloadHash) {
+                await this.issue(
+                  created.id,
+                  "TARGET_CONFLICT",
+                  stage,
+                  collection,
+                  id,
+                  "completed migration role has a conflicting source payload hash",
+                );
+              }
+              count = Math.max(
+                count,
+                await this.stageRoleCount(created.id, stage, owner, collections),
+              );
+              continue;
+            }
+          }
           const branch = this.resolveBranch(value.branchId, request.config);
           if (branch.error) {
             await this.issue(
@@ -217,7 +255,7 @@ export class Ac14MigrationCoordinator {
             targetKind: registration.targetKind,
             processingStrategy: registration.strategy,
             sourceId: id,
-            sourcePayloadHash: hash(value),
+            sourcePayloadHash,
             targetCompanyId: request.config.targetCompanyId,
             ...(branch.target ? { targetBranchId: branch.target } : {}),
             payload,
@@ -246,7 +284,10 @@ export class Ac14MigrationCoordinator {
                 targetId: outcome.targetId,
                 sourcePayloadHash: unit.sourcePayloadHash,
               });
-              count++;
+              count = Math.max(
+                count,
+                await this.stageRoleCount(created.id, stage, owner, collections),
+              );
               await this.control.recordCheckpoint({
                 runId: created.id,
                 stage,
@@ -269,13 +310,18 @@ export class Ac14MigrationCoordinator {
           }
         }
       }
-      if (write)
+      if (write) {
+        count = Math.max(
+          count,
+          await this.stageRoleCount(created.id, stage, owner, collections),
+        );
         await this.control.recordCheckpoint({
           runId: created.id,
           stage,
           processedCount: count,
           status: "COMPLETE",
         });
+      }
     }
     const evidence = await assertCompleteGoldenScenarioRegistry();
     if (!write) {
@@ -460,8 +506,10 @@ export class Ac14MigrationCoordinator {
           continue;
         }
         target.records = addInteger(target.records ?? "0", 1);
-        target.debit = addDecimal(target.debit ?? "0", decimalFrom(raw.debit));
-        target.credit = addDecimal(target.credit ?? "0", decimalFrom(raw.credit));
+        if (registration.owner === "GeneralLedger") {
+          target.debit = addDecimal(target.debit ?? "0", decimalFrom(raw.debit));
+          target.credit = addDecimal(target.credit ?? "0", decimalFrom(raw.credit));
+        }
         target.amount = addDecimal(
           target.amount ?? "0",
           expectedAmount(registration, raw),
@@ -516,6 +564,28 @@ export class Ac14MigrationCoordinator {
       ]),
     );
   }
+  private async stageRoleCount(
+    runId: string,
+    stage: string,
+    owner: string,
+    collections: readonly string[],
+  ): Promise<number> {
+    const registrations = new Map(
+      collections.flatMap((sourceCollection) => {
+        const registration = processingRegistration(stage, owner, sourceCollection);
+        return registration?.targetKind
+          ? [[sourceCollection, registration.targetKind] as const]
+          : [];
+      }),
+    );
+    const crosswalks = await this.control.listCrosswalks(runId);
+    return crosswalks.filter(
+      (crosswalk) =>
+        crosswalk.targetOwner === owner &&
+        registrations.get(crosswalk.sourceCollection) === crosswalk.targetKind,
+    ).length;
+  }
+
   private requiredRunId(config: MigrationConfig) {
     if (!config.runId) throw new Error("runId is required");
     return config.runId;
