@@ -88,3 +88,17 @@ test('accrual replay rejects changed financial payload',async()=>{
  await service.accrueRevenue({id:'acc-replay',companyId:companyId('c'),sourceType:'SERVICE',sourceId:'svc-r',amount:decimalAmount('40'),serviceDate:'2026-09-01',number:'A1',accruedRevenueAccountId:'accrued',revenueAccountId:'revenue'});
  await assert.rejects(()=>service.accrueRevenue({id:'acc-replay',companyId:companyId('c'),sourceType:'SERVICE',sourceId:'svc-r',amount:decimalAmount('41'),serviceDate:'2026-09-01',number:'A1',accruedRevenueAccountId:'accrued',revenueAccountId:'revenue'}));
 });
+
+test('AC-12 commission cancellation evidence reverses unpaid and blocks partial/paid history',async()=>{
+ const{service}=fixture();const c=companyId('c');
+ await service.createCommissionClaim({id:'unpaid',companyId:c,agentPartyId:'agent',sourceType:'TOURISM_BOOKING',sourceId:'b1',currency:'EGP',amount:decimalAmount('100'),baseCarryingAmount:decimalAmount('100'),expenseAccountId:'expense',liabilityAccountId:'liability'});
+ assert.equal((await service.getCommissionCancellationEvidence(c,'unpaid')).reversible,true);
+ assert.equal((await service.reverseUnpaidCommission(c,'unpaid','2026-09-19','REV')).status,'REVERSED');
+ assert.equal((await service.reverseUnpaidCommission(c,'unpaid','2026-09-19','REV')).status,'REVERSED');
+ await service.createCommissionClaim({id:'partial',companyId:c,agentPartyId:'agent',sourceType:'TOURISM_BOOKING',sourceId:'b2',currency:'EGP',amount:decimalAmount('100'),baseCarryingAmount:decimalAmount('100'),expenseAccountId:'expense',liabilityAccountId:'liability'});
+ await service.approveCommission(c,'partial','2026-09-19','C');await service.payCommission({companyId:c,claimId:'partial',paymentId:'p',treasuryId:'t',amount:decimalAmount('50'),paymentCurrency:'EGP',postingDate:'2026-09-19',number:'P'});
+ assert.equal((await service.getCommissionCancellationEvidence(c,'partial')).hasPostedPaymentHistory,true);
+ await assert.rejects(service.reverseUnpaidCommission(c,'partial','2026-09-19','REV'),/paid commission history/);
+ await service.payCommission({companyId:c,claimId:'partial',paymentId:'p2',treasuryId:'t',amount:decimalAmount('50'),paymentCurrency:'EGP',postingDate:'2026-09-19',number:'P2'});
+ assert.equal((await service.getCommissionCancellationEvidence(c,'partial')).status,'PAID');
+});

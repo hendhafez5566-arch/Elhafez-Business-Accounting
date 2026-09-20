@@ -139,6 +139,34 @@ export class BillingSubledgersApplicationService {
       status: invoice.status, postingDate: invoice.postingDate, deferred: invoice.deferred === true };
   }
 
+  /** Billing-owned cancellation evidence; consumers must not infer history from outstanding alone. */
+  async getCancellationEvidence(companyId: CompanyId, invoiceId: string) {
+    const invoice = await this.requiredInvoice(companyId, invoiceId);
+    const allocations = await this.repo.allocations(companyId, invoiceId);
+    const activeAllocations = allocations.filter((value) => !value.reversedAt);
+    // BLOCKER-6: Scope to invoice-related advances only, not all customer advances
+    const relatedAdvanceIds = new Set<string>();
+    for (const allocation of allocations) {
+      if (scaled18(allocation.advanceAmount) > 0n) {
+        relatedAdvanceIds.add(`advance:${allocation.id}`);
+      }
+    }
+    const advances = await this.repo.advances(companyId, expectedPartyKind(invoice.type), invoice.partyId);
+    const relatedAdvances = advances.filter((adv) => relatedAdvanceIds.has(adv.id));
+    const hasAvailableAdvance = relatedAdvances.some((value) => !value.reversedAt && scaled18(value.available) > 0n);
+    const settlementRequired = activeAllocations.length > 0 || hasAvailableAdvance;
+    return Object.freeze({
+      invoiceId: invoice.id,
+      postedInvoiceExists: invoice.status === 'POSTED' || invoice.status === 'CANCELLED',
+      hasHistoricalAllocationEvidence: allocations.length > 0,
+      activeAllocationIds: activeAllocations.map((value) => value.id),
+      hasAvailableAdvance,
+      outstanding: invoice.outstanding,
+      settlementRequired,
+      cancellationSafe: !settlementRequired,
+    });
+  }
+
   async getAdvance(companyId: CompanyId, advanceId: string): Promise<Advance> {
     const value = await this.repo.advance(companyId, advanceId);
     if (!value || value.reversedAt) throw new ContractValidationError('advance', 'not available');

@@ -8,7 +8,8 @@
     "cba_program_cost_centers",
     "cba_budgets",
     "cba_budget_actuals",
-    "cba_program_allocation_cost_effects"
+    "cba_program_allocation_cost_effects",
+    "cba_tourism_service_actualizations"
   ],
   "allowedDependencies": [
     "@elhafez/contracts",

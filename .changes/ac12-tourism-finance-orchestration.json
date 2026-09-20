@@ -1,0 +1,28 @@
+{
+  "id": "ac12-tourism-finance-orchestration",
+  "summary": "Close final AC-12 blockers with real provider ApplicationService integration acceptance coverage and Change Safety evidence.",
+  "type": "feature",
+  "allowedModules": [
+    "tourism-finance-orchestration",
+    "billing-subledgers",
+    "expense-commission-recognition",
+    "procurement-finance",
+    "financial-controls"
+    ,"cost-budget-accounting"
+  ],
+  "allowedPaths": [
+    ".changes/ac12-tourism-finance-orchestration.json",
+    "prisma/schema.prisma",
+    "prisma/migrations/**",
+    "apps/api/src/app.module.ts",
+    "apps/api/package.json",
+    "pnpm-lock.yaml"
+  ],
+  "protectedPaths": [
+    "modules/tourism-finance-orchestration/module.json",
+    "modules/cost-budget-accounting/module.json"
+  ],
+  "protectedReason": "AC-12 requires its new module manifest and a narrow Cost-owner table registration for semantic Tourism milestone actualization.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": ""
+}

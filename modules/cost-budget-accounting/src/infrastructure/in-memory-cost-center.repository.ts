@@ -11,6 +11,7 @@ import type {
   CostCenterId,
   ProgramAllocationCostEffect,
   ProgramCostCenterAssociation,
+  TourismServiceActualization,
 } from '../domain/cost-center.js';
 
 export class InMemoryCostCenterRepository implements CostCenterRepository {
@@ -19,6 +20,7 @@ export class InMemoryCostCenterRepository implements CostCenterRepository {
   private readonly budgetValues = new Map<string, Budget>();
   private readonly actualValues = new Map<string, BudgetActual>();
   private readonly allocationCostEffects = new Map<string, ProgramAllocationCostEffect>();
+  private readonly tourismActualizations = new Map<string, TourismServiceActualization>();
 
   async save(value: CostCenter) {
     if ([...this.centers.values()].some((x) => x.id === value.id && x.companyId !== value.companyId)) {
@@ -106,4 +108,6 @@ export class InMemoryCostCenterRepository implements CostCenterRepository {
   async programAllocationCostEffect(companyId: CompanyId, id: string) {
     return this.allocationCostEffects.get(`${companyId}:${id}`);
   }
+  async saveTourismServiceActualization(value: TourismServiceActualization) { const key = `${value.companyId}:${value.id}`; const old = this.tourismActualizations.get(key); if (old && old.requestHash !== value.requestHash) throw new ContractValidationError('tourismActualization', 'conflicting replay'); if (!old) this.tourismActualizations.set(key, value); }
+  async tourismServiceActualization(companyId: CompanyId, id: string) { return this.tourismActualizations.get(`${companyId}:${id}`); }
 }

@@ -13,6 +13,7 @@ import type {
   CostCenterId,
   ProgramAllocationCostEffect,
   ProgramCostCenterAssociation,
+  TourismServiceActualization,
 } from '../domain/cost-center.js';
 
 export class PrismaCostCenterRepository implements CostCenterRepository {
@@ -233,5 +234,15 @@ export class PrismaCostCenterRepository implements CostCenterRepository {
           createdAt: value.createdAt.toISOString(),
         }
       : undefined;
+  }
+
+  async saveTourismServiceActualization(value: TourismServiceActualization): Promise<void> {
+    const old = await this.db.cbaTourismServiceActualization.findUnique({ where: { companyId_id: { companyId: value.companyId, id: value.id } } });
+    if (old) { if (old.requestHash !== value.requestHash) throw new ContractValidationError('tourismActualization', 'conflicting replay'); return; }
+    await this.db.cbaTourismServiceActualization.create({ data: { id: value.id, companyId: value.companyId, costCenterId: value.costCenterId, programSourceType: value.program.sourceType, programSourceId: value.program.sourceId, serviceSourceType: value.service.sourceType, serviceSourceId: value.service.sourceId, evidenceSourceType: value.evidence.sourceType, evidenceSourceId: value.evidence.sourceId, amount: value.amount, postingDate: new Date(value.postingDate), requestHash: value.requestHash, createdAt: new Date(value.createdAt) } });
+  }
+  async tourismServiceActualization(companyId: CompanyId, id: string): Promise<TourismServiceActualization | undefined> {
+    const value = await this.db.cbaTourismServiceActualization.findUnique({ where: { companyId_id: { companyId, id } } });
+    return value ? { id: value.id, companyId: value.companyId as CompanyId, costCenterId: value.costCenterId as CostCenterId, program: sourceReference(value.programSourceType, value.programSourceId), service: sourceReference(value.serviceSourceType, value.serviceSourceId), evidence: sourceReference(value.evidenceSourceType, value.evidenceSourceId), amount: String(value.amount) as TourismServiceActualization['amount'], postingDate: value.postingDate.toISOString().slice(0, 10), requestHash: value.requestHash, createdAt: value.createdAt.toISOString() } : undefined;
   }
 }

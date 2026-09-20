@@ -260,10 +260,9 @@ test('partial receipt, concurrent over-receipt, blocker and cross-company isolat
     }),
   ]);
   assert.equal(outcomes.filter((result) => result.status === 'fulfilled').length, 1);
-  assert.equal(
-    (await service.getCancellationBlockers(company, { purchaseOrderId: 'po-1' }))
-      .length,
-    1,
+  assert.deepEqual(
+    (await service.getCancellationBlockers(company, { purchaseOrderId: 'po-1' })).map((item) => item.type),
+    ['SUPPLIER_EXECUTION'],
   );
   await assert.rejects(service.cancelPurchaseOrder(company, 'po-1'));
   await assert.rejects(
@@ -288,6 +287,10 @@ test('partial invoicing does not falsely close PO and later receipt remains vali
   assert.equal(
     (await service.getPurchaseOrder(company, 'po-1')).status,
     'PARTIALLY_INVOICED',
+  );
+  assert.deepEqual(
+    (await service.getCancellationBlockers(company, { purchaseOrderId: 'po-1' })).map((item) => item.type),
+    ['SUPPLIER_EXECUTION', 'SUPPLIER_INVOICE'],
   );
 
   await service.receivePurchaseOrder({
@@ -408,5 +411,157 @@ test('over-invoicing and conflicting receipt replay are blocked', async () => {
       quantity: decimalAmount('1'),
       commandId: 'receipt',
     }),
+  );
+});
+
+test('BLOCKER-2 cleanupForProgramCancellation disposes AUTO DRAFT empty PO', async () => {
+  const { service } = setup();
+  await service.createPurchaseOrder({
+    id: 'po-auto',
+    companyId: company,
+    supplierId: 'supplier-1',
+    number: 'AUTO-001',
+    origin: 'AUTO',
+    lines: [{ id: 'line-1', itemReference: 'item-1', orderedQuantity: decimalAmount('10') }],
+  });
+  const result = await service.cleanupForProgramCancellation(company, { purchaseOrderId: 'po-auto' });
+  assert.equal(result.status, 'DISPOSED');
+  const po = await service.getPurchaseOrder(company, 'po-auto');
+  assert.equal(po.status, 'DISPOSED');
+});
+
+test('BLOCKER-2 cleanupForProgramCancellation cancels other non-AUTO PO', async () => {
+  const { service } = setup();
+  await service.createPurchaseOrder({
+    id: 'po-manual',
+    companyId: company,
+    supplierId: 'supplier-1',
+    number: 'MAN-001',
+    origin: 'MANUAL',
+    lines: [{ id: 'line-1', itemReference: 'item-1', orderedQuantity: decimalAmount('10') }],
+  });
+  const result = await service.cleanupForProgramCancellation(company, { purchaseOrderId: 'po-manual' });
+  assert.equal(result.status, 'CANCELLED');
+  const po = await service.getPurchaseOrder(company, 'po-manual');
+  assert.equal(po.status, 'CANCELLED');
+});
+
+test('BLOCKER-2 cleanupForProgramCancellation blocks received PO', async () => {
+  const { service } = setup();
+  await approved(service);
+  await service.receivePurchaseOrder({
+    companyId: company,
+    purchaseOrderId: 'po-1',
+    lineId: 'po-1-line',
+    quantity: decimalAmount('2'),
+    commandId: 'receipt',
+  });
+  await assert.rejects(
+    service.cleanupForProgramCancellation(company, { purchaseOrderId: 'po-1' }),
+    /supplier execution or invoice blocks cleanup/
+  );
+});
+
+test('BLOCKER-2 cleanupForProgramCancellation blocks invoiced PO', async () => {
+  const { service } = setup();
+  await approved(service);
+  await service.receivePurchaseOrder({
+    companyId: company,
+    purchaseOrderId: 'po-1',
+    lineId: 'po-1-line',
+    quantity: decimalAmount('5'),
+    commandId: 'receipt',
+  });
+  await service.convertToSupplierInvoice(conversionCommand(decimalAmount('2'), decimalAmount('200')));
+  await assert.rejects(
+    service.cleanupForProgramCancellation(company, { purchaseOrderId: 'po-1' }),
+    /supplier execution or invoice blocks cleanup/
+  );
+});
+
+test('BLOCKER-2 cleanupForProgramCancellation is idempotent for already disposed PO', async () => {
+  const { service } = setup();
+  await service.createPurchaseOrder({
+    id: 'po-auto',
+    companyId: company,
+    supplierId: 'supplier-1',
+    number: 'AUTO-002',
+    origin: 'AUTO',
+    lines: [{ id: 'line-1', itemReference: 'item-1', orderedQuantity: decimalAmount('10') }],
+  });
+  await service.disposeDraftAutoPurchaseOrder(company, 'po-auto');
+  const result = await service.cleanupForProgramCancellation(company, { purchaseOrderId: 'po-auto' });
+  assert.equal(result.status, 'DISPOSED');
+});
+
+test('BLOCKER-2 cleanupForProgramCancellation cleans commitment and linked POs', async () => {
+  const { service } = setup();
+  await service.setPolicy({
+    companyId: company,
+    commitmentTiming: 'ON_PO_APPROVAL',
+    version: 1,
+    effectiveFrom: '2026-01-01',
+  });
+  await service.createSupplierCommitment({
+    id: 'commit-1',
+    companyId: company,
+    supplierId: 'supplier-1',
+    sourceType: 'TOURISM_PROGRAM',
+    sourceId: 'program-1',
+    effectiveDate: '2026-01-01',
+  });
+  await service.createPurchaseOrder({
+    id: 'po-linked',
+    companyId: company,
+    commitmentId: 'commit-1',
+    supplierId: 'supplier-1',
+    number: 'AUTO-LINK',
+    origin: 'AUTO',
+    lines: [{ id: 'line-1', itemReference: 'item-1', orderedQuantity: decimalAmount('5') }],
+  });
+  const result = await service.cleanupForProgramCancellation(company, { commitmentId: 'commit-1' });
+  assert.equal(result.status, 'CANCELLED');
+  const po = await service.getPurchaseOrder(company, 'po-linked');
+  assert.equal(po.status, 'DISPOSED');
+  const commitment = await service.getSupplierCommitment(company, 'commit-1');
+  assert.equal(commitment.status, 'CANCELLED');
+});
+
+test('BLOCKER-2 cleanupForProgramCancellation blocks commitment with received linked PO', async () => {
+  const { service } = setup();
+  await service.setPolicy({
+    companyId: company,
+    commitmentTiming: 'ON_PO_APPROVAL',
+    version: 1,
+    effectiveFrom: '2026-01-01',
+  });
+  await service.createSupplierCommitment({
+    id: 'commit-2',
+    companyId: company,
+    supplierId: 'supplier-1',
+    sourceType: 'TOURISM_PROGRAM',
+    sourceId: 'program-2',
+    effectiveDate: '2026-01-01',
+  });
+  await service.createPurchaseOrder({
+    id: 'po-linked-2',
+    companyId: company,
+    commitmentId: 'commit-2',
+    supplierId: 'supplier-1',
+    number: 'MAN-LINK',
+    origin: 'MANUAL',
+    lines: [{ id: 'line-1', itemReference: 'item-1', orderedQuantity: decimalAmount('5') }],
+  });
+  await service.approvePurchaseOrder(company, 'po-linked-2');
+  await service.receivePurchaseOrder({
+    companyId: company,
+    purchaseOrderId: 'po-linked-2',
+    lineId: 'line-1',
+    quantity: decimalAmount('2'),
+    commandId: 'receipt',
+  });
+  await assert.rejects(
+    service.cleanupForProgramCancellation(company, { commitmentId: 'commit-2' }),
+    /linked PO has supplier execution or invoice/
   );
 });
