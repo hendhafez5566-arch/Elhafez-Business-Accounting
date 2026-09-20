@@ -34,6 +34,6 @@
     "apps/web/src/routes.tsx"
   ],
   "protectedReason": "CS-01 explicitly creates the five owner-approved canonical modules, keeps lightweight public APIs separate from Nest composition entrypoints, and registers their usable CRM routes. No global shell, design token, accounting owner, workflow, or governance rule is changed.",
-  "allowBreakingPublicApi": false,
-  "publicApiBreakingReason": ""
+  "allowBreakingPublicApi": true,
+  "publicApiBreakingReason": "CS-01 deliberately moves NestJS module classes for agent-management, customer-management, crm-leads, and crm-followups from each package root to the explicit /nest composition subpath. This keeps root public domain/application APIs lightweight so consumers and tests do not load Nest controller infrastructure, while all legitimate API composition imports are updated to /nest."
 }
