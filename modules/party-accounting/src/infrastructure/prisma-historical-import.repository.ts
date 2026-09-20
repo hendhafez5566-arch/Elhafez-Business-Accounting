@@ -130,9 +130,7 @@ export class PrismaHistoricalImportRepository implements HistoricalImportReposit
       payloadDigest: createHash("sha256")
         .update(canonical.join("\n"))
         .digest("hex"),
-      debit: rows.reduce((a, x) => add(a, x.debit.toString()), "0"),
-      credit: rows.reduce((a, x) => add(a, x.credit.toString()), "0"),
-      amount: nettings.reduce((a, x) => add(a, x.amount.toString()), "0"),
+      debit: "0", credit: "0", amount: nettings.reduce((a, x) => add(a, x.amount.toString()), "0"),
     };
   }
 }
