@@ -29,6 +29,11 @@
     "@elhafez/tourism-finance-orchestration": "workspace:*",
     "@elhafez/financial-reporting": "workspace:*",
     "@elhafez/contracts": "workspace:*",
-    "@elhafez/currency-fx": "workspace:*"
+    "@elhafez/currency-fx": "workspace:*",
+    "@elhafez/party-registry": "workspace:*",
+    "@elhafez/agent-management": "workspace:*",
+    "@elhafez/customer-management": "workspace:*",
+    "@elhafez/crm-leads": "workspace:*",
+    "@elhafez/crm-followups": "workspace:*"
   }
 }
