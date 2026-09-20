@@ -1,7 +1,7 @@
-import { Module } from '@nestjs/common';
+import{AgentManagementModule}from'@elhafez/agent-management/nest';import { Module } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { PlatformCoreApplicationService, PlatformCoreModule } from '@elhafez/platform-core';
-import { AgentManagementApplicationService, AgentManagementModule } from '@elhafez/agent-management';
+import { AgentManagementApplicationService } from '@elhafez/agent-management';
 import { PartyRegistryApplicationService, PartyRegistryModule } from '@elhafez/party-registry';
 import { CustomerManagementApplicationService } from './application/customer-management.application-service.js';
 import { CUSTOMER_ACCESS, type CustomerAccess } from './application/customer-access.js';
