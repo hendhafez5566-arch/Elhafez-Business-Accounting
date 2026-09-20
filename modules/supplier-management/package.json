@@ -1,1 +1,27 @@
-{"name":"@elhafez/supplier-management","private":true,"type":"module","exports":{".":"./src/public/index.ts","./nest":"./src/public/nest.ts"},"dependencies":{"@elhafez/contracts":"workspace:*","@elhafez/platform-core":"workspace:*","@elhafez/party-registry":"workspace:*","@nestjs/common":"^11.0.11","@prisma/client":"6.19.0"},"scripts":{"build":"tsc -p tsconfig.json","typecheck":"tsc --noEmit -p tsconfig.json","test":"tsx --tsconfig tsconfig.json --test src/*.spec.ts src/**/*.spec.ts"}}
+{
+  "name": "@elhafez/supplier-management",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/public/index.ts",
+    "./nest": "./src/public/nest.ts"
+  },
+  "dependencies": {
+    "@elhafez/contracts": "workspace:*",
+    "@elhafez/platform-core": "workspace:*",
+    "@elhafez/party-registry": "workspace:*",
+    "@nestjs/common": "^11.0.11",
+    "@prisma/client": "6.19.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "tsx --tsconfig tsconfig.json --test src/*.spec.ts src/**/*.spec.ts"
+  },
+  "devDependencies": {
+    "@nestjs/core": "^11.0.11",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1",
+    "path-to-regexp": "8.4.2"
+  }
+}
