@@ -1,0 +1,16 @@
+{
+  "id": "20260920-ac14-state-close",
+  "summary": "Record the accepted AC-14 main merge, close the approved accounting build sequence through AC-14, and record that no AC-15 is currently approved.",
+  "type": "governance",
+  "allowedModules": [],
+  "allowedPaths": [
+    ".changes/20260920-ac14-state-close.json",
+    "PROJECT_STATE.md"
+  ],
+  "protectedPaths": [
+    "PROJECT_STATE.md"
+  ],
+  "protectedReason": "This governance-only change records the already merged and accepted AC-14 phase closure and the post-AC-14 project state without changing business implementation.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": ""
+}
