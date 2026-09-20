@@ -4,7 +4,6 @@ import { executionContext, type ExecutionContext } from '@elhafez/contracts';
 import { agentId, type Agent, type AgentId } from '@elhafez/agent-management';
 import {
   customerId,
-  type CreateCustomerInput,
   type Customer,
   type CustomerId,
   type CustomerResolveResult,
@@ -55,7 +54,7 @@ class Customers implements LeadCustomerPort {
   refs=0;
   last:Customer|null=null;
 
-  async resolveOrCreateForLead(context:ExecutionContext,_input:CreateCustomerInput):Promise<CustomerResolveResult> {
+  async resolveOrCreateForLead(context:ExecutionContext):Promise<CustomerResolveResult> {
     if (this.ambiguous) {
       const candidates:ReviewCandidates=[];
       return {status:'REVIEW_REQUIRED',candidates};

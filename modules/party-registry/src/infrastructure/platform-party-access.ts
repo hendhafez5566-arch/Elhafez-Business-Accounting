@@ -1,5 +1,5 @@
 import type { ExecutionContext } from '@elhafez/contracts';
-import { PlatformCoreApplicationService } from '@elhafez/platform-core';
+import type { PlatformCoreApplicationService } from '@elhafez/platform-core';
 import type { PartyAccess } from '../application/party-access.js';
 export class PlatformPartyAccess implements PartyAccess {
   constructor(private readonly platform:PlatformCoreApplicationService){}
