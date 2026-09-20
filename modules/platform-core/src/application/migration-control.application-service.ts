@@ -295,6 +295,18 @@ export class MigrationControlApplicationService {
     return this.repository.updateRun(run);
   }
 
+  /** Reconciles derived counters rather than incrementing, so resume/replay cannot inflate totals. */
+  async reconcileRunCounts(runId: Id, processed: number, rejected: number): Promise<MigrationRun> {
+    if (!Number.isInteger(processed) || processed < 0 || !Number.isInteger(rejected) || rejected < 0) {
+      failMigration('VALIDATION_ERROR', 'run counts must be non-negative integers');
+    }
+    const run = await this.getRun(runId);
+    run.processedCount = processed;
+    run.rejectedCount = rejected;
+    run.updatedAt = this.now();
+    return this.repository.updateRun(run);
+  }
+
   /**
    * Records (or converges with) a source -> target crosswalk row.
    * Same identity + same payload hash converges (returns the existing row).

@@ -1,1 +1,30 @@
-{"name":"assets-financing","publicApi":["src/public/index.ts"],"ownedTables":["af_assets","af_asset_depreciations","af_asset_disposals","af_loans","af_loan_installments","af_provisions","af_provision_movements","af_allowances","af_allowance_movements","af_allowance_writeoffs","af_payroll_runs","af_payroll_liabilities"],"allowedDependencies":["@elhafez/contracts","@elhafez/billing-subledgers","@elhafez/treasury-settlement","@elhafez/general-ledger","@elhafez/period-control","@elhafez/currency-fx","@elhafez/financial-controls"]}
+{
+  "name": "assets-financing",
+  "publicApi": [
+    "src/public/index.ts"
+  ],
+  "ownedTables": [
+    "af_assets",
+    "af_asset_depreciations",
+    "af_asset_disposals",
+    "af_loans",
+    "af_loan_installments",
+    "af_provisions",
+    "af_provision_movements",
+    "af_allowances",
+    "af_allowance_movements",
+    "af_allowance_writeoffs",
+    "af_payroll_runs",
+    "af_payroll_liabilities",
+    "af_historical_imports"
+  ],
+  "allowedDependencies": [
+    "@elhafez/contracts",
+    "@elhafez/billing-subledgers",
+    "@elhafez/treasury-settlement",
+    "@elhafez/general-ledger",
+    "@elhafez/period-control",
+    "@elhafez/currency-fx",
+    "@elhafez/financial-controls"
+  ]
+}

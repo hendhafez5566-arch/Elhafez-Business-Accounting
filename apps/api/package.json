@@ -5,7 +5,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "tsx --test src/**/*.spec.ts"
+    "test": "tsx --test src/**/*.spec.ts",
+    "ac14": "tsx src/ac14-migration/main.ts"
   },
   "dependencies": {
     "@elhafez/platform-core": "workspace:*",
@@ -27,6 +28,7 @@
     "@elhafez/tourism-contract-inventory": "workspace:*",
     "@elhafez/tourism-finance-orchestration": "workspace:*",
     "@elhafez/financial-reporting": "workspace:*",
-    "@elhafez/contracts": "workspace:*"
+    "@elhafez/contracts": "workspace:*",
+    "@elhafez/currency-fx": "workspace:*"
   }
 }

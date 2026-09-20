@@ -1,9 +1,24 @@
 {
   "id": "ac14-migration-cutover-equivalence",
-  "summary": "Complete the remaining AC-14 deterministic historical-import orchestration, exact legacy GL normalization, owner-boundary contract, equivalence/readiness checks, 40-scenario regression registry, non-HTTP runner, and cutover runbook while retaining the accepted AC-14A control plane.",
+  "summary": "Complete AC-14 owner-scoped immutable historical persistence, production composition and CLI, full dry-run validation, existing-run verification, exact owner equivalence, executable GS-001..GS-040 evidence, and readiness gating.",
   "type": "phase",
   "allowedModules": [
-    "platform-core"
+    "platform-core",
+    "currency-fx",
+    "cost-budget-accounting",
+    "period-control",
+    "general-ledger",
+    "tax",
+    "billing-subledgers",
+    "treasury-settlement",
+    "party-accounting",
+    "expense-commission-recognition",
+    "assets-financing",
+    "procurement-finance",
+    "financial-controls",
+    "tourism-contract-inventory",
+    "tourism-finance-orchestration",
+    "financial-reporting"
   ],
   "allowedPaths": [
     ".changes/ac14-migration-cutover-equivalence.json",
@@ -33,13 +48,33 @@
     "apps/api/src/ac14-migration/coordinator.service.ts",
     "apps/api/src/ac14-migration/cli.ts",
     "apps/api/src/ac14-migration/ac14-remaining.spec.ts",
-    "docs/accounting/AC14-CUTOVER-RUNBOOK.md"
+    "docs/accounting/AC14-CUTOVER-RUNBOOK.md",
+    "prisma/migrations/20260920180000_ac14_owner_historical_imports/migration.sql",
+    "apps/api/src/ac14-migration/production-owner-import.gateway.ts",
+    "apps/api/src/ac14-migration/main.ts",
+    "apps/api/src/app.module.ts",
+    "apps/api/package.json",
+    "pnpm-lock.yaml"
   ],
   "protectedPaths": [
     "modules/platform-core/module.json",
-    "prisma/schema.prisma"
+    "prisma/schema.prisma",
+    "modules/currency-fx/module.json",
+    "modules/cost-budget-accounting/module.json",
+    "modules/period-control/module.json",
+    "modules/general-ledger/module.json",
+    "modules/tax/module.json",
+    "modules/billing-subledgers/module.json",
+    "modules/treasury-settlement/module.json",
+    "modules/party-accounting/module.json",
+    "modules/expense-commission-recognition/module.json",
+    "modules/assets-financing/module.json",
+    "modules/procurement-finance/module.json",
+    "modules/financial-controls/module.json",
+    "modules/tourism-contract-inventory/module.json",
+    "modules/tourism-finance-orchestration/module.json"
   ],
-  "protectedReason": "AC-14A requires Platform Core to truthfully declare five new additive pc_migration_* owned tables in module.json, and the corresponding models in prisma/schema.prisma. Both changes are additive only: no existing table, model, or accepted migration is altered.",
+  "protectedReason": "AC-14 adds one additive owner-owned immutable historical import table to each participating accounting module; each protected module manifest truthfully declares only its own table. Prisma changes are additive and the accepted AC-14A migration is untouched.",
   "allowBreakingPublicApi": false,
   "publicApiBreakingReason": ""
 }

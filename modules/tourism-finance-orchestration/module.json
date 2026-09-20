@@ -1,1 +1,26 @@
-{"name":"tourism-finance-orchestration","publicApi":["src/public/index.ts"],"ownedTables":["tfo_financial_setups","tfo_workflows","tfo_workflow_steps","tfo_booking_references","tfo_service_financial_snapshots","tfo_program_history"],"allowedDependencies":["@elhafez/contracts","@elhafez/core","@elhafez/cost-budget-accounting","@elhafez/tourism-contract-inventory","@elhafez/procurement-finance","@elhafez/billing-subledgers","@elhafez/treasury-settlement","@elhafez/expense-commission-recognition","@elhafez/financial-controls"]}
+{
+  "name": "tourism-finance-orchestration",
+  "publicApi": [
+    "src/public/index.ts"
+  ],
+  "ownedTables": [
+    "tfo_financial_setups",
+    "tfo_workflows",
+    "tfo_workflow_steps",
+    "tfo_booking_references",
+    "tfo_service_financial_snapshots",
+    "tfo_program_history",
+    "tfo_historical_imports"
+  ],
+  "allowedDependencies": [
+    "@elhafez/contracts",
+    "@elhafez/core",
+    "@elhafez/cost-budget-accounting",
+    "@elhafez/tourism-contract-inventory",
+    "@elhafez/procurement-finance",
+    "@elhafez/billing-subledgers",
+    "@elhafez/treasury-settlement",
+    "@elhafez/expense-commission-recognition",
+    "@elhafez/financial-controls"
+  ]
+}

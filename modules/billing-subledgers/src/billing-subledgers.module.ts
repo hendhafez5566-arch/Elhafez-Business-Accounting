@@ -9,6 +9,9 @@ import { BILLING_REPOSITORY, type BillingRepository } from './application/billin
 import { BillingSubledgersApplicationService } from './application/billing-subledgers.application-service.js';
 import { PrismaBillingRepository } from './infrastructure/prisma-billing.repository.js';
 
+import { HistoricalImportApplicationService } from './application/historical-import.application-service.js';
+import { HISTORICAL_IMPORT_REPOSITORY, type HistoricalImportRepository } from './application/historical-import.repository.js';
+import { PrismaHistoricalImportRepository } from './infrastructure/prisma-historical-import.repository.js';
 @Module({
   imports: [
     TaxModule,
@@ -17,7 +20,7 @@ import { PrismaBillingRepository } from './infrastructure/prisma-billing.reposit
     PeriodControlModule,
     FinancialControlsModule,
   ],
-  providers: [
+  providers: [{ provide: HISTORICAL_IMPORT_REPOSITORY, useFactory: (p: PrismaClient) => new PrismaHistoricalImportRepository(p), inject: [PrismaClient] }, { provide: HistoricalImportApplicationService, useFactory: (r: HistoricalImportRepository) => new HistoricalImportApplicationService(r), inject: [HISTORICAL_IMPORT_REPOSITORY] },
     PrismaClient,
     {
       provide: BILLING_REPOSITORY,
@@ -40,6 +43,6 @@ import { PrismaBillingRepository } from './infrastructure/prisma-billing.reposit
       ],
     },
   ],
-  exports: [BillingSubledgersApplicationService],
+  exports: [HistoricalImportApplicationService, BillingSubledgersApplicationService],
 })
 export class BillingSubledgersModule {}

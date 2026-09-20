@@ -51,3 +51,17 @@ Before production traffic, rollback means discard the isolated target migration 
 - [ ] QA owner: GS-001..GS-040 is 40/40.
 - [ ] Operations owner: backup, maintenance window, monitoring, abort, and recovery rehearsal accepted.
 - [ ] Product owner: final explicit **GO** recorded. Any unchecked item means **NO-GO**.
+
+## Production CLI
+
+Run from the repository root after applying the additive AC-14 migrations. Every mutating command requires the frozen source identity explicitly; identity mismatches fail before owner import.
+
+```bash
+pnpm --filter @elhafez/api ac14 -- dry-run --snapshot /secure/export.json --config /secure/ac14.json --source-repository mhafez300300-byte/Elhafez-Tourism-Offline --source-commit e97fa6d9cb52acb22b676e1b975c1b2332bc9a13 --source-version 32.5.66
+pnpm --filter @elhafez/api ac14 -- execute --snapshot /secure/export.json --config /secure/ac14.json --run-id <run-id> --source-repository mhafez300300-byte/Elhafez-Tourism-Offline --source-commit e97fa6d9cb52acb22b676e1b975c1b2332bc9a13 --source-version 32.5.66
+pnpm --filter @elhafez/api ac14 -- resume --snapshot /secure/export.json --config /secure/ac14.json --run-id <run-id> --source-repository mhafez300300-byte/Elhafez-Tourism-Offline --source-commit e97fa6d9cb52acb22b676e1b975c1b2332bc9a13 --source-version 32.5.66
+pnpm --filter @elhafez/api ac14 -- status --run-id <run-id>
+pnpm --filter @elhafez/api ac14 -- verify --config /secure/ac14.json --run-id <run-id> --source-repository mhafez300300-byte/Elhafez-Tourism-Offline --source-commit e97fa6d9cb52acb22b676e1b975c1b2332bc9a13 --source-version 32.5.66
+```
+
+`verify` reads the existing run and owner evidence only. It does not accept or read a source snapshot and cannot invoke an owner import. `READY` requires all owner equivalence dimensions to match, executable GS evidence to be 40/40, reporting rebuild completion, zero unresolved issues, and a complete readiness checkpoint. `READY` is evidence only and does not perform production cutover.

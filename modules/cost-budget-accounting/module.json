@@ -9,7 +9,8 @@
     "cba_budgets",
     "cba_budget_actuals",
     "cba_program_allocation_cost_effects",
-    "cba_tourism_service_actualizations"
+    "cba_tourism_service_actualizations",
+    "cba_historical_imports"
   ],
   "allowedDependencies": [
     "@elhafez/contracts",

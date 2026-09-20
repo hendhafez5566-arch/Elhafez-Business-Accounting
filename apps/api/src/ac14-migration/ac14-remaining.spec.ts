@@ -10,8 +10,8 @@ test('remaining AC-14 stages are deterministic and dependency ordered', () => {
   assert.deepEqual(AC14_STAGES.map(([name]) => name).slice(-4), ['reporting-rebuild', 'equivalence', 'golden-scenarios', 'cutover-readiness']);
 });
 
-test('GS-001 through GS-040 each have one executable evidence registration', () => {
-  assertCompleteGoldenScenarioRegistry();
+test('GS-001 through GS-040 each have one executable evidence registration', async () => {
+  await assertCompleteGoldenScenarioRegistry();
   assert.equal(GOLDEN_SCENARIO_EVIDENCE.length, 40);
   assert.equal(GOLDEN_SCENARIO_EVIDENCE[0]?.id, 'GS-001');
   assert.equal(GOLDEN_SCENARIO_EVIDENCE[39]?.id, 'GS-040');
