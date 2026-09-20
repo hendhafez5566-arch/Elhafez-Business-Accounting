@@ -4,6 +4,7 @@ import {
   HistoricalImportApplicationService,
   type HistoricalImportRecord,
 } from "./application/historical-import.application-service.js";
+import { PrismaHistoricalImportRepository } from "./infrastructure/prisma-historical-import.repository.js";
 test("owner historical boundary validates exact decimals, persists once, and never posts economic effects", async () => {
   let saved: HistoricalImportRecord | undefined;
   const service = new HistoricalImportApplicationService({
@@ -38,4 +39,40 @@ test("owner historical boundary validates exact decimals, persists once, and nev
     () => service.validate({ ...input, payload: { amount: 1 } }),
     /exact decimal string/,
   );
+});
+
+
+test("AC-14 equivalence reads canonical Billing state rather than provenance amounts", async () => {
+  const decimal = (value: string) => ({ toString: () => value });
+  const db = {
+    billingSubledgersHistoricalImport: {
+      findMany: async () => [
+        {
+          collection: "allocations",
+          sourceId: "receipt-1:allocation:1",
+          amount: decimal("999999"),
+          debit: decimal("888888"),
+          credit: decimal("777777"),
+        },
+      ],
+    },
+    billingInvoice: { findMany: async () => [] },
+    billingAdjustment: { findMany: async () => [] },
+    billingAdvance: { findMany: async () => [] },
+    billingAllocation: {
+      findMany: async () => [
+        {
+          id: "receipt-1:allocation:1",
+          amount: decimal("60"),
+          companyId: "company",
+        },
+      ],
+    },
+  };
+  const repository = new PrismaHistoricalImportRepository(db as never);
+  const equivalence = await repository.equivalence("run", "company");
+  assert.equal(equivalence.records, "1");
+  assert.equal(equivalence.amount, "60");
+  assert.equal(equivalence.debit, "0");
+  assert.equal(equivalence.credit, "0");
 });
