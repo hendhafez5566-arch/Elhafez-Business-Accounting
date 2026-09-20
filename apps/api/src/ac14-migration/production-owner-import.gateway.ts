@@ -356,7 +356,8 @@ const legacyContractType = (collection: string): string =>
     : collection === "umrahFlightBlocks" ? "FLIGHT"
       : collection === "umrahTransportContracts" ? "TRANSPORT"
         : collection === "umrahVisaContracts" ? "VISA"
-          : "HISTORICAL";
+          : collection === "umrahServiceContracts" ? "SERVICE"
+            : "HISTORICAL";
 const dateText = (value: unknown, fallback = "1970-01-01"): string =>
   typeof value === "string" && value ? value : fallback;
 const monthRange = (year: unknown, month: unknown) => {
