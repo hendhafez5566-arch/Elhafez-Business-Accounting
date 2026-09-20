@@ -1,6 +1,6 @@
 {
   "id": "cs01-crm-core",
-  "summary": "Implement CS-01 CRM Core with canonical party, customer, agent, lead and follow-up owners, Prisma persistence, public boundaries, authorization, API composition and Arabic-first web routes.",
+  "summary": "Implement CS-01 CRM Core with canonical party, customer, agent, lead and follow-up owners, Prisma persistence, lightweight public boundaries, explicit Nest composition entrypoints, authorization, API composition and Arabic-first web routes.",
   "type": "phase",
   "allowedModules": [
     "party-registry",
@@ -33,7 +33,7 @@
     "modules/crm-followups/module.json",
     "apps/web/src/routes.tsx"
   ],
-  "protectedReason": "CS-01 explicitly creates the five owner-approved canonical modules from the repository module standard and must register their usable CRM routes in the protected route registry. No global shell, design token, accounting owner, workflow, or governance rule is changed.",
-  "allowBreakingPublicApi": false,
-  "publicApiBreakingReason": ""
+  "protectedReason": "CS-01 explicitly creates the five owner-approved canonical modules, keeps lightweight public APIs separate from Nest composition entrypoints, and registers their usable CRM routes. No global shell, design token, accounting owner, workflow, or governance rule is changed.",
+  "allowBreakingPublicApi": true,
+  "publicApiBreakingReason": "CS-01 deliberately moves NestJS module classes for agent-management, customer-management, crm-leads, and crm-followups from each package root to the explicit /nest composition subpath. This keeps root public domain/application APIs lightweight so consumers and tests do not load Nest controller infrastructure, while all legitimate API composition imports are updated to /nest."
 }
