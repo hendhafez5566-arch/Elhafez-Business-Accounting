@@ -1,0 +1,35 @@
+{
+  "id": "cs03-final-crm-integration",
+  "summary": "Complete CS-03 CRM & Sales integration with company-scoped Traveler Management and legacy passport import, quotation outbound communication evidence and print/share hand-offs, Customer/Agent 360 read composition, CRM dashboard/attention surfaces, final API/UI routing, and behavioral acceptance coverage.",
+  "type": "phase",
+  "allowedModules": [
+    "traveler-management",
+    "quotations"
+  ],
+  "allowedPaths": [
+    ".changes/cs03-final-crm-integration.json",
+    "apps/api/package.json",
+    "apps/api/src/app.module.ts",
+    "apps/api/src/crm-sales-read-model.controller.ts",
+    "apps/api/src/crm-sales-read-model.service.ts",
+    "apps/api/src/cs03-final-crm-integration.spec.ts",
+    "apps/web/src/crm-insights-pages.tsx",
+    "apps/web/src/cs03-final-crm-integration.spec.ts",
+    "apps/web/src/quotation-pages.tsx",
+    "apps/web/src/routes.tsx",
+    "docs/crm/CS-03-FINAL-INTEGRATION.md",
+    "pnpm-lock.yaml",
+    "prisma/schema.prisma",
+    "prisma/migrations/20260920230000_cs03_final_crm_integration/migration.sql"
+  ],
+  "protectedPaths": [
+    "modules/traveler-management/module.json",
+    "modules/quotations/module.json",
+    "apps/api/src/app.module.ts",
+    "apps/web/src/routes.tsx",
+    "prisma/schema.prisma"
+  ],
+  "protectedReason": "CS-03 creates the owner-approved shared Traveler Management module, adds quotation-owned append-only communication evidence, registers the module and final CRM read-composition routes, and adds only the corresponding owned Prisma tables through one forward-only migration.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": ""
+}

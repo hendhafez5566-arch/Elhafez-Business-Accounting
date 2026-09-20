@@ -36,6 +36,7 @@
     "@elhafez/crm-leads": "workspace:*",
     "@elhafez/crm-followups": "workspace:*",
     "@elhafez/quotations": "workspace:*",
-    "@elhafez/supplier-management": "workspace:*"
+    "@elhafez/supplier-management": "workspace:*",
+    "@elhafez/traveler-management": "workspace:*"
   }
 }

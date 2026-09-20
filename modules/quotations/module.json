@@ -1,1 +1,22 @@
-{"name":"quotations","publicApi":["src/public/index.ts","src/public/nest.ts"],"ownedTables":["qt_quotations","qt_revisions","qt_revision_lines","qt_history","qt_number_counters"],"allowedDependencies":["@elhafez/contracts","@elhafez/platform-core","@elhafez/crm-leads","@elhafez/customer-management","@elhafez/billing-subledgers"]}
+{
+  "name": "quotations",
+  "publicApi": [
+    "src/public/index.ts",
+    "src/public/nest.ts"
+  ],
+  "ownedTables": [
+    "qt_quotations",
+    "qt_revisions",
+    "qt_revision_lines",
+    "qt_history",
+    "qt_number_counters",
+    "qt_communications"
+  ],
+  "allowedDependencies": [
+    "@elhafez/contracts",
+    "@elhafez/platform-core",
+    "@elhafez/crm-leads",
+    "@elhafez/customer-management",
+    "@elhafez/billing-subledgers"
+  ]
+}
