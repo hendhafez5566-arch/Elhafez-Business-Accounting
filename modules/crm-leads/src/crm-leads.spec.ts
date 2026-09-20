@@ -9,11 +9,13 @@ import {
   type CustomerId,
   type CustomerResolveResult,
 } from '@elhafez/customer-management';
-import { partyId, type DuplicateCandidate, type Party } from '@elhafez/party-registry';
 import type { CrmLeadsAccess } from './application/crm-leads-access.js';
 import type { LeadAgentPort, LeadCustomerPort } from './application/crm-leads-dependencies.port.js';
 import { CrmLeadsApplicationService } from './application/crm-leads.application-service.js';
 import { InMemoryCrmLeadsRepository } from './infrastructure/in-memory-crm-leads.repository.js';
+
+type ReviewCandidates=Extract<CustomerResolveResult,{status:'REVIEW_REQUIRED'}>['candidates'];
+type CustomerParty=Extract<CustomerResolveResult,{status:'CREATED'|'EXISTING'|'EXISTING_SUSPENDED'}>['value']['party'];
 
 class Access implements CrmLeadsAccess {
   async requireBranch(context:ExecutionContext):Promise<void> {
@@ -55,11 +57,11 @@ class Customers implements LeadCustomerPort {
 
   async resolveOrCreateForLead(context:ExecutionContext,_input:CreateCustomerInput):Promise<CustomerResolveResult> {
     if (this.ambiguous) {
-      const candidates:DuplicateCandidate[]=[];
+      const candidates:ReviewCandidates=[];
       return {status:'REVIEW_REQUIRED',candidates};
     }
     const id=customerId('customer-'+(++this.seq));
-    const customerPartyId=partyId('party-'+this.seq);
+    const customerPartyId=('party-'+this.seq) as CustomerParty['id'];
     const value:Customer={
       id,
       companyId:context.companyId,
@@ -71,7 +73,7 @@ class Customers implements LeadCustomerPort {
       createdAt:'x',
       updatedAt:'x',
     };
-    const party:Party={
+    const party:CustomerParty={
       id:customerPartyId,
       companyId:context.companyId,
       kind:'PERSON',
