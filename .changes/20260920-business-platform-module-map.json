@@ -11,14 +11,16 @@
     "docs/MODULE-STANDARD.md",
     "AGENTS.md",
     "AI_CHANGE_PROTOCOL.md",
-    "PROJECT_STATE.md"
+    "PROJECT_STATE.md",
+    "PROJECT_MANAGER_HANDOFF.md"
   ],
   "protectedPaths": [
     "AGENTS.md",
     "AI_CHANGE_PROTOCOL.md",
-    "PROJECT_STATE.md"
+    "PROJECT_STATE.md",
+    "PROJECT_MANAGER_HANDOFF.md"
   ],
-  "protectedReason": "Owner-approved governance change that makes business-suite/module ownership and AI routing canonical and mandatory before future module work. No business implementation code is changed.",
+  "protectedReason": "Owner-approved governance change that makes post-AC-14 business-suite/module ownership and AI routing canonical and mandatory before future module work, and updates manager continuity to the broader platform program. No business implementation code is changed.",
   "allowBreakingPublicApi": false,
   "publicApiBreakingReason": ""
 }
