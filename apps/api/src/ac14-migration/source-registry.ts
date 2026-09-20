@@ -142,6 +142,8 @@ export const AC14_FROZEN_SOURCE_REGISTRY: readonly FrozenSourceRegistration[] = 
   classify("umrahBusRuns", "tourism-contract-inventory", "AMBIGUOUS_LEGACY_SEMANTICS", "bus execution state must not create a second transport capacity effect"),
   classify("umrahOperationTasks", "tourism-finance", "UNSUPPORTED_LEGACY_CONSTRUCT", "operation tasks are operational workflow state"),
   classify("umrahIncidents", "tourism-finance", "UNSUPPORTED_LEGACY_CONSTRUCT", "operation incidents are operational workflow state"),
+  classify("umrahActivity", "source-preflight", "UNSUPPORTED_LEGACY_CONSTRUCT", "Umrah activity is operational audit history and must not be replayed as accounting economic state"),
+  classify("umrahOutbox", "source-preflight", "UNSUPPORTED_LEGACY_CONSTRUCT", "Umrah outbox is integration-delivery state and must not be replayed as accounting economic state"),
 ] as const;
 
 export const AC14_KNOWN_FROZEN_COLLECTIONS = [
@@ -157,7 +159,7 @@ export const AC14_KNOWN_FROZEN_COLLECTIONS = [
   "umrahVisaContracts","umrahServiceContracts","umrahContractReservations","umrahPrograms","umrahProgramSegments",
   "umrahProgramCosts","umrahBookings","umrahTravelers","umrahHotelRooms","umrahVisaBatches",
   "umrahVisaItems","umrahTickets","umrahBusRuns","umrahOperationTasks","umrahIncidents",
-  "umrahSupplierCommitments",
+  "umrahSupplierCommitments","umrahActivity","umrahOutbox",
 ] as const;
 
 export const registrationsForSource = (sourceCollection: string) =>
