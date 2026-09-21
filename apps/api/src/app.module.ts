@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { PlatformCoreApplicationService, PlatformCoreModule } from '@elhafez/platform-core';
+import { PlatformCoreModule } from '@elhafez/platform-core';
 import { PeriodControlModule } from '@elhafez/period-control';
 import { GeneralLedgerModule } from '@elhafez/general-ledger';
 import { FinancialControlsModule } from '@elhafez/financial-controls';
