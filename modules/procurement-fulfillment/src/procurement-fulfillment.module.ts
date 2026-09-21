@@ -1,7 +1,8 @@
 import{Module}from'@nestjs/common';
 import{PrismaClient}from'@prisma/client';
 import{PlatformCoreApplicationService,PlatformCoreModule}from'@elhafez/platform-core';
-import{ProcurementFinanceApplicationService,ProcurementFinanceModule}from'@elhafez/procurement-finance';
+import{ProcurementFinanceApplicationService}from'@elhafez/procurement-finance';
+import{ProcurementFinanceModule}from'@elhafez/procurement-finance/nest';
 import{ProcurementFulfillmentApplicationService}from'./application/procurement-fulfillment.application-service.js';
 import{PROCUREMENT_ACCESS,type ProcurementAccess}from'./application/procurement-access.js';
 import{PROCUREMENT_FULFILLMENT_REPOSITORY,type ProcurementFulfillmentRepository}from'./application/procurement-fulfillment.repository.js';
