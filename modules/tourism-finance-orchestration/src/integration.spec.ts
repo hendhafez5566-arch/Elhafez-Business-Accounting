@@ -761,7 +761,15 @@ function procurementFixture() {
       throw new Error('Billing is not expected for empty PO cancellation cleanup');
     },
   };
-  const service = new ProcurementFinanceApplicationService(repo, billing);
+  const suppliers = {
+    async assertSupplierReferenceUsableForProcurementForIntegration(
+      _companyId: CompanyId,
+      supplierId: string,
+    ) {
+      return { partyId: supplierId };
+    },
+  };
+  const service = new ProcurementFinanceApplicationService(repo, billing, suppliers as never);
   return { service, purchaseOrders };
 }
 
@@ -1023,6 +1031,7 @@ test('AC-12 -> Procurement delegates to real owner cleanup policy', async () => 
   await fixture.service.createPurchaseOrder({
     id: 'po-1',
     companyId: company,
+    branchId: 'branch-a',
     supplierId: 'supplier-1',
     number: 'PO-1',
     origin: 'AUTO',
