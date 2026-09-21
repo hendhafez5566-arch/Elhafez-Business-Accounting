@@ -4,10 +4,8 @@ import {
   CostBudgetAccountingApplicationService,
   CostBudgetAccountingModule,
 } from '@elhafez/cost-budget-accounting';
-import {
-  ProcurementFinanceApplicationService,
-  ProcurementFinanceModule,
-} from '@elhafez/procurement-finance';
+import { ProcurementFinanceApplicationService } from '@elhafez/procurement-finance';
+import { ProcurementFinanceModule } from '@elhafez/procurement-finance/nest';
 import { TourismContractInventoryApplicationServiceImpl } from './application/tourism-contract-inventory.application-service.impl.js';
 import type {
   CostEffectPort,
