@@ -126,6 +126,7 @@ export function ProcurementOperationsPage() {
 
   const [directId,setDirectId] = useState(() => crypto.randomUUID());
   const [directInvoiceId,setDirectInvoiceId] = useState(() => crypto.randomUUID());
+  const [directLineId,setDirectLineId] = useState(() => crypto.randomUUID());
   const [directSupplier,setDirectSupplier] = useState('');
   const [directNumber,setDirectNumber] = useState('');
   const [directExternal,setDirectExternal] = useState('');
@@ -398,11 +399,12 @@ export function ProcurementOperationsPage() {
         postingDate: directDate,
         currency: directCurrency,
         controlAccountId: controlAccount,
-        lines: [{ id:crypto.randomUUID(),accountId:expenseAccount,amount:directAmount }],
+        lines: [{ id:directLineId,accountId:expenseAccount,amount:directAmount }],
       });
       setNotice('تم ترحيل الشراء المباشر كفاتورة مورد من خلال Billing.');
       setDirectId(crypto.randomUUID());
       setDirectInvoiceId(crypto.randomUUID());
+      setDirectLineId(crypto.randomUUID());
       setDirectNumber('');
       setDirectExternal('');
       setDirectAmount('');
