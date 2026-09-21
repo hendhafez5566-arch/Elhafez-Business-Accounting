@@ -160,25 +160,20 @@ function replaceDefinition(
   value: ProgramVersionSnapshot,
   updatedAt: string,
 ): Program {
-  const {
-    code: _code,
-    type: _type,
-    seasonId: _seasonId,
-    arabicName: _arabicName,
-    englishName: _englishName,
-    groupNumber: _groupNumber,
-    groupDescription: _groupDescription,
-    snapshot: _snapshot,
-    temporaryHoldMinutes: _temporaryHoldMinutes,
-    minimumDepositPolicy: _minimumDepositPolicy,
-    notes: _notes,
-    operationsManager: _operationsManager,
-    groupLeader: _groupLeader,
-    guide: _guide,
-    contact: _contact,
-    ...lifecycle
-  } = program;
-  return { ...lifecycle, ...value, updatedAt };
+  return {
+    id: program.id,
+    companyId: program.companyId,
+    branchId: program.branchId,
+    ...value,
+    status: program.status,
+    bookingOpen: program.bookingOpen,
+    currentVersion: program.currentVersion,
+    currentVersionId: program.currentVersionId,
+    ...(program.departureRecordedAt ? { departureRecordedAt: program.departureRecordedAt } : {}),
+    ...(program.returnRecordedAt ? { returnRecordedAt: program.returnRecordedAt } : {}),
+    createdAt: program.createdAt,
+    updatedAt,
+  };
 }
 
 function supplyCheck(
