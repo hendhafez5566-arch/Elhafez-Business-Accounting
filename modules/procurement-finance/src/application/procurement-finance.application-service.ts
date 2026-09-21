@@ -45,6 +45,12 @@ function decimal(value: bigint): DecimalAmount {
   return decimalAmount((negative ? '-' : '') + text);
 }
 
+function multiply(left: DecimalAmount, right: DecimalAmount, field: string): DecimalAmount {
+  const product=scaled(left)*scaled(right);
+  if(product%SCALE!==0n)throw new ContractValidationError(field,'result exceeds supported decimal precision');
+  return decimal(product/SCALE);
+}
+
 function positive(value: DecimalAmount, field: string): DecimalAmount {
   const normalized = decimalAmount(value);
   if (scaled(normalized) <= 0n) {
@@ -568,6 +574,15 @@ export class ProcurementFinanceApplicationService {
     const line = po.lines.find((candidate) => candidate.id === input.lineId);
     if (!line) throw new ContractValidationError('line', 'not found');
 
+    const invoiceCurrency=currencyCode(input.billing.currency);
+    if(po.currency&&invoiceCurrency!==po.currency)throw new ContractValidationError('billing.currency','must match purchase order currency');
+    if(line.unitPrice!==undefined){
+      const expectedAmount=multiply(quantity,line.unitPrice,'billing.amount');
+      if(scaled(invoiceAmount)!==scaled(expectedAmount))throw new ContractValidationError('billing.amount','must equal invoiced quantity multiplied by purchase-order unit price');
+    }
+    if(line.taxCode&&input.billing.taxCode&&line.taxCode!==input.billing.taxCode)throw new ContractValidationError('billing.taxCode','must match purchase-order tax code');
+    const invoiceTaxCode=input.billing.taxCode??line.taxCode;
+
     const invoice: CreateInvoiceInput = {
       id: input.billing.invoiceId,
       companyId: input.companyId,
@@ -578,7 +593,7 @@ export class ProcurementFinanceApplicationService {
       externalInvoiceNumber: input.billing.externalInvoiceNumber,
       postingDate: input.billing.postingDate,
       ...(input.billing.dueDate ? { dueDate: input.billing.dueDate } : {}),
-      currency: currencyCode(input.billing.currency),
+      currency: invoiceCurrency,
       sourceType: 'PROCUREMENT_PO',
       sourceId: input.id,
       controlAccountId: input.billing.controlAccountId,
@@ -587,7 +602,7 @@ export class ProcurementFinanceApplicationService {
           id: `${input.billing.invoiceId}:${input.lineId}`,
           accountId: input.billing.accountId,
           amount: invoiceAmount,
-          ...(input.billing.taxCode ? { taxCode: input.billing.taxCode } : {}),
+          ...(invoiceTaxCode ? { taxCode: invoiceTaxCode } : {}),
         },
       ],
     };
