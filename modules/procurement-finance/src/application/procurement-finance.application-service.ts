@@ -356,7 +356,7 @@ export class ProcurementFinanceApplicationService {
       ? prior?.number ?? `PO-${manualYear}-${String(await this.repo.nextPoNumber(input.companyId,branchId,manualYear!)).padStart(6,'0')}`
       : requiredText(input.number,'number');
 
-    const normalized:CreatePurchaseOrderInput={
+    const normalized:CreatePurchaseOrderInput & {number:string}={
       ...input,
       branchId,
       supplierId:canonicalSupplierId,
