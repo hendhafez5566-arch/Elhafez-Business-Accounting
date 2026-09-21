@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { companyId, decimalAmount, sourceReference } from '@elhafez/contracts';
 import { TourismFinanceOrchestrationApplicationService, type ConfirmBookingInput } from './application/tourism-finance-orchestration.application-service.js';
 import { InMemoryTourismFinanceRepository } from './infrastructure/in-memory-tourism-finance.repository.js';
+import { PrismaTourismFinanceRepository } from './infrastructure/prisma-tourism-finance.repository.js';
 import type { BookingReference } from './domain/orchestration.js';
 import type { BillingPort, CommissionPort, ControlsPort, CostPort, InventoryPort, ProcurementPort, TreasuryPort } from './application/ports.js';
 
@@ -289,4 +290,48 @@ test('legacy single procurement reference remains readable by cancellation and r
   assert.ok(cancellation.blockers.some((item) => item.type === 'SUPPLIER_EXECUTION'));
   const readiness = await f.service.evaluateFinancialReadiness({ companyId: company, program, requiredCategories: ['HOTEL'] });
   assert.ok(readiness.blockers.some((item) => item.startsWith('PROCUREMENT:SUPPLIER_EXECUTION:')));
+});
+
+
+test('Prisma booking repository reads legacy single and new multi procurement JSON shapes', async () => {
+  const baseRow = {
+    id: 'booking-ref',
+    companyId: company,
+    branchId: 'branch-1',
+    bookingType: booking.sourceType,
+    bookingId: booking.sourceId,
+    programType: program.sourceType,
+    programId: program.sourceId,
+    customerPartyId: 'customer-1',
+    confirmationPayloadHash: 'hash',
+    status: 'ACTIVE',
+    invoiceId: 'invoice-1',
+    allocations: [],
+    approvalRequestId: null,
+    commissionClaimId: null,
+    depositVoucherIds: [],
+    workflowId: 'workflow-1',
+    financialSetup: {
+      receivableAccountId: 'ar',
+      customerAdvanceAccountId: 'advance',
+      revenueAccountId: 'revenue',
+    },
+  };
+  let procurementValue: unknown = { purchaseOrderId: 'legacy-po' };
+  const db = {
+    tfoBookingReference: {
+      async findUnique() {
+        return { ...baseRow, procurementReference: procurementValue };
+      },
+    },
+  };
+  const repository = new PrismaTourismFinanceRepository(db as never);
+  const legacy = await repository.booking(company, booking);
+  assert.deepEqual(legacy?.procurementReference, { purchaseOrderId: 'legacy-po' });
+  assert.deepEqual(legacy?.procurementReferences, [{ purchaseOrderId: 'legacy-po' }]);
+
+  procurementValue = [{ purchaseOrderId: 'po-1' }, { purchaseOrderId: 'po-2' }];
+  const multi = await repository.booking(company, booking);
+  assert.equal(multi?.procurementReference, undefined);
+  assert.deepEqual(multi?.procurementReferences, [{ purchaseOrderId: 'po-1' }, { purchaseOrderId: 'po-2' }]);
 });
