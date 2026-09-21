@@ -1,7 +1,568 @@
-import{randomUUID}from'node:crypto';import{ContractValidationError,decimalAmount,type ExecutionContext}from'@elhafez/contracts';import type{Program,ProgramComponent,ProgramHistory,ProgramPrices,ProgramSnapshot,ProgramType,ProgramVersion,Requirement}from'../domain/program.js';import type{ProgramRepository}from'./program.repository.js';import type{ProgramAccess,ReopenGuard,SeasonPort,SupplyPort}from'./program.ports.js';
-export const PROGRAM_PERMISSIONS=Object.freeze({view:'hajj_umrah.programs.view',create:'hajj_umrah.programs.create',edit:'hajj_umrah.programs.edit',amend:'hajj_umrah.programs.amend',availability:'hajj_umrah.programs.availability',lifecycle:'hajj_umrah.programs.lifecycle',cancel:'hajj_umrah.programs.cancel',reopen:'hajj_umrah.programs.reopen'});
-const defaults:Record<ProgramType,Requirement[]>={HAJJ:['HOTEL','FLIGHT','TRANSPORT','CAMP','PERMIT'],UMRAH:['HOTEL','FLIGHT','TRANSPORT']};
-export interface ProgramInput{code:string;type:ProgramType;seasonId:string;arabicName:string;englishName?:string;groupNumber?:string;groupDescription?:string;departureDate:string;returnDate:string;salesStart:string;salesClose:string;capacity:string;currency:string;prices:ProgramPrices;requirements?:Requirement[];components?:ProgramComponent[];temporaryHoldMinutes?:number;minimumDepositPolicy?:string;cancellationPolicy?:string;notes?:string;operationsManager?:string;groupLeader?:string;guide?:string;contact?:string;}
-const required=(v:string,f:string)=>{v=v.trim();if(!v)throw new ContractValidationError(f,'is required');return v};const unique=<T>(v:T[])=>[...new Set(v)];
-function normalized(input:ProgramInput):ProgramSnapshot{if(input.returnDate<input.departureDate)throw new ContractValidationError('returnDate','must be on or after departureDate');if(input.salesClose<input.salesStart)throw new ContractValidationError('salesClose','must be on or after salesStart');const capacity=decimalAmount(input.capacity);if(capacity.startsWith('-')||capacity==='0')throw new ContractValidationError('capacity','must be positive');const prices=Object.fromEntries(Object.entries(input.prices).map(([k,v])=>{const x=decimalAmount(v);if(x.startsWith('-'))throw new ContractValidationError(`prices.${k}`,'must not be negative');return[k,x]}))as ProgramPrices;const components=[...(input.components??[])].sort((a,b)=>a.sequence-b.sequence);if(new Set(components.map(x=>x.sequence)).size!==components.length)throw new ContractValidationError('components','sequence must be unique');return{departureDate:input.departureDate,returnDate:input.returnDate,salesStart:input.salesStart,salesClose:input.salesClose,capacity,currency:required(input.currency,'currency').toUpperCase(),prices,requirements:unique(input.requirements??defaults[input.type]),components,...(input.cancellationPolicy?.trim()?{cancellationPolicy:input.cancellationPolicy.trim()}: {})};}
-export class HajjUmrahProgramsApplicationService{constructor(private readonly repo:ProgramRepository,private readonly access:ProgramAccess,private readonly seasons:SeasonPort,private readonly supply:SupplyPort,private readonly guard:ReopenGuard,private readonly now:()=>Date=()=>new Date(),private readonly id:()=>string=()=>randomUUID()){}private async permission(c:ExecutionContext,p:string){await this.access.requireBranch(c);await this.access.requirePermission(c,p)}private history(c:ExecutionContext,id:string,action:string,reason?:string):ProgramHistory{return{id:this.id(),companyId:c.companyId,branchId:c.branchId,programId:id,action,...(reason?{reason}:{}),actorId:c.actorId,occurredAt:this.now().toISOString()}}private version(c:ExecutionContext,id:string,n:number,snapshot:ProgramSnapshot,reason:string,supersedesId?:string):ProgramVersion{return{id:this.id(),companyId:c.companyId,branchId:c.branchId,programId:id,version:n,snapshot,effectiveAt:this.now().toISOString(),reason,actorId:c.actorId,...(supersedesId?{supersedesId}:{})}}async create(c:ExecutionContext,input:ProgramInput){await this.permission(c,PROGRAM_PERMISSIONS.create);const snapshot=normalized(input);await this.seasons.validate(c.companyId,c.branchId,input.seasonId,snapshot.departureDate,snapshot.returnDate);const at=this.now().toISOString(),id=this.id(),v=this.version(c,id,1,snapshot,'Initial version');const value:Program={id,companyId:c.companyId,branchId:c.branchId,code:required(input.code,'code'),type:input.type,seasonId:required(input.seasonId,'seasonId'),arabicName:required(input.arabicName,'arabicName'),...(input.englishName?.trim()?{englishName:input.englishName.trim()}:{}),...(input.groupNumber?.trim()?{groupNumber:input.groupNumber.trim()}:{}),...(input.groupDescription?.trim()?{groupDescription:input.groupDescription.trim()}:{}),snapshot,temporaryHoldMinutes:input.temporaryHoldMinutes??15,...(input.minimumDepositPolicy?.trim()?{minimumDepositPolicy:input.minimumDepositPolicy.trim()}:{}),...(input.notes?.trim()?{notes:input.notes.trim()}:{}),...(input.operationsManager?.trim()?{operationsManager:input.operationsManager.trim()}:{}),...(input.groupLeader?.trim()?{groupLeader:input.groupLeader.trim()}:{}),...(input.guide?.trim()?{guide:input.guide.trim()}:{}),...(input.contact?.trim()?{contact:input.contact.trim()}:{}),status:'PREPARING',bookingOpen:false,currentVersion:1,currentVersionId:v.id,createdAt:at,updatedAt:at};return this.repo.create(value,v,this.history(c,id,'CREATED'));}async get(c:ExecutionContext,id:string){await this.permission(c,PROGRAM_PERMISSIONS.view);return this.required(c,id)}async list(c:ExecutionContext){await this.permission(c,PROGRAM_PERMISSIONS.view);return this.repo.list(c.companyId,c.branchId)}async editPreparing(c:ExecutionContext,id:string,input:ProgramInput){await this.permission(c,PROGRAM_PERMISSIONS.edit);const old=await this.required(c,id);if(old.status!=='PREPARING')throw new ContractValidationError('status','material changes require an amendment after booking opens');const snapshot=normalized(input);await this.seasons.validate(c.companyId,c.branchId,input.seasonId,snapshot.departureDate,snapshot.returnDate);return this.repo.save({...old,code:required(input.code,'code'),type:input.type,seasonId:input.seasonId,arabicName:required(input.arabicName,'arabicName'),snapshot,updatedAt:this.now().toISOString()},this.history(c,id,'UPDATED'));}async amend(c:ExecutionContext,id:string,input:ProgramInput,reason:string){await this.permission(c,PROGRAM_PERMISSIONS.amend);reason=required(reason,'reason');const old=await this.required(c,id);if(old.status==='PREPARING')throw new ContractValidationError('status','use preparing edit before booking opens');if(old.status==='CANCELLED')throw new ContractValidationError('status','cancelled program cannot be amended');const snapshot=normalized(input);await this.seasons.validate(c.companyId,c.branchId,input.seasonId,snapshot.departureDate,snapshot.returnDate);const v=this.version(c,id,old.currentVersion+1,snapshot,reason,old.currentVersionId);return this.repo.save({...old,snapshot,currentVersion:v.version,currentVersionId:v.id,updatedAt:this.now().toISOString()},this.history(c,id,'AMENDED',reason),v)}async openForBooking(c:ExecutionContext,id:string){await this.permission(c,PROGRAM_PERMISSIONS.lifecycle);const old=await this.required(c,id);if(old.status!=='PREPARING')throw new ContractValidationError('status','program is not preparing');await this.seasons.validate(c.companyId,c.branchId,old.seasonId,old.snapshot.departureDate,old.snapshot.returnDate);if(!Object.keys(old.snapshot.prices).length)throw new ContractValidationError('prices','at least one selling price is required');for(const requirement of old.snapshot.requirements)if(!await this.supply.hasEvidence(c.companyId,c.branchId,id,requirement))throw new ContractValidationError('supply',`missing required supply evidence: ${requirement}`);return this.saveStatus(c,old,'BOOKABLE','OPENED_FOR_BOOKING',true)}async setBookingAvailability(c:ExecutionContext,id:string,open:boolean){await this.permission(c,PROGRAM_PERMISSIONS.availability);const old=await this.required(c,id);if(old.status!=='BOOKABLE')throw new ContractValidationError('status','booking availability belongs to BOOKABLE programs');return this.repo.save({...old,bookingOpen:open,updatedAt:this.now().toISOString()},this.history(c,id,open?'BOOKING_OPENED':'BOOKING_CLOSED'))}async recordDeparture(c:ExecutionContext,id:string){await this.permission(c,PROGRAM_PERMISSIONS.lifecycle);const old=await this.required(c,id);if(old.status!=='BOOKABLE')throw new ContractValidationError('status','departure requires a bookable program');return this.repo.save({...old,status:'IN_TRIP',bookingOpen:false,departureRecordedAt:this.now().toISOString(),updatedAt:this.now().toISOString()},this.history(c,id,'DEPARTURE_RECORDED'))}async recordReturn(c:ExecutionContext,id:string){await this.permission(c,PROGRAM_PERMISSIONS.lifecycle);const old=await this.required(c,id);if(old.status!=='IN_TRIP'||!old.departureRecordedAt)throw new ContractValidationError('status','return requires recorded departure');return this.repo.save({...old,status:'CLOSED',returnRecordedAt:this.now().toISOString(),updatedAt:this.now().toISOString()},this.history(c,id,'RETURN_RECORDED'))}async cancel(c:ExecutionContext,id:string,reason:string){await this.permission(c,PROGRAM_PERMISSIONS.cancel);reason=required(reason,'reason');const old=await this.required(c,id);if(!['PREPARING','BOOKABLE'].includes(old.status))throw new ContractValidationError('status','program cannot be cancelled after travel starts');return this.saveStatus(c,old,'CANCELLED','CANCELLED',false,reason)}async reopen(c:ExecutionContext,id:string,reason:string){await this.permission(c,PROGRAM_PERMISSIONS.reopen);reason=required(reason,'reason');const old=await this.required(c,id);if(old.status!=='CLOSED'||!old.returnRecordedAt)throw new ContractValidationError('status','only a returned closed program can be reopened');await this.guard.assertOpen(c.companyId,c.branchId,this.now().toISOString());const result=await this.saveStatus(c,old,'IN_TRIP','REOPENED',false,reason);await this.access.audit(c,'hajj-umrah.program.reopened',id,{reason});return result}async versions(c:ExecutionContext,id:string){await this.permission(c,PROGRAM_PERMISSIONS.view);await this.required(c,id);return this.repo.versions(c.companyId,c.branchId,id)}private saveStatus(c:ExecutionContext,p:Program,status:Program['status'],action:string,bookingOpen:boolean,reason?:string){return this.repo.save({...p,status,bookingOpen,updatedAt:this.now().toISOString()},this.history(c,p.id,action,reason))}private async required(c:ExecutionContext,id:string){const p=await this.repo.get(c.companyId,c.branchId,id);if(!p)throw new ContractValidationError('programId','program not found');return p}}
+import { randomUUID } from 'node:crypto';
+import {
+  ContractValidationError,
+  decimalAmount,
+  type ExecutionContext,
+} from '@elhafez/contracts';
+import type {
+  Program,
+  ProgramComponent,
+  ProgramHistory,
+  ProgramPrices,
+  ProgramSnapshot,
+  ProgramType,
+  ProgramVersion,
+  ProgramVersionSnapshot,
+  Requirement,
+} from '../domain/program.js';
+import type { ProgramRepository } from './program.repository.js';
+import type {
+  ProgramAccess,
+  ReopenGuard,
+  SeasonPort,
+  SupplyEvidenceCheck,
+  SupplyPort,
+} from './program.ports.js';
+
+export const PROGRAM_PERMISSIONS = Object.freeze({
+  view: 'hajj_umrah.programs.view',
+  create: 'hajj_umrah.programs.create',
+  edit: 'hajj_umrah.programs.edit',
+  amend: 'hajj_umrah.programs.amend',
+  availability: 'hajj_umrah.programs.availability',
+  lifecycle: 'hajj_umrah.programs.lifecycle',
+  cancel: 'hajj_umrah.programs.cancel',
+  reopen: 'hajj_umrah.programs.reopen',
+});
+
+const defaults: Record<ProgramType, Requirement[]> = {
+  HAJJ: ['HOTEL', 'FLIGHT', 'TRANSPORT', 'CAMP', 'PERMIT'],
+  UMRAH: ['HOTEL', 'FLIGHT', 'TRANSPORT'],
+};
+
+const serviceCategory = new Set<Requirement>([
+  'CAMP',
+  'MEAL',
+  'VISIT',
+  'GUIDE',
+  'RAWDA',
+  'INSURANCE',
+]);
+
+export interface ProgramInput {
+  code: string;
+  type: ProgramType;
+  seasonId: string;
+  arabicName: string;
+  englishName?: string;
+  groupNumber?: string;
+  groupDescription?: string;
+  departureDate: string;
+  returnDate: string;
+  salesStart: string;
+  salesClose: string;
+  capacity: string;
+  currency: string;
+  prices: ProgramPrices;
+  requirements?: Requirement[];
+  components?: ProgramComponent[];
+  temporaryHoldMinutes?: number;
+  minimumDepositPolicy?: string;
+  cancellationPolicy?: string;
+  notes?: string;
+  operationsManager?: string;
+  groupLeader?: string;
+  guide?: string;
+  contact?: string;
+}
+
+const required = (value: string, field: string) => {
+  const result = value.trim();
+  if (!result) throw new ContractValidationError(field, 'is required');
+  return result;
+};
+const optional = (value?: string) => {
+  const result = value?.trim();
+  return result ? result : undefined;
+};
+const unique = <T>(values: T[]) => [...new Set(values)];
+
+function normalized(input: ProgramInput): ProgramSnapshot {
+  if (input.returnDate < input.departureDate) {
+    throw new ContractValidationError('returnDate', 'must be on or after departureDate');
+  }
+  if (input.salesClose < input.salesStart) {
+    throw new ContractValidationError('salesClose', 'must be on or after salesStart');
+  }
+  const capacity = decimalAmount(input.capacity);
+  if (capacity.startsWith('-') || capacity === '0') {
+    throw new ContractValidationError('capacity', 'must be positive');
+  }
+  const prices = Object.fromEntries(
+    Object.entries(input.prices).map(([key, value]) => {
+      const amount = decimalAmount(value);
+      if (amount.startsWith('-')) {
+        throw new ContractValidationError(`prices.${key}`, 'must not be negative');
+      }
+      return [key, amount];
+    }),
+  ) as ProgramPrices;
+  const components = [...(input.components ?? [])].sort(
+    (left, right) => left.sequence - right.sequence,
+  );
+  if (new Set(components.map((item) => item.sequence)).size !== components.length) {
+    throw new ContractValidationError('components', 'sequence must be unique');
+  }
+  return {
+    departureDate: input.departureDate,
+    returnDate: input.returnDate,
+    salesStart: input.salesStart,
+    salesClose: input.salesClose,
+    capacity,
+    currency: required(input.currency, 'currency').toUpperCase(),
+    prices,
+    requirements: unique(input.requirements ?? defaults[input.type]),
+    components,
+    ...(optional(input.cancellationPolicy)
+      ? { cancellationPolicy: optional(input.cancellationPolicy)! }
+      : {}),
+  };
+}
+
+function definition(input: ProgramInput, snapshot: ProgramSnapshot): ProgramVersionSnapshot {
+  return {
+    code: required(input.code, 'code'),
+    type: input.type,
+    seasonId: required(input.seasonId, 'seasonId'),
+    arabicName: required(input.arabicName, 'arabicName'),
+    ...(optional(input.englishName) ? { englishName: optional(input.englishName)! } : {}),
+    ...(optional(input.groupNumber) ? { groupNumber: optional(input.groupNumber)! } : {}),
+    ...(optional(input.groupDescription)
+      ? { groupDescription: optional(input.groupDescription)! }
+      : {}),
+    snapshot,
+    temporaryHoldMinutes: input.temporaryHoldMinutes ?? 15,
+    ...(optional(input.minimumDepositPolicy)
+      ? { minimumDepositPolicy: optional(input.minimumDepositPolicy)! }
+      : {}),
+    ...(optional(input.notes) ? { notes: optional(input.notes)! } : {}),
+    ...(optional(input.operationsManager)
+      ? { operationsManager: optional(input.operationsManager)! }
+      : {}),
+    ...(optional(input.groupLeader) ? { groupLeader: optional(input.groupLeader)! } : {}),
+    ...(optional(input.guide) ? { guide: optional(input.guide)! } : {}),
+    ...(optional(input.contact) ? { contact: optional(input.contact)! } : {}),
+  };
+}
+
+function replaceDefinition(
+  program: Program,
+  value: ProgramVersionSnapshot,
+  updatedAt: string,
+): Program {
+  const {
+    code: _code,
+    type: _type,
+    seasonId: _seasonId,
+    arabicName: _arabicName,
+    englishName: _englishName,
+    groupNumber: _groupNumber,
+    groupDescription: _groupDescription,
+    snapshot: _snapshot,
+    temporaryHoldMinutes: _temporaryHoldMinutes,
+    minimumDepositPolicy: _minimumDepositPolicy,
+    notes: _notes,
+    operationsManager: _operationsManager,
+    groupLeader: _groupLeader,
+    guide: _guide,
+    contact: _contact,
+    ...lifecycle
+  } = program;
+  return { ...lifecycle, ...value, updatedAt };
+}
+
+function supplyCheck(
+  program: Program,
+  requirement: Requirement,
+  component: ProgramComponent,
+): SupplyEvidenceCheck | null {
+  if (requirement === 'HEALTH') return null;
+  const resourceId = component.inventoryReference;
+  if (!resourceId) return null;
+  const common = {
+    companyId: program.companyId,
+    branchId: program.branchId,
+    programId: program.id,
+    requirement,
+    resourceId,
+    serviceDate: component.start ?? program.snapshot.departureDate,
+  };
+  if (requirement === 'HOTEL') return { ...common, resourceType: 'HOTEL' };
+  if (requirement === 'FLIGHT') return { ...common, resourceType: 'FLIGHT_BLOCK' };
+  if (requirement === 'TRANSPORT') {
+    return {
+      ...common,
+      resourceType: 'TRANSPORT',
+      periodEnd: component.end ?? program.snapshot.returnDate,
+    };
+  }
+  if (requirement === 'VISA') return { ...common, resourceType: 'VISA' };
+  if (requirement === 'PERMIT') {
+    return {
+      ...common,
+      resourceType: 'SERVICE',
+      ...(component.end ? { periodEnd: component.end } : {}),
+    };
+  }
+  if (serviceCategory.has(requirement)) {
+    return {
+      ...common,
+      resourceType: 'SERVICE',
+      serviceCategory: requirement as SupplyEvidenceCheck['serviceCategory'],
+      ...(component.end ? { periodEnd: component.end } : {}),
+    };
+  }
+  return null;
+}
+
+export class HajjUmrahProgramsApplicationService {
+  constructor(
+    private readonly repo: ProgramRepository,
+    private readonly access: ProgramAccess,
+    private readonly seasons: SeasonPort,
+    private readonly supply: SupplyPort,
+    private readonly guard: ReopenGuard,
+    private readonly now: () => Date = () => new Date(),
+    private readonly id: () => string = () => randomUUID(),
+  ) {}
+
+  private async permission(context: ExecutionContext, permission: string) {
+    await this.access.requireBranch(context);
+    await this.access.requirePermission(context, permission);
+  }
+
+  private history(
+    context: ExecutionContext,
+    id: string,
+    action: string,
+    reason?: string,
+  ): ProgramHistory {
+    return {
+      id: this.id(),
+      companyId: context.companyId,
+      branchId: context.branchId,
+      programId: id,
+      action,
+      ...(reason ? { reason } : {}),
+      actorId: context.actorId,
+      occurredAt: this.now().toISOString(),
+    };
+  }
+
+  private version(
+    context: ExecutionContext,
+    id: string,
+    number: number,
+    snapshot: ProgramVersionSnapshot,
+    reason: string,
+    supersedesId?: string,
+  ): ProgramVersion {
+    return {
+      id: this.id(),
+      companyId: context.companyId,
+      branchId: context.branchId,
+      programId: id,
+      version: number,
+      snapshot,
+      effectiveAt: this.now().toISOString(),
+      reason,
+      actorId: context.actorId,
+      ...(supersedesId ? { supersedesId } : {}),
+    };
+  }
+
+  async create(context: ExecutionContext, input: ProgramInput) {
+    await this.permission(context, PROGRAM_PERMISSIONS.create);
+    const packageSnapshot = normalized(input);
+    await this.seasons.validate(
+      context.companyId,
+      context.branchId,
+      input.seasonId,
+      packageSnapshot.departureDate,
+      packageSnapshot.returnDate,
+    );
+    const material = definition(input, packageSnapshot);
+    const at = this.now().toISOString();
+    const id = this.id();
+    const version = this.version(context, id, 1, material, 'Initial version');
+    const value: Program = {
+      id,
+      companyId: context.companyId,
+      branchId: context.branchId,
+      ...material,
+      status: 'PREPARING',
+      bookingOpen: false,
+      currentVersion: 1,
+      currentVersionId: version.id,
+      createdAt: at,
+      updatedAt: at,
+    };
+    return this.repo.create(value, version, this.history(context, id, 'CREATED'));
+  }
+
+  async get(context: ExecutionContext, id: string) {
+    await this.permission(context, PROGRAM_PERMISSIONS.view);
+    return this.required(context, id);
+  }
+
+  async list(context: ExecutionContext) {
+    await this.permission(context, PROGRAM_PERMISSIONS.view);
+    return this.repo.list(context.companyId, context.branchId);
+  }
+
+  async editPreparing(context: ExecutionContext, id: string, input: ProgramInput) {
+    await this.permission(context, PROGRAM_PERMISSIONS.edit);
+    const old = await this.required(context, id);
+    if (old.status !== 'PREPARING') {
+      throw new ContractValidationError(
+        'status',
+        'material changes require an amendment after booking opens',
+      );
+    }
+    const packageSnapshot = normalized(input);
+    await this.seasons.validate(
+      context.companyId,
+      context.branchId,
+      input.seasonId,
+      packageSnapshot.departureDate,
+      packageSnapshot.returnDate,
+    );
+    const material = definition(input, packageSnapshot);
+    const version = this.version(
+      context,
+      id,
+      old.currentVersion + 1,
+      material,
+      'Preparing edit',
+      old.currentVersionId,
+    );
+    const value = replaceDefinition(old, material, this.now().toISOString());
+    return this.repo.save(
+      { ...value, currentVersion: version.version, currentVersionId: version.id },
+      this.history(context, id, 'UPDATED'),
+      version,
+    );
+  }
+
+  async amend(
+    context: ExecutionContext,
+    id: string,
+    input: ProgramInput,
+    reason: string,
+  ) {
+    await this.permission(context, PROGRAM_PERMISSIONS.amend);
+    const cleanReason = required(reason, 'reason');
+    const old = await this.required(context, id);
+    if (old.status === 'PREPARING') {
+      throw new ContractValidationError('status', 'use preparing edit before booking opens');
+    }
+    if (old.status === 'CANCELLED') {
+      throw new ContractValidationError('status', 'cancelled program cannot be amended');
+    }
+    const packageSnapshot = normalized(input);
+    await this.seasons.validate(
+      context.companyId,
+      context.branchId,
+      input.seasonId,
+      packageSnapshot.departureDate,
+      packageSnapshot.returnDate,
+    );
+    const material = definition(input, packageSnapshot);
+    const version = this.version(
+      context,
+      id,
+      old.currentVersion + 1,
+      material,
+      cleanReason,
+      old.currentVersionId,
+    );
+    const value = replaceDefinition(old, material, this.now().toISOString());
+    return this.repo.save(
+      { ...value, currentVersion: version.version, currentVersionId: version.id },
+      this.history(context, id, 'AMENDED', cleanReason),
+      version,
+    );
+  }
+
+  async openForBooking(context: ExecutionContext, id: string) {
+    await this.permission(context, PROGRAM_PERMISSIONS.lifecycle);
+    const old = await this.required(context, id);
+    if (old.status !== 'PREPARING') {
+      throw new ContractValidationError('status', 'program is not preparing');
+    }
+    await this.seasons.validate(
+      context.companyId,
+      context.branchId,
+      old.seasonId,
+      old.snapshot.departureDate,
+      old.snapshot.returnDate,
+    );
+    if (!Object.keys(old.snapshot.prices).length) {
+      throw new ContractValidationError('prices', 'at least one selling price is required');
+    }
+
+    for (const requirement of old.snapshot.requirements) {
+      if (requirement === 'HEALTH') continue;
+      const candidates = old.snapshot.components
+        .filter((component) => component.type === requirement)
+        .map((component) => supplyCheck(old, requirement, component))
+        .filter((value): value is SupplyEvidenceCheck => value !== null);
+      if (!candidates.length) {
+        throw new ContractValidationError(
+          'supply',
+          `missing required supply evidence: ${requirement}`,
+        );
+      }
+      let found = false;
+      for (const candidate of candidates) {
+        if (await this.supply.hasEvidence(candidate)) {
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        throw new ContractValidationError(
+          'supply',
+          `missing required supply evidence: ${requirement}`,
+        );
+      }
+    }
+
+    return this.saveStatus(context, old, 'BOOKABLE', 'OPENED_FOR_BOOKING', true);
+  }
+
+  async setBookingAvailability(context: ExecutionContext, id: string, open: boolean) {
+    await this.permission(context, PROGRAM_PERMISSIONS.availability);
+    const old = await this.required(context, id);
+    if (old.status !== 'BOOKABLE') {
+      throw new ContractValidationError(
+        'status',
+        'booking availability belongs to BOOKABLE programs',
+      );
+    }
+    return this.repo.save(
+      { ...old, bookingOpen: open, updatedAt: this.now().toISOString() },
+      this.history(context, id, open ? 'BOOKING_OPENED' : 'BOOKING_CLOSED'),
+    );
+  }
+
+  async recordDeparture(context: ExecutionContext, id: string) {
+    await this.permission(context, PROGRAM_PERMISSIONS.lifecycle);
+    const old = await this.required(context, id);
+    if (old.status !== 'BOOKABLE') {
+      throw new ContractValidationError('status', 'departure requires a bookable program');
+    }
+    return this.repo.save(
+      {
+        ...old,
+        status: 'IN_TRIP',
+        bookingOpen: false,
+        departureRecordedAt: this.now().toISOString(),
+        updatedAt: this.now().toISOString(),
+      },
+      this.history(context, id, 'DEPARTURE_RECORDED'),
+    );
+  }
+
+  async recordReturn(context: ExecutionContext, id: string) {
+    await this.permission(context, PROGRAM_PERMISSIONS.lifecycle);
+    const old = await this.required(context, id);
+    if (old.status !== 'IN_TRIP' || !old.departureRecordedAt) {
+      throw new ContractValidationError('status', 'return requires recorded departure');
+    }
+    return this.repo.save(
+      {
+        ...old,
+        status: 'CLOSED',
+        returnRecordedAt: this.now().toISOString(),
+        updatedAt: this.now().toISOString(),
+      },
+      this.history(context, id, 'RETURN_RECORDED'),
+    );
+  }
+
+  async cancel(context: ExecutionContext, id: string, reason: string) {
+    await this.permission(context, PROGRAM_PERMISSIONS.cancel);
+    const cleanReason = required(reason, 'reason');
+    const old = await this.required(context, id);
+    if (!['PREPARING', 'BOOKABLE'].includes(old.status)) {
+      throw new ContractValidationError(
+        'status',
+        'program cannot be cancelled after travel starts',
+      );
+    }
+    return this.saveStatus(
+      context,
+      old,
+      'CANCELLED',
+      'CANCELLED',
+      false,
+      cleanReason,
+    );
+  }
+
+  async reopen(context: ExecutionContext, id: string, reason: string) {
+    await this.permission(context, PROGRAM_PERMISSIONS.reopen);
+    const cleanReason = required(reason, 'reason');
+    const old = await this.required(context, id);
+    if (old.status !== 'CLOSED' || !old.returnRecordedAt) {
+      throw new ContractValidationError(
+        'status',
+        'only a returned closed program can be reopened',
+      );
+    }
+    await this.guard.assertOpen(
+      context.companyId,
+      context.branchId,
+      this.now().toISOString(),
+    );
+    const result = await this.saveStatus(
+      context,
+      old,
+      'IN_TRIP',
+      'REOPENED',
+      false,
+      cleanReason,
+    );
+    await this.access.audit(context, 'hajj-umrah.program.reopened', id, {
+      reason: cleanReason,
+    });
+    return result;
+  }
+
+  async versions(context: ExecutionContext, id: string) {
+    await this.permission(context, PROGRAM_PERMISSIONS.view);
+    await this.required(context, id);
+    return this.repo.versions(context.companyId, context.branchId, id);
+  }
+
+  private saveStatus(
+    context: ExecutionContext,
+    program: Program,
+    status: Program['status'],
+    action: string,
+    bookingOpen: boolean,
+    reason?: string,
+  ) {
+    return this.repo.save(
+      { ...program, status, bookingOpen, updatedAt: this.now().toISOString() },
+      this.history(context, program.id, action, reason),
+    );
+  }
+
+  private async required(context: ExecutionContext, id: string) {
+    const value = await this.repo.get(context.companyId, context.branchId, id);
+    if (!value) throw new ContractValidationError('programId', 'program not found');
+    return value;
+  }
+}
