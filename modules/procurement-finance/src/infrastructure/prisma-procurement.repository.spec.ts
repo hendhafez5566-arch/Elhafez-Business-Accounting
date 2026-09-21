@@ -16,6 +16,7 @@ function fakePrisma() {
   const policies = new Map<string, Row>();
   const commitments = new Map<string, Row>();
   const purchaseOrders = new Map<string, Row>();
+  const poNumberCounters = new Map<string, Row>();
   const lines = new Map<string, Row>();
   const commitmentHistory = new Map<string, Row>();
   const poHistory = new Map<string, Row>();
@@ -104,14 +105,16 @@ function fakePrisma() {
         if (composite) {
           return withLines(purchaseOrders.get(key(composite.companyId, composite.id)));
         }
-        const number = where.companyId_number as
-          | { companyId: string; number: string }
+        const number = where.companyId_branchId_number as
+          | { companyId: string; branchId: string; number: string }
           | undefined;
         if (number) {
           return withLines(
             [...purchaseOrders.values()].find(
               (row) =>
-                row.companyId === number.companyId && row.number === number.number,
+                row.companyId === number.companyId &&
+                row.branchId === number.branchId &&
+                row.number === number.number,
             ),
           );
         }
@@ -149,6 +152,18 @@ function fakePrisma() {
         const next = { ...current, ...data };
         purchaseOrders.set(key(composite.companyId, composite.id), next);
         return withLines(next);
+      },
+    },
+    procPoNumberCounter: {
+      upsert: async ({ where, create, update }: { where: Row; create: Row; update: Row }) => {
+        const composite=where.companyId_branchId_year as {companyId:string;branchId:string;year:number};
+        const counterKey=`${composite.companyId}:${composite.branchId}:${composite.year}`;
+        const old=poNumberCounters.get(counterKey);
+        if(!old){poNumberCounters.set(counterKey,create);return create;}
+        const increment=((update.nextValue as {increment:number}).increment);
+        const next={...old,nextValue:Number(old.nextValue)+increment};
+        poNumberCounters.set(counterKey,next);
+        return next;
       },
     },
     procPurchaseOrderLine: {
