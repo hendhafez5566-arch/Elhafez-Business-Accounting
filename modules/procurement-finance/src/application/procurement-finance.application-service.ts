@@ -106,7 +106,7 @@ export interface CreatePurchaseOrderInput {
   branchId: string;
   commitmentId?: string;
   supplierId: string;
-  number: string;
+  number?: string;
   origin: 'MANUAL' | 'AUTO';
   orderDate?: string;
   expectedDate?: string;
@@ -272,12 +272,17 @@ export class ProcurementFinanceApplicationService {
 
   async createPurchaseOrder(input: CreatePurchaseOrderInput) {
     const branchId=requiredText(input.branchId,'branchId');
-    const numberValue=requiredText(input.number,'number');
     const supplierId=requiredText(input.supplierId,'supplierId');
     if (!input.lines.length) throw new ContractValidationError('purchaseOrder','at least one line is required');
+    let manualYear:number|undefined;
     if (input.origin==='MANUAL') {
-      requiredText(input.orderDate ?? '','orderDate');
-      currencyCode(requiredText(input.currency ?? '','currency'));
+      const orderDate=requiredText(input.orderDate,'orderDate');
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(orderDate))throw new ContractValidationError('orderDate','must be YYYY-MM-DD');
+      manualYear=Number(orderDate.slice(0,4));
+      currencyCode(requiredText(input.currency,'currency'));
+      if(input.number?.trim())throw new ContractValidationError('number','manual purchase-order number is owner-generated');
+    }else{
+      requiredText(input.number,'number');
     }
 
     const supplier=await this.suppliers.assertSupplierReferenceUsableForProcurementForIntegration(input.companyId,supplierId);
@@ -313,6 +318,11 @@ export class ProcurementFinanceApplicationService {
       }
     }
 
+    const prior=await this.repo.po(input.companyId,input.id);
+    const numberValue=input.origin==='MANUAL'
+      ? prior?.number ?? `PO-${manualYear}-${String(await this.repo.nextPoNumber(input.companyId,branchId,manualYear!)).padStart(6,'0')}`
+      : requiredText(input.number,'number');
+
     const normalized:CreatePurchaseOrderInput={
       ...input,
       branchId,
@@ -326,12 +336,11 @@ export class ProcurementFinanceApplicationService {
       lines,
     };
     const requestHash=fingerprint(normalized);
-    const prior=await this.repo.po(input.companyId,input.id);
     if(prior){
       if(prior.requestHash!==requestHash)throw new ContractValidationError('purchaseOrder','conflicting replay');
       return prior;
     }
-    const byNumber=await this.repo.poByNumber(input.companyId,numberValue);
+    const byNumber=await this.repo.poByNumber(input.companyId,branchId,numberValue);
     if(byNumber)throw new ContractValidationError('number','already used');
 
     const value:PurchaseOrder={
