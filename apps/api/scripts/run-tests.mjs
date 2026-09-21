@@ -1,6 +1,7 @@
 import { readdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { join, resolve } from 'node:path';
+import process from 'node:process';
 
 function specs(directory) {
   const files = [];
@@ -14,7 +15,7 @@ function specs(directory) {
 
 const files = specs(resolve('src')).sort();
 if (!files.length) {
-  console.error('No API test files found.');
+  process.stderr.write('No API test files found.\n');
   process.exit(1);
 }
 
