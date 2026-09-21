@@ -19,6 +19,11 @@ interface ChangeManifest {
   readonly publicApiBreakingReason: string;
   readonly unacceptedMigrationRepairs?: string[];
   readonly unacceptedMigrationRepairReason?: string;
+  readonly historicalMigrationIdentifierRepairs?: Array<{
+    readonly path: string;
+    readonly reason: string;
+    readonly renames: Array<{ readonly from: string; readonly to: string }>;
+  }>;
 }
 
 interface DiffEntry {
@@ -79,7 +84,13 @@ for (const entry of entries) {
       Boolean(manifest.unacceptedMigrationRepairReason?.trim()) &&
       migrationPaths.every((path) => manifest.unacceptedMigrationRepairs?.includes(path));
 
-    if (!explicitlyApprovedUnacceptedRepair) {
+    const explicitlyApprovedIdentifierRepair =
+      entry.status === 'M' &&
+      manifest?.type === 'bugfix' &&
+      migrationPaths.length === 1 &&
+      isApprovedHistoricalIdentifierRepair(base, entry.path, manifest);
+
+    if (!explicitlyApprovedUnacceptedRepair && !explicitlyApprovedIdentifierRepair) {
       errors.push(
         `${paths.join(' -> ')}: accepted historical migrations are immutable; add a new migration instead.`,
       );
@@ -224,6 +235,62 @@ function validateManifest(value: ChangeManifest): void {
       }
     }
   }
+
+  for (const repair of value.historicalMigrationIdentifierRepairs ?? []) {
+    if (value.type !== 'bugfix') {
+      errors.push(
+        'change manifest: historical migration identifier repair is allowed only for bugfix scope.',
+      );
+    }
+    if (!repair.path.startsWith('prisma/migrations/') || !repair.path.endsWith('/migration.sql')) {
+      errors.push(
+        `change manifest: historical identifier repair path is invalid: ${repair.path}.`,
+      );
+    }
+    if (!repair.reason?.trim()) {
+      errors.push(
+        `change manifest: historical identifier repair reason is required for ${repair.path}.`,
+      );
+    }
+    if (!Array.isArray(repair.renames) || repair.renames.length === 0) {
+      errors.push(
+        `change manifest: historical identifier repair requires explicit renames for ${repair.path}.`,
+      );
+    }
+    for (const rename of repair.renames ?? []) {
+      if (!rename.from?.trim() || !rename.to?.trim() || rename.from === rename.to) {
+        errors.push(
+          `change manifest: historical identifier repair rename is invalid for ${repair.path}.`,
+        );
+      }
+      if (Buffer.byteLength(rename.to ?? '', 'utf8') > 63) {
+        errors.push(
+          `change manifest: repaired PostgreSQL identifier exceeds 63 bytes: ${rename.to}.`,
+        );
+      }
+    }
+  }
+}
+
+function isApprovedHistoricalIdentifierRepair(
+  baseSha: string,
+  path: string,
+  scope: ChangeManifest,
+): boolean {
+  const repair = scope.historicalMigrationIdentifierRepairs?.find((item) => item.path === path);
+  if (!repair || !repair.reason.trim() || repair.renames.length === 0) return false;
+
+  const before = show(baseSha, path);
+  const afterPath = join(root, path);
+  if (!before || !existsSync(afterPath)) return false;
+
+  let expected = before;
+  for (const rename of repair.renames) {
+    if (!rename.from || !rename.to || !expected.includes(rename.from)) return false;
+    expected = expected.split(rename.from).join(rename.to);
+  }
+
+  return expected === readFileSync(afterPath, 'utf8');
 }
 
 function checkPublicApiCompatibility(
