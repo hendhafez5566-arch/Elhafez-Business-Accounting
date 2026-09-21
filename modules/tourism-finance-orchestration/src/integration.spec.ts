@@ -710,7 +710,7 @@ function procurementFixture() {
           value.number === number,
       );
     },
-    async nextPoNumber(_companyId, _branchId, _year) {
+    async nextPoNumber() {
       throw new Error('PO numbering is not expected in cancellation cleanup coverage');
     },
     async savePo(value, record) {
