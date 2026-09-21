@@ -14,6 +14,8 @@ export type {
   ConsumeFlightBlockInput,
   InternalFirstFulfillmentInput,
   CheckAvailabilityInput,
+  ProgramSupplyEvidenceInput,
+  ProgramSupplyEvidence,
   RegisterAllocationEconomicEvidenceInput,
   ProtectAllocationCoverageInput,
   ReleaseAllocationCoverageInput,
