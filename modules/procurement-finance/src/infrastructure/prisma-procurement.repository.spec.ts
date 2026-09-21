@@ -16,6 +16,7 @@ function fakePrisma() {
   const policies = new Map<string, Row>();
   const commitments = new Map<string, Row>();
   const purchaseOrders = new Map<string, Row>();
+  const poNumberCounters = new Map<string, Row>();
   const lines = new Map<string, Row>();
   const commitmentHistory = new Map<string, Row>();
   const poHistory = new Map<string, Row>();
@@ -104,14 +105,16 @@ function fakePrisma() {
         if (composite) {
           return withLines(purchaseOrders.get(key(composite.companyId, composite.id)));
         }
-        const number = where.companyId_number as
-          | { companyId: string; number: string }
+        const number = where.companyId_branchId_number as
+          | { companyId: string; branchId: string; number: string }
           | undefined;
         if (number) {
           return withLines(
             [...purchaseOrders.values()].find(
               (row) =>
-                row.companyId === number.companyId && row.number === number.number,
+                row.companyId === number.companyId &&
+                row.branchId === number.branchId &&
+                row.number === number.number,
             ),
           );
         }
@@ -151,6 +154,18 @@ function fakePrisma() {
         return withLines(next);
       },
     },
+    procPoNumberCounter: {
+      upsert: async ({ where, create, update }: { where: Row; create: Row; update: Row }) => {
+        const composite=where.companyId_branchId_year as {companyId:string;branchId:string;year:number};
+        const counterKey=`${composite.companyId}:${composite.branchId}:${composite.year}`;
+        const old=poNumberCounters.get(counterKey);
+        if(!old){poNumberCounters.set(counterKey,create);return create;}
+        const increment=((update.nextValue as {increment:number}).increment);
+        const next={...old,nextValue:Number(old.nextValue)+increment};
+        poNumberCounters.set(counterKey,next);
+        return next;
+      },
+    },
     procPurchaseOrderLine: {
       findUnique: async ({ where }: { where: Row }) => {
         const composite = where.companyId_id as { companyId: string; id: string };
@@ -168,22 +183,25 @@ function fakePrisma() {
           return { count: 0 };
         }
 
-        const receivedFilter = where.receivedQuantity as { lte: Prisma.Decimal } | undefined;
+        const receivedFilter = where.receivedQuantity as Prisma.Decimal | { lte: Prisma.Decimal } | undefined;
         const invoicedFilter = where.invoicedQuantity as
           | { lte?: Prisma.Decimal; gte?: Prisma.Decimal }
           | undefined;
         const received = current.receivedQuantity as Prisma.Decimal;
         const invoiced = current.invoicedQuantity as Prisma.Decimal;
-        if (receivedFilter && received.gt(receivedFilter.lte)) return { count: 0 };
+        if (receivedFilter instanceof Prisma.Decimal && !received.equals(receivedFilter)) return { count: 0 };
+        if (receivedFilter && !(receivedFilter instanceof Prisma.Decimal) && received.gt(receivedFilter.lte)) return { count: 0 };
         if (invoicedFilter?.lte && invoiced.gt(invoicedFilter.lte)) return { count: 0 };
         if (invoicedFilter?.gte && invoiced.lt(invoicedFilter.gte)) return { count: 0 };
 
         const next = { ...current };
-        const receivedData = data.receivedQuantity as { increment: Prisma.Decimal } | undefined;
+        const receivedData = data.receivedQuantity as Prisma.Decimal | { increment: Prisma.Decimal } | undefined;
         const invoicedData = data.invoicedQuantity as
           | { increment?: Prisma.Decimal; decrement?: Prisma.Decimal }
           | undefined;
-        if (receivedData) {
+        if (receivedData instanceof Prisma.Decimal) {
+          next.receivedQuantity = receivedData;
+        } else if (receivedData?.increment) {
           next.receivedQuantity = received.add(receivedData.increment);
         }
         if (invoicedData?.increment) {
@@ -293,6 +311,7 @@ test('Prisma procurement state survives repository restart and replay gates stay
   const po: PurchaseOrder = {
     id: 'po',
     companyId: company,
+    branchId: 'branch-a',
     supplierId: 'supplier',
     number: 'PO-1',
     origin: 'AUTO',
@@ -392,4 +411,29 @@ test('Prisma procurement state survives repository restart and replay gates stay
     ),
     /conflicting replay/,
   );
+});
+
+test('receipt replay preserves its exact before and after quantities after later receipts',async()=>{
+  const db=fakePrisma(),repository=new PrismaProcurementRepository(db);
+  const po:PurchaseOrder={id:'po-outcome',companyId:company,branchId:'branch-a',supplierId:'supplier',number:'PO-OUTCOME',origin:'AUTO',status:'DRAFT',requestHash:'po-outcome-hash',createdAt:'2026-09-20T00:00:00.000Z',lines:[{id:'line-outcome',companyId:company,purchaseOrderId:'po-outcome',itemReference:'service',orderedQuantity:decimalAmount('10'),receivedQuantity:decimalAmount('0'),invoicedQuantity:decimalAmount('0')}]};
+  await repository.savePo(po,history('po-outcome','CREATED'));
+  await repository.approvePo(company,'po-outcome',history('po-outcome','APPROVED'));
+  const first=await repository.receive(company,'po-outcome','line-outcome',decimalAmount('4'),'r-1','hash-r1');
+  const second=await repository.receive(company,'po-outcome','line-outcome',decimalAmount('3'),'r-2','hash-r2');
+  const replay=await repository.receive(company,'po-outcome','line-outcome',decimalAmount('4'),'r-1','hash-r1');
+  assert.equal(first.previousReceivedQuantity,'0');
+  assert.equal(first.resultingReceivedQuantity,'4');
+  assert.equal(second.previousReceivedQuantity,'4');
+  assert.equal(second.resultingReceivedQuantity,'7');
+  assert.equal(replay.previousReceivedQuantity,'0');
+  assert.equal(replay.resultingReceivedQuantity,'4');
+  assert.equal(replay.purchaseOrder.lines[0]?.receivedQuantity,'7');
+});
+
+test('Prisma PO numbering counter is isolated by branch and year',async()=>{
+  const db=fakePrisma(),repository=new PrismaProcurementRepository(db);
+  assert.equal(await repository.nextPoNumber(company,'branch-a',2026),1);
+  assert.equal(await repository.nextPoNumber(company,'branch-a',2026),2);
+  assert.equal(await repository.nextPoNumber(company,'branch-b',2026),1);
+  assert.equal(await repository.nextPoNumber(company,'branch-a',2027),1);
 });

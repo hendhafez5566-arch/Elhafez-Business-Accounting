@@ -163,6 +163,7 @@ export class TourismContractInventoryApplicationServiceImpl
     if (result.procurementRequest && !result.procurementRequest.externalReference) {
       const ownerReference = await this.procurement.requestResidual({
         companyId: input.companyId,
+        branchId: input.branchId,
         requestId: result.procurementRequest.id,
         supplierId: input.supplierId,
         type: input.contractType,

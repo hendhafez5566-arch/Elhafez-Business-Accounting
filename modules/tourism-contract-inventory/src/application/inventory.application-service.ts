@@ -109,6 +109,7 @@ export interface ConsumeFlightBlockInput extends BaseInput {
 }
 
 export interface InternalFirstFulfillmentInput extends BaseInput {
+  readonly branchId: string;
   readonly program: SourceReference;
   readonly contractType: ContractType;
   readonly resourceId: string;
@@ -185,6 +186,7 @@ export interface CostEffectPort {
 export interface ProcurementPort {
   requestResidual(input: {
     companyId: CompanyId;
+    branchId: string;
     requestId: string;
     supplierId: string;
     type: ContractType;

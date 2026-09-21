@@ -69,7 +69,7 @@ import {
   InventoryAdapter,
   ProcurementAdapter,
   TreasuryAdapter,
-} from './tourism-finance-orchestration.module.js';
+} from './infrastructure/tourism-finance-orchestration.adapters.js';
 
 const company = companyId('company-integration');
 const program = sourceReference('TOURISM_PROGRAM', 'program-1');
@@ -690,20 +690,36 @@ function procurementFixture() {
     async po(companyId, id) {
       return purchaseOrders.get(key(companyId, id));
     },
+    async listPos(companyId, branchId) {
+      return [...purchaseOrders.values()].filter(
+        (value) =>
+          value.companyId === companyId &&
+          (branchId === undefined || value.branchId === branchId),
+      );
+    },
     async posByCommitment(companyId, commitmentId) {
       return [...purchaseOrders.values()].filter(
         (value) => value.companyId === companyId && value.commitmentId === commitmentId,
       );
     },
-    async poByNumber(companyId, number) {
+    async poByNumber(companyId, branchId, number) {
       return [...purchaseOrders.values()].find(
-        (value) => value.companyId === companyId && value.number === number,
+        (value) =>
+          value.companyId === companyId &&
+          value.branchId === branchId &&
+          value.number === number,
       );
+    },
+    async nextPoNumber() {
+      throw new Error('PO numbering is not expected in cancellation cleanup coverage');
     },
     async savePo(value, record) {
       purchaseOrders.set(key(value.companyId, value.id), value);
       appendHistory(record);
       return value;
+    },
+    async updateDraftPo() {
+      throw new Error('PO draft editing is not expected in cancellation cleanup coverage');
     },
     async approvePo() {
       throw new Error('PO approval is not expected in cancellation cleanup coverage');
@@ -724,6 +740,9 @@ function procurementFixture() {
     },
     async receive() {
       throw new Error('PO receipt is not expected in cancellation cleanup coverage');
+    },
+    async adjustReceived() {
+      throw new Error('PO receipt correction is not expected in cancellation cleanup coverage');
     },
     async conversion(companyId, id) {
       return conversions.get(key(companyId, id));
@@ -761,7 +780,15 @@ function procurementFixture() {
       throw new Error('Billing is not expected for empty PO cancellation cleanup');
     },
   };
-  const service = new ProcurementFinanceApplicationService(repo, billing);
+  const suppliers = {
+    async assertSupplierReferenceUsableForProcurementForIntegration(
+      _companyId: CompanyId,
+      supplierId: string,
+    ) {
+      return { partyId: supplierId };
+    },
+  };
+  const service = new ProcurementFinanceApplicationService(repo, billing, suppliers as never);
   return { service, purchaseOrders };
 }
 
@@ -1023,6 +1050,7 @@ test('AC-12 -> Procurement delegates to real owner cleanup policy', async () => 
   await fixture.service.createPurchaseOrder({
     id: 'po-1',
     companyId: company,
+    branchId: 'branch-a',
     supplierId: 'supplier-1',
     number: 'PO-1',
     origin: 'AUTO',

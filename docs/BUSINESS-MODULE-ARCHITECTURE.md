@@ -82,7 +82,7 @@ Customer balances, invoices, advances, commissions, netting and other financial 
 | Common party identity | `party-registry` | PLANNED / SHARED | canonical supplier party identity |
 | Suppliers | `supplier-management` | PLANNED | supplier profile, approval-for-use, operational classification |
 | Supplier commitments / Purchase Orders | `procurement-finance` | EXISTING | canonical commitments/PO financial-economic record and invoice conversion |
-| Receiving / execution / fulfillment | `procurement-fulfillment` | PLANNED | operational receipt/service execution evidence referencing canonical PO |
+| Receiving / execution / fulfillment | `procurement-fulfillment` | EXISTING | operational receipt/service execution evidence referencing canonical PO |
 | Supplier evaluation | `supplier-evaluation` | PLANNED | evaluation scorecards/history |
 | Supplier disputes | `supplier-disputes` | PLANNED | dispute cases/notes/status |
 

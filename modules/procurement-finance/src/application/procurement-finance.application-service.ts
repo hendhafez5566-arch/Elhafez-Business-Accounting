@@ -10,6 +10,7 @@ import type {
   BillingSubledgersApplicationService,
   CreateInvoiceInput,
 } from '@elhafez/billing-subledgers';
+import type { SupplierManagementApplicationService } from '@elhafez/supplier-management';
 import type { ProcurementRepository } from './procurement.repository.js';
 import type {
   ProcurementHistory,
@@ -44,12 +45,59 @@ function decimal(value: bigint): DecimalAmount {
   return decimalAmount((negative ? '-' : '') + text);
 }
 
+function multiply(left: DecimalAmount, right: DecimalAmount, field: string): DecimalAmount {
+  const product=scaled(left)*scaled(right);
+  if(product%SCALE!==0n)throw new ContractValidationError(field,'result exceeds supported decimal precision');
+  return decimal(product/SCALE);
+}
+
 function positive(value: DecimalAmount, field: string): DecimalAmount {
   const normalized = decimalAmount(value);
   if (scaled(normalized) <= 0n) {
     throw new ContractValidationError(field, 'must be positive');
   }
   return normalized;
+}
+
+function nonNegative(value: DecimalAmount, field: string): DecimalAmount {
+  const normalized = decimalAmount(value);
+  if (scaled(normalized) < 0n) {
+    throw new ContractValidationError(field, 'must be non-negative');
+  }
+  return normalized;
+}
+
+function requiredText(value: string | null | undefined, field: string): string {
+  const normalized=value?.trim() ?? '';
+  if (!normalized) throw new ContractValidationError(field, 'is required');
+  return normalized;
+}
+
+function samePurchaseOrderReplay(current: PurchaseOrder, candidate: PurchaseOrder): boolean {
+  if (
+    current.companyId!==candidate.companyId ||
+    current.branchId!==candidate.branchId ||
+    current.supplierId!==candidate.supplierId ||
+    current.number!==candidate.number ||
+    current.origin!==candidate.origin ||
+    (current.commitmentId??null)!==(candidate.commitmentId??null) ||
+    (current.orderDate??null)!==(candidate.orderDate??null) ||
+    (current.expectedDate??null)!==(candidate.expectedDate??null) ||
+    (current.currency??null)!==(candidate.currency??null) ||
+    (current.externalReference??null)!==(candidate.externalReference??null) ||
+    (current.notes??null)!==(candidate.notes??null) ||
+    current.lines.length!==candidate.lines.length
+  ) return false;
+  const byId=new Map(current.lines.map((line)=>[line.id,line]));
+  return candidate.lines.every((line)=>{
+    const old=byId.get(line.id);
+    return !!old &&
+      old.itemReference===line.itemReference &&
+      (old.description??null)===(line.description??null) &&
+      scaled(old.orderedQuantity)===scaled(line.orderedQuantity) &&
+      (old.unitPrice===undefined?line.unitPrice===undefined:line.unitPrice!==undefined&&scaled(old.unitPrice)===scaled(line.unitPrice)) &&
+      (old.taxCode??null)===(line.taxCode??null);
+  });
 }
 
 function fingerprint(value: unknown) {
@@ -88,14 +136,64 @@ export interface CreateSupplierCommitmentInput {
 export interface CreatePurchaseOrderInput {
   id: string;
   companyId: CompanyId;
+  branchId: string;
   commitmentId?: string;
   supplierId: string;
-  number: string;
+  number?: string;
   origin: 'MANUAL' | 'AUTO';
+  orderDate?: string;
+  expectedDate?: string;
+  currency?: string;
+  externalReference?: string;
+  notes?: string;
   lines: {
     id: string;
     itemReference: string;
+    description?: string;
     orderedQuantity: DecimalAmount;
+    unitPrice?: DecimalAmount;
+    taxCode?: string;
+  }[];
+}
+
+export interface UpdatePurchaseOrderInput {
+  companyId: CompanyId;
+  branchId: string;
+  purchaseOrderId: string;
+  commandId: string;
+  supplierId: string;
+  orderDate: string;
+  expectedDate?: string;
+  currency: string;
+  externalReference?: string;
+  notes?: string;
+  lines: {
+    id: string;
+    itemReference: string;
+    description?: string;
+    orderedQuantity: DecimalAmount;
+    unitPrice: DecimalAmount;
+    taxCode?: string;
+  }[];
+}
+
+export interface CreateDirectPurchaseInput {
+  id: string;
+  companyId: CompanyId;
+  branchId: string;
+  supplierId: string;
+  invoiceId: string;
+  number: string;
+  externalInvoiceNumber: string;
+  postingDate: string;
+  dueDate?: string;
+  currency: string;
+  controlAccountId: string;
+  lines: {
+    id: string;
+    accountId: string;
+    amount: DecimalAmount;
+    taxCode?: string;
   }[];
 }
 
@@ -125,6 +223,10 @@ export class ProcurementFinanceApplicationService {
     private readonly billing: Pick<
       BillingSubledgersApplicationService,
       'createDraft' | 'postInvoice' | 'getOpenPosition'
+    >,
+    private readonly suppliers: Pick<
+      SupplierManagementApplicationService,
+      'assertSupplierReferenceUsableForProcurementForIntegration'
     >,
   ) {}
 
@@ -158,21 +260,23 @@ export class ProcurementFinanceApplicationService {
         'supplier and source are required',
       );
     }
-    const requestHash = fingerprint(input);
+    const supplier=await this.suppliers.assertSupplierReferenceUsableForProcurementForIntegration(input.companyId,input.supplierId);
+    const normalizedInput={...input,supplierId:supplier.partyId};
+    const requestHash = fingerprint(normalizedInput);
     const old = await this.repo.commitmentBySource(
       input.companyId,
       input.sourceType,
       input.sourceId,
     );
     if (old) {
-      if (old.requestHash !== requestHash) {
-        throw new ContractValidationError('source', 'conflicting replay');
-      }
-      return old;
+      if (old.requestHash===requestHash)return old;
+      const oldSupplier=await this.suppliers.assertSupplierReferenceUsableForProcurementForIntegration(input.companyId,old.supplierId);
+      if(oldSupplier.partyId===supplier.partyId&&old.effectiveDate===input.effectiveDate)return old;
+      throw new ContractValidationError('source','conflicting replay');
     }
 
     const value: SupplierCommitment = {
-      ...input,
+      ...normalizedInput,
       status: 'DRAFT',
       requestHash,
       createdAt: now(),
@@ -200,70 +304,134 @@ export class ProcurementFinanceApplicationService {
   }
 
   async createPurchaseOrder(input: CreatePurchaseOrderInput) {
-    if (!input.number.trim() || !input.supplierId.trim() || !input.lines.length) {
-      throw new ContractValidationError(
-        'purchaseOrder',
-        'number, supplier and lines are required',
-      );
+    const branchId=requiredText(input.branchId,'branchId');
+    const supplierId=requiredText(input.supplierId,'supplierId');
+    if (!input.lines.length) throw new ContractValidationError('purchaseOrder','at least one line is required');
+    let manualYear:number|undefined;
+    if (input.origin==='MANUAL') {
+      const orderDate=requiredText(input.orderDate,'orderDate');
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(orderDate))throw new ContractValidationError('orderDate','must be YYYY-MM-DD');
+      manualYear=Number(orderDate.slice(0,4));
+      currencyCode(requiredText(input.currency,'currency'));
+      if(input.number?.trim())throw new ContractValidationError('number','manual purchase-order number is owner-generated');
+    }else{
+      requiredText(input.number,'number');
     }
 
-    const lineIds = new Set<string>();
-    for (const line of input.lines) {
-      if (!line.id.trim() || !line.itemReference.trim()) {
-        throw new ContractValidationError('line', 'id and item reference are required');
-      }
-      if (lineIds.has(line.id)) {
-        throw new ContractValidationError('line', 'duplicate line id');
-      }
-      lineIds.add(line.id);
-      positive(line.orderedQuantity, 'orderedQuantity');
-    }
+    const supplier=await this.suppliers.assertSupplierReferenceUsableForProcurementForIntegration(input.companyId,supplierId);
+    const canonicalSupplierId=supplier.partyId;
+
+    const lineIds=new Set<string>();
+    const lines=input.lines.map((line)=>{
+      const id=requiredText(line.id,'line.id');
+      const itemReference=requiredText(line.itemReference,'line.itemReference');
+      if(lineIds.has(id))throw new ContractValidationError('line','duplicate line id');
+      lineIds.add(id);
+      const orderedQuantity=positive(line.orderedQuantity,'orderedQuantity');
+      const unitPrice=line.unitPrice===undefined?undefined:nonNegative(line.unitPrice,'unitPrice');
+      if(input.origin==='MANUAL'&&unitPrice===undefined)throw new ContractValidationError('unitPrice','is required for manual purchase orders');
+      return {
+        id,
+        itemReference,
+        ...(line.description?.trim()?{description:line.description.trim()}:{}),
+        orderedQuantity,
+        ...(unitPrice!==undefined?{unitPrice}:{}),
+        ...(line.taxCode?.trim()?{taxCode:line.taxCode.trim()}:{}),
+      };
+    });
 
     if (input.commitmentId) {
-      const commitment = await this.repo.commitment(input.companyId, input.commitmentId);
-      if (
-        !commitment ||
-        commitment.supplierId !== input.supplierId ||
-        commitment.status === 'CANCELLED'
-      ) {
-        throw new ContractValidationError(
-          'commitment',
-          'active same-company matching commitment required',
-        );
+      const commitment=await this.repo.commitment(input.companyId,input.commitmentId);
+      if(!commitment||commitment.status==='CANCELLED'){
+        throw new ContractValidationError('commitment','active same-company matching commitment required');
+      }
+      const commitmentSupplier=await this.suppliers.assertSupplierReferenceUsableForProcurementForIntegration(input.companyId,commitment.supplierId);
+      if(commitmentSupplier.partyId!==canonicalSupplierId){
+        throw new ContractValidationError('commitment','active same-company matching commitment required');
       }
     }
 
-    const requestHash = fingerprint(input);
-    const prior = await this.repo.po(input.companyId, input.id);
-    if (prior) {
-      if (prior.requestHash !== requestHash) {
-        throw new ContractValidationError('purchaseOrder', 'conflicting replay');
-      }
-      return prior;
-    }
+    const prior=await this.repo.po(input.companyId,input.id);
+    const numberValue=input.origin==='MANUAL'
+      ? prior?.number ?? `PO-${manualYear}-${String(await this.repo.nextPoNumber(input.companyId,branchId,manualYear!)).padStart(6,'0')}`
+      : requiredText(input.number,'number');
 
-    const number = await this.repo.poByNumber(input.companyId, input.number);
-    if (number) throw new ContractValidationError('number', 'already used');
-
-    const value: PurchaseOrder = {
+    const normalized:CreatePurchaseOrderInput & {number:string}={
       ...input,
-      status: 'DRAFT',
+      branchId,
+      supplierId:canonicalSupplierId,
+      number:numberValue,
+      ...(input.orderDate?{orderDate:input.orderDate}:{}),
+      ...(input.expectedDate?{expectedDate:input.expectedDate}:{}),
+      ...(input.currency?{currency:currencyCode(input.currency)}:{}),
+      ...(input.externalReference?.trim()?{externalReference:input.externalReference.trim()}:{}),
+      ...(input.notes?.trim()?{notes:input.notes.trim()}:{}),
+      lines,
+    };
+    const requestHash=fingerprint(input.origin==='MANUAL'?{...normalized,number:'OWNER_GENERATED'}:normalized);
+    if(prior){
+      const priorSupplier=await this.suppliers.assertSupplierReferenceUsableForProcurementForIntegration(input.companyId,prior.supplierId);
+      const replayCandidate:PurchaseOrder={...normalized,status:prior.status,requestHash:prior.requestHash,createdAt:prior.createdAt,lines:lines.map((line)=>({...line,companyId:input.companyId,purchaseOrderId:input.id,receivedQuantity:decimalAmount('0'),invoicedQuantity:decimalAmount('0')}))};
+      const canonicalPrior:PurchaseOrder={...prior,supplierId:priorSupplier.partyId};
+      if(prior.requestHash===requestHash||samePurchaseOrderReplay(canonicalPrior,replayCandidate))return prior;
+      throw new ContractValidationError('purchaseOrder','conflicting replay');
+    }
+    const byNumber=await this.repo.poByNumber(input.companyId,branchId,numberValue);
+    if(byNumber)throw new ContractValidationError('number','already used');
+
+    const value:PurchaseOrder={
+      ...normalized,
+      status:'DRAFT',
       requestHash,
-      createdAt: now(),
-      lines: input.lines.map((line) => ({
+      createdAt:now(),
+      lines:lines.map((line)=>({
         ...line,
-        companyId: input.companyId,
-        purchaseOrderId: input.id,
-        orderedQuantity: positive(line.orderedQuantity, 'orderedQuantity'),
-        receivedQuantity: decimalAmount('0'),
-        invoicedQuantity: decimalAmount('0'),
+        companyId:input.companyId,
+        purchaseOrderId:input.id,
+        receivedQuantity:decimalAmount('0'),
+        invoicedQuantity:decimalAmount('0'),
       })),
     };
+    return this.repo.savePo(value,history(input.companyId,input.id,'CREATED'));
+  }
 
-    return this.repo.savePo(
-      value,
-      history(input.companyId, input.id, 'CREATED'),
-    );
+  async updateDraftPurchaseOrder(input:UpdatePurchaseOrderInput){
+    requiredText(input.branchId,'branchId');
+    requiredText(input.commandId,'commandId');
+    const current=await this.getPurchaseOrderForBranch(input.companyId,input.branchId,input.purchaseOrderId);
+    if(current.status!=='DRAFT')throw new ContractValidationError('status','only draft purchase order can be edited');
+    const supplier=await this.suppliers.assertSupplierReferenceUsableForProcurementForIntegration(input.companyId,input.supplierId);
+    const lineIds=new Set<string>();
+    const lines=input.lines.map((line)=>{
+      const id=requiredText(line.id,'line.id');
+      if(lineIds.has(id))throw new ContractValidationError('line','duplicate line id');
+      lineIds.add(id);
+      return {
+        id,
+        companyId:input.companyId,
+        purchaseOrderId:current.id,
+        itemReference:requiredText(line.itemReference,'line.itemReference'),
+        ...(line.description?.trim()?{description:line.description.trim()}:{}),
+        orderedQuantity:positive(line.orderedQuantity,'orderedQuantity'),
+        unitPrice:nonNegative(line.unitPrice,'unitPrice'),
+        ...(line.taxCode?.trim()?{taxCode:line.taxCode.trim()}:{}),
+        receivedQuantity:decimalAmount('0'),
+        invoicedQuantity:decimalAmount('0'),
+      };
+    });
+    if(!lines.length)throw new ContractValidationError('lines','at least one line is required');
+    const updated:PurchaseOrder={
+      ...current,
+      supplierId:supplier.partyId,
+      orderDate:requiredText(input.orderDate,'orderDate'),
+      ...(input.expectedDate?{expectedDate:input.expectedDate}:{expectedDate:undefined}),
+      currency:currencyCode(input.currency),
+      ...(input.externalReference?.trim()?{externalReference:input.externalReference.trim()}:{externalReference:undefined}),
+      ...(input.notes?.trim()?{notes:input.notes.trim()}:{notes:undefined}),
+      lines,
+    };
+    const hash=fingerprint(input);
+    return this.repo.updateDraftPo(updated,input.commandId,hash,history(input.companyId,input.purchaseOrderId,'UPDATED',input.commandId));
   }
 
   async approvePurchaseOrder(companyId: CompanyId, id: string) {
@@ -279,6 +447,7 @@ export class ProcurementFinanceApplicationService {
     }
 
     const po = await this.getPurchaseOrder(companyId, id);
+    await this.suppliers.assertSupplierReferenceUsableForProcurementForIntegration(companyId,po.supplierId);
     return this.repo.approvePo(
       companyId,
       id,
@@ -289,7 +458,7 @@ export class ProcurementFinanceApplicationService {
     );
   }
 
-  async receivePurchaseOrder(input: {
+  async receivePurchaseOrderWithOutcome(input: {
     companyId: CompanyId;
     purchaseOrderId: string;
     lineId: string;
@@ -299,32 +468,77 @@ export class ProcurementFinanceApplicationService {
     if (!input.commandId.trim()) {
       throw new ContractValidationError('commandId', 'is required');
     }
+    const normalized={...input,quantity:positive(input.quantity,'quantity')};
     return this.repo.receive(
       input.companyId,
       input.purchaseOrderId,
       input.lineId,
-      positive(input.quantity, 'quantity'),
+      normalized.quantity,
       input.commandId,
-      fingerprint(input),
+      fingerprint(normalized),
     );
   }
 
+  async receivePurchaseOrder(input: {
+    companyId: CompanyId;
+    purchaseOrderId: string;
+    lineId: string;
+    quantity: DecimalAmount;
+    commandId: string;
+  }) {
+    return (await this.receivePurchaseOrderWithOutcome(input)).purchaseOrder;
+  }
+
+  async adjustReceivedPurchaseOrderWithOutcome(input:{
+    companyId:CompanyId;
+    purchaseOrderId:string;
+    lineId:string;
+    newReceivedQuantity:DecimalAmount;
+    commandId:string;
+    reason:string;
+  }){
+    requiredText(input.commandId,'commandId');
+    const reason=requiredText(input.reason,'reason');
+    const normalized={...input,newReceivedQuantity:nonNegative(input.newReceivedQuantity,'newReceivedQuantity'),reason};
+    return this.repo.adjustReceived(
+      input.companyId,
+      input.purchaseOrderId,
+      input.lineId,
+      normalized.newReceivedQuantity,
+      input.commandId,
+      fingerprint(normalized),
+      reason,
+    );
+  }
+
+  async adjustReceivedPurchaseOrder(input:{
+    companyId:CompanyId;
+    purchaseOrderId:string;
+    lineId:string;
+    newReceivedQuantity:DecimalAmount;
+    commandId:string;
+    reason:string;
+  }){
+    return (await this.adjustReceivedPurchaseOrderWithOutcome(input)).purchaseOrder;
+  }
+
   async cancelPurchaseOrder(companyId: CompanyId, id: string) {
-    const blockers = await this.getCancellationBlockers(companyId, {
-      purchaseOrderId: id,
-    });
-    if (blockers.length) {
-      throw new ContractValidationError(
-        'purchaseOrder',
-        'supplier execution blocks cancellation',
-      );
-    }
+    return this.cancelPurchaseOrderInternal(companyId,id);
+  }
+
+  async cancelPurchaseOrderWithReason(companyId:CompanyId,id:string,reason:string){
+    return this.cancelPurchaseOrderInternal(companyId,id,requiredText(reason,'reason'));
+  }
+
+  private async cancelPurchaseOrderInternal(companyId:CompanyId,id:string,reason?:string){
+    const blockers=await this.getCancellationBlockers(companyId,{purchaseOrderId:id});
+    if(blockers.length)throw new ContractValidationError('purchaseOrder','supplier execution blocks cancellation');
     return this.repo.transitionPo(
       companyId,
       id,
-      ['DRAFT', 'APPROVED'],
+      ['DRAFT','APPROVED'],
       'CANCELLED',
-      history(companyId, id, 'CANCELLED'),
+      history(companyId,id,'CANCELLED',reason),
     );
   }
 
@@ -354,79 +568,106 @@ export class ProcurementFinanceApplicationService {
   }
 
   async convertToSupplierInvoice(input: ConvertToSupplierInvoiceInput) {
-    const quantity = positive(input.quantity, 'quantity');
-    const invoiceAmount = positive(input.billing.amount, 'billing.amount');
-    const normalized = {
+    const quantity=positive(input.quantity,'quantity');
+    const invoiceAmount=positive(input.billing.amount,'billing.amount');
+    const po=await this.getPurchaseOrder(input.companyId,input.purchaseOrderId);
+    const supplier=await this.suppliers.assertSupplierReferenceUsableForProcurementForIntegration(input.companyId,po.supplierId);
+    const line=po.lines.find((candidate)=>candidate.id===input.lineId);
+    if(!line)throw new ContractValidationError('line','not found');
+
+    const invoiceCurrency=currencyCode(input.billing.currency);
+    if(po.currency&&invoiceCurrency!==po.currency)throw new ContractValidationError('billing.currency','must match purchase order currency');
+    if(line.unitPrice!==undefined){
+      const expectedAmount=multiply(quantity,line.unitPrice,'billing.amount');
+      if(scaled(invoiceAmount)!==scaled(expectedAmount))throw new ContractValidationError('billing.amount','must equal invoiced quantity multiplied by purchase-order unit price');
+    }
+    if(line.taxCode&&input.billing.taxCode&&line.taxCode!==input.billing.taxCode)throw new ContractValidationError('billing.taxCode','must match purchase-order tax code');
+    const invoiceTaxCode=input.billing.taxCode??line.taxCode;
+
+    const normalized={
       ...input,
       quantity,
-      billing: { ...input.billing, amount: invoiceAmount },
+      billing:{...input.billing,amount:invoiceAmount,currency:invoiceCurrency,...(invoiceTaxCode?{taxCode:invoiceTaxCode}:{})},
     };
-    const requestHash = fingerprint(normalized);
+    const requestHash=fingerprint(normalized);
 
-    let conversion = await this.repo.conversion(input.companyId, input.id);
-    if (conversion && conversion.requestHash !== requestHash) {
-      throw new ContractValidationError('conversion', 'conflicting replay');
-    }
-    if (conversion?.status === 'INVOICED' || conversion?.status === 'REOPENED') {
-      return conversion;
-    }
+    let conversion=await this.repo.conversion(input.companyId,input.id);
+    if(conversion&&conversion.requestHash!==requestHash)throw new ContractValidationError('conversion','conflicting replay');
+    if(conversion?.status==='INVOICED'||conversion?.status==='REOPENED')return conversion;
 
-    if (!conversion) {
-      conversion = await this.repo.reserveConversion({
-        id: input.id,
-        companyId: input.companyId,
-        purchaseOrderId: input.purchaseOrderId,
-        lineId: input.lineId,
-        billingInvoiceId: input.billing.invoiceId,
+    if(!conversion){
+      conversion=await this.repo.reserveConversion({
+        id:input.id,
+        companyId:input.companyId,
+        purchaseOrderId:input.purchaseOrderId,
+        lineId:input.lineId,
+        billingInvoiceId:input.billing.invoiceId,
         quantity,
-        reopenedQuantity: decimalAmount('0'),
+        reopenedQuantity:decimalAmount('0'),
         requestHash,
-        status: 'RESERVED',
-        createdAt: now(),
+        status:'RESERVED',
+        createdAt:now(),
       });
     }
 
-    const po = await this.getPurchaseOrder(input.companyId, input.purchaseOrderId);
-    const line = po.lines.find((candidate) => candidate.id === input.lineId);
-    if (!line) throw new ContractValidationError('line', 'not found');
-
-    const invoice: CreateInvoiceInput = {
-      id: input.billing.invoiceId,
-      companyId: input.companyId,
-      type: 'SUPPLIER',
-      partyId: po.supplierId,
-      number: input.billing.number,
-      externalInvoiceNumber: input.billing.externalInvoiceNumber,
-      postingDate: input.billing.postingDate,
-      ...(input.billing.dueDate ? { dueDate: input.billing.dueDate } : {}),
-      currency: currencyCode(input.billing.currency),
-      sourceType: 'PROCUREMENT_PO',
-      sourceId: input.id,
-      controlAccountId: input.billing.controlAccountId,
-      lines: [
-        {
-          id: `${input.billing.invoiceId}:${input.lineId}`,
-          accountId: input.billing.accountId,
-          amount: invoiceAmount,
-          ...(input.billing.taxCode ? { taxCode: input.billing.taxCode } : {}),
-        },
-      ],
+    const invoice:CreateInvoiceInput={
+      id:input.billing.invoiceId,
+      companyId:input.companyId,
+      branchId:po.branchId,
+      type:'SUPPLIER',
+      partyId:supplier.partyId,
+      number:requiredText(input.billing.number,'billing.number'),
+      externalInvoiceNumber:requiredText(input.billing.externalInvoiceNumber,'billing.externalInvoiceNumber'),
+      postingDate:requiredText(input.billing.postingDate,'billing.postingDate'),
+      ...(input.billing.dueDate?{dueDate:input.billing.dueDate}:{}),
+      currency:invoiceCurrency,
+      sourceType:'PROCUREMENT_PO',
+      sourceId:input.id,
+      controlAccountId:requiredText(input.billing.controlAccountId,'billing.controlAccountId'),
+      lines:[{
+        id:`${input.billing.invoiceId}:${input.lineId}`,
+        accountId:requiredText(input.billing.accountId,'billing.accountId'),
+        amount:invoiceAmount,
+        ...(invoiceTaxCode?{taxCode:invoiceTaxCode}:{}),
+      }],
     };
 
     await this.billing.createDraft(invoice);
-    const posted = await this.billing.postInvoice(
-      input.companyId,
-      input.billing.invoiceId,
-    );
-    if (posted.status !== 'POSTED') {
-      throw new ContractValidationError('billingInvoice', 'supplier invoice did not post');
-    }
+    const posted=await this.billing.postInvoice(input.companyId,input.billing.invoiceId);
+    if(posted.status!=='POSTED')throw new ContractValidationError('billingInvoice','supplier invoice did not post');
+    return this.repo.completeConversion(input.companyId,input.id,input.billing.invoiceId);
+  }
 
-    return this.repo.completeConversion(
-      input.companyId,
-      input.id,
-      input.billing.invoiceId,
-    );
+  async createDirectPurchase(input:CreateDirectPurchaseInput){
+    const branchId=requiredText(input.branchId,'branchId');
+    const supplierReference=requiredText(input.supplierId,'supplierId');
+    if(!input.lines.length)throw new ContractValidationError('lines','at least one direct-purchase line is required');
+    const supplier=await this.suppliers.assertSupplierReferenceUsableForProcurementForIntegration(input.companyId,supplierReference);
+    const invoice:CreateInvoiceInput={
+      id:requiredText(input.invoiceId,'invoiceId'),
+      companyId:input.companyId,
+      branchId,
+      type:'SUPPLIER',
+      partyId:supplier.partyId,
+      number:requiredText(input.number,'number'),
+      externalInvoiceNumber:requiredText(input.externalInvoiceNumber,'externalInvoiceNumber'),
+      postingDate:requiredText(input.postingDate,'postingDate'),
+      ...(input.dueDate?{dueDate:input.dueDate}:{}),
+      currency:currencyCode(input.currency),
+      sourceType:'PROCUREMENT_DIRECT',
+      sourceId:requiredText(input.id,'id'),
+      controlAccountId:requiredText(input.controlAccountId,'controlAccountId'),
+      lines:input.lines.map((line)=>({
+        id:requiredText(line.id,'line.id'),
+        accountId:requiredText(line.accountId,'line.accountId'),
+        amount:positive(line.amount,'line.amount'),
+        ...(line.taxCode?.trim()?{taxCode:line.taxCode.trim()}:{}),
+      })),
+    };
+    await this.billing.createDraft(invoice);
+    const posted=await this.billing.postInvoice(input.companyId,invoice.id);
+    if(posted.status!=='POSTED')throw new ContractValidationError('billingInvoice','supplier invoice did not post');
+    return posted;
   }
 
   async reopenAfterSupplierInvoiceCancellation(input: {
@@ -445,6 +686,7 @@ export class ProcurementFinanceApplicationService {
     }
 
     const po = await this.getPurchaseOrder(input.companyId, conversion.purchaseOrderId);
+    const supplier=await this.suppliers.assertSupplierReferenceUsableForProcurementForIntegration(input.companyId,po.supplierId);
     const billingInvoice = await this.billing.getOpenPosition(
       input.companyId,
       input.billingInvoiceId,
@@ -452,7 +694,7 @@ export class ProcurementFinanceApplicationService {
     if (
       billingInvoice.invoiceType !== 'SUPPLIER' ||
       billingInvoice.status !== 'CANCELLED' ||
-      billingInvoice.partyId !== po.supplierId
+      billingInvoice.partyId !== supplier.partyId
     ) {
       throw new ContractValidationError(
         'billingInvoice',
@@ -473,6 +715,16 @@ export class ProcurementFinanceApplicationService {
     const value = await this.repo.po(companyId, id);
     if (!value) throw new ContractValidationError('purchaseOrder', 'not found');
     return value;
+  }
+
+  async getPurchaseOrderForBranch(companyId:CompanyId,branchId:string,id:string){
+    const value=await this.getPurchaseOrder(companyId,id);
+    if(value.branchId!==requiredText(branchId,'branchId'))throw new ContractValidationError('branchId','purchase order belongs to a different branch');
+    return value;
+  }
+
+  async listPurchaseOrders(companyId:CompanyId,branchId:string){
+    return this.repo.listPos(companyId,requiredText(branchId,'branchId'));
   }
 
   async getSupplierCommitment(companyId: CompanyId, id: string) {

@@ -99,11 +99,17 @@ export class PrismaProcurementRepository implements ProcurementRepository {
   private poValue(row: {
     id: string;
     companyId: string;
+    branchId: string;
     commitmentId: string | null;
     supplierId: string;
     number: string;
     origin: string;
     status: string;
+    orderDate: Date | null;
+    expectedDate: Date | null;
+    currency: string | null;
+    externalReference: string | null;
+    notes: string | null;
     requestHash: string;
     createdAt: Date;
     lines: Array<{
@@ -111,7 +117,10 @@ export class PrismaProcurementRepository implements ProcurementRepository {
       companyId: string;
       purchaseOrderId: string;
       itemReference: string;
+      description: string | null;
       orderedQuantity: Prisma.Decimal;
+      unitPrice: Prisma.Decimal | null;
+      taxCode: string | null;
       receivedQuantity: Prisma.Decimal;
       invoicedQuantity: Prisma.Decimal;
     }>;
@@ -119,11 +128,17 @@ export class PrismaProcurementRepository implements ProcurementRepository {
     return {
       id: row.id,
       companyId: companyId(row.companyId),
+      branchId: row.branchId,
       ...(row.commitmentId ? { commitmentId: row.commitmentId } : {}),
       supplierId: row.supplierId,
       number: row.number,
       origin: row.origin as PurchaseOrder['origin'],
       status: row.status as PurchaseOrderStatus,
+      ...(row.orderDate ? { orderDate: dateOnly(row.orderDate) } : {}),
+      ...(row.expectedDate ? { expectedDate: dateOnly(row.expectedDate) } : {}),
+      ...(row.currency ? { currency: row.currency } : {}),
+      ...(row.externalReference ? { externalReference: row.externalReference } : {}),
+      ...(row.notes ? { notes: row.notes } : {}),
       requestHash: row.requestHash,
       createdAt: row.createdAt.toISOString(),
       lines: row.lines.map(
@@ -132,7 +147,10 @@ export class PrismaProcurementRepository implements ProcurementRepository {
           companyId: companyId(line.companyId),
           purchaseOrderId: line.purchaseOrderId,
           itemReference: line.itemReference,
+          ...(line.description ? { description: line.description } : {}),
           orderedQuantity: toAmount(line.orderedQuantity),
+          ...(line.unitPrice !== null ? { unitPrice: toAmount(line.unitPrice) } : {}),
+          ...(line.taxCode ? { taxCode: line.taxCode } : {}),
           receivedQuantity: toAmount(line.receivedQuantity),
           invoicedQuantity: toAmount(line.invoicedQuantity),
         }),
@@ -365,6 +383,15 @@ export class PrismaProcurementRepository implements ProcurementRepository {
     return this.poWith(this.db, companyIdValue, id);
   }
 
+  async listPos(companyIdValue: CompanyId, branchId?: string) {
+    const rows=await this.db.procPurchaseOrder.findMany({
+      where:{companyId:companyIdValue,...(branchId?{branchId}:{})},
+      include:{lines:true},
+      orderBy:{createdAt:'desc'},
+    });
+    return rows.map((row)=>this.poValue(row));
+  }
+
   async posByCommitment(companyIdValue: CompanyId, commitmentId: string) {
     const rows = await this.db.procPurchaseOrder.findMany({
       where: { companyId: companyIdValue, commitmentId },
@@ -373,12 +400,21 @@ export class PrismaProcurementRepository implements ProcurementRepository {
     return rows.map((row) => this.poValue(row));
   }
 
-  async poByNumber(companyIdValue: CompanyId, number: string) {
+  async poByNumber(companyIdValue: CompanyId, branchId: string, number: string) {
     const row = await this.db.procPurchaseOrder.findUnique({
-      where: { companyId_number: { companyId: companyIdValue, number } },
+      where: { companyId_branchId_number: { companyId: companyIdValue, branchId, number } },
       include: { lines: true },
     });
     return row ? this.poValue(row) : undefined;
+  }
+
+  async nextPoNumber(companyIdValue: CompanyId, branchId: string, year: number) {
+    const row=await this.db.procPoNumberCounter.upsert({
+      where:{companyId_branchId_year:{companyId:companyIdValue,branchId,year}},
+      create:{companyId:companyIdValue,branchId,year,nextValue:1},
+      update:{nextValue:{increment:1}},
+    });
+    return row.nextValue;
   }
 
   async savePo(value: PurchaseOrder, entry: ProcurementHistory) {
@@ -402,11 +438,17 @@ export class PrismaProcurementRepository implements ProcurementRepository {
           data: {
             id: value.id,
             companyId: value.companyId,
+            branchId: value.branchId,
             commitmentId: value.commitmentId,
             supplierId: value.supplierId,
             number: value.number,
             origin: value.origin,
             status: value.status,
+            orderDate: value.orderDate ? new Date(value.orderDate) : null,
+            expectedDate: value.expectedDate ? new Date(value.expectedDate) : null,
+            currency: value.currency ?? null,
+            externalReference: value.externalReference ?? null,
+            notes: value.notes ?? null,
             requestHash: value.requestHash,
             createdAt: new Date(value.createdAt),
             lines: {
@@ -414,7 +456,10 @@ export class PrismaProcurementRepository implements ProcurementRepository {
                 id: line.id,
                 companyId: line.companyId,
                 itemReference: line.itemReference,
+                description: line.description ?? null,
                 orderedQuantity: line.orderedQuantity,
+                unitPrice: line.unitPrice ?? null,
+                taxCode: line.taxCode ?? null,
                 receivedQuantity: line.receivedQuantity,
                 invoicedQuantity: line.invoicedQuantity,
               })),
@@ -436,10 +481,68 @@ export class PrismaProcurementRepository implements ProcurementRepository {
     } catch (error) {
       const replay = await this.po(value.companyId, value.id);
       if (replay?.requestHash === value.requestHash) return replay;
-      const number = await this.poByNumber(value.companyId, value.number);
+      const number = await this.poByNumber(value.companyId, value.branchId, value.number);
       if (number) throw new ContractValidationError('number', 'already used');
       throw error;
     }
+  }
+
+  async updateDraftPo(
+    value: PurchaseOrder,
+    commandId: string,
+    requestHash: string,
+    entry: ProcurementHistory,
+  ) {
+    return this.db.$transaction(async(tx)=>{
+      const historyId=`${value.id}:UPDATED:${commandId}`;
+      const replay=await tx.procPoHistory.findUnique({where:{id:historyId}});
+      if(replay){
+        if(replay.companyId!==value.companyId||replay.requestHash!==requestHash)throw new ContractValidationError('command','conflicting replay');
+        return (await this.poWith(tx,value.companyId,value.id))!;
+      }
+      const current=await tx.procPurchaseOrder.findUnique({
+        where:{companyId_id:{companyId:value.companyId,id:value.id}},
+        include:{lines:true},
+      });
+      if(!current)throw new ContractValidationError('purchaseOrder','not found');
+      if(current.status!=='DRAFT')throw new ContractValidationError('status','only draft purchase order can be edited');
+      if(current.branchId!==value.branchId||current.number!==value.number||current.origin!==value.origin)throw new ContractValidationError('purchaseOrder','immutable identity fields changed');
+      if(current.lines.some((line)=>!line.receivedQuantity.equals(0)||!line.invoicedQuantity.equals(0)))throw new ContractValidationError('purchaseOrder','economic activity blocks draft edit');
+
+      await tx.procPurchaseOrderLine.deleteMany({where:{companyId:value.companyId,purchaseOrderId:value.id}});
+      await tx.procPurchaseOrder.update({
+        where:{companyId_id:{companyId:value.companyId,id:value.id}},
+        data:{
+          supplierId:value.supplierId,
+          orderDate:value.orderDate?new Date(value.orderDate):null,
+          expectedDate:value.expectedDate?new Date(value.expectedDate):null,
+          currency:value.currency??null,
+          externalReference:value.externalReference??null,
+          notes:value.notes??null,
+          lines:{create:value.lines.map((line)=>({
+            id:line.id,
+            companyId:line.companyId,
+            itemReference:line.itemReference,
+            description:line.description??null,
+            orderedQuantity:line.orderedQuantity,
+            unitPrice:line.unitPrice??null,
+            taxCode:line.taxCode??null,
+            receivedQuantity:line.receivedQuantity,
+            invoicedQuantity:line.invoicedQuantity,
+          }))},
+        },
+      });
+      await tx.procPoHistory.create({data:{
+        id:historyId,
+        companyId:value.companyId,
+        aggregateId:value.id,
+        kind:'UPDATED',
+        sourceReference:entry.sourceReference,
+        requestHash,
+        createdAt:new Date(entry.createdAt),
+      }});
+      return (await this.poWith(tx,value.companyId,value.id))!;
+    },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
   }
 
   async approvePo(
@@ -579,75 +682,117 @@ export class PrismaProcurementRepository implements ProcurementRepository {
         const historyId = `${poId}:receipt:${commandId}`;
         const replay = await tx.procPoHistory.findUnique({ where: { id: historyId } });
         if (replay) {
-          if (
-            replay.companyId !== companyIdValue ||
-            replay.requestHash !== requestHash
-          ) {
+          if (replay.companyId !== companyIdValue || replay.requestHash !== requestHash) {
             throw new ContractValidationError('command', 'conflicting replay');
           }
-          return (await this.poWith(tx, companyIdValue, poId))!;
+          if (replay.previousReceivedQuantity===null || replay.resultingReceivedQuantity===null) {
+            throw new ContractValidationError('command','receipt outcome evidence is incomplete');
+          }
+          return {
+            purchaseOrder:(await this.poWith(tx,companyIdValue,poId))!,
+            previousReceivedQuantity:toAmount(replay.previousReceivedQuantity),
+            resultingReceivedQuantity:toAmount(replay.resultingReceivedQuantity),
+          };
         }
 
         const po = await tx.procPurchaseOrder.findUnique({
           where: { companyId_id: { companyId: companyIdValue, id: poId } },
         });
-        if (
-          !po ||
-          !['APPROVED', 'PARTIALLY_RECEIVED', 'PARTIALLY_INVOICED'].includes(
-            po.status,
-          )
-        ) {
+        if (!po || !['APPROVED','PARTIALLY_RECEIVED','PARTIALLY_INVOICED'].includes(po.status)) {
           throw new ContractValidationError('purchaseOrder', 'not receivable');
         }
-
         const line = await tx.procPurchaseOrderLine.findUnique({
           where: { companyId_id: { companyId: companyIdValue, id: lineId } },
         });
-        if (!line || line.purchaseOrderId !== poId) {
-          throw new ContractValidationError('line', 'not found');
-        }
+        if (!line || line.purchaseOrderId !== poId) throw new ContractValidationError('line','not found');
 
-        const increment = new Prisma.Decimal(quantity);
-        const maximumBefore = line.orderedQuantity.sub(increment);
-        if (maximumBefore.isNegative()) {
-          throw new ContractValidationError('quantity', 'over-receipt');
-        }
+        const previousReceivedQuantity=line.receivedQuantity;
+        const increment=new Prisma.Decimal(quantity);
+        const resultingReceivedQuantity=previousReceivedQuantity.add(increment);
+        if(resultingReceivedQuantity.gt(line.orderedQuantity))throw new ContractValidationError('quantity','over-receipt');
 
-        const changed = await tx.procPurchaseOrderLine.updateMany({
-          where: {
-            companyId: companyIdValue,
-            id: lineId,
-            purchaseOrderId: poId,
-            receivedQuantity: { lte: maximumBefore },
-          },
-          data: { receivedQuantity: { increment } },
+        const changed=await tx.procPurchaseOrderLine.updateMany({
+          where:{companyId:companyIdValue,id:lineId,purchaseOrderId:poId,receivedQuantity:previousReceivedQuantity},
+          data:{receivedQuantity:resultingReceivedQuantity},
         });
-        if (changed.count !== 1) {
-          throw new ContractValidationError('quantity', 'over-receipt');
-        }
+        if(changed.count!==1)throw new ContractValidationError('quantity','concurrent receipt conflict');
 
-        const lines = await tx.procPurchaseOrderLine.findMany({
-          where: { companyId: companyIdValue, purchaseOrderId: poId },
-        });
-        await tx.procPurchaseOrder.update({
-          where: { companyId_id: { companyId: companyIdValue, id: poId } },
-          data: { status: derivedStatus(lines) },
-        });
-        await tx.procPoHistory.create({
-          data: {
-            id: historyId,
-            companyId: companyIdValue,
-            aggregateId: poId,
-            kind: 'RECEIVED',
-            sourceReference: commandId,
-            requestHash,
-            createdAt: new Date(),
-          },
-        });
-        return (await this.poWith(tx, companyIdValue, poId))!;
+        const lines=await tx.procPurchaseOrderLine.findMany({where:{companyId:companyIdValue,purchaseOrderId:poId}});
+        await tx.procPurchaseOrder.update({where:{companyId_id:{companyId:companyIdValue,id:poId}},data:{status:derivedStatus(lines)}});
+        await tx.procPoHistory.create({data:{
+          id:historyId,
+          companyId:companyIdValue,
+          aggregateId:poId,
+          kind:'RECEIVED',
+          sourceReference:commandId,
+          requestHash,
+          previousReceivedQuantity,
+          resultingReceivedQuantity,
+          createdAt:new Date(),
+        }});
+        return {
+          purchaseOrder:(await this.poWith(tx,companyIdValue,poId))!,
+          previousReceivedQuantity:toAmount(previousReceivedQuantity),
+          resultingReceivedQuantity:toAmount(resultingReceivedQuantity),
+        };
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
+  }
+
+  async adjustReceived(
+    companyIdValue: CompanyId,
+    poId: string,
+    lineId: string,
+    newReceivedQuantity: DecimalAmount,
+    commandId: string,
+    requestHash: string,
+    reason: string,
+  ) {
+    return this.db.$transaction(async(tx)=>{
+      const historyId=`${poId}:receipt-adjust:${commandId}`;
+      const replay=await tx.procPoHistory.findUnique({where:{id:historyId}});
+      if(replay){
+        if(replay.companyId!==companyIdValue||replay.requestHash!==requestHash)throw new ContractValidationError('command','conflicting replay');
+        if(replay.previousReceivedQuantity===null||replay.resultingReceivedQuantity===null)throw new ContractValidationError('command','receipt correction outcome evidence is incomplete');
+        return{
+          purchaseOrder:(await this.poWith(tx,companyIdValue,poId))!,
+          previousReceivedQuantity:toAmount(replay.previousReceivedQuantity),
+          resultingReceivedQuantity:toAmount(replay.resultingReceivedQuantity),
+        };
+      }
+      const po=await tx.procPurchaseOrder.findUnique({where:{companyId_id:{companyId:companyIdValue,id:poId}}});
+      if(!po||!['APPROVED','PARTIALLY_RECEIVED','RECEIVED','PARTIALLY_INVOICED','INVOICED'].includes(po.status))throw new ContractValidationError('purchaseOrder','not adjustable');
+      const line=await tx.procPurchaseOrderLine.findUnique({where:{companyId_id:{companyId:companyIdValue,id:lineId}}});
+      if(!line||line.purchaseOrderId!==poId)throw new ContractValidationError('line','not found');
+      const previousReceivedQuantity=line.receivedQuantity;
+      const target=new Prisma.Decimal(newReceivedQuantity);
+      if(target.lt(line.invoicedQuantity))throw new ContractValidationError('quantity','cannot fall below invoiced quantity');
+      if(target.gt(line.orderedQuantity))throw new ContractValidationError('quantity','over-receipt');
+      const changed=await tx.procPurchaseOrderLine.updateMany({
+        where:{companyId:companyIdValue,id:lineId,purchaseOrderId:poId,receivedQuantity:previousReceivedQuantity},
+        data:{receivedQuantity:target},
+      });
+      if(changed.count!==1)throw new ContractValidationError('quantity','concurrent receipt correction conflict');
+      const lines=await tx.procPurchaseOrderLine.findMany({where:{companyId:companyIdValue,purchaseOrderId:poId}});
+      await tx.procPurchaseOrder.update({where:{companyId_id:{companyId:companyIdValue,id:poId}},data:{status:derivedStatus(lines)}});
+      await tx.procPoHistory.create({data:{
+        id:historyId,
+        companyId:companyIdValue,
+        aggregateId:poId,
+        kind:'RECEIPT_ADJUSTED',
+        sourceReference:reason,
+        requestHash,
+        previousReceivedQuantity,
+        resultingReceivedQuantity:target,
+        createdAt:new Date(),
+      }});
+      return{
+        purchaseOrder:(await this.poWith(tx,companyIdValue,poId))!,
+        previousReceivedQuantity:toAmount(previousReceivedQuantity),
+        resultingReceivedQuantity:toAmount(target),
+      };
+    },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
   }
 
   async conversion(companyIdValue: CompanyId, id: string) {

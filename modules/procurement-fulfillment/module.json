@@ -1,0 +1,15 @@
+{
+  "name": "procurement-fulfillment",
+  "publicApi": [
+    "src/public/index.ts",
+    "src/public/nest.ts"
+  ],
+  "ownedTables": [
+    "pf_fulfillment_records"
+  ],
+  "allowedDependencies": [
+    "@elhafez/contracts",
+    "@elhafez/platform-core",
+    "@elhafez/procurement-finance"
+  ]
+}

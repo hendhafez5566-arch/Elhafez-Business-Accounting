@@ -772,6 +772,7 @@ test('GS-037 internal inventory is consumed before residual Procurement request'
   const result = await implementation.fulfillWithInternalFirst(
     {
       companyId: company,
+      branchId: 'branch-a',
       program,
       contractType: 'HOTEL',
       resourceId: 'hotel',

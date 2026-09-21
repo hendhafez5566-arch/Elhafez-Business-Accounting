@@ -1,13 +1,15 @@
 {
   "name": "procurement-finance",
   "publicApi": [
-    "src/public/index.ts"
+    "src/public/index.ts",
+    "src/public/nest.ts"
   ],
   "ownedTables": [
     "proc_policies",
     "proc_supplier_commitments",
     "proc_commitment_history",
     "proc_purchase_orders",
+    "proc_po_number_counters",
     "proc_purchase_order_lines",
     "proc_po_history",
     "proc_invoice_conversions",
@@ -15,6 +17,7 @@
   ],
   "allowedDependencies": [
     "@elhafez/contracts",
-    "@elhafez/billing-subledgers"
+    "@elhafez/billing-subledgers",
+    "@elhafez/supplier-management"
   ]
 }

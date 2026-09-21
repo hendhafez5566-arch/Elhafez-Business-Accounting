@@ -4,10 +4,8 @@ import {
   CostBudgetAccountingApplicationService,
   CostBudgetAccountingModule,
 } from '@elhafez/cost-budget-accounting';
-import {
-  ProcurementFinanceApplicationService,
-  ProcurementFinanceModule,
-} from '@elhafez/procurement-finance';
+import { ProcurementFinanceApplicationService } from '@elhafez/procurement-finance';
+import { ProcurementFinanceModule } from '@elhafez/procurement-finance/nest';
 import { TourismContractInventoryApplicationServiceImpl } from './application/tourism-contract-inventory.application-service.impl.js';
 import type {
   CostEffectPort,
@@ -51,6 +49,7 @@ class ProcurementPublicAdapter implements ProcurementPort {
     const purchaseOrder = await this.procurement.createPurchaseOrder({
       id: input.requestId,
       companyId: input.companyId,
+      branchId: input.branchId,
       number: `TCI-${input.requestId}`,
       supplierId: input.supplierId,
       origin: 'AUTO',

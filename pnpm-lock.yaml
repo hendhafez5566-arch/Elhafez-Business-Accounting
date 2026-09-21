@@ -44,6 +44,9 @@ importers:
       '@elhafez/supplier-management':
         specifier: workspace:*
         version: link:../../modules/supplier-management
+      '@elhafez/procurement-fulfillment':
+        specifier: workspace:*
+        version: link:../../modules/procurement-fulfillment
       '@elhafez/traveler-management':
         specifier: workspace:*
         version: link:../../modules/traveler-management
@@ -342,6 +345,27 @@ importers:
       '@elhafez/billing-subledgers':
         specifier: workspace:*
         version: link:../billing-subledgers
+      '@elhafez/supplier-management':
+        specifier: workspace:*
+        version: link:../supplier-management
+      '@nestjs/common':
+        specifier: ^11.0.11
+        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@prisma/client':
+        specifier: 6.19.0
+        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
+
+  modules/procurement-fulfillment:
+    dependencies:
+      '@elhafez/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@elhafez/platform-core':
+        specifier: workspace:*
+        version: link:../platform-core
+      '@elhafez/procurement-finance':
+        specifier: workspace:*
+        version: link:../procurement-finance
       '@nestjs/common':
         specifier: ^11.0.11
         version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)

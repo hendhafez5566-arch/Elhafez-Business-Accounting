@@ -10,9 +10,9 @@ import { PartyAccountingModule } from '@elhafez/party-accounting';
 import { ExpenseCommissionRecognitionModule } from '@elhafez/expense-commission-recognition';
 import { AssetsFinancingModule } from '@elhafez/assets-financing';
 import { CostBudgetAccountingModule } from '@elhafez/cost-budget-accounting';
-import { ProcurementFinanceModule } from '@elhafez/procurement-finance';
-import { TourismContractInventoryModule } from '@elhafez/tourism-contract-inventory';
-import { TourismFinanceOrchestrationModule } from '@elhafez/tourism-finance-orchestration';
+import { ProcurementFinanceModule } from '@elhafez/procurement-finance/nest';
+import { TourismContractInventoryModule } from '@elhafez/tourism-contract-inventory/nest';
+import { TourismFinanceOrchestrationModule } from '@elhafez/tourism-finance-orchestration/nest';
 import { FinancialReportingModule } from '@elhafez/financial-reporting';
 import { PartyRegistryModule } from '@elhafez/party-registry';
 import { AgentManagementApplicationService } from '@elhafez/agent-management';
@@ -26,6 +26,7 @@ import { CrmFollowupsModule } from '@elhafez/crm-followups/nest';
 import { QuotationsApplicationService } from '@elhafez/quotations';
 import { QuotationsModule } from '@elhafez/quotations/nest';
 import { SupplierManagementModule } from '@elhafez/supplier-management/nest';
+import { ProcurementFulfillmentModule } from '@elhafez/procurement-fulfillment/nest';
 import { TravelerManagementApplicationService } from '@elhafez/traveler-management';
 import { TravelerManagementModule } from '@elhafez/traveler-management/nest';
 import { FinancialReportingEvidenceAdapter } from './financial-reporting-evidence.adapter.js';
@@ -36,7 +37,7 @@ import { CrmSalesReadModelService } from './crm-sales-read-model.service.js';
 /** Composition root only. Business modules are registered here through public module APIs. */
 @Module({
   imports: [
-    PlatformCoreModule, PartyRegistryModule, AgentManagementModule, CustomerManagementModule, CrmLeadsModule, CrmFollowupsModule, QuotationsModule, SupplierManagementModule, TravelerManagementModule,
+    PlatformCoreModule, PartyRegistryModule, AgentManagementModule, CustomerManagementModule, CrmLeadsModule, CrmFollowupsModule, QuotationsModule, SupplierManagementModule, ProcurementFulfillmentModule, TravelerManagementModule,
     PeriodControlModule, GeneralLedgerModule, FinancialControlsModule, TaxModule, BillingSubledgersModule, TreasurySettlementModule, PartyAccountingModule,
     ExpenseCommissionRecognitionModule, CostBudgetAccountingModule, AssetsFinancingModule, ProcurementFinanceModule, TourismContractInventoryModule,
     TourismFinanceOrchestrationModule, FinancialReportingModule, Ac14MigrationModule,
