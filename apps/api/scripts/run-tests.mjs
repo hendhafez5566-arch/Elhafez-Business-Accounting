@@ -1,6 +1,7 @@
 import { readdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import process from 'node:process';
 
 function specs(directory) {
@@ -19,15 +20,19 @@ if (!files.length) {
   process.exit(1);
 }
 
+const tsxCli = fileURLToPath(import.meta.resolve('tsx/cli'));
 const result = spawnSync(
   process.execPath,
-  ['--import', 'tsx', '--test', ...files],
+  [
+    tsxCli,
+    '--tsconfig',
+    resolve('tsconfig.json'),
+    '--test',
+    ...files,
+  ],
   {
     stdio: 'inherit',
-    env: {
-      ...process.env,
-      TSX_TSCONFIG_PATH: resolve('tsconfig.json'),
-    },
+    env: process.env,
   },
 );
 
