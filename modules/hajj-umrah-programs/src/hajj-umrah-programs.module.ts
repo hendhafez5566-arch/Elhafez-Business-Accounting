@@ -94,9 +94,9 @@ import { PrismaProgramRepository } from './infrastructure/prisma-program.reposit
     {
       provide: REOPEN_GUARD,
       useFactory: (periods: PeriodControlApplicationService): ReopenGuard => ({
-        assertOpen: async (companyId, branchId, at) => {
+        assertOpen: async (companyId, branchId, accountingDateEvidence) => {
           void branchId;
-          await periods.authorizePosting(companyId, at.slice(0, 10));
+          await periods.authorizePosting(companyId, accountingDateEvidence.slice(0, 10));
         },
       }),
       inject: [PeriodControlApplicationService],
