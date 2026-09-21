@@ -370,8 +370,10 @@ export class ProcurementFinanceApplicationService {
     };
     const requestHash=fingerprint(input.origin==='MANUAL'?{...normalized,number:'OWNER_GENERATED'}:normalized);
     if(prior){
+      const priorSupplier=await this.suppliers.assertSupplierReferenceUsableForProcurementForIntegration(input.companyId,prior.supplierId);
       const replayCandidate:PurchaseOrder={...normalized,status:prior.status,requestHash:prior.requestHash,createdAt:prior.createdAt,lines:lines.map((line)=>({...line,companyId:input.companyId,purchaseOrderId:input.id,receivedQuantity:decimalAmount('0'),invoicedQuantity:decimalAmount('0')}))};
-      if(prior.requestHash===requestHash||samePurchaseOrderReplay(prior,replayCandidate))return prior;
+      const canonicalPrior:PurchaseOrder={...prior,supplierId:priorSupplier.partyId};
+      if(prior.requestHash===requestHash||samePurchaseOrderReplay(canonicalPrior,replayCandidate))return prior;
       throw new ContractValidationError('purchaseOrder','conflicting replay');
     }
     const byNumber=await this.repo.poByNumber(input.companyId,branchId,numberValue);
