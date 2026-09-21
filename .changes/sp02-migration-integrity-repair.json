@@ -1,0 +1,21 @@
+{
+  "id": "sp02-migration-integrity-repair",
+  "summary": "Repair the unaccepted SP-02 migration SQL so a fresh database can apply the canonical procurement operations migration before SP-02 is formally closed.",
+  "type": "bugfix",
+  "allowedModules": [],
+  "allowedPaths": [
+    ".changes/sp02-migration-integrity-repair.json",
+    "prisma/migrations/20260920231000_sp02_procurement_operations/migration.sql",
+    "tools/governance/check-change-safety.ts"
+  ],
+  "protectedPaths": [
+    "tools/governance/check-change-safety.ts"
+  ],
+  "protectedReason": "The current safety gate treats every existing migration as accepted historical state. SP-02 is merged but not formally CLOSED/ACCEPTED and its migration has not passed an execution gate. This change adds a narrow, explicit bugfix-only mechanism for repairing a specifically declared unaccepted migration without permitting deletion, rename, or blanket historical migration edits.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": "",
+  "unacceptedMigrationRepairs": [
+    "prisma/migrations/20260920231000_sp02_procurement_operations/migration.sql"
+  ],
+  "unacceptedMigrationRepairReason": "SP-02 is not formally accepted. The migration contains invalid statement ordering and a duplicate CREATE TABLE, so it must be canonicalized before acceptance; no accepted historical migration is being changed."
+}
