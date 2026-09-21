@@ -31,6 +31,7 @@ import type {
   InternalFirstFulfillmentInput,
   ProcurementPort,
   ProtectAllocationCoverageInput,
+  ProgramSupplyEvidenceInput,
   RegisterAllocationEconomicEvidenceInput,
   ReleaseAllocationCoverageInput,
   ReleaseAllocationInput,
@@ -100,6 +101,10 @@ export class TourismContractInventoryApplicationServiceImpl
 
   checkAvailability(input: CheckAvailabilityInput): Promise<AvailabilityResult> {
     return this.repo.availability(input);
+  }
+
+  checkProgramSupplyEvidence(input: ProgramSupplyEvidenceInput) {
+    return this.repo.supplyEvidence(input);
   }
 
   allocateCapacity(input: AllocateCapacityInput, key?: string): Promise<AllocationResult> {
