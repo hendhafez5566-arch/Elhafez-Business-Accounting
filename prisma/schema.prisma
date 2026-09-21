@@ -1368,11 +1368,17 @@ model ProcSupplierCommitment {
 model ProcPurchaseOrder {
  id String @id
  companyId String @map("company_id")
+ branchId String @map("branch_id")
  commitmentId String? @map("commitment_id")
  supplierId String @map("supplier_id")
  number String
  origin String
  status String
+ orderDate DateTime? @map("order_date") @db.Date
+ expectedDate DateTime? @map("expected_date") @db.Date
+ currency String?
+ externalReference String? @map("external_reference")
+ notes String?
  requestHash String @map("request_hash")
  createdAt DateTime @map("created_at")
  commitment ProcSupplierCommitment? @relation(fields:[companyId,commitmentId],references:[companyId,id],onDelete:Restrict)
@@ -1380,6 +1386,7 @@ model ProcPurchaseOrder {
  conversions ProcInvoiceConversion[]
  @@unique([companyId,id])
  @@unique([companyId,number])
+ @@index([companyId,branchId,status])
  @@index([companyId,commitmentId,status])
  @@map("proc_purchase_orders")
 }
@@ -1388,7 +1395,10 @@ model ProcPurchaseOrderLine {
  companyId String @map("company_id")
  purchaseOrderId String @map("purchase_order_id")
  itemReference String @map("item_reference")
+ description String?
  orderedQuantity Decimal @map("ordered_quantity") @db.Decimal(38,18)
+ unitPrice Decimal? @map("unit_price") @db.Decimal(38,18)
+ taxCode String? @map("tax_code")
  receivedQuantity Decimal @map("received_quantity") @db.Decimal(38,18)
  invoicedQuantity Decimal @map("invoiced_quantity") @db.Decimal(38,18)
  purchaseOrder ProcPurchaseOrder @relation(fields:[companyId,purchaseOrderId],references:[companyId,id],onDelete:Restrict)
@@ -1415,6 +1425,8 @@ model ProcPoHistory {
  kind String
  sourceReference String? @map("source_reference")
  requestHash String? @map("request_hash")
+ previousReceivedQuantity Decimal? @map("previous_received_quantity") @db.Decimal(38,18)
+ resultingReceivedQuantity Decimal? @map("resulting_received_quantity") @db.Decimal(38,18)
  createdAt DateTime @map("created_at")
  @@unique([companyId,id])
  @@index([companyId,aggregateId,createdAt])
@@ -2069,6 +2081,32 @@ model AssetsFinancingHistoricalImport {
  @@unique([runId,collection,sourceId])
  @@index([runId,companyId])
  @@map("af_historical_imports")
+}
+
+model PfFulfillmentRecord {
+ id String @id
+ companyId String @map("company_id")
+ branchId String @map("branch_id")
+ purchaseOrderId String @map("purchase_order_id")
+ lineId String @map("line_id")
+ supplierId String @map("supplier_id")
+ kind String
+ status String
+ requestedQuantity Decimal @map("requested_quantity") @db.Decimal(38,18)
+ previousReceivedQuantity Decimal? @map("previous_received_quantity") @db.Decimal(38,18)
+ resultingReceivedQuantity Decimal? @map("resulting_received_quantity") @db.Decimal(38,18)
+ correctionOfId String? @map("correction_of_id")
+ reason String?
+ note String?
+ attachmentIds Json @map("attachment_ids")
+ actorId String @map("actor_id")
+ requestHash String @map("request_hash")
+ createdAt DateTime @map("created_at")
+ appliedAt DateTime? @map("applied_at")
+ @@unique([companyId,id])
+ @@index([companyId,branchId,purchaseOrderId,createdAt])
+ @@index([companyId,correctionOfId])
+ @@map("pf_fulfillment_records")
 }
 
 model ProcurementFinanceHistoricalImport {
