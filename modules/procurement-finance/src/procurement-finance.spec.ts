@@ -101,7 +101,8 @@ class BillingHarness {
 function setup() {
   const repo = new InMemoryProcurementRepository();
   const billing = new BillingHarness();
-  const service = new ProcurementFinanceApplicationService(repo, billing);
+  const suppliers={assertSupplierReferenceUsableForProcurementForIntegration:async(_c:unknown,reference:string)=>({partyId:reference})};
+  const service = new ProcurementFinanceApplicationService(repo, billing, suppliers as never);
   return { repo, billing, service };
 }
 
@@ -120,6 +121,7 @@ async function approved(
   await service.createPurchaseOrder({
     id,
     companyId: company,
+    branchId: 'branch-a',
     ...(commitmentId ? { commitmentId } : {}),
     supplierId: 'supplier-1',
     number: id,
@@ -203,6 +205,7 @@ test('GS-030 disposes only economically empty draft auto PO and replay is safe',
   await service.createPurchaseOrder({
     id: 'empty',
     companyId: company,
+    branchId: 'branch-a',
     supplierId: 's',
     number: 'E',
     origin: 'AUTO',
@@ -222,11 +225,14 @@ test('GS-030 disposes only economically empty draft auto PO and replay is safe',
   await service.createPurchaseOrder({
     id: 'manual',
     companyId: company,
+    branchId: 'branch-a',
     supplierId: 's',
     number: 'M',
     origin: 'MANUAL',
+    orderDate: '2026-09-20',
+    currency: 'EGP',
     lines: [
-      { id: 'm', itemReference: 'x', orderedQuantity: decimalAmount('1') },
+      { id: 'm', itemReference: 'x', orderedQuantity: decimalAmount('1'), unitPrice: decimalAmount('1') },
     ],
   });
   await assert.rejects(service.disposeDraftAutoPurchaseOrder(company, 'manual'));
@@ -419,6 +425,7 @@ test('BLOCKER-2 cleanupForProgramCancellation disposes AUTO DRAFT empty PO', asy
   await service.createPurchaseOrder({
     id: 'po-auto',
     companyId: company,
+    branchId: 'branch-a',
     supplierId: 'supplier-1',
     number: 'AUTO-001',
     origin: 'AUTO',
@@ -435,10 +442,13 @@ test('BLOCKER-2 cleanupForProgramCancellation cancels other non-AUTO PO', async 
   await service.createPurchaseOrder({
     id: 'po-manual',
     companyId: company,
+    branchId: 'branch-a',
     supplierId: 'supplier-1',
     number: 'MAN-001',
     origin: 'MANUAL',
-    lines: [{ id: 'line-1', itemReference: 'item-1', orderedQuantity: decimalAmount('10') }],
+    orderDate: '2026-09-20',
+    currency: 'EGP',
+    lines: [{ id: 'line-1', itemReference: 'item-1', orderedQuantity: decimalAmount('10'), unitPrice: decimalAmount('1') }],
   });
   const result = await service.cleanupForProgramCancellation(company, { purchaseOrderId: 'po-manual' });
   assert.equal(result.status, 'CANCELLED');
@@ -484,6 +494,7 @@ test('BLOCKER-2 cleanupForProgramCancellation is idempotent for already disposed
   await service.createPurchaseOrder({
     id: 'po-auto',
     companyId: company,
+    branchId: 'branch-a',
     supplierId: 'supplier-1',
     number: 'AUTO-002',
     origin: 'AUTO',
@@ -513,6 +524,7 @@ test('BLOCKER-2 cleanupForProgramCancellation cleans commitment and linked POs',
   await service.createPurchaseOrder({
     id: 'po-linked',
     companyId: company,
+    branchId: 'branch-a',
     commitmentId: 'commit-1',
     supplierId: 'supplier-1',
     number: 'AUTO-LINK',
@@ -546,11 +558,14 @@ test('BLOCKER-2 cleanupForProgramCancellation blocks commitment with received li
   await service.createPurchaseOrder({
     id: 'po-linked-2',
     companyId: company,
+    branchId: 'branch-a',
     commitmentId: 'commit-2',
     supplierId: 'supplier-1',
     number: 'MAN-LINK',
     origin: 'MANUAL',
-    lines: [{ id: 'line-1', itemReference: 'item-1', orderedQuantity: decimalAmount('5') }],
+    orderDate: '2026-09-20',
+    currency: 'EGP',
+    lines: [{ id: 'line-1', itemReference: 'item-1', orderedQuantity: decimalAmount('5'), unitPrice: decimalAmount('1') }],
   });
   await service.approvePurchaseOrder(company, 'po-linked-2');
   await service.receivePurchaseOrder({
