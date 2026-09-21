@@ -32,6 +32,8 @@ import type {
   CreateGenericServiceInput,
   InternalFirstFulfillmentInput,
   ProtectAllocationCoverageInput,
+  ProgramSupplyEvidence,
+  ProgramSupplyEvidenceInput,
   RegisterAllocationEconomicEvidenceInput,
   ReleaseAllocationCoverageInput,
   ReleaseAllocationInput,
@@ -84,6 +86,7 @@ export interface TourismInventoryRepository {
     hash: string,
   ): Promise<StopSale>;
   availability(input: CheckAvailabilityInput): Promise<AvailabilityResult>;
+  supplyEvidence(input: ProgramSupplyEvidenceInput): Promise<ProgramSupplyEvidence>;
   allocate(
     input: AllocateCapacityInput,
     key: string | undefined,
