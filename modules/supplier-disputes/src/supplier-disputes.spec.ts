@@ -8,7 +8,7 @@ import{SupplierDisputesController}from'./infrastructure/supplier-disputes.contro
 
 class Access implements SupplierDisputesAccess{
  deny='';failAudit='';readonly audits=new Set<string>();
- async requireBranch(_c:ExecutionContext){}
+ async requireBranch(){}
  async requirePermission(_c:ExecutionContext,p:string){if(p===this.deny)throw new Error('permission denied');}
  async auditOnce(_c:ExecutionContext,key:string){if(this.failAudit===key){this.failAudit='';throw new Error('audit outage');}this.audits.add(key);}
 }
