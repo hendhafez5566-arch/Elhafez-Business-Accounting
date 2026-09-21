@@ -1,0 +1,22 @@
+{
+  "description": "SP-03 Supplier Intelligence — evaluations, disputes, critical holds, and Supplier 360",
+  "allowedModules": [
+    "supplier-management",
+    "supplier-intelligence",
+    "procurement-finance",
+    "procurement-fulfillment",
+    "platform-core",
+    "contracts"
+  ],
+  "allowedPaths": [
+    ".changes/sp03-supplier-intelligence.json",
+    "modules/supplier-intelligence/",
+    "modules/supplier-management/",
+    "prisma/schema.prisma",
+    "prisma/migrations/20260921000000_sp03_supplier_intelligence/",
+    "apps/api/src/app.module.ts",
+    "apps/web/src/routes.tsx"
+  ],
+  "protectedPaths": [],
+  "breakingApiChange": false
+}
