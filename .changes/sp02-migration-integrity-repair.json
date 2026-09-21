@@ -6,7 +6,8 @@
   "allowedPaths": [
     ".changes/sp02-migration-integrity-repair.json",
     "prisma/migrations/20260920231000_sp02_procurement_operations/migration.sql",
-    "tools/governance/check-change-safety.ts"
+    "tools/governance/check-change-safety.ts",
+    "prisma/migrations/20260919190000_ac12_tourism_finance_orchestration/migration.sql"
   ],
   "protectedPaths": [
     "tools/governance/check-change-safety.ts"
@@ -17,5 +18,21 @@
   "unacceptedMigrationRepairs": [
     "prisma/migrations/20260920231000_sp02_procurement_operations/migration.sql"
   ],
-  "unacceptedMigrationRepairReason": "SP-02 is not formally accepted. The migration contains invalid statement ordering and a duplicate CREATE TABLE, so it must be canonicalized before acceptance; no accepted historical migration is being changed."
+  "unacceptedMigrationRepairReason": "SP-02 is not formally accepted. The migration contains invalid statement ordering and a duplicate CREATE TABLE, so it must be canonicalized before acceptance; no accepted historical migration is being changed.",
+  "historicalMigrationIdentifierRepairs": [
+    {
+      "path": "prisma/migrations/20260919190000_ac12_tourism_finance_orchestration/migration.sql",
+      "reason": "Fresh PostgreSQL execution proves two accepted AC-12 index identifiers truncate to the same 63-byte PostgreSQL name. Repair is identifier-only: indexed columns, uniqueness, ordering, and schema semantics remain unchanged.",
+      "renames": [
+        {
+          "from": "tfo_service_financial_snapshots_company_id_service_type_service_id_version_key",
+          "to": "tfo_sfs_company_service_version_uq"
+        },
+        {
+          "from": "tfo_service_financial_snapshots_company_id_service_type_service_id_created_at_idx",
+          "to": "tfo_sfs_company_service_created_idx"
+        }
+      ]
+    }
+  ]
 }
