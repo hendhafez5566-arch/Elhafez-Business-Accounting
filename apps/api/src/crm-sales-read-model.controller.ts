@@ -1,7 +1,8 @@
 import { Controller, Get, Headers, Param, UnauthorizedException } from '@nestjs/common';
-import { executionContext, type ExecutionContext } from '@elhafez/contracts';
-import { PlatformCoreApplicationService } from '@elhafez/platform-core';
-import { CrmSalesReadModelService } from './crm-sales-read-model.service.js';
+import type { ExecutionContext } from '@elhafez/contracts';
+import { executionContext } from '@elhafez/contracts';
+import type { PlatformCoreApplicationService } from '@elhafez/platform-core';
+import type { CrmSalesReadModelService } from './crm-sales-read-model.service.js';
 
 export const CRM_SALES_INSIGHT_PERMISSIONS = Object.freeze({ customerFinancialRead: 'crm.customer.financial.read' });
 
