@@ -41,84 +41,84 @@ importers:
 
   apps/api:
     dependencies:
-      '@elhafez/supplier-management':
-        specifier: workspace:*
-        version: link:../../modules/supplier-management
-      '@elhafez/procurement-fulfillment':
-        specifier: workspace:*
-        version: link:../../modules/procurement-fulfillment
-      '@elhafez/traveler-management':
-        specifier: workspace:*
-        version: link:../../modules/traveler-management
-      '@elhafez/quotations':
-        specifier: workspace:*
-        version: link:../../modules/quotations
       '@elhafez/agent-management':
         specifier: workspace:*
         version: link:../../modules/agent-management
+      '@elhafez/assets-financing':
+        specifier: workspace:*
+        version: link:../../modules/assets-financing
+      '@elhafez/billing-subledgers':
+        specifier: workspace:*
+        version: link:../../modules/billing-subledgers
+      '@elhafez/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@elhafez/cost-budget-accounting':
+        specifier: workspace:*
+        version: link:../../modules/cost-budget-accounting
       '@elhafez/crm-followups':
         specifier: workspace:*
         version: link:../../modules/crm-followups
       '@elhafez/crm-leads':
         specifier: workspace:*
         version: link:../../modules/crm-leads
-      '@elhafez/customer-management':
-        specifier: workspace:*
-        version: link:../../modules/customer-management
-      '@elhafez/party-registry':
-        specifier: workspace:*
-        version: link:../../modules/party-registry
       '@elhafez/currency-fx':
         specifier: workspace:*
         version: link:../../modules/currency-fx
-      '@elhafez/contracts':
+      '@elhafez/customer-management':
         specifier: workspace:*
-        version: link:../../packages/contracts
-      '@elhafez/financial-reporting':
-        specifier: workspace:*
-        version: link:../../modules/financial-reporting
-      '@elhafez/assets-financing':
-        specifier: workspace:*
-        version: link:../../modules/assets-financing
-      '@elhafez/cost-budget-accounting':
-        specifier: workspace:*
-        version: link:../../modules/cost-budget-accounting
-      '@elhafez/procurement-finance':
-        specifier: workspace:*
-        version: link:../../modules/procurement-finance
-      '@elhafez/tourism-contract-inventory':
-        specifier: workspace:*
-        version: link:../../modules/tourism-contract-inventory
-      '@elhafez/tourism-finance-orchestration':
-        specifier: workspace:*
-        version: link:../../modules/tourism-finance-orchestration
-      '@elhafez/treasury-settlement':
-        specifier: workspace:*
-        version: link:../../modules/treasury-settlement
-      '@elhafez/billing-subledgers':
-        specifier: workspace:*
-        version: link:../../modules/billing-subledgers
-      '@elhafez/party-accounting':
-        specifier: workspace:*
-        version: link:../../modules/party-accounting
+        version: link:../../modules/customer-management
       '@elhafez/expense-commission-recognition':
         specifier: workspace:*
         version: link:../../modules/expense-commission-recognition
-      '@elhafez/tax':
-        specifier: workspace:*
-        version: link:../../modules/tax
       '@elhafez/financial-controls':
         specifier: workspace:*
         version: link:../../modules/financial-controls
+      '@elhafez/financial-reporting':
+        specifier: workspace:*
+        version: link:../../modules/financial-reporting
       '@elhafez/general-ledger':
         specifier: workspace:*
         version: link:../../modules/general-ledger
+      '@elhafez/party-accounting':
+        specifier: workspace:*
+        version: link:../../modules/party-accounting
+      '@elhafez/party-registry':
+        specifier: workspace:*
+        version: link:../../modules/party-registry
       '@elhafez/period-control':
         specifier: workspace:*
         version: link:../../modules/period-control
       '@elhafez/platform-core':
         specifier: workspace:*
         version: link:../../modules/platform-core
+      '@elhafez/procurement-finance':
+        specifier: workspace:*
+        version: link:../../modules/procurement-finance
+      '@elhafez/procurement-fulfillment':
+        specifier: workspace:*
+        version: link:../../modules/procurement-fulfillment
+      '@elhafez/quotations':
+        specifier: workspace:*
+        version: link:../../modules/quotations
+      '@elhafez/supplier-management':
+        specifier: workspace:*
+        version: link:../../modules/supplier-management
+      '@elhafez/tax':
+        specifier: workspace:*
+        version: link:../../modules/tax
+      '@elhafez/tourism-contract-inventory':
+        specifier: workspace:*
+        version: link:../../modules/tourism-contract-inventory
+      '@elhafez/tourism-finance-orchestration':
+        specifier: workspace:*
+        version: link:../../modules/tourism-finance-orchestration
+      '@elhafez/traveler-management':
+        specifier: workspace:*
+        version: link:../../modules/traveler-management
+      '@elhafez/treasury-settlement':
+        specifier: workspace:*
+        version: link:../../modules/treasury-settlement
       '@nestjs/common':
         specifier: ^11.0.11
         version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -157,215 +157,47 @@ importers:
         specifier: ^11.0.11
         version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
 
-  modules/party-registry:
-    dependencies:
-      '@elhafez/contracts':
-        specifier: workspace:*
-        version: link:../../packages/contracts
-      '@elhafez/platform-core':
-        specifier: workspace:*
-        version: link:../platform-core
-      '@nestjs/common':
-        specifier: ^11.0.11
-        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@prisma/client':
-        specifier: 6.19.0
-        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
-
-
   modules/agent-management:
     dependencies:
       '@elhafez/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
-      '@elhafez/platform-core':
-        specifier: workspace:*
-        version: link:../platform-core
       '@elhafez/party-registry':
         specifier: workspace:*
         version: link:../party-registry
-      '@nestjs/common':
-        specifier: ^11.0.11
-        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@prisma/client':
-        specifier: 6.19.0
-        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
-
-
-  modules/customer-management:
-    dependencies:
-      '@elhafez/contracts':
-        specifier: workspace:*
-        version: link:../../packages/contracts
       '@elhafez/platform-core':
         specifier: workspace:*
         version: link:../platform-core
-      '@elhafez/party-registry':
-        specifier: workspace:*
-        version: link:../party-registry
-      '@elhafez/agent-management':
-        specifier: workspace:*
-        version: link:../agent-management
       '@nestjs/common':
         specifier: ^11.0.11
         version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
       '@prisma/client':
         specifier: 6.19.0
         version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
-
-
-  modules/supplier-management:
-    dependencies:
-      '@elhafez/contracts':
-        specifier: workspace:*
-        version: link:../../packages/contracts
-      '@elhafez/platform-core':
-        specifier: workspace:*
-        version: link:../platform-core
-      '@elhafez/party-registry':
-        specifier: workspace:*
-        version: link:../party-registry
-      '@nestjs/common':
-        specifier: ^11.0.11
-        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@prisma/client':
-        specifier: 6.19.0
-        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
-    devDependencies:
-      '@nestjs/core':
-        specifier: ^11.0.11
-        version: 11.2.5(@nestjs/common@11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      reflect-metadata:
-        specifier: ^0.2.2
-        version: 0.2.2
-      path-to-regexp:
-        specifier: 8.4.2
-        version: 8.4.2
-      rxjs:
-        specifier: ^7.8.1
-        version: 7.8.2
-
-  modules/traveler-management:
-    dependencies:
-      '@elhafez/contracts':
-        specifier: workspace:*
-        version: link:../../packages/contracts
-      '@elhafez/platform-core':
-        specifier: workspace:*
-        version: link:../platform-core
-      '@elhafez/party-registry':
-        specifier: workspace:*
-        version: link:../party-registry
-      '@elhafez/customer-management':
-        specifier: workspace:*
-        version: link:../customer-management
-      '@nestjs/common':
-        specifier: ^11.0.11
-        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@prisma/client':
-        specifier: 6.19.0
-        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
-
-  modules/crm-leads:
-    dependencies:
-      '@elhafez/contracts':
-        specifier: workspace:*
-        version: link:../../packages/contracts
-      '@elhafez/platform-core':
-        specifier: workspace:*
-        version: link:../platform-core
-      '@elhafez/customer-management':
-        specifier: workspace:*
-        version: link:../customer-management
-      '@elhafez/agent-management':
-        specifier: workspace:*
-        version: link:../agent-management
-      '@nestjs/common':
-        specifier: ^11.0.11
-        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@prisma/client':
-        specifier: 6.19.0
-        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
-
-
-  modules/crm-followups:
-    dependencies:
-      '@elhafez/contracts':
-        specifier: workspace:*
-        version: link:../../packages/contracts
-      '@elhafez/platform-core':
-        specifier: workspace:*
-        version: link:../platform-core
-      '@elhafez/crm-leads':
-        specifier: workspace:*
-        version: link:../crm-leads
-      '@nestjs/common':
-        specifier: ^11.0.11
-        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@prisma/client':
-        specifier: 6.19.0
-        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
-
 
   modules/assets-financing:
     dependencies:
-      '@elhafez/contracts':
-        specifier: workspace:*
-        version: link:../../packages/contracts
-      '@elhafez/general-ledger':
-        specifier: workspace:*
-        version: link:../general-ledger
       '@elhafez/billing-subledgers':
         specifier: workspace:*
         version: link:../billing-subledgers
-      '@elhafez/treasury-settlement':
+      '@elhafez/contracts':
         specifier: workspace:*
-        version: link:../treasury-settlement
-      '@elhafez/period-control':
-        specifier: workspace:*
-        version: link:../period-control
+        version: link:../../packages/contracts
       '@elhafez/currency-fx':
         specifier: workspace:*
         version: link:../currency-fx
       '@elhafez/financial-controls':
         specifier: workspace:*
         version: link:../financial-controls
-      '@nestjs/common':
-        specifier: ^11.0.11
-        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@prisma/client':
-        specifier: 6.19.0
-        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
-
-  modules/procurement-finance:
-    dependencies:
-      '@elhafez/contracts':
+      '@elhafez/general-ledger':
         specifier: workspace:*
-        version: link:../../packages/contracts
-      '@elhafez/billing-subledgers':
+        version: link:../general-ledger
+      '@elhafez/period-control':
         specifier: workspace:*
-        version: link:../billing-subledgers
-      '@elhafez/supplier-management':
+        version: link:../period-control
+      '@elhafez/treasury-settlement':
         specifier: workspace:*
-        version: link:../supplier-management
-      '@nestjs/common':
-        specifier: ^11.0.11
-        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@prisma/client':
-        specifier: 6.19.0
-        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
-
-  modules/procurement-fulfillment:
-    dependencies:
-      '@elhafez/contracts':
-        specifier: workspace:*
-        version: link:../../packages/contracts
-      '@elhafez/platform-core':
-        specifier: workspace:*
-        version: link:../platform-core
-      '@elhafez/procurement-finance':
-        specifier: workspace:*
-        version: link:../procurement-finance
+        version: link:../treasury-settlement
       '@nestjs/common':
         specifier: ^11.0.11
         version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -400,147 +232,6 @@ importers:
         specifier: 6.19.0
         version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
 
-  modules/tourism-contract-inventory:
-    dependencies:
-      '@elhafez/contracts':
-        specifier: workspace:*
-        version: link:../../packages/contracts
-      '@elhafez/procurement-finance':
-        specifier: workspace:*
-        version: link:../procurement-finance
-      '@elhafez/cost-budget-accounting':
-        specifier: workspace:*
-        version: link:../cost-budget-accounting
-      '@nestjs/common':
-        specifier: ^11.0.11
-        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@prisma/client':
-        specifier: 6.19.0
-        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
-
-  modules/tourism-finance-orchestration:
-    dependencies:
-      '@elhafez/contracts':
-        specifier: workspace:*
-        version: link:../../packages/contracts
-      '@elhafez/billing-subledgers':
-        specifier: workspace:*
-        version: link:../billing-subledgers
-      '@elhafez/treasury-settlement':
-        specifier: workspace:*
-        version: link:../treasury-settlement
-      '@elhafez/expense-commission-recognition':
-        specifier: workspace:*
-        version: link:../expense-commission-recognition
-      '@elhafez/procurement-finance':
-        specifier: workspace:*
-        version: link:../procurement-finance
-      '@elhafez/cost-budget-accounting':
-        specifier: workspace:*
-        version: link:../cost-budget-accounting
-      '@elhafez/financial-controls':
-        specifier: workspace:*
-        version: link:../financial-controls
-      '@elhafez/tourism-contract-inventory':
-        specifier: workspace:*
-        version: link:../tourism-contract-inventory
-      '@nestjs/common':
-        specifier: ^11.0.11
-        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@prisma/client':
-        specifier: 6.19.0
-        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
-
-  modules/treasury-settlement:
-    dependencies:
-      '@elhafez/contracts':
-        specifier: workspace:*
-        version: link:../../packages/contracts
-      '@elhafez/billing-subledgers':
-        specifier: workspace:*
-        version: link:../billing-subledgers
-      '@elhafez/currency-fx':
-        specifier: workspace:*
-        version: link:../currency-fx
-      '@elhafez/general-ledger':
-        specifier: workspace:*
-        version: link:../general-ledger
-      '@elhafez/period-control':
-        specifier: workspace:*
-        version: link:../period-control
-      '@elhafez/financial-controls':
-        specifier: workspace:*
-        version: link:../financial-controls
-      '@nestjs/common':
-        specifier: ^11.0.11
-        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@prisma/client':
-        specifier: 6.19.0
-        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
-
-  modules/party-accounting:
-    dependencies:
-      '@elhafez/contracts':
-        specifier: workspace:*
-        version: link:../../packages/contracts
-      '@elhafez/billing-subledgers':
-        specifier: workspace:*
-        version: link:../billing-subledgers
-      '@elhafez/general-ledger':
-        specifier: workspace:*
-        version: link:../general-ledger
-      '@elhafez/financial-controls':
-        specifier: workspace:*
-        version: link:../financial-controls
-      '@nestjs/common':
-        specifier: ^11.0.11
-        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@prisma/client':
-        specifier: 6.19.0
-        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
-
-  modules/expense-commission-recognition:
-    dependencies:
-      '@elhafez/contracts':
-        specifier: workspace:*
-        version: link:../../packages/contracts
-      '@elhafez/billing-subledgers':
-        specifier: workspace:*
-        version: link:../billing-subledgers
-      '@elhafez/treasury-settlement':
-        specifier: workspace:*
-        version: link:../treasury-settlement
-      '@elhafez/general-ledger':
-        specifier: workspace:*
-        version: link:../general-ledger
-      '@elhafez/period-control':
-        specifier: workspace:*
-        version: link:../period-control
-      '@elhafez/currency-fx':
-        specifier: workspace:*
-        version: link:../currency-fx
-      '@elhafez/financial-controls':
-        specifier: workspace:*
-        version: link:../financial-controls
-      '@nestjs/common':
-        specifier: ^11.0.11
-        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@prisma/client':
-        specifier: 6.19.0
-        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
-
-  modules/tax:
-    dependencies:
-      '@elhafez/contracts':
-        specifier: workspace:*
-        version: link:../../packages/contracts
-      '@nestjs/common':
-        specifier: ^11.0.11
-        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      '@prisma/client':
-        specifier: 6.19.0
-        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
-
   modules/cost-budget-accounting:
     dependencies:
       '@elhafez/contracts':
@@ -553,7 +244,109 @@ importers:
         specifier: 6.19.0
         version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
 
+  modules/crm-followups:
+    dependencies:
+      '@elhafez/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@elhafez/crm-leads':
+        specifier: workspace:*
+        version: link:../crm-leads
+      '@elhafez/platform-core':
+        specifier: workspace:*
+        version: link:../platform-core
+      '@nestjs/common':
+        specifier: ^11.0.11
+        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@prisma/client':
+        specifier: 6.19.0
+        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
+
+  modules/crm-leads:
+    dependencies:
+      '@elhafez/agent-management':
+        specifier: workspace:*
+        version: link:../agent-management
+      '@elhafez/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@elhafez/customer-management':
+        specifier: workspace:*
+        version: link:../customer-management
+      '@elhafez/platform-core':
+        specifier: workspace:*
+        version: link:../platform-core
+      '@nestjs/common':
+        specifier: ^11.0.11
+        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@prisma/client':
+        specifier: 6.19.0
+        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
+
   modules/currency-fx:
+    dependencies:
+      '@elhafez/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@nestjs/common':
+        specifier: ^11.0.11
+        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@prisma/client':
+        specifier: 6.19.0
+        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
+
+  modules/customer-management:
+    dependencies:
+      '@elhafez/agent-management':
+        specifier: workspace:*
+        version: link:../agent-management
+      '@elhafez/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@elhafez/party-registry':
+        specifier: workspace:*
+        version: link:../party-registry
+      '@elhafez/platform-core':
+        specifier: workspace:*
+        version: link:../platform-core
+      '@nestjs/common':
+        specifier: ^11.0.11
+        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@prisma/client':
+        specifier: 6.19.0
+        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
+
+  modules/expense-commission-recognition:
+    dependencies:
+      '@elhafez/billing-subledgers':
+        specifier: workspace:*
+        version: link:../billing-subledgers
+      '@elhafez/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@elhafez/currency-fx':
+        specifier: workspace:*
+        version: link:../currency-fx
+      '@elhafez/financial-controls':
+        specifier: workspace:*
+        version: link:../financial-controls
+      '@elhafez/general-ledger':
+        specifier: workspace:*
+        version: link:../general-ledger
+      '@elhafez/period-control':
+        specifier: workspace:*
+        version: link:../period-control
+      '@elhafez/treasury-settlement':
+        specifier: workspace:*
+        version: link:../treasury-settlement
+      '@nestjs/common':
+        specifier: ^11.0.11
+        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@prisma/client':
+        specifier: 6.19.0
+        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
+
+  modules/financial-controls:
     dependencies:
       '@elhafez/contracts':
         specifier: workspace:*
@@ -595,11 +388,35 @@ importers:
         specifier: 6.19.0
         version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
 
-  modules/financial-controls:
+  modules/party-accounting:
+    dependencies:
+      '@elhafez/billing-subledgers':
+        specifier: workspace:*
+        version: link:../billing-subledgers
+      '@elhafez/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@elhafez/financial-controls':
+        specifier: workspace:*
+        version: link:../financial-controls
+      '@elhafez/general-ledger':
+        specifier: workspace:*
+        version: link:../general-ledger
+      '@nestjs/common':
+        specifier: ^11.0.11
+        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@prisma/client':
+        specifier: 6.19.0
+        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
+
+  modules/party-registry:
     dependencies:
       '@elhafez/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@elhafez/platform-core':
+        specifier: workspace:*
+        version: link:../platform-core
       '@nestjs/common':
         specifier: ^11.0.11
         version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -634,11 +451,25 @@ importers:
         specifier: 6.19.0
         version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
 
-  packages/contracts: {}
+  modules/procurement-finance:
+    dependencies:
+      '@elhafez/billing-subledgers':
+        specifier: workspace:*
+        version: link:../billing-subledgers
+      '@elhafez/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@elhafez/supplier-management':
+        specifier: workspace:*
+        version: link:../supplier-management
+      '@nestjs/common':
+        specifier: ^11.0.11
+        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@prisma/client':
+        specifier: 6.19.0
+        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
 
-  packages/core: {}
-
-  modules/quotations:
+  modules/procurement-fulfillment:
     dependencies:
       '@elhafez/contracts':
         specifier: workspace:*
@@ -646,21 +477,187 @@ importers:
       '@elhafez/platform-core':
         specifier: workspace:*
         version: link:../platform-core
-      '@elhafez/crm-leads':
+      '@elhafez/procurement-finance':
         specifier: workspace:*
-        version: link:../crm-leads
-      '@elhafez/customer-management':
-        specifier: workspace:*
-        version: link:../customer-management
-      '@elhafez/billing-subledgers':
-        specifier: workspace:*
-        version: link:../billing-subledgers
+        version: link:../procurement-finance
       '@nestjs/common':
         specifier: ^11.0.11
         version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
       '@prisma/client':
         specifier: 6.19.0
         version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
+
+  modules/quotations:
+    dependencies:
+      '@elhafez/billing-subledgers':
+        specifier: workspace:*
+        version: link:../billing-subledgers
+      '@elhafez/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@elhafez/crm-leads':
+        specifier: workspace:*
+        version: link:../crm-leads
+      '@elhafez/customer-management':
+        specifier: workspace:*
+        version: link:../customer-management
+      '@elhafez/platform-core':
+        specifier: workspace:*
+        version: link:../platform-core
+      '@nestjs/common':
+        specifier: ^11.0.11
+        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@prisma/client':
+        specifier: 6.19.0
+        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
+
+  modules/supplier-intelligence: {}
+
+  modules/supplier-management:
+    dependencies:
+      '@elhafez/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@elhafez/party-registry':
+        specifier: workspace:*
+        version: link:../party-registry
+      '@elhafez/platform-core':
+        specifier: workspace:*
+        version: link:../platform-core
+      '@nestjs/common':
+        specifier: ^11.0.11
+        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@prisma/client':
+        specifier: 6.19.0
+        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
+    devDependencies:
+      '@nestjs/core':
+        specifier: ^11.0.11
+        version: 11.2.5(@nestjs/common@11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      path-to-regexp:
+        specifier: 8.4.2
+        version: 8.4.2
+      reflect-metadata:
+        specifier: ^0.2.2
+        version: 0.2.2
+      rxjs:
+        specifier: ^7.8.1
+        version: 7.8.2
+
+  modules/tax:
+    dependencies:
+      '@elhafez/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@nestjs/common':
+        specifier: ^11.0.11
+        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@prisma/client':
+        specifier: 6.19.0
+        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
+
+  modules/tourism-contract-inventory:
+    dependencies:
+      '@elhafez/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@elhafez/cost-budget-accounting':
+        specifier: workspace:*
+        version: link:../cost-budget-accounting
+      '@elhafez/procurement-finance':
+        specifier: workspace:*
+        version: link:../procurement-finance
+      '@nestjs/common':
+        specifier: ^11.0.11
+        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@prisma/client':
+        specifier: 6.19.0
+        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
+
+  modules/tourism-finance-orchestration:
+    dependencies:
+      '@elhafez/billing-subledgers':
+        specifier: workspace:*
+        version: link:../billing-subledgers
+      '@elhafez/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@elhafez/cost-budget-accounting':
+        specifier: workspace:*
+        version: link:../cost-budget-accounting
+      '@elhafez/expense-commission-recognition':
+        specifier: workspace:*
+        version: link:../expense-commission-recognition
+      '@elhafez/financial-controls':
+        specifier: workspace:*
+        version: link:../financial-controls
+      '@elhafez/procurement-finance':
+        specifier: workspace:*
+        version: link:../procurement-finance
+      '@elhafez/tourism-contract-inventory':
+        specifier: workspace:*
+        version: link:../tourism-contract-inventory
+      '@elhafez/treasury-settlement':
+        specifier: workspace:*
+        version: link:../treasury-settlement
+      '@nestjs/common':
+        specifier: ^11.0.11
+        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@prisma/client':
+        specifier: 6.19.0
+        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
+
+  modules/traveler-management:
+    dependencies:
+      '@elhafez/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@elhafez/customer-management':
+        specifier: workspace:*
+        version: link:../customer-management
+      '@elhafez/party-registry':
+        specifier: workspace:*
+        version: link:../party-registry
+      '@elhafez/platform-core':
+        specifier: workspace:*
+        version: link:../platform-core
+      '@nestjs/common':
+        specifier: ^11.0.11
+        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@prisma/client':
+        specifier: 6.19.0
+        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
+
+  modules/treasury-settlement:
+    dependencies:
+      '@elhafez/billing-subledgers':
+        specifier: workspace:*
+        version: link:../billing-subledgers
+      '@elhafez/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@elhafez/currency-fx':
+        specifier: workspace:*
+        version: link:../currency-fx
+      '@elhafez/financial-controls':
+        specifier: workspace:*
+        version: link:../financial-controls
+      '@elhafez/general-ledger':
+        specifier: workspace:*
+        version: link:../general-ledger
+      '@elhafez/period-control':
+        specifier: workspace:*
+        version: link:../period-control
+      '@nestjs/common':
+        specifier: ^11.0.11
+        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@prisma/client':
+        specifier: 6.19.0
+        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
+
+  packages/contracts: {}
+
+  packages/core: {}
 
 packages:
 
@@ -1864,13 +1861,13 @@ packages:
   '@types/node@22.20.3':
     resolution: {integrity: sha512-DZmzkmwHzXrLPAXPyKNDzlIwMMUZCVacoD25ywdy5YTKGbOx/2ld+Q38Im2zJ0vBuZP5Prd3VZutKZyXwkOS8A==}
 
-  '@types/react@19.3.0':
-    resolution: {integrity: sha512-N0rFCuH9YoxG9/m61l9MfpJKfmLOVU0em7ipIz6TRgSSkvReLB9vL85GB+yr8Bs5leqpvg96JSwF4ZS1s4viQg==}
-
   '@types/react-dom@19.3.0':
     resolution: {integrity: sha512-ZI7bU42mZXXKHn/qNLEw2IrbiINU7X5+vfgdixBHkCNpYWXjKgfQ/P+uyGb5CjOLB9UcnTeg3rylQtV2hym44Q==}
     peerDependencies:
       '@types/react': ^19.3.0
+
+  '@types/react@19.3.0':
+    resolution: {integrity: sha512-N0rFCuH9YoxG9/m61l9MfpJKfmLOVU0em7ipIz6TRgSSkvReLB9vL85GB+yr8Bs5leqpvg96JSwF4ZS1s4viQg==}
 
   '@types/ws@8.18.1':
     resolution: {integrity: sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==}
@@ -3363,6 +3360,11 @@ packages:
   rc9@3.1.0:
     resolution: {integrity: sha512-ufjkNVzbRHKcCOmTahZkmVsyc3W+MSk3jY03m+a7tGHkIsdVMG9l10/3HvFbWkkKzY5VFp3pkRsIo/UYgmFL7Q==}
 
+  react-dom@19.3.0:
+    resolution: {integrity: sha512-JDk8dgif51OjFoDE70+OT9ICyYr+69HlmihNwp1+Nsfbna3t5sIiCa9ZJktDmQ4/1b/rn26hIAR2uYXDMr5r0Q==}
+    peerDependencies:
+      react: ^19.3.0
+
   react-reconciler@0.33.0:
     resolution: {integrity: sha512-KetWRytFv1epdpJc3J4G75I4WrplZE5jOL7Yq0p34+OVOKF4Se7WrdIdVC45XsSSmUTlht2FM/fM1FZb1mfQeA==}
     engines: {node: '>=0.10.0'}
@@ -3372,11 +3374,6 @@ packages:
   react@19.3.0:
     resolution: {integrity: sha512-E8LUcbtBWt20bbl2YoHfx4ZDBdxVTfOKtCZn9cDSJ4l6/nuoApcpIBcj47t2wZoVX8g2ZHuMHbiShgCR1T5Sog==}
     engines: {node: '>=0.10.0'}
-
-  react-dom@19.3.0:
-    resolution: {integrity: sha512-JDk8dgif51OjFoDE70+OT9ICyYr+69HlmihNwp1+Nsfbna3t5sIiCa9ZJktDmQ4/1b/rn26hIAR2uYXDMr5r0Q==}
-    peerDependencies:
-      react: ^19.3.0
 
   readable-stream@2.3.8:
     resolution: {integrity: sha512-8p0AUk4XODgIewSi0l8Epjs+EVnWiK7NoDIEGU0HhE7+ZyY8D1IMY7odu5lRrFXGg71L15KG8QrPmum45RTtdA==}
@@ -5140,13 +5137,13 @@ snapshots:
     dependencies:
       undici-types: 6.21.0
 
-  '@types/react@19.3.0':
-    dependencies:
-      csstype: 3.2.3
-
   '@types/react-dom@19.3.0(@types/react@19.3.0)':
     dependencies:
       '@types/react': 19.3.0
+
+  '@types/react@19.3.0':
+    dependencies:
+      csstype: 3.2.3
 
   '@types/ws@8.18.1':
     dependencies:
@@ -6855,17 +6852,17 @@ snapshots:
       defu: 6.1.7
       destr: 2.0.5
 
+  react-dom@19.3.0(react@19.3.0):
+    dependencies:
+      react: 19.3.0
+      scheduler: 0.28.0
+
   react-reconciler@0.33.0(react@19.3.0):
     dependencies:
       react: 19.3.0
       scheduler: 0.27.0
 
   react@19.3.0: {}
-
-  react-dom@19.3.0(react@19.3.0):
-    dependencies:
-      react: 19.3.0
-      scheduler: 0.28.0
 
   readable-stream@2.3.8:
     dependencies:
