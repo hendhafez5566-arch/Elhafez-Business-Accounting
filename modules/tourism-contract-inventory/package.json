@@ -5,7 +5,8 @@
   "main": "./src/public/index.ts",
   "types": "./src/public/index.ts",
   "exports": {
-    ".": "./src/public/index.ts"
+    ".": "./src/public/index.ts",
+    "./nest": "./src/public/nest.ts"
   },
   "dependencies": {
     "@elhafez/contracts": "workspace:*",
