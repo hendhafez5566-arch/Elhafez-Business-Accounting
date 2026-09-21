@@ -1,13 +1,14 @@
 {
   "id": "sp02-procurement-operations",
-  "summary": "Implement SP-02 branch-scoped Purchase Order operations, direct purchase orchestration, operational supplier fulfillment evidence, retry-safe receipt/correction workflows, API composition, persistence, and Arabic-first web surfaces without duplicating Procurement or Billing truth.",
+  "summary": "Implement SP-02 branch-scoped Purchase Order operations, direct purchase orchestration, operational supplier fulfillment evidence, retry-safe receipt/correction workflows, API composition, persistence, Arabic-first web surfaces, and the minimal Nest/public boundary corrections required to keep accounting/application APIs free of composition-side effects.",
   "type": "phase",
   "allowedModules": [
     "platform-core",
     "supplier-management",
     "procurement-finance",
     "procurement-fulfillment",
-    "tourism-contract-inventory"
+    "tourism-contract-inventory",
+    "tourism-finance-orchestration"
   ],
   "allowedPaths": [
     ".changes/sp02-procurement-operations.json",
@@ -29,9 +30,11 @@
     "apps/api/src/app.module.ts",
     "apps/web/src/routes.tsx",
     "docs/BUSINESS-MODULE-ARCHITECTURE.md",
-    "prisma/schema.prisma"
+    "prisma/schema.prisma",
+    "modules/tourism-contract-inventory/module.json",
+    "modules/tourism-finance-orchestration/module.json"
   ],
-  "protectedReason": "SP-02 implements the architecture-approved procurement-fulfillment owner, extends the canonical Procurement Finance PO owner with authoritative branch/commercial and exact receipt-outcome evidence, adds a minimal Platform Core idempotent-audit public capability required for retry-safe operational auditing, wires API/web composition, and adds one forward migration. It does not create a second PO, supplier-invoice, payment, or accounting truth.",
-  "allowBreakingPublicApi": false,
-  "publicApiBreakingReason": ""
+  "protectedReason": "SP-02 implements the architecture-approved procurement-fulfillment owner, extends the canonical Procurement Finance PO owner with authoritative branch/commercial and exact receipt-outcome evidence, adds a minimal Platform Core idempotent-audit public capability required for retry-safe operational auditing, wires API/web composition, and adds one forward migration. During execution-gate validation, existing Procurement Finance, Tourism Contract Inventory, and Tourism Finance Orchestration public barrels were proven to leak Nest composition into non-Nest application/historical-import test paths. Their module manifests are therefore explicitly updated to declare dedicated /nest public entrypoints. This preserves owner boundaries and prevents controllers/composition roots from being loaded by application APIs; it does not create a second PO, supplier-invoice, payment, or accounting truth.",
+  "allowBreakingPublicApi": true,
+  "publicApiBreakingReason": "Architecture correction only: the runtime Nest module symbols ProcurementFinanceModule, TourismContractInventoryModule, TOURISM_CONTRACT_INVENTORY_SERVICE, and TourismFinanceOrchestrationModule move from each package root public barrel to the package's explicit /nest entrypoint. Application/domain/historical APIs remain at the root, all repository consumers in this change are migrated to /nest, and the change prevents non-Nest code paths from eagerly loading Nest controllers. No business contract, persisted financial truth, or domain semantics are removed."
 }
