@@ -12,49 +12,55 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
-*.py.class
-*.py.obj
 .Python
 env/
 venv/
 .venv/
 .ENV
-.env
-.env.*
-.env.local
-
-# Compiled
-*.o
-*.obj
-*.a
-*.lib
-*.so
-*.dll
-*.dylib
-*.exe
-*.out
-
-# Logs
-*.log
-logs/
-
-# Coverage
+.venv.bak/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
 .coverage
-coverage/
-htmlcov/
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+*.tmp
+*.swp
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+.env.local
+.env.*
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
-*.tmp
 
-# System
-.DS_Store
-Thumbs.db
+# Logs
+*.log
 
-# Compressed
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pytest
+.pytest_cache/
+
+# Compressed files
 *.zip
 *.gz
 *.tar
