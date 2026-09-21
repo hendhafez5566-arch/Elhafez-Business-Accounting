@@ -1385,11 +1385,20 @@ model ProcPurchaseOrder {
  lines ProcPurchaseOrderLine[]
  conversions ProcInvoiceConversion[]
  @@unique([companyId,id])
- @@unique([companyId,number])
+ @@unique([companyId,branchId,number])
  @@index([companyId,branchId,status])
  @@index([companyId,commitmentId,status])
  @@map("proc_purchase_orders")
 }
+model ProcPoNumberCounter {
+ companyId String @map("company_id")
+ branchId String @map("branch_id")
+ year Int
+ nextValue Int @default(0) @map("next_value")
+ @@id([companyId,branchId,year])
+ @@map("proc_po_number_counters")
+}
+
 model ProcPurchaseOrderLine {
  id String @id
  companyId String @map("company_id")
