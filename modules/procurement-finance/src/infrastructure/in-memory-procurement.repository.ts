@@ -9,6 +9,7 @@ import type {
   InvoiceConversion,
   ProcurementHistory,
   ProcurementPolicy,
+  ProcurementQuantityMutationOutcome,
   PurchaseOrder,
   PurchaseOrderStatus,
   SupplierCommitment,
@@ -59,7 +60,9 @@ export class InMemoryProcurementRepository implements ProcurementRepository {
   private readonly pos = new Map<string, PurchaseOrder>();
   private readonly conversions = new Map<string, InvoiceConversion>();
   private readonly histories: ProcurementHistory[] = [];
-  private readonly receipts = new Map<string, string>();
+  private readonly receipts = new Map<string, {requestHash:string;previousReceivedQuantity:DecimalAmount;resultingReceivedQuantity:DecimalAmount}>();
+  private readonly adjustments = new Map<string, {requestHash:string;previousReceivedQuantity:DecimalAmount;resultingReceivedQuantity:DecimalAmount}>();
+  private readonly draftUpdates = new Map<string, string>();
   private readonly reopenEvents = new Map<string, string>();
   private lock = Promise.resolve();
 
@@ -159,6 +162,12 @@ export class InMemoryProcurementRepository implements ProcurementRepository {
     return value ? structuredClone(value) : undefined;
   }
 
+  async listPos(companyId: CompanyId, branchId?: string) {
+    return [...this.pos.values()]
+      .filter((value) => value.companyId === companyId && (!branchId || value.branchId === branchId))
+      .map((value) => structuredClone(value));
+  }
+
   async posByCommitment(companyId: CompanyId, commitmentId: string) {
     return [...this.pos.values()]
       .filter(
@@ -192,6 +201,26 @@ export class InMemoryProcurementRepository implements ProcurementRepository {
     this.pos.set(this.key(value.companyId, value.id), structuredClone(value));
     this.histories.push(entry);
     return value;
+  }
+
+  async updateDraftPo(value: PurchaseOrder, commandId: string, requestHash: string, entry: ProcurementHistory) {
+    return this.atomic(async () => {
+      const command=this.key(value.companyId,`draft-update:${commandId}`);
+      const prior=this.draftUpdates.get(command);
+      if(prior){
+        if(prior!==requestHash)throw new ContractValidationError('command','conflicting replay');
+        return (await this.po(value.companyId,value.id))!;
+      }
+      const current=await this.po(value.companyId,value.id);
+      if(!current)throw new ContractValidationError('purchaseOrder','not found');
+      if(current.status!=='DRAFT')throw new ContractValidationError('status','only draft purchase order can be edited');
+      if(current.branchId!==value.branchId||current.number!==value.number||current.origin!==value.origin)throw new ContractValidationError('purchaseOrder','immutable identity fields changed');
+      if(current.lines.some((line)=>scaled(line.receivedQuantity)>0n||scaled(line.invoicedQuantity)>0n))throw new ContractValidationError('purchaseOrder','economic activity blocks draft edit');
+      this.pos.set(this.key(value.companyId,value.id),structuredClone(value));
+      this.draftUpdates.set(command,requestHash);
+      this.histories.push(entry);
+      return structuredClone(value);
+    });
   }
 
   async approvePo(
@@ -263,45 +292,79 @@ export class InMemoryProcurementRepository implements ProcurementRepository {
     quantity: DecimalAmount,
     commandId: string,
     requestHash: string,
-  ) {
+  ): Promise<ProcurementQuantityMutationOutcome> {
     return this.atomic(async () => {
       const command = this.key(companyId, commandId);
-      const oldHash = this.receipts.get(command);
-      if (oldHash) {
-        if (oldHash !== requestHash) {
+      const prior = this.receipts.get(command);
+      if (prior) {
+        if (prior.requestHash !== requestHash) {
           throw new ContractValidationError('command', 'conflicting replay');
         }
-        return (await this.po(companyId, id))!;
+        return {purchaseOrder:(await this.po(companyId,id))!,previousReceivedQuantity:prior.previousReceivedQuantity,resultingReceivedQuantity:prior.resultingReceivedQuantity};
       }
 
       const po = await this.po(companyId, id);
-      if (
-        !po ||
-        !['APPROVED', 'PARTIALLY_RECEIVED', 'PARTIALLY_INVOICED'].includes(po.status)
-      ) {
+      if (!po || !['APPROVED','PARTIALLY_RECEIVED','PARTIALLY_INVOICED'].includes(po.status)) {
         throw new ContractValidationError('purchaseOrder', 'not receivable');
       }
       const line = po.lines.find((candidate) => candidate.id === lineId);
       if (!line) throw new ContractValidationError('line', 'not found');
 
-      const nextReceived = scaled(line.receivedQuantity) + scaled(quantity);
+      const previousReceivedQuantity=line.receivedQuantity;
+      const nextReceived = scaled(previousReceivedQuantity) + scaled(quantity);
       if (nextReceived > scaled(line.orderedQuantity)) {
         throw new ContractValidationError('quantity', 'over-receipt');
       }
-
-      line.receivedQuantity = decimal(nextReceived);
+      const resultingReceivedQuantity=decimal(nextReceived);
+      line.receivedQuantity = resultingReceivedQuantity;
       po.status = derivedStatus(po);
       this.pos.set(this.key(companyId, id), po);
-      this.receipts.set(command, requestHash);
+      this.receipts.set(command,{requestHash,previousReceivedQuantity,resultingReceivedQuantity});
+      this.histories.push({id:`${id}:receipt:${commandId}`,companyId,aggregateId:id,kind:'RECEIVED',sourceReference:commandId,createdAt:new Date().toISOString()});
+      return {purchaseOrder:po,previousReceivedQuantity,resultingReceivedQuantity};
+    });
+  }
+
+  async adjustReceived(
+    companyId: CompanyId,
+    id: string,
+    lineId: string,
+    newReceivedQuantity: DecimalAmount,
+    commandId: string,
+    requestHash: string,
+    reason: string,
+  ) {
+    return this.atomic(async () => {
+      const command=this.key(companyId,`receipt-adjust:${commandId}`);
+      const prior=this.adjustments.get(command);
+      if(prior){
+        if(prior.requestHash!==requestHash)throw new ContractValidationError('command','conflicting replay');
+        return {purchaseOrder:(await this.po(companyId,id))!,previousReceivedQuantity:prior.previousReceivedQuantity,resultingReceivedQuantity:prior.resultingReceivedQuantity};
+      }
+      const po=await this.po(companyId,id);
+      if(!po||!['APPROVED','PARTIALLY_RECEIVED','RECEIVED','PARTIALLY_INVOICED','INVOICED'].includes(po.status)){
+        throw new ContractValidationError('purchaseOrder','not adjustable');
+      }
+      const line=po.lines.find((candidate)=>candidate.id===lineId);
+      if(!line)throw new ContractValidationError('line','not found');
+      const previousReceivedQuantity=line.receivedQuantity;
+      const target=scaled(newReceivedQuantity);
+      if(target<scaled(line.invoicedQuantity))throw new ContractValidationError('quantity','cannot fall below invoiced quantity');
+      if(target>scaled(line.orderedQuantity))throw new ContractValidationError('quantity','over-receipt');
+      const resultingReceivedQuantity=decimal(target);
+      line.receivedQuantity=resultingReceivedQuantity;
+      po.status=derivedStatus(po);
+      this.pos.set(this.key(companyId,id),po);
+      this.adjustments.set(command,{requestHash,previousReceivedQuantity,resultingReceivedQuantity});
       this.histories.push({
-        id: `${id}:receipt:${commandId}`,
+        id:`${id}:receipt-adjust:${commandId}`,
         companyId,
-        aggregateId: id,
-        kind: 'RECEIVED',
-        sourceReference: commandId,
-        createdAt: new Date().toISOString(),
+        aggregateId:id,
+        kind:'RECEIPT_ADJUSTED',
+        sourceReference:reason,
+        createdAt:new Date().toISOString(),
       });
-      return po;
+      return {purchaseOrder:po,previousReceivedQuantity,resultingReceivedQuantity};
     });
   }
 
