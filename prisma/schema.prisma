@@ -2339,6 +2339,7 @@ model SmSupplierProfile {
   bankAccounts    SmSupplierBankAccount[]
   legacyRefs      SmSupplierLegacyReference[]
   history         SmSupplierHistory[]
+  holds           SmSupplierHold[]
 
   @@unique([companyId, id], name: "companyId_id")
   @@unique([companyId, partyId], name: "companyId_partyId")
@@ -2728,4 +2729,88 @@ model TvmLegacyImportRecord {
   @@index([companyId, branchId, importedAt])
   @@index([companyId, travelerId])
   @@map("tvm_legacy_import_records")
+}
+
+model SmSupplierHold {
+  id String @id @default(uuid())
+  companyId String @map("company_id")
+  supplierId String @map("supplier_id")
+  sourceType String @map("source_type")
+  sourceId String @map("source_id")
+  reason String
+  active Boolean @default(true)
+  baseStatus String @map("base_status")
+  createdBy String @map("created_by")
+  createdAt DateTime @map("created_at")
+  releasedBy String? @map("released_by")
+  releasedAt DateTime? @map("released_at")
+  releaseReason String? @map("release_reason")
+  supplier SmSupplierProfile @relation(fields:[companyId,supplierId],references:[companyId,id],onDelete:Restrict)
+  @@unique([companyId,sourceType,sourceId],name:"companyId_sourceType_sourceId")
+  @@index([companyId,supplierId,active])
+  @@index([companyId,supplierId,sourceType,active])
+  @@map("sm_supplier_holds")
+}
+model SeSupplierEvaluation {
+  id String @id @default(uuid())
+  companyId String @map("company_id")
+  branchId String @map("branch_id")
+  supplierPartyId String @map("supplier_party_id")
+  version Int
+  qualityScore Int @map("quality_score")
+  serviceScore Int @map("service_score")
+  notes String?
+  evaluatedBy String @map("evaluated_by")
+  evaluatedAt DateTime @map("evaluated_at")
+  requestId String @map("request_id")
+  requestHash String @map("request_hash")
+  createdAt DateTime @default(now()) @map("created_at")
+  @@unique([companyId,branchId,supplierPartyId,version],name:"companyId_branchId_supplierPartyId_version")
+  @@unique([companyId,branchId,requestId],name:"companyId_branchId_requestId")
+  @@index([companyId,branchId,supplierPartyId,evaluatedAt])
+  @@map("se_supplier_evaluations")
+}
+model SdSupplierDispute {
+  id String @id @default(uuid())
+  companyId String @map("company_id")
+  branchId String @map("branch_id")
+  supplierPartyId String @map("supplier_party_id")
+  severity String
+  title String
+  description String
+  attachmentIds Json @map("attachment_ids")
+  openedBy String @map("opened_by")
+  openedAt DateTime @map("opened_at")
+  status String @default("OPEN")
+  requestId String @map("request_id")
+  requestHash String @map("request_hash")
+  resolvedBy String? @map("resolved_by")
+  resolvedAt DateTime? @map("resolved_at")
+  resolution String?
+  cancelledBy String? @map("cancelled_by")
+  cancelledAt DateTime? @map("cancelled_at")
+  cancellationReason String? @map("cancellation_reason")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  history SdSupplierDisputeHistory[]
+  @@unique([companyId,branchId,id],name:"companyId_branchId_id")
+  @@unique([companyId,branchId,requestId],name:"companyId_branchId_requestId")
+  @@index([companyId,branchId,supplierPartyId,openedAt], map: "sd_disputes_supplier_opened_idx")
+  @@index([companyId,branchId,supplierPartyId,status], map: "sd_disputes_supplier_status_idx")
+  @@map("sd_supplier_disputes")
+}
+model SdSupplierDisputeHistory {
+  id String @id
+  companyId String @map("company_id")
+  branchId String @map("branch_id")
+  disputeId String @map("dispute_id")
+  action String
+  actorId String @map("actor_id")
+  actedAt DateTime @map("acted_at")
+  metadata Json
+  idempotencyKey String @map("idempotency_key")
+  dispute SdSupplierDispute @relation(fields:[companyId,branchId,disputeId],references:[companyId,branchId,id],onDelete:Restrict)
+  @@unique([companyId,branchId,disputeId,idempotencyKey],name:"companyId_branchId_disputeId_idempotencyKey")
+  @@index([companyId,branchId,disputeId,actedAt])
+  @@map("sd_supplier_dispute_history")
 }

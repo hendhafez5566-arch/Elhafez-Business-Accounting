@@ -1,0 +1,16 @@
+{
+  "name": "supplier-disputes",
+  "publicApi": [
+    "src/public/index.ts",
+    "src/public/nest.ts"
+  ],
+  "ownedTables": [
+    "sd_supplier_disputes",
+    "sd_supplier_dispute_history"
+  ],
+  "allowedDependencies": [
+    "@elhafez/contracts",
+    "@elhafez/platform-core",
+    "@elhafez/supplier-management"
+  ]
+}

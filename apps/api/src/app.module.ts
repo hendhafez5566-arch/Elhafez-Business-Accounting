@@ -10,6 +10,7 @@ import { PartyAccountingModule } from '@elhafez/party-accounting';
 import { ExpenseCommissionRecognitionModule } from '@elhafez/expense-commission-recognition';
 import { AssetsFinancingModule } from '@elhafez/assets-financing';
 import { CostBudgetAccountingModule } from '@elhafez/cost-budget-accounting';
+import { ProcurementFinanceApplicationService } from '@elhafez/procurement-finance';
 import { ProcurementFinanceModule } from '@elhafez/procurement-finance/nest';
 import { TourismContractInventoryModule } from '@elhafez/tourism-contract-inventory/nest';
 import { TourismFinanceOrchestrationModule } from '@elhafez/tourism-finance-orchestration/nest';
@@ -25,7 +26,13 @@ import { CrmFollowupsApplicationService } from '@elhafez/crm-followups';
 import { CrmFollowupsModule } from '@elhafez/crm-followups/nest';
 import { QuotationsApplicationService } from '@elhafez/quotations';
 import { QuotationsModule } from '@elhafez/quotations/nest';
+import { SupplierManagementApplicationService } from '@elhafez/supplier-management';
 import { SupplierManagementModule } from '@elhafez/supplier-management/nest';
+import { SupplierEvaluationApplicationService } from '@elhafez/supplier-evaluation';
+import { SupplierEvaluationModule } from '@elhafez/supplier-evaluation/nest';
+import { SupplierDisputesApplicationService } from '@elhafez/supplier-disputes';
+import { SupplierDisputesModule } from '@elhafez/supplier-disputes/nest';
+import { ProcurementFulfillmentApplicationService } from '@elhafez/procurement-fulfillment';
 import { ProcurementFulfillmentModule } from '@elhafez/procurement-fulfillment/nest';
 import { TravelerManagementApplicationService } from '@elhafez/traveler-management';
 import { TravelerManagementModule } from '@elhafez/traveler-management/nest';
@@ -33,18 +40,25 @@ import { FinancialReportingEvidenceAdapter } from './financial-reporting-evidenc
 import { Ac14MigrationModule } from './ac14-migration/ac14-migration.module.js';
 import { CrmSalesReadModelController } from './crm-sales-read-model.controller.js';
 import { CrmSalesReadModelService } from './crm-sales-read-model.service.js';
+import { SupplierIntelligenceReadModelController } from './supplier-intelligence-read-model.controller.js';
+import { SupplierIntelligenceReadModelService } from './supplier-intelligence-read-model.service.js';
 
 /** Composition root only. Business modules are registered here through public module APIs. */
 @Module({
   imports: [
-    PlatformCoreModule, PartyRegistryModule, AgentManagementModule, CustomerManagementModule, CrmLeadsModule, CrmFollowupsModule, QuotationsModule, SupplierManagementModule, ProcurementFulfillmentModule, TravelerManagementModule,
+    PlatformCoreModule, PartyRegistryModule, AgentManagementModule, CustomerManagementModule, CrmLeadsModule, CrmFollowupsModule, QuotationsModule, SupplierManagementModule, SupplierEvaluationModule, SupplierDisputesModule, ProcurementFulfillmentModule, TravelerManagementModule,
     PeriodControlModule, GeneralLedgerModule, FinancialControlsModule, TaxModule, BillingSubledgersModule, TreasurySettlementModule, PartyAccountingModule,
     ExpenseCommissionRecognitionModule, CostBudgetAccountingModule, AssetsFinancingModule, ProcurementFinanceModule, TourismContractInventoryModule,
     TourismFinanceOrchestrationModule, FinancialReportingModule, Ac14MigrationModule,
   ],
-  controllers: [CrmSalesReadModelController],
+  controllers: [CrmSalesReadModelController, SupplierIntelligenceReadModelController],
   providers: [
     FinancialReportingEvidenceAdapter,
+    {
+      provide: SupplierIntelligenceReadModelService,
+      useFactory: (suppliers: SupplierManagementApplicationService, evaluations: SupplierEvaluationApplicationService, disputes: SupplierDisputesApplicationService, procurement: ProcurementFinanceApplicationService, fulfillment: ProcurementFulfillmentApplicationService) => new SupplierIntelligenceReadModelService(suppliers,evaluations,disputes,procurement,fulfillment),
+      inject: [SupplierManagementApplicationService, SupplierEvaluationApplicationService, SupplierDisputesApplicationService, ProcurementFinanceApplicationService, ProcurementFulfillmentApplicationService],
+    },
     {
       provide: CrmSalesReadModelService,
       useFactory: (

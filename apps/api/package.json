@@ -38,6 +38,8 @@
     "@elhafez/quotations": "workspace:*",
     "@elhafez/supplier-management": "workspace:*",
     "@elhafez/traveler-management": "workspace:*",
-    "@elhafez/procurement-fulfillment": "workspace:*"
+    "@elhafez/procurement-fulfillment": "workspace:*",
+    "@elhafez/supplier-evaluation": "workspace:*",
+    "@elhafez/supplier-disputes": "workspace:*"
   }
 }

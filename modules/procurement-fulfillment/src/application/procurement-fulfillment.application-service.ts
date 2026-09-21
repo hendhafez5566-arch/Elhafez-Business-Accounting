@@ -1,5 +1,5 @@
 import{createHash}from'node:crypto';
-import{ContractValidationError,decimalAmount,type DecimalAmount,type ExecutionContext}from'@elhafez/contracts';
+import{ContractValidationError,decimalAmount,type CompanyId,type DecimalAmount,type ExecutionContext}from'@elhafez/contracts';
 import type{
  ConvertToSupplierInvoiceInput,
  CreateDirectPurchaseInput,
@@ -51,12 +51,13 @@ export interface CorrectFulfillmentInput{
  readonly attachmentIds?:readonly string[];
 }
 
+export interface SupplierFulfillmentTimingMetrics{readonly fulfillmentCorrectionCount:number;readonly onTimeCompletedCount:number;readonly lateCompletedCount:number;readonly unclassifiedTimingCount:number;}
 export class ProcurementFulfillmentApplicationService{
  constructor(
   private readonly repo:ProcurementFulfillmentRepository,
   private readonly procurement:Pick<ProcurementFinanceApplicationService,
    'createPurchaseOrder'|'updateDraftPurchaseOrder'|'approvePurchaseOrder'|'cancelPurchaseOrderWithReason'|
-   'getPurchaseOrderForBranch'|'listPurchaseOrders'|'receivePurchaseOrderWithOutcome'|'adjustReceivedPurchaseOrderWithOutcome'|'createDirectPurchase'|'convertToSupplierInvoice'>,
+   'getPurchaseOrderForBranch'|'listPurchaseOrders'|'purchaseOrdersForSupplierMetricsForIntegration'|'receivePurchaseOrderWithOutcome'|'adjustReceivedPurchaseOrderWithOutcome'|'createDirectPurchase'|'convertToSupplierInvoice'>,
   private readonly access:ProcurementAccess,
   private readonly now:()=>Date=()=>new Date(),
  ){}
@@ -183,6 +184,35 @@ export class ProcurementFulfillmentApplicationService{
   const completed=await this.repo.complete(c.companyId,record.id,outcome.previousReceivedQuantity,outcome.resultingReceivedQuantity,this.now().toISOString());
   await this.access.audit(c,'procurement.fulfillment.corrected','procurement-fulfillment',record.id,{purchaseOrderId:record.purchaseOrderId,lineId:record.lineId,correctionOfId:record.correctionOfId},`procurement.fulfillment.corrected:${record.id}`);
   return completed;
+ }
+
+
+ async supplierTimingMetricsForIntegration(companyId:CompanyId,branchId:string,supplierPartyId:string):Promise<SupplierFulfillmentTimingMetrics>{
+  const pos=await this.procurement.purchaseOrdersForSupplierMetricsForIntegration(companyId,branchId,supplierPartyId);
+  let correctionCount=0,onTime=0,late=0,unclassified=0;
+  for(const po of pos){
+   const records=(await this.repo.listForPurchaseOrder(companyId,branchId,po.id)).filter((r)=>r.status==='APPLIED').sort((a,b)=>(a.appliedAt??a.createdAt).localeCompare(b.appliedAt??b.createdAt));
+   correctionCount+=records.filter((r)=>r.kind==='CORRECTION').length;
+   const fullyReceived=po.lines.length>0&&po.lines.every((line)=>scaled(line.receivedQuantity)>=scaled(line.orderedQuantity));
+   if(!fullyReceived)continue;
+   if(!po.expectedDate){unclassified++;continue;}
+   const lineCompletionDates:string[]=[];
+   let sufficient=true;
+   for(const line of po.lines){
+    let reached:string|undefined;
+    for(const record of records.filter((r)=>r.lineId===line.id)){
+     if(record.resultingReceivedQuantity===undefined)continue;
+     if(record.kind==='RECEIPT'&&scaled(record.resultingReceivedQuantity)>=scaled(line.orderedQuantity))reached=record.appliedAt??record.createdAt;
+     if(record.kind==='CORRECTION'&&scaled(record.resultingReceivedQuantity)<scaled(line.orderedQuantity))reached=undefined;
+    }
+    if(!reached){sufficient=false;break;}
+    lineCompletionDates.push(reached);
+   }
+   if(!sufficient){unclassified++;continue;}
+   const completion=lineCompletionDates.sort().at(-1)!;
+   if(completion.slice(0,10)<=po.expectedDate)onTime++;else late++;
+  }
+  return{fulfillmentCorrectionCount:correctionCount,onTimeCompletedCount:onTime,lateCompletedCount:late,unclassifiedTimingCount:unclassified};
  }
 
  async listFulfillment(c:ExecutionContext,purchaseOrderId:string){

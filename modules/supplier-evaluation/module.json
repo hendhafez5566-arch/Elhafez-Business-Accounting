@@ -1,0 +1,15 @@
+{
+  "name": "supplier-evaluation",
+  "publicApi": [
+    "src/public/index.ts",
+    "src/public/nest.ts"
+  ],
+  "ownedTables": [
+    "se_supplier_evaluations"
+  ],
+  "allowedDependencies": [
+    "@elhafez/contracts",
+    "@elhafez/platform-core",
+    "@elhafez/supplier-management"
+  ]
+}

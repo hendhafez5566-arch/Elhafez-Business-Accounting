@@ -217,6 +217,8 @@ export interface ConvertToSupplierInvoiceInput {
   };
 }
 
+export interface SupplierProcurementMetrics { readonly poCount:number; readonly cancelledPoCount:number; readonly orderedQuantity:DecimalAmount; readonly receivedQuantity:DecimalAmount; readonly completionRatio:DecimalAmount; readonly completedPoCount:number; }
+
 export class ProcurementFinanceApplicationService {
   constructor(
     private readonly repo: ProcurementRepository,
@@ -226,7 +228,7 @@ export class ProcurementFinanceApplicationService {
     >,
     private readonly suppliers: Pick<
       SupplierManagementApplicationService,
-      'assertSupplierReferenceUsableForProcurementForIntegration'
+      'assertSupplierReferenceUsableForProcurementForIntegration' | 'resolveSupplierReferenceForIntegration'
     >,
   ) {}
 
@@ -725,6 +727,30 @@ export class ProcurementFinanceApplicationService {
 
   async listPurchaseOrders(companyId:CompanyId,branchId:string){
     return this.repo.listPos(companyId,requiredText(branchId,'branchId'));
+  }
+
+
+  async purchaseOrdersForSupplierMetricsForIntegration(companyId:CompanyId,branchId:string,supplierPartyId:string){
+    const target=await this.suppliers.resolveSupplierReferenceForIntegration(companyId,requiredText(supplierPartyId,'supplierPartyId'));
+    if(target.partyId!==supplierPartyId)throw new ContractValidationError('supplierPartyId','canonical supplier Party identity required');
+    const rows=await this.repo.listPos(companyId,requiredText(branchId,'branchId'));
+    const result:PurchaseOrder[]=[];
+    for(const po of rows){
+      const owner=await this.suppliers.resolveSupplierReferenceForIntegration(companyId,po.supplierId);
+      if(owner.partyId===target.partyId)result.push(po);
+    }
+    return result;
+  }
+
+  async supplierPerformanceMetricsForIntegration(companyId:CompanyId,branchId:string,supplierPartyId:string):Promise<SupplierProcurementMetrics>{
+    const rows=await this.purchaseOrdersForSupplierMetricsForIntegration(companyId,branchId,supplierPartyId);
+    const counted=rows.filter((po)=>po.status!=='DISPOSED');
+    const economic=counted.filter((po)=>po.status!=='CANCELLED');
+    let ordered=0n,received=0n;
+    for(const po of economic)for(const line of po.lines){ordered+=scaled(line.orderedQuantity);received+=scaled(line.receivedQuantity);}
+    const completed=economic.filter((po)=>po.lines.length>0&&po.lines.every((line)=>scaled(line.receivedQuantity)>=scaled(line.orderedQuantity))).length;
+    const ratio=ordered===0n?decimalAmount('0'):decimal((received*SCALE)/ordered);
+    return{poCount:counted.length,cancelledPoCount:counted.filter((po)=>po.status==='CANCELLED').length,orderedQuantity:decimal(ordered),receivedQuantity:decimal(received),completionRatio:ratio,completedPoCount:completed};
   }
 
   async getSupplierCommitment(companyId: CompanyId, id: string) {

@@ -1,0 +1,37 @@
+{
+  "id": "sp03-supplier-intelligence",
+  "summary": "Implement SP-03 through canonical supplier-evaluation and supplier-disputes owners, generic source-owned supplier holds, owner-sourced procurement metrics, Supplier 360 API composition, and Arabic-first UI.",
+  "type": "phase",
+  "allowedModules": [
+    "supplier-management",
+    "supplier-evaluation",
+    "supplier-disputes",
+    "procurement-finance",
+    "procurement-fulfillment"
+  ],
+  "allowedPaths": [
+    ".changes/sp03-supplier-intelligence.json",
+    "apps/api/package.json",
+    "apps/api/src/app.module.ts",
+    "apps/api/src/sp03-supplier-intelligence.spec.ts",
+    "apps/api/src/supplier-intelligence-read-model.controller.ts",
+    "apps/api/src/supplier-intelligence-read-model.service.ts",
+    "apps/web/src/routes.tsx",
+    "apps/web/src/supplier-intelligence-page.tsx",
+    "apps/web/src/supplier-intelligence.spec.ts",
+    "pnpm-lock.yaml",
+    "prisma/schema.prisma",
+    "prisma/migrations/20260921130000_sp03_supplier_evaluation_disputes/migration.sql"
+  ],
+  "protectedPaths": [
+    "modules/supplier-management/module.json",
+    "modules/supplier-evaluation/module.json",
+    "modules/supplier-disputes/module.json",
+    "apps/api/src/app.module.ts",
+    "apps/web/src/routes.tsx",
+    "prisma/schema.prisma"
+  ],
+  "protectedReason": "SP-03 creates the two exact owner-approved canonical modules, extends Supplier Management with its own source-owned hold table, registers runtime Nest/API and web composition, and adds one forward-only migration without moving supplier, PO, fulfillment, or bank truth.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": ""
+}
