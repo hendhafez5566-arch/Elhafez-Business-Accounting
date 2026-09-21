@@ -519,7 +519,7 @@ export class HajjUmrahProgramsApplicationService {
     await this.guard.assertOpen(
       context.companyId,
       context.branchId,
-      this.now().toISOString(),
+      old.returnRecordedAt,
     );
     const result = await this.saveStatus(
       context,
