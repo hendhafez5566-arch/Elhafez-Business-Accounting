@@ -571,6 +571,7 @@ export class ProcurementFinanceApplicationService {
     const quantity=positive(input.quantity,'quantity');
     const invoiceAmount=positive(input.billing.amount,'billing.amount');
     const po=await this.getPurchaseOrder(input.companyId,input.purchaseOrderId);
+    const supplier=await this.suppliers.assertSupplierReferenceUsableForProcurementForIntegration(input.companyId,po.supplierId);
     const line=po.lines.find((candidate)=>candidate.id===input.lineId);
     if(!line)throw new ContractValidationError('line','not found');
 
@@ -614,7 +615,7 @@ export class ProcurementFinanceApplicationService {
       companyId:input.companyId,
       branchId:po.branchId,
       type:'SUPPLIER',
-      partyId:po.supplierId,
+      partyId:supplier.partyId,
       number:requiredText(input.billing.number,'billing.number'),
       externalInvoiceNumber:requiredText(input.billing.externalInvoiceNumber,'billing.externalInvoiceNumber'),
       postingDate:requiredText(input.billing.postingDate,'billing.postingDate'),
@@ -685,6 +686,7 @@ export class ProcurementFinanceApplicationService {
     }
 
     const po = await this.getPurchaseOrder(input.companyId, conversion.purchaseOrderId);
+    const supplier=await this.suppliers.assertSupplierReferenceUsableForProcurementForIntegration(input.companyId,po.supplierId);
     const billingInvoice = await this.billing.getOpenPosition(
       input.companyId,
       input.billingInvoiceId,
@@ -692,7 +694,7 @@ export class ProcurementFinanceApplicationService {
     if (
       billingInvoice.invoiceType !== 'SUPPLIER' ||
       billingInvoice.status !== 'CANCELLED' ||
-      billingInvoice.partyId !== po.supplierId
+      billingInvoice.partyId !== supplier.partyId
     ) {
       throw new ContractValidationError(
         'billingInvoice',
