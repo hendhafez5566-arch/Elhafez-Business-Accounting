@@ -22,11 +22,11 @@ import {
   FinancialControlsApplicationService,
   FinancialControlsModule,
 } from '@elhafez/financial-controls';
+import type { TourismContractInventoryApplicationService } from '@elhafez/tourism-contract-inventory';
 import {
   TOURISM_CONTRACT_INVENTORY_SERVICE,
   TourismContractInventoryModule,
-  type TourismContractInventoryApplicationService,
-} from '@elhafez/tourism-contract-inventory';
+} from '@elhafez/tourism-contract-inventory/nest';
 import {
   TOURISM_FINANCE_REPOSITORY,
   type TourismFinanceRepository,
