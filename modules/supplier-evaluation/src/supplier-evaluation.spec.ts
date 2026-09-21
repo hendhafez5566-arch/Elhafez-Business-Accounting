@@ -7,9 +7,9 @@ import{InMemorySupplierEvaluationRepository}from'./infrastructure/in-memory-supp
 import{SupplierEvaluationController}from'./infrastructure/supplier-evaluation.controller.js';
 
 class Access implements SupplierEvaluationAccess{
- readonly permissions:string[]=[];readonly audits=new Set<string>();
+ readonly permissions:string[]=[];readonly audits=new Set<string>();deny='';
  async requireBranch(){}
- async requirePermission(_c:ExecutionContext,p:string){this.permissions.push(p);}
+ async requirePermission(_c:ExecutionContext,p:string){if(p===this.deny)throw new Error('permission denied');this.permissions.push(p);}
  async auditOnce(_c:ExecutionContext,key:string){this.audits.add(key);}
 }
 const supplierPort={supplierViewForIntegration:async(_c:ExecutionContext,id:string)=>({supplier:{partyId:id}})};
@@ -44,11 +44,20 @@ test('evaluation repository isolates company branch and supplier',async()=>{
  assert.equal((await s.repo.list('company-a' as never,'branch-a','party-b')).length,0);
 });
 
-test('evaluation controller resolves Bearer session through currentUser',async()=>{
+test('evaluation permission failure prevents mutation',async()=>{
+ const s=setup();s.access.deny='supplier.evaluation.manage';
+ await assert.rejects(()=>s.service.create(context,'party-a',{requestId:'denied',qualityScore:5,serviceScore:5}),/permission denied/);
+ assert.equal((await s.repo.list('company-a' as never,'branch-a','party-a')).length,0);
+});
+
+test('evaluation controller has runtime route metadata and resolves Bearer session through currentUser',async()=>{
+ const metadata=(Reflect as unknown as {getMetadata:(key:string,target:unknown)=>unknown}).getMetadata;
+ assert.equal(metadata('path',SupplierEvaluationController),'supplier-intelligence/:supplierPartyId/evaluations');
  let token='',captured:ExecutionContext|undefined;
  const platform={currentUser:async(value:string)=>{token=value;return{id:'authenticated-user'};}};
  const service={list:async(value:ExecutionContext)=>{captured=value;return[];}};
  const controller=new SupplierEvaluationController(service as never,platform as never);
  await controller.list('Bearer session-token','company-a','branch-a','party-a');
  assert.equal(token,'session-token');assert.equal(captured?.actorId,'authenticated-user');assert.notEqual(captured?.actorId,'session-token');
+ await assert.rejects(()=>controller.create(undefined,'company-a','branch-a','party-a',{requestId:'x',qualityScore:5,serviceScore:5}),/authenticated company and branch context required/);
 });

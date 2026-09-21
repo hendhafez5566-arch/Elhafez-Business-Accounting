@@ -51,7 +51,7 @@ test('terminal lifecycle is append-only and critical terminal transitions never 
  await s.service.releaseHold(context,'party-a',d.id,'approved');assert.equal(s.suppliers.holds.get(d.id),false);
  const cancelled=await s.service.open(context,'party-a',{requestId:'cancel',severity:'CRITICAL',title:'Other',description:'Description'});
  await assert.rejects(()=>s.service.cancel(context,'party-a',cancelled.id,' '),/cancellationReason/);
- const done=await s.service.cancel(context,'party-a',cancelled.id,'not valid');assert.equal(done.status,'CANCELLED');assert.equal(s.suppliers.holds.get(cancelled.id),true);
+ const done=await s.service.cancel(context,'party-a',cancelled.id,'not valid');assert.equal(done.status,'CANCELLED');assert.equal(done.history.length,2);assert.equal(s.suppliers.holds.get(cancelled.id),true);
 });
 
 test('audit retry does not duplicate critical dispute or hold',async()=>{
@@ -69,11 +69,20 @@ test('disputes isolate company branch and supplier',async()=>{
  assert.equal((await s.repo.list('company-a' as never,'branch-a','party-b')).length,0);
 });
 
-test('dispute controller resolves Bearer session through currentUser',async()=>{
+test('dispute manage permission failure prevents mutation',async()=>{
+ const s=setup();s.access.deny='supplier.dispute.manage';
+ await assert.rejects(()=>s.service.open(context,'party-a',{requestId:'denied',severity:'LOW',title:'T',description:'D'}),/permission denied/);
+ assert.equal((await s.repo.list('company-a' as never,'branch-a','party-a')).length,0);
+});
+
+test('dispute controller has runtime route metadata and resolves Bearer session through currentUser',async()=>{
+ const metadata=(Reflect as unknown as {getMetadata:(key:string,target:unknown)=>unknown}).getMetadata;
+ assert.equal(metadata('path',SupplierDisputesController),'supplier-intelligence/:supplierPartyId/disputes');
  let token='',captured:ExecutionContext|undefined;
  const platform={currentUser:async(value:string)=>{token=value;return{id:'authenticated-user'};}};
  const service={list:async(value:ExecutionContext)=>{captured=value;return[];}};
  const controller=new SupplierDisputesController(service as never,platform as never);
  await controller.list('Bearer real-session','company-a','branch-a','party-a');
  assert.equal(token,'real-session');assert.equal(captured?.actorId,'authenticated-user');assert.notEqual(captured?.actorId,'real-session');
+ await assert.rejects(()=>controller.open(undefined,'company-a','branch-a','party-a',{requestId:'x',severity:'LOW',title:'T',description:'D'}),/authenticated company and branch context required/);
 });

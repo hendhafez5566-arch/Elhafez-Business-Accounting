@@ -1,6 +1,6 @@
 import assert from'node:assert/strict';
 import test from'node:test';
-import{companyId,executionContext,type ExecutionContext}from'@elhafez/contracts';
+import{companyId,executionContext}from'@elhafez/contracts';
 import{supplierId,type SupplierProfile}from'./domain/supplier.js';
 import type{SupplierAccess}from'./application/supplier-access.js';
 import{SupplierManagementApplicationService}from'./application/supplier-management.application-service.js';
