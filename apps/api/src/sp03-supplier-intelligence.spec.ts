@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { executionContext } from '@elhafez/contracts';
 import { NestFactory } from '@nestjs/core';
@@ -45,4 +46,13 @@ test('real Nest composition registers SP-03 services', async () => {
   assert.ok(app.get(SupplierEvaluationApplicationService));
   assert.ok(app.get(SupplierDisputesApplicationService));
   await app.close();
+});
+
+test('SP-03 migration preserves legacy ON_HOLD suppliers without inventing branch identity', async () => {
+  const sql=await readFile('../../prisma/migrations/20260921130000_sp03_supplier_evaluation_disputes/migration.sql','utf8');
+  assert.match(sql,/LEGACY_MANUAL_HOLD/);
+  assert.match(sql,/WHERE "status"='ON_HOLD'/);
+  assert.match(sql,/"base_status".*ACTIVE/s);
+  const insert=sql.slice(sql.indexOf('INSERT INTO "sm_supplier_holds"'),sql.indexOf('CREATE TABLE "se_supplier_evaluations"'));
+  assert.doesNotMatch(insert,/branch_id/);
 });
