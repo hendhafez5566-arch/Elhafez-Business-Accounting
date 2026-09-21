@@ -44,6 +44,12 @@ importers:
       '@elhafez/supplier-management':
         specifier: workspace:*
         version: link:../../modules/supplier-management
+      '@elhafez/supplier-evaluation':
+        specifier: workspace:*
+        version: link:../../modules/supplier-evaluation
+      '@elhafez/supplier-disputes':
+        specifier: workspace:*
+        version: link:../../modules/supplier-disputes
       '@elhafez/procurement-fulfillment':
         specifier: workspace:*
         version: link:../../modules/procurement-fulfillment
