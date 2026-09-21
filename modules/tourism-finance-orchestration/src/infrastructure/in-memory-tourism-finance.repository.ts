@@ -15,8 +15,8 @@ export class InMemoryTourismFinanceRepository implements TourismFinanceRepositor
   async completeStep(companyId: CompanyId, id: string, ownerReference: string | undefined, result: unknown) { const entry = [...this.steps.entries()].find(([, value]) => value.companyId === companyId && value.id === id); if (!entry) throw new Error('step not found'); const value = { ...entry[1], status: 'COMPLETED' as const, ...(ownerReference ? { ownerReference } : {}), result, completedAt: new Date().toISOString() }; this.steps.set(entry[0], value); return value; }
   async saveSetup(value: FinancialSetup) { this.setups.set(`${value.companyId}:${value.category}`, value); }
   async setup(companyId: CompanyId, category: string) { return this.setups.get(`${companyId}:${category}`); }
-  async reserveBooking(value: BookingReference) { const mapKey = `${value.companyId}:${key(value.booking)}`; const old = this.bookings.get(mapKey); if (old) return old; this.bookings.set(mapKey, value); return value; }
-  async saveBooking(value: BookingReference) { this.bookings.set(`${value.companyId}:${key(value.booking)}`, value); }
+  async reserveBooking(value: BookingReference) { const mapKey = `${value.companyId}:${key(value.booking)}`; const old = this.bookings.get(mapKey); if (old) return old; this.bookings.set(mapKey, structuredClone(value)); return structuredClone(value); }
+  async saveBooking(value: BookingReference) { this.bookings.set(`${value.companyId}:${key(value.booking)}`, structuredClone(value)); }
   async booking(companyId: CompanyId, source: SourceReference) { return this.bookings.get(`${companyId}:${key(source)}`); }
   async bookingsForProgram(companyId: CompanyId, program: SourceReference) { return [...this.bookings.values()].filter((item) => item.companyId === companyId && key(item.program) === key(program)); }
   async reserveSnapshot(value: ServiceFinancialSnapshot) { const old = this.snapshots.find((item) => item.companyId === value.companyId && key(item.service) === key(value.service) && item.version === value.version); if (old) return old; this.snapshots.push(value); return value; }
