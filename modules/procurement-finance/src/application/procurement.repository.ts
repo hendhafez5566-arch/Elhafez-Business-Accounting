@@ -3,6 +3,7 @@ import type {
   InvoiceConversion,
   ProcurementHistory,
   ProcurementPolicy,
+  ProcurementQuantityMutationOutcome,
   PurchaseOrder,
   SupplierCommitment,
 } from '../domain/procurement.js';
@@ -31,9 +32,16 @@ export interface ProcurementRepository {
   ): Promise<SupplierCommitment>;
 
   po(companyId: CompanyId, id: string): Promise<PurchaseOrder | undefined>;
+  listPos(companyId: CompanyId, branchId?: string): Promise<PurchaseOrder[]>;
   posByCommitment(companyId: CompanyId, commitmentId: string): Promise<PurchaseOrder[]>;
   poByNumber(companyId: CompanyId, number: string): Promise<PurchaseOrder | undefined>;
   savePo(value: PurchaseOrder, history: ProcurementHistory): Promise<PurchaseOrder>;
+  updateDraftPo(
+    value: PurchaseOrder,
+    commandId: string,
+    requestHash: string,
+    history: ProcurementHistory,
+  ): Promise<PurchaseOrder>;
   approvePo(
     companyId: CompanyId,
     id: string,
@@ -54,7 +62,16 @@ export interface ProcurementRepository {
     quantity: DecimalAmount,
     commandId: string,
     requestHash: string,
-  ): Promise<PurchaseOrder>;
+  ): Promise<ProcurementQuantityMutationOutcome>;
+  adjustReceived(
+    companyId: CompanyId,
+    poId: string,
+    lineId: string,
+    newReceivedQuantity: DecimalAmount,
+    commandId: string,
+    requestHash: string,
+    reason: string,
+  ): Promise<ProcurementQuantityMutationOutcome>;
 
   conversion(companyId: CompanyId, id: string): Promise<InvoiceConversion | undefined>;
   reserveConversion(value: InvoiceConversion): Promise<InvoiceConversion>;
