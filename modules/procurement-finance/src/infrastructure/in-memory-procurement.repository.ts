@@ -58,6 +58,7 @@ export class InMemoryProcurementRepository implements ProcurementRepository {
   private readonly policies = new Map<string, ProcurementPolicy>();
   private readonly commitments = new Map<string, SupplierCommitment>();
   private readonly pos = new Map<string, PurchaseOrder>();
+  private readonly poNumberCounters = new Map<string, number>();
   private readonly conversions = new Map<string, InvoiceConversion>();
   private readonly histories: ProcurementHistory[] = [];
   private readonly receipts = new Map<string, {requestHash:string;previousReceivedQuantity:DecimalAmount;resultingReceivedQuantity:DecimalAmount}>();
@@ -176,11 +177,20 @@ export class InMemoryProcurementRepository implements ProcurementRepository {
       .map((value) => structuredClone(value));
   }
 
-  async poByNumber(companyId: CompanyId, number: string) {
+  async poByNumber(companyId: CompanyId, branchId: string, number: string) {
     const value = [...this.pos.values()].find(
-      (candidate) => candidate.companyId === companyId && candidate.number === number,
+      (candidate) => candidate.companyId === companyId && candidate.branchId === branchId && candidate.number === number,
     );
     return value ? structuredClone(value) : undefined;
+  }
+
+  async nextPoNumber(companyId: CompanyId, branchId: string, year: number) {
+    return this.atomic(async () => {
+      const key=`${companyId}:${branchId}:${year}`;
+      const next=(this.poNumberCounters.get(key)??0)+1;
+      this.poNumberCounters.set(key,next);
+      return next;
+    });
   }
 
   async savePo(value: PurchaseOrder, entry: ProcurementHistory) {
