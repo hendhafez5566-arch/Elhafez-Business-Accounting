@@ -34,7 +34,8 @@ export interface ProcurementRepository {
   po(companyId: CompanyId, id: string): Promise<PurchaseOrder | undefined>;
   listPos(companyId: CompanyId, branchId?: string): Promise<PurchaseOrder[]>;
   posByCommitment(companyId: CompanyId, commitmentId: string): Promise<PurchaseOrder[]>;
-  poByNumber(companyId: CompanyId, number: string): Promise<PurchaseOrder | undefined>;
+  poByNumber(companyId: CompanyId, branchId: string, number: string): Promise<PurchaseOrder | undefined>;
+  nextPoNumber(companyId: CompanyId, branchId: string, year: number): Promise<number>;
   savePo(value: PurchaseOrder, history: ProcurementHistory): Promise<PurchaseOrder>;
   updateDraftPo(
     value: PurchaseOrder,
