@@ -17,7 +17,8 @@
     "apps/web/src/hajj-umrah.spec.ts",
     "pnpm-lock.yaml",
     "prisma/schema.prisma",
-    "prisma/migrations/20260921160000_hu01_hajj_umrah_foundation/migration.sql"
+    "prisma/migrations/20260921160000_hu01_hajj_umrah_foundation/migration.sql",
+    ".github/workflows/ci.yml"
   ],
   "protectedPaths": [
     "modules/tourism-contract-inventory/module.json",
