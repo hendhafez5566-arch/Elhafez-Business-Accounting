@@ -13,7 +13,7 @@ function procurementReferences(value: BookingReference): ProcurementReference[] 
   }
   return [...unique.values()];
 }
-function procurementJson(value: BookingReference): Prisma.InputJsonValue | typeof Prisma.JsonNull {
+function procurementJson(value: BookingReference) {
   const references = procurementReferences(value);
   if (!references.length) return Prisma.JsonNull;
   return json(references.length === 1 ? references[0] : references);
