@@ -73,6 +73,33 @@ function requiredText(value: string | null | undefined, field: string): string {
   return normalized;
 }
 
+function samePurchaseOrderReplay(current: PurchaseOrder, candidate: PurchaseOrder): boolean {
+  if (
+    current.companyId!==candidate.companyId ||
+    current.branchId!==candidate.branchId ||
+    current.supplierId!==candidate.supplierId ||
+    current.number!==candidate.number ||
+    current.origin!==candidate.origin ||
+    (current.commitmentId??null)!==(candidate.commitmentId??null) ||
+    (current.orderDate??null)!==(candidate.orderDate??null) ||
+    (current.expectedDate??null)!==(candidate.expectedDate??null) ||
+    (current.currency??null)!==(candidate.currency??null) ||
+    (current.externalReference??null)!==(candidate.externalReference??null) ||
+    (current.notes??null)!==(candidate.notes??null) ||
+    current.lines.length!==candidate.lines.length
+  ) return false;
+  const byId=new Map(current.lines.map((line)=>[line.id,line]));
+  return candidate.lines.every((line)=>{
+    const old=byId.get(line.id);
+    return !!old &&
+      old.itemReference===line.itemReference &&
+      (old.description??null)===(line.description??null) &&
+      scaled(old.orderedQuantity)===scaled(line.orderedQuantity) &&
+      (old.unitPrice===undefined?line.unitPrice===undefined:line.unitPrice!==undefined&&scaled(old.unitPrice)===scaled(line.unitPrice)) &&
+      (old.taxCode??null)===(line.taxCode??null);
+  });
+}
+
 function fingerprint(value: unknown) {
   return createHash('sha256').update(JSON.stringify(value)).digest('hex');
 }
@@ -242,10 +269,10 @@ export class ProcurementFinanceApplicationService {
       input.sourceId,
     );
     if (old) {
-      if (old.requestHash !== requestHash) {
-        throw new ContractValidationError('source', 'conflicting replay');
-      }
-      return old;
+      if (old.requestHash===requestHash)return old;
+      const oldSupplier=await this.suppliers.assertSupplierReferenceUsableForProcurementForIntegration(input.companyId,old.supplierId);
+      if(oldSupplier.partyId===supplier.partyId&&old.effectiveDate===input.effectiveDate)return old;
+      throw new ContractValidationError('source','conflicting replay');
     }
 
     const value: SupplierCommitment = {
@@ -343,8 +370,9 @@ export class ProcurementFinanceApplicationService {
     };
     const requestHash=fingerprint(input.origin==='MANUAL'?{...normalized,number:'OWNER_GENERATED'}:normalized);
     if(prior){
-      if(prior.requestHash!==requestHash)throw new ContractValidationError('purchaseOrder','conflicting replay');
-      return prior;
+      const replayCandidate:PurchaseOrder={...normalized,status:prior.status,requestHash:prior.requestHash,createdAt:prior.createdAt,lines:lines.map((line)=>({...line,companyId:input.companyId,purchaseOrderId:input.id,receivedQuantity:decimalAmount('0'),invoicedQuantity:decimalAmount('0')}))};
+      if(prior.requestHash===requestHash||samePurchaseOrderReplay(prior,replayCandidate))return prior;
+      throw new ContractValidationError('purchaseOrder','conflicting replay');
     }
     const byNumber=await this.repo.poByNumber(input.companyId,branchId,numberValue);
     if(byNumber)throw new ContractValidationError('number','already used');
