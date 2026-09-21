@@ -16,6 +16,7 @@ import type {
 import { InMemoryProgramRepository } from './infrastructure/in-memory-program.repository.js';
 
 class Access implements ProgramAccess {
+  readonly audits: Array<{ action: string; id: string; metadata?: Record<string, unknown> }> = [];
   async requireBranch(context: ExecutionContext) {
     if (context.branchId === 'blocked') throw new Error('branch denied');
   }
@@ -24,7 +25,14 @@ class Access implements ProgramAccess {
       throw new Error('permission denied');
     }
   }
-  async audit() {}
+  async audit(
+    _context: ExecutionContext,
+    action: string,
+    id: string,
+    metadata?: Record<string, unknown>,
+  ) {
+    this.audits.push({ action, id, ...(metadata ? { metadata } : {}) });
+  }
 }
 
 const season: SeasonPort = {
@@ -71,16 +79,17 @@ const base = {
 function fixture(supplyPort: SupplyPort = supply, reopenGuard: ReopenGuard = guard) {
   let sequence = 0;
   const repo = new InMemoryProgramRepository();
+  const access = new Access();
   const service = new HajjUmrahProgramsApplicationService(
     repo,
-    new Access(),
+    access,
     season,
     supplyPort,
     reopenGuard,
     () => new Date('2026-09-21T00:00:00Z'),
     () => `id-${++sequence}`,
   );
-  return { repo, service };
+  return { repo, service, access };
 }
 
 test('new programs prepare with approved requirement defaults and never auto-open', async () => {
@@ -218,22 +227,79 @@ test('departure and return evidence drive lifecycle and cancellation stops after
   assert.ok(done.returnRecordedAt);
 });
 
-test('closed program reopen requires reason, permission, and an open accounting guard', async () => {
-  let blocked = true;
+test('historical closed accounting period blocks reopen even when current period is open', async () => {
+  let now = new Date('2027-05-01T09:00:00Z');
+  const checked: string[] = [];
   const reopenGuard: ReopenGuard = {
-    async assertOpen() {
-      if (blocked) throw new Error('accounting period is closed');
+    async assertOpen(_company, _branch, accountingDateEvidence) {
+      checked.push(accountingDateEvidence);
+      if (accountingDateEvidence.startsWith('2027-06-01')) {
+        throw new Error('historical accounting period is closed');
+      }
     },
   };
-  const { service } = fixture(supply, reopenGuard);
+  let sequence = 0;
+  const repo = new InMemoryProgramRepository();
+  const access = new Access();
+  const service = new HajjUmrahProgramsApplicationService(
+    repo,
+    access,
+    season,
+    supply,
+    reopenGuard,
+    () => now,
+    () => `historical-${++sequence}`,
+  );
   const program = await service.create(ctx, base);
   await service.openForBooking(ctx, program.id);
   await service.recordDeparture(ctx, program.id);
+  now = new Date('2027-06-01T12:00:00Z');
+  const closed = await service.recordReturn(ctx, program.id);
+  assert.equal(closed.returnRecordedAt, '2027-06-01T12:00:00.000Z');
+  now = new Date('2027-09-21T12:00:00Z');
+  await assert.rejects(
+    () => service.reopen(ctx, program.id, 'correction'),
+    /historical accounting period is closed/,
+  );
+  assert.deepEqual(checked, ['2027-06-01T12:00:00.000Z']);
+});
+
+test('historical open period allows reopen and preserves reason permission audit and history', async () => {
+  let now = new Date('2027-05-01T09:00:00Z');
+  const checked: string[] = [];
+  const reopenGuard: ReopenGuard = {
+    async assertOpen(_company, _branch, accountingDateEvidence) {
+      checked.push(accountingDateEvidence);
+    },
+  };
+  let sequence = 0;
+  const repo = new InMemoryProgramRepository();
+  const access = new Access();
+  const service = new HajjUmrahProgramsApplicationService(
+    repo,
+    access,
+    season,
+    supply,
+    reopenGuard,
+    () => now,
+    () => `open-history-${++sequence}`,
+  );
+  const program = await service.create(ctx, base);
+  await service.openForBooking(ctx, program.id);
+  await service.recordDeparture(ctx, program.id);
+  now = new Date('2027-06-01T12:00:00Z');
   await service.recordReturn(ctx, program.id);
+  now = new Date('2027-09-21T12:00:00Z');
   await assert.rejects(() => service.reopen(ctx, program.id, ''), /reason/);
-  await assert.rejects(() => service.reopen(ctx, program.id, 'correction'), /accounting period is closed/);
-  blocked = false;
-  assert.equal((await service.reopen(ctx, program.id, 'correction')).status, 'IN_TRIP');
+  await assert.rejects(
+    () => service.reopen(executionContext('c1', 'b1', 'viewer'), program.id, 'correction'),
+    /permission/,
+  );
+  const reopened = await service.reopen(ctx, program.id, 'correction');
+  assert.equal(reopened.status, 'IN_TRIP');
+  assert.deepEqual(checked, ['2027-06-01T12:00:00.000Z']);
+  assert.ok(repo.history.some((item) => item.programId === program.id && item.action === 'REOPENED' && item.reason === 'correction'));
+  assert.ok(access.audits.some((item) => item.action === 'hajj-umrah.program.reopened' && item.id === program.id && item.metadata?.reason === 'correction'));
 });
 
 test('company/branch isolation and permission enforcement remain server-side', async () => {
