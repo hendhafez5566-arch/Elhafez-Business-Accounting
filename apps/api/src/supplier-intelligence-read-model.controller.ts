@@ -10,6 +10,7 @@ export const SUPPLIER_INTELLIGENCE_PERMISSIONS = Object.freeze({
 
 @Controller('supplier-intelligence')
 export class SupplierIntelligenceReadModelController {
+  static readonly runtimeDependencies=[SupplierIntelligenceReadModelService,PlatformCoreApplicationService] as const;
   constructor(
     private readonly service: SupplierIntelligenceReadModelService,
     private readonly platform: PlatformCoreApplicationService,
