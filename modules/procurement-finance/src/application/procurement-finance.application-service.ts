@@ -335,7 +335,7 @@ export class ProcurementFinanceApplicationService {
       ...(input.notes?.trim()?{notes:input.notes.trim()}:{}),
       lines,
     };
-    const requestHash=fingerprint(normalized);
+    const requestHash=fingerprint(input.origin==='MANUAL'?{...normalized,number:'OWNER_GENERATED'}:normalized);
     if(prior){
       if(prior.requestHash!==requestHash)throw new ContractValidationError('purchaseOrder','conflicting replay');
       return prior;
