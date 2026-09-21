@@ -10,9 +10,7 @@ import type{
 }from'@elhafez/procurement-finance';
 import type{ProcurementAccess}from'./procurement-access.js';
 import type{ProcurementFulfillmentRepository}from'./procurement-fulfillment.repository.js';
-import type{ProcurementFulfillmentRecord}from'../domain/fulfillment.js';
 
-const SCALE=10n**18n;
 function scaled(value:DecimalAmount){const v=decimalAmount(value),negative=v.startsWith('-'),u=negative?v.slice(1):v,[w='0',f='']=u.split('.'),raw=BigInt(w+f.padEnd(18,'0'));return negative?-raw:raw;}
 function positive(value:DecimalAmount,field:string){const v=decimalAmount(value);if(scaled(v)<=0n)throw new ContractValidationError(field,'must be positive');return v;}
 function nonNegative(value:DecimalAmount,field:string){const v=decimalAmount(value);if(scaled(v)<0n)throw new ContractValidationError(field,'must be non-negative');return v;}
