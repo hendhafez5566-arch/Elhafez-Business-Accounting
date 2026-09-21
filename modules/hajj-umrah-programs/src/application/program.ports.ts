@@ -39,7 +39,11 @@ export interface SupplyPort {
 }
 
 export interface ReopenGuard {
-  assertOpen(companyId: CompanyId, branchId: string, at: string): Promise<void>;
+  assertOpen(
+    companyId: CompanyId,
+    branchId: string,
+    accountingDateEvidence: string,
+  ): Promise<void>;
 }
 
 export const PROGRAM_ACCESS = Symbol('PROGRAM_ACCESS');
