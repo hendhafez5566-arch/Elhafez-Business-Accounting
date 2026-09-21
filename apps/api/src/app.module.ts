@@ -44,6 +44,7 @@ import { CrmSalesReadModelController } from './crm-sales-read-model.controller.j
 import { CrmSalesReadModelService } from './crm-sales-read-model.service.js';
 import { SupplierIntelligenceReadModelController } from './supplier-intelligence-read-model.controller.js';
 import { SupplierIntelligenceReadModelService } from './supplier-intelligence-read-model.service.js';
+import { HajjUmrahController } from './hajj-umrah.controller.js';
 
 /** Composition root only. Business modules are registered here through public module APIs. */
 @Module({
@@ -53,7 +54,7 @@ import { SupplierIntelligenceReadModelService } from './supplier-intelligence-re
     ExpenseCommissionRecognitionModule, CostBudgetAccountingModule, AssetsFinancingModule, ProcurementFinanceModule, TourismContractInventoryModule,
     TourismFinanceOrchestrationModule, HajjUmrahSeasonsModule, HajjUmrahProgramsModule, FinancialReportingModule, Ac14MigrationModule,
   ],
-  controllers: [CrmSalesReadModelController, SupplierIntelligenceReadModelController],
+  controllers: [CrmSalesReadModelController, SupplierIntelligenceReadModelController, HajjUmrahController],
   providers: [
     FinancialReportingEvidenceAdapter,
     {
