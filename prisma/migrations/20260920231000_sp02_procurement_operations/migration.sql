@@ -37,6 +37,7 @@ ALTER TABLE "proc_purchase_orders" ALTER COLUMN "branch_id" SET NOT NULL;
 CREATE INDEX "proc_purchase_orders_company_id_branch_id_status_idx"
   ON "proc_purchase_orders"("company_id","branch_id","status");
 
+ALTER TABLE "proc_purchase_orders" DROP CONSTRAINT IF EXISTS "proc_po_number_key";
 DROP INDEX IF EXISTS "proc_purchase_orders_company_id_number_key";
 CREATE UNIQUE INDEX "proc_purchase_orders_company_id_branch_id_number_key"
   ON "proc_purchase_orders"("company_id","branch_id","number");
