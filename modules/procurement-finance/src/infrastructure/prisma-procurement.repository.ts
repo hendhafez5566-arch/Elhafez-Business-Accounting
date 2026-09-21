@@ -400,12 +400,21 @@ export class PrismaProcurementRepository implements ProcurementRepository {
     return rows.map((row) => this.poValue(row));
   }
 
-  async poByNumber(companyIdValue: CompanyId, number: string) {
+  async poByNumber(companyIdValue: CompanyId, branchId: string, number: string) {
     const row = await this.db.procPurchaseOrder.findUnique({
-      where: { companyId_number: { companyId: companyIdValue, number } },
+      where: { companyId_branchId_number: { companyId: companyIdValue, branchId, number } },
       include: { lines: true },
     });
     return row ? this.poValue(row) : undefined;
+  }
+
+  async nextPoNumber(companyIdValue: CompanyId, branchId: string, year: number) {
+    const row=await this.db.procPoNumberCounter.upsert({
+      where:{companyId_branchId_year:{companyId:companyIdValue,branchId,year}},
+      create:{companyId:companyIdValue,branchId,year,nextValue:1},
+      update:{nextValue:{increment:1}},
+    });
+    return row.nextValue;
   }
 
   async savePo(value: PurchaseOrder, entry: ProcurementHistory) {
