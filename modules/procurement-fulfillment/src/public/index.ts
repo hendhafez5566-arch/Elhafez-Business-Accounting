@@ -1,0 +1,3 @@
+export{ProcurementFulfillmentApplicationService,PROCUREMENT_OPERATIONS_PERMISSIONS}from'../application/procurement-fulfillment.application-service.js';
+export type{CreateManualPurchaseOrderInput,UpdateManualPurchaseOrderInput,CreateDirectPurchaseOperationalInput,ConvertPurchaseOrderLineToSupplierInvoiceInput,RecordFulfillmentInput,CorrectFulfillmentInput}from'../application/procurement-fulfillment.application-service.js';
+export type{ProcurementFulfillmentRecord,FulfillmentKind,FulfillmentStatus}from'../domain/fulfillment.js';
