@@ -538,41 +538,11 @@ export class ProcurementFinanceApplicationService {
   }
 
   async convertToSupplierInvoice(input: ConvertToSupplierInvoiceInput) {
-    const quantity = positive(input.quantity, 'quantity');
-    const invoiceAmount = positive(input.billing.amount, 'billing.amount');
-    const normalized = {
-      ...input,
-      quantity,
-      billing: { ...input.billing, amount: invoiceAmount },
-    };
-    const requestHash = fingerprint(normalized);
-
-    let conversion = await this.repo.conversion(input.companyId, input.id);
-    if (conversion && conversion.requestHash !== requestHash) {
-      throw new ContractValidationError('conversion', 'conflicting replay');
-    }
-    if (conversion?.status === 'INVOICED' || conversion?.status === 'REOPENED') {
-      return conversion;
-    }
-
-    if (!conversion) {
-      conversion = await this.repo.reserveConversion({
-        id: input.id,
-        companyId: input.companyId,
-        purchaseOrderId: input.purchaseOrderId,
-        lineId: input.lineId,
-        billingInvoiceId: input.billing.invoiceId,
-        quantity,
-        reopenedQuantity: decimalAmount('0'),
-        requestHash,
-        status: 'RESERVED',
-        createdAt: now(),
-      });
-    }
-
-    const po = await this.getPurchaseOrder(input.companyId, input.purchaseOrderId);
-    const line = po.lines.find((candidate) => candidate.id === input.lineId);
-    if (!line) throw new ContractValidationError('line', 'not found');
+    const quantity=positive(input.quantity,'quantity');
+    const invoiceAmount=positive(input.billing.amount,'billing.amount');
+    const po=await this.getPurchaseOrder(input.companyId,input.purchaseOrderId);
+    const line=po.lines.find((candidate)=>candidate.id===input.lineId);
+    if(!line)throw new ContractValidationError('line','not found');
 
     const invoiceCurrency=currencyCode(input.billing.currency);
     if(po.currency&&invoiceCurrency!==po.currency)throw new ContractValidationError('billing.currency','must match purchase order currency');
@@ -583,44 +553,58 @@ export class ProcurementFinanceApplicationService {
     if(line.taxCode&&input.billing.taxCode&&line.taxCode!==input.billing.taxCode)throw new ContractValidationError('billing.taxCode','must match purchase-order tax code');
     const invoiceTaxCode=input.billing.taxCode??line.taxCode;
 
-    const invoice: CreateInvoiceInput = {
-      id: input.billing.invoiceId,
-      companyId: input.companyId,
-      branchId: po.branchId,
-      type: 'SUPPLIER',
-      partyId: po.supplierId,
-      number: input.billing.number,
-      externalInvoiceNumber: input.billing.externalInvoiceNumber,
-      postingDate: input.billing.postingDate,
-      ...(input.billing.dueDate ? { dueDate: input.billing.dueDate } : {}),
-      currency: invoiceCurrency,
-      sourceType: 'PROCUREMENT_PO',
-      sourceId: input.id,
-      controlAccountId: input.billing.controlAccountId,
-      lines: [
-        {
-          id: `${input.billing.invoiceId}:${input.lineId}`,
-          accountId: input.billing.accountId,
-          amount: invoiceAmount,
-          ...(invoiceTaxCode ? { taxCode: invoiceTaxCode } : {}),
-        },
-      ],
+    const normalized={
+      ...input,
+      quantity,
+      billing:{...input.billing,amount:invoiceAmount,currency:invoiceCurrency,...(invoiceTaxCode?{taxCode:invoiceTaxCode}:{})},
+    };
+    const requestHash=fingerprint(normalized);
+
+    let conversion=await this.repo.conversion(input.companyId,input.id);
+    if(conversion&&conversion.requestHash!==requestHash)throw new ContractValidationError('conversion','conflicting replay');
+    if(conversion?.status==='INVOICED'||conversion?.status==='REOPENED')return conversion;
+
+    if(!conversion){
+      conversion=await this.repo.reserveConversion({
+        id:input.id,
+        companyId:input.companyId,
+        purchaseOrderId:input.purchaseOrderId,
+        lineId:input.lineId,
+        billingInvoiceId:input.billing.invoiceId,
+        quantity,
+        reopenedQuantity:decimalAmount('0'),
+        requestHash,
+        status:'RESERVED',
+        createdAt:now(),
+      });
+    }
+
+    const invoice:CreateInvoiceInput={
+      id:input.billing.invoiceId,
+      companyId:input.companyId,
+      branchId:po.branchId,
+      type:'SUPPLIER',
+      partyId:po.supplierId,
+      number:requiredText(input.billing.number,'billing.number'),
+      externalInvoiceNumber:requiredText(input.billing.externalInvoiceNumber,'billing.externalInvoiceNumber'),
+      postingDate:requiredText(input.billing.postingDate,'billing.postingDate'),
+      ...(input.billing.dueDate?{dueDate:input.billing.dueDate}:{}),
+      currency:invoiceCurrency,
+      sourceType:'PROCUREMENT_PO',
+      sourceId:input.id,
+      controlAccountId:requiredText(input.billing.controlAccountId,'billing.controlAccountId'),
+      lines:[{
+        id:`${input.billing.invoiceId}:${input.lineId}`,
+        accountId:requiredText(input.billing.accountId,'billing.accountId'),
+        amount:invoiceAmount,
+        ...(invoiceTaxCode?{taxCode:invoiceTaxCode}:{}),
+      }],
     };
 
     await this.billing.createDraft(invoice);
-    const posted = await this.billing.postInvoice(
-      input.companyId,
-      input.billing.invoiceId,
-    );
-    if (posted.status !== 'POSTED') {
-      throw new ContractValidationError('billingInvoice', 'supplier invoice did not post');
-    }
-
-    return this.repo.completeConversion(
-      input.companyId,
-      input.id,
-      input.billing.invoiceId,
-    );
+    const posted=await this.billing.postInvoice(input.companyId,input.billing.invoiceId);
+    if(posted.status!=='POSTED')throw new ContractValidationError('billingInvoice','supplier invoice did not post');
+    return this.repo.completeConversion(input.companyId,input.id,input.billing.invoiceId);
   }
 
   async createDirectPurchase(input:CreateDirectPurchaseInput){
