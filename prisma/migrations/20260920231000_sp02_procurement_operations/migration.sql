@@ -37,6 +37,18 @@ ALTER TABLE "proc_purchase_orders" ALTER COLUMN "branch_id" SET NOT NULL;
 CREATE INDEX "proc_purchase_orders_company_id_branch_id_status_idx"
   ON "proc_purchase_orders"("company_id","branch_id","status");
 
+DROP INDEX IF EXISTS "proc_purchase_orders_company_id_number_key";
+CREATE UNIQUE INDEX "proc_purchase_orders_company_id_branch_id_number_key"
+  ON "proc_purchase_orders"("company_id","branch_id","number");
+
+CREATE TABLE "proc_po_number_counters" (
+  "company_id" TEXT NOT NULL,
+  "branch_id" TEXT NOT NULL,
+  "year" INTEGER NOT NULL,
+  "next_value" INTEGER NOT NULL DEFAULT 0,
+  CONSTRAINT "proc_po_number_counters_pkey" PRIMARY KEY ("company_id","branch_id","year")
+);
+
 
 CREATE TABLE "pf_fulfillment_records" (
   "id" TEXT NOT NULL,
