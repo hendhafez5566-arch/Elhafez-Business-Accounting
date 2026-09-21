@@ -133,6 +133,24 @@ export interface CheckAvailabilityInput {
   readonly periodEnd?: string;
 }
 
+export interface ProgramSupplyEvidenceInput {
+  readonly companyId: CompanyId;
+  readonly resourceType: ContractType;
+  readonly resourceId: string;
+  readonly serviceDate: string;
+  readonly periodEnd?: string;
+  readonly serviceCategory?: ServiceCategory;
+}
+
+export interface ProgramSupplyEvidence {
+  readonly available: boolean;
+  readonly resourceType: ContractType;
+  readonly resourceId: string;
+  readonly contractId?: string;
+  readonly availableQuantity: DecimalAmount;
+  readonly blockerReason?: string;
+}
+
 export interface RegisterAllocationEconomicEvidenceInput extends BaseInput {
   readonly allocationId: string;
   readonly kind: string;
@@ -210,6 +228,7 @@ export interface TourismContractInventoryApplicationService {
   createGenericService(input:CreateGenericServiceInput,key?:string):Promise<GenericServiceInventory>;
   createStopSale(input: CreateStopSaleInput, key?: string): Promise<StopSale>;
   checkAvailability(input: CheckAvailabilityInput): Promise<AvailabilityResult>;
+  checkProgramSupplyEvidence(input: ProgramSupplyEvidenceInput): Promise<ProgramSupplyEvidence>;
   allocateCapacity(input: AllocateCapacityInput, key?: string): Promise<AllocationResult>;
   releaseAllocation(input: ReleaseAllocationInput, key?: string): Promise<ReleaseResult>;
   adjustAllocation(input: AdjustAllocationInput, key?: string): Promise<Allocation>;
