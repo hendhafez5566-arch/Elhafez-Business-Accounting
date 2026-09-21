@@ -481,7 +481,7 @@ export class PrismaProcurementRepository implements ProcurementRepository {
     } catch (error) {
       const replay = await this.po(value.companyId, value.id);
       if (replay?.requestHash === value.requestHash) return replay;
-      const number = await this.poByNumber(value.companyId, value.number);
+      const number = await this.poByNumber(value.companyId, value.branchId, value.number);
       if (number) throw new ContractValidationError('number', 'already used');
       throw error;
     }
