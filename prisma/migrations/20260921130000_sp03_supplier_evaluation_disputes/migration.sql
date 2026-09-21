@@ -15,6 +15,6 @@ CREATE UNIQUE INDEX "sd_supplier_disputes_company_branch_request_key" ON "sd_sup
 CREATE INDEX "sd_supplier_disputes_company_branch_supplier_opened_idx" ON "sd_supplier_disputes"("company_id","branch_id","supplier_party_id","opened_at");
 CREATE INDEX "sd_supplier_disputes_company_branch_supplier_status_idx" ON "sd_supplier_disputes"("company_id","branch_id","supplier_party_id","status");
 CREATE TABLE "sd_supplier_dispute_history" ("id" TEXT NOT NULL,"company_id" TEXT NOT NULL,"branch_id" TEXT NOT NULL,"dispute_id" TEXT NOT NULL,"action" TEXT NOT NULL,"actor_id" TEXT NOT NULL,"acted_at" TIMESTAMP(3) NOT NULL,"metadata" JSONB NOT NULL,"idempotency_key" TEXT NOT NULL,CONSTRAINT "sd_supplier_dispute_history_pkey" PRIMARY KEY ("id"));
-CREATE UNIQUE INDEX "sd_supplier_dispute_history_company_branch_idempotency_key" ON "sd_supplier_dispute_history"("company_id","branch_id","idempotency_key");
+CREATE UNIQUE INDEX "sd_supplier_dispute_history_company_branch_dispute_idempotency_key" ON "sd_supplier_dispute_history"("company_id","branch_id","dispute_id","idempotency_key");
 CREATE INDEX "sd_supplier_dispute_history_company_branch_dispute_acted_idx" ON "sd_supplier_dispute_history"("company_id","branch_id","dispute_id","acted_at");
 ALTER TABLE "sd_supplier_dispute_history" ADD CONSTRAINT "sd_supplier_dispute_history_dispute_fkey" FOREIGN KEY ("company_id","branch_id","dispute_id") REFERENCES "sd_supplier_disputes"("company_id","branch_id","id") ON DELETE RESTRICT ON UPDATE CASCADE;

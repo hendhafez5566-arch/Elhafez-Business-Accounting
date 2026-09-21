@@ -2810,7 +2810,7 @@ model SdSupplierDisputeHistory {
   metadata Json
   idempotencyKey String @map("idempotency_key")
   dispute SdSupplierDispute @relation(fields:[companyId,branchId,disputeId],references:[companyId,branchId,id],onDelete:Restrict)
-  @@unique([companyId,branchId,idempotencyKey],name:"companyId_branchId_idempotencyKey")
+  @@unique([companyId,branchId,disputeId,idempotencyKey],name:"companyId_branchId_disputeId_idempotencyKey")
   @@index([companyId,branchId,disputeId,actedAt])
   @@map("sd_supplier_dispute_history")
 }
