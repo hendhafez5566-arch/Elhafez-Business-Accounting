@@ -17,6 +17,8 @@ interface ChangeManifest {
   readonly protectedReason: string;
   readonly allowBreakingPublicApi: boolean;
   readonly publicApiBreakingReason: string;
+  readonly unacceptedMigrationRepairs?: string[];
+  readonly unacceptedMigrationRepairReason?: string;
 }
 
 interface DiffEntry {
@@ -69,13 +71,19 @@ for (const entry of entries) {
     }
   }
 
-  if (
-    paths.some((path) => path.startsWith('prisma/migrations/')) &&
-    !entry.status.startsWith('A')
-  ) {
-    errors.push(
-      `${paths.join(' -> ')}: accepted historical migrations are immutable; add a new migration instead.`,
-    );
+  const migrationPaths = paths.filter((path) => path.startsWith('prisma/migrations/'));
+  if (migrationPaths.length > 0 && !entry.status.startsWith('A')) {
+    const explicitlyApprovedUnacceptedRepair =
+      entry.status === 'M' &&
+      manifest?.type === 'bugfix' &&
+      Boolean(manifest.unacceptedMigrationRepairReason?.trim()) &&
+      migrationPaths.every((path) => manifest.unacceptedMigrationRepairs?.includes(path));
+
+    if (!explicitlyApprovedUnacceptedRepair) {
+      errors.push(
+        `${paths.join(' -> ')}: accepted historical migrations are immutable; add a new migration instead.`,
+      );
+    }
   }
 }
 
@@ -192,6 +200,29 @@ function validateManifest(value: ChangeManifest): void {
     errors.push(
       'change manifest: publicApiBreakingReason is required when allowBreakingPublicApi is true.',
     );
+  }
+  if (
+    value.unacceptedMigrationRepairs !== undefined &&
+    !Array.isArray(value.unacceptedMigrationRepairs)
+  ) {
+    errors.push('change manifest: unacceptedMigrationRepairs must be an array when provided.');
+  }
+  if (value.unacceptedMigrationRepairs?.length) {
+    if (value.type !== 'bugfix') {
+      errors.push('change manifest: unaccepted migration repair is allowed only for bugfix scope.');
+    }
+    if (!value.unacceptedMigrationRepairReason?.trim()) {
+      errors.push(
+        'change manifest: unacceptedMigrationRepairReason is required for migration repair.',
+      );
+    }
+    for (const path of value.unacceptedMigrationRepairs) {
+      if (!path.startsWith('prisma/migrations/')) {
+        errors.push(
+          `change manifest: unaccepted migration repair path must be under prisma/migrations/: ${path}.`,
+        );
+      }
+    }
   }
 }
 
