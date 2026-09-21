@@ -429,3 +429,11 @@ test('receipt replay preserves its exact before and after quantities after later
   assert.equal(replay.resultingReceivedQuantity,'4');
   assert.equal(replay.purchaseOrder.lines[0]?.receivedQuantity,'7');
 });
+
+test('Prisma PO numbering counter is isolated by branch and year',async()=>{
+  const db=fakePrisma(),repository=new PrismaProcurementRepository(db);
+  assert.equal(await repository.nextPoNumber(company,'branch-a',2026),1);
+  assert.equal(await repository.nextPoNumber(company,'branch-a',2026),2);
+  assert.equal(await repository.nextPoNumber(company,'branch-b',2026),1);
+  assert.equal(await repository.nextPoNumber(company,'branch-a',2027),1);
+});
