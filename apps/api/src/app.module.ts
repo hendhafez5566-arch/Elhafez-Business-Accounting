@@ -10,7 +10,7 @@ import { PartyAccountingModule } from '@elhafez/party-accounting';
 import { ExpenseCommissionRecognitionModule } from '@elhafez/expense-commission-recognition';
 import { AssetsFinancingModule } from '@elhafez/assets-financing';
 import { CostBudgetAccountingModule } from '@elhafez/cost-budget-accounting';
-import { ProcurementFinanceModule } from '@elhafez/procurement-finance';
+import { ProcurementFinanceModule } from '@elhafez/procurement-finance/nest';
 import { TourismContractInventoryModule } from '@elhafez/tourism-contract-inventory';
 import { TourismFinanceOrchestrationModule } from '@elhafez/tourism-finance-orchestration';
 import { FinancialReportingModule } from '@elhafez/financial-reporting';
