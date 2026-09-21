@@ -6,7 +6,7 @@ import type{SupplierAccess}from'./application/supplier-access.js';
 import{SupplierManagementApplicationService}from'./application/supplier-management.application-service.js';
 import{InMemorySupplierManagementRepository}from'./infrastructure/in-memory-supplier-management.repository.js';
 
-class Access implements SupplierAccess{async requireBranch(_c:ExecutionContext){}async requirePermission(_c:ExecutionContext,_p:string){}async audit(){}}
+class Access implements SupplierAccess{async requireBranch(){}async requirePermission(){}async audit(){}}
 const company=companyId('company-a'),id=supplierId('supplier-a'),context=executionContext('company-a','branch-a','actor-a');
 function profile(status:'ACTIVE'|'INACTIVE'='ACTIVE'):SupplierProfile{return{id,companyId:company,partyId:'party-a',supplierCode:'SUP-A',status,approvalStatus:'APPROVED',defaultCurrency:'EGP',creditDays:0,contactPerson:null,notes:null,createdAt:'2026-09-21T00:00:00Z',updatedAt:'2026-09-21T00:00:00Z'};}
 async function setup(status:'ACTIVE'|'INACTIVE'='ACTIVE'){const repo=new InMemorySupplierManagementRepository();await repo.create(profile(status),[]);let n=0;const service=new SupplierManagementApplicationService(repo,{} as never,new Access(),()=>new Date('2026-09-21T00:00:00Z'),()=>('id-'+(++n)));return{repo,service};}
