@@ -89,6 +89,8 @@ export function ProcurementOperationsPage() {
   const [query,setQuery] = useState('');
 
   const [editingId,setEditingId] = useState<string|null>(null);
+  const [createPoId,setCreatePoId] = useState(() => crypto.randomUUID());
+  const [editCommandId,setEditCommandId] = useState(() => crypto.randomUUID());
   const [supplierId,setSupplierId] = useState('');
   const [orderDate,setOrderDate] = useState('');
   const [expectedDate,setExpectedDate] = useState('');
@@ -101,15 +103,19 @@ export function ProcurementOperationsPage() {
   const [cancelReason,setCancelReason] = useState('');
 
   const [receiptTarget,setReceiptTarget] = useState<PoLine|null>(null);
+  const [receiptId,setReceiptId] = useState(() => crypto.randomUUID());
   const [receiptQuantity,setReceiptQuantity] = useState('');
   const [receiptNote,setReceiptNote] = useState('');
 
   const [correctionTarget,setCorrectionTarget] = useState<Fulfillment|null>(null);
+  const [correctionId,setCorrectionId] = useState(() => crypto.randomUUID());
   const [correctionQuantity,setCorrectionQuantity] = useState('');
   const [correctionReason,setCorrectionReason] = useState('');
   const [correctionNote,setCorrectionNote] = useState('');
 
   const [invoiceTarget,setInvoiceTarget] = useState<PoLine|null>(null);
+  const [invoiceConversionId,setInvoiceConversionId] = useState(() => crypto.randomUUID());
+  const [invoiceBillingId,setInvoiceBillingId] = useState(() => crypto.randomUUID());
   const [invoiceQuantity,setInvoiceQuantity] = useState('');
   const [invoiceNumber,setInvoiceNumber] = useState('');
   const [supplierInvoiceNumber,setSupplierInvoiceNumber] = useState('');
@@ -118,6 +124,8 @@ export function ProcurementOperationsPage() {
   const [invoiceExpenseAccount,setInvoiceExpenseAccount] = useState('');
   const [invoiceAmount,setInvoiceAmount] = useState('');
 
+  const [directId,setDirectId] = useState(() => crypto.randomUUID());
+  const [directInvoiceId,setDirectInvoiceId] = useState(() => crypto.randomUUID());
   const [directSupplier,setDirectSupplier] = useState('');
   const [directNumber,setDirectNumber] = useState('');
   const [directExternal,setDirectExternal] = useState('');
@@ -171,6 +179,8 @@ export function ProcurementOperationsPage() {
 
   function resetForm() {
     setEditingId(null);
+    setCreatePoId(crypto.randomUUID());
+    setEditCommandId(crypto.randomUUID());
     setSupplierId('');
     setOrderDate('');
     setExpectedDate('');
@@ -194,6 +204,7 @@ export function ProcurementOperationsPage() {
 
   function edit(po:PurchaseOrder) {
     setEditingId(po.id);
+    setEditCommandId(crypto.randomUUID());
     setSupplierId(po.supplierId);
     setOrderDate(po.orderDate ?? '');
     setExpectedDate(po.expectedDate ?? '');
@@ -224,7 +235,7 @@ export function ProcurementOperationsPage() {
       }));
       if (editingId) {
         await procurementPatch(`/procurement/purchase-orders/${editingId}`, {
-          commandId: crypto.randomUUID(),
+          commandId: editCommandId,
           supplierId,
           orderDate,
           expectedDate: expectedDate || undefined,
@@ -236,7 +247,7 @@ export function ProcurementOperationsPage() {
         setNotice('تم تحديث أمر الشراء Draft.');
       } else {
         await procurementPost('/procurement/purchase-orders', {
-          id: crypto.randomUUID(),
+          id: createPoId,
           supplierId,
           orderDate,
           expectedDate: expectedDate || undefined,
@@ -287,13 +298,14 @@ export function ProcurementOperationsPage() {
     if (!selected || !receiptTarget) return;
     try {
       await procurementPost(`/procurement/purchase-orders/${selected.id}/fulfillments`, {
-        id: crypto.randomUUID(),
+        id: receiptId,
         lineId: receiptTarget.id,
         quantity: receiptQuantity,
         note: receiptNote || undefined,
       });
       setNotice('تم تسجيل التنفيذ.');
       setReceiptTarget(null);
+      setReceiptId(crypto.randomUUID());
       setReceiptQuantity('');
       setReceiptNote('');
       await load();
@@ -308,7 +320,7 @@ export function ProcurementOperationsPage() {
     if (!selected || !correctionTarget) return;
     try {
       await procurementPost(`/procurement/purchase-orders/${selected.id}/fulfillment-corrections`, {
-        id: crypto.randomUUID(),
+        id: correctionId,
         correctionOfId: correctionTarget.id,
         lineId: correctionTarget.lineId,
         targetReceivedQuantity: correctionQuantity,
@@ -317,6 +329,7 @@ export function ProcurementOperationsPage() {
       });
       setNotice('تم تسجيل تصحيح التنفيذ مع الاحتفاظ بالدليل السابق.');
       setCorrectionTarget(null);
+      setCorrectionId(crypto.randomUUID());
       setCorrectionQuantity('');
       setCorrectionReason('');
       setCorrectionNote('');
@@ -330,6 +343,8 @@ export function ProcurementOperationsPage() {
   function openInvoice(line:PoLine) {
     const available = String(Number(line.receivedQuantity) - Number(line.invoicedQuantity));
     setInvoiceTarget(line);
+    setInvoiceConversionId(crypto.randomUUID());
+    setInvoiceBillingId(crypto.randomUUID());
     setInvoiceQuantity(available);
     setInvoicePostingDate(new Date().toISOString().slice(0,10));
     setInvoiceNumber('');
@@ -346,10 +361,10 @@ export function ProcurementOperationsPage() {
       await procurementPost(
         `/procurement/purchase-orders/${selected.id}/lines/${invoiceTarget.id}/supplier-invoices`,
         {
-          id: crypto.randomUUID(),
+          id: invoiceConversionId,
           quantity: invoiceQuantity,
           billing: {
-            invoiceId: crypto.randomUUID(),
+            invoiceId: invoiceBillingId,
             number: invoiceNumber,
             externalInvoiceNumber: supplierInvoiceNumber,
             postingDate: invoicePostingDate,
@@ -362,6 +377,8 @@ export function ProcurementOperationsPage() {
       );
       setNotice('تم إنشاء وترحيل فاتورة المورد من الكمية المنفذة.');
       setInvoiceTarget(null);
+      setInvoiceConversionId(crypto.randomUUID());
+      setInvoiceBillingId(crypto.randomUUID());
       await load();
       await choose(selected);
     } catch (reason) {
@@ -373,9 +390,9 @@ export function ProcurementOperationsPage() {
     event.preventDefault();
     try {
       await procurementPost('/procurement/direct-purchases', {
-        id: crypto.randomUUID(),
+        id: directId,
         supplierId: directSupplier,
-        invoiceId: crypto.randomUUID(),
+        invoiceId: directInvoiceId,
         number: directNumber,
         externalInvoiceNumber: directExternal,
         postingDate: directDate,
@@ -384,6 +401,8 @@ export function ProcurementOperationsPage() {
         lines: [{ id:crypto.randomUUID(),accountId:expenseAccount,amount:directAmount }],
       });
       setNotice('تم ترحيل الشراء المباشر كفاتورة مورد من خلال Billing.');
+      setDirectId(crypto.randomUUID());
+      setDirectInvoiceId(crypto.randomUUID());
       setDirectNumber('');
       setDirectExternal('');
       setDirectAmount('');
@@ -485,7 +504,7 @@ export function ProcurementOperationsPage() {
                 <td>{line.invoicedQuantity}</td>
                 <td>
                   {['APPROVED','PARTIALLY_RECEIVED','PARTIALLY_INVOICED'].includes(selected.status) && (
-                    <Button onClick={() => { setReceiptTarget(line); setReceiptQuantity(''); setReceiptNote(''); }}>تسجيل تنفيذ</Button>
+                    <Button onClick={() => { setReceiptTarget(line); setReceiptId(crypto.randomUUID()); setReceiptQuantity(''); setReceiptNote(''); }}>تسجيل تنفيذ</Button>
                   )}
                   {Number(line.receivedQuantity) > Number(line.invoicedQuantity) && (
                     <Button onClick={() => openInvoice(line)}>فاتورة مورد</Button>
@@ -509,6 +528,7 @@ export function ProcurementOperationsPage() {
                     {item.status === 'APPLIED' && (
                       <Button onClick={() => {
                         setCorrectionTarget(item);
+                        setCorrectionId(crypto.randomUUID());
                         setCorrectionQuantity(item.resultingReceivedQuantity ?? item.requestedQuantity);
                         setCorrectionReason('');
                         setCorrectionNote('');
