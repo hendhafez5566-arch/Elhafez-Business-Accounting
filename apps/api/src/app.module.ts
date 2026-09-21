@@ -11,8 +11,8 @@ import { ExpenseCommissionRecognitionModule } from '@elhafez/expense-commission-
 import { AssetsFinancingModule } from '@elhafez/assets-financing';
 import { CostBudgetAccountingModule } from '@elhafez/cost-budget-accounting';
 import { ProcurementFinanceModule } from '@elhafez/procurement-finance/nest';
-import { TourismContractInventoryModule } from '@elhafez/tourism-contract-inventory';
-import { TourismFinanceOrchestrationModule } from '@elhafez/tourism-finance-orchestration';
+import { TourismContractInventoryModule } from '@elhafez/tourism-contract-inventory/nest';
+import { TourismFinanceOrchestrationModule } from '@elhafez/tourism-finance-orchestration/nest';
 import { FinancialReportingModule } from '@elhafez/financial-reporting';
 import { PartyRegistryModule } from '@elhafez/party-registry';
 import { AgentManagementApplicationService } from '@elhafez/agent-management';
