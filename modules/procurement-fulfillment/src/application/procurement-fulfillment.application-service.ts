@@ -29,7 +29,7 @@ export const PROCUREMENT_OPERATIONS_PERMISSIONS=Object.freeze({
  invoiceConvert:'procurement.invoice.convert',
 });
 
-export type CreateManualPurchaseOrderInput=Omit<CreatePurchaseOrderInput,'companyId'|'branchId'|'origin'>;
+export type CreateManualPurchaseOrderInput=Omit<CreatePurchaseOrderInput,'companyId'|'branchId'|'origin'|'number'>;
 export type UpdateManualPurchaseOrderInput=Omit<UpdatePurchaseOrderInput,'companyId'|'branchId'>;
 export type CreateDirectPurchaseOperationalInput=Omit<CreateDirectPurchaseInput,'companyId'|'branchId'>;
 export type ConvertPurchaseOrderLineToSupplierInvoiceInput=Omit<ConvertToSupplierInvoiceInput,'companyId'>;
