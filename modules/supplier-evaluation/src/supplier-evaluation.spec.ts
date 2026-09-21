@@ -8,7 +8,7 @@ import{SupplierEvaluationController}from'./infrastructure/supplier-evaluation.co
 
 class Access implements SupplierEvaluationAccess{
  readonly permissions:string[]=[];readonly audits=new Set<string>();
- async requireBranch(_c:ExecutionContext){}
+ async requireBranch(){}
  async requirePermission(_c:ExecutionContext,p:string){this.permissions.push(p);}
  async auditOnce(_c:ExecutionContext,key:string){this.audits.add(key);}
 }
