@@ -1,0 +1,6 @@
+{
+  "name": "supplier-intelligence",
+  "publicApi": ["src/public/index.ts", "src/public/nest.ts"],
+  "ownedTables": ["si_supplier_evaluations", "si_supplier_disputes", "si_supplier_dispute_history"],
+  "allowedDependencies": ["@elhafez/contracts", "@elhafez/core", "@elhafez/platform-core", "@elhafez/supplier-management", "@elhafez/procurement-finance", "@elhafez/procurement-fulfillment", "@nestjs/core", "path-to-regexp"]
+}
