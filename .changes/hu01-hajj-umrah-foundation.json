@@ -27,7 +27,8 @@
     "modules/hajj-umrah-programs/module.json",
     "apps/api/src/app.module.ts",
     "apps/web/src/routes.tsx",
-    "prisma/schema.prisma"
+    "prisma/schema.prisma",
+    ".github/workflows/ci.yml"
   ],
   "protectedReason": "HU-01 explicitly extends two accepted owners, creates the two exact owner-approved planned modules, registers their composition boundaries, and adds forward-only owned persistence.",
   "allowBreakingPublicApi": false,
