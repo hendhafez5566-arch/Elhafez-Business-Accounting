@@ -32,6 +32,12 @@ type RequestHeaders = {
 
 @Controller('hajj-umrah')
 export class HajjUmrahController {
+  static readonly runtimeDependencies = [
+    HajjUmrahSeasonsApplicationService,
+    HajjUmrahProgramsApplicationService,
+    PlatformCoreApplicationService,
+  ] as const;
+
   constructor(
     private readonly seasons: HajjUmrahSeasonsApplicationService,
     private readonly programs: HajjUmrahProgramsApplicationService,
