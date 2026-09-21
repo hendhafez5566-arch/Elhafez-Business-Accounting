@@ -20,7 +20,7 @@ class ProcurementHarness{
  readonly receiptCommands=new Map<string,string>();
  readonly correctionCommands=new Map<string,string>();
  readonly cancelReasons:string[]=[];
- async createPurchaseOrder(input:any){const po:PurchaseOrder={...input,status:'DRAFT',requestHash:'create',createdAt:'2026-09-20T20:00:00.000Z',lines:input.lines.map((line:any)=>({...line,companyId:input.companyId,purchaseOrderId:input.id,receivedQuantity:decimalAmount('0'),invoicedQuantity:decimalAmount('0')}))};this.pos.set(input.id,po);return po;}
+ async createPurchaseOrder(input:any){const po:PurchaseOrder={...input,number:input.number??'PO-2026-000001',status:'DRAFT',requestHash:'create',createdAt:'2026-09-20T20:00:00.000Z',lines:input.lines.map((line:any)=>({...line,companyId:input.companyId,purchaseOrderId:input.id,receivedQuantity:decimalAmount('0'),invoicedQuantity:decimalAmount('0')}))};this.pos.set(input.id,po);return po;}
  async updateDraftPurchaseOrder(input:any){const old=this.pos.get(input.purchaseOrderId)!;const po:PurchaseOrder={...old,supplierId:input.supplierId,orderDate:input.orderDate,currency:input.currency,notes:input.notes,lines:input.lines.map((line:any)=>({...line,companyId:input.companyId,purchaseOrderId:input.purchaseOrderId,receivedQuantity:decimalAmount('0'),invoicedQuantity:decimalAmount('0')}))};this.pos.set(po.id,po);return po;}
  async approvePurchaseOrder(_c:string,id:string){const old=this.pos.get(id)!;const po={...old,status:'APPROVED' as const};this.pos.set(id,po);return po;}
  async cancelPurchaseOrderWithReason(_c:string,id:string,reason:string){this.cancelReasons.push(reason);const old=this.pos.get(id)!;const po={...old,status:'CANCELLED' as const};this.pos.set(id,po);return po;}
