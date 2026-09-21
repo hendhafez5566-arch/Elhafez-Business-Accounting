@@ -2795,8 +2795,8 @@ model SdSupplierDispute {
   history SdSupplierDisputeHistory[]
   @@unique([companyId,branchId,id],name:"companyId_branchId_id")
   @@unique([companyId,branchId,requestId],name:"companyId_branchId_requestId")
-  @@index([companyId,branchId,supplierPartyId,openedAt])
-  @@index([companyId,branchId,supplierPartyId,status])
+  @@index([companyId,branchId,supplierPartyId,openedAt], map: "sd_disputes_supplier_opened_idx")
+  @@index([companyId,branchId,supplierPartyId,status], map: "sd_disputes_supplier_status_idx")
   @@map("sd_supplier_disputes")
 }
 model SdSupplierDisputeHistory {
