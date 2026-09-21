@@ -1,7 +1,8 @@
 {
   "name": "procurement-finance",
   "publicApi": [
-    "src/public/index.ts"
+    "src/public/index.ts",
+    "src/public/nest.ts"
   ],
   "ownedTables": [
     "proc_policies",
