@@ -15,6 +15,7 @@
   ],
   "allowedDependencies": [
     "@elhafez/contracts",
-    "@elhafez/billing-subledgers"
+    "@elhafez/billing-subledgers",
+    "@elhafez/supplier-management"
   ]
 }
