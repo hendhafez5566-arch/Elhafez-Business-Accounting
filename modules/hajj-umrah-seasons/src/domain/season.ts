@@ -1,0 +1,4 @@
+import type { CompanyId } from '@elhafez/contracts';
+export type SeasonStatus='ACTIVE'|'CLOSED'|'CANCELLED';
+export interface Season{readonly id:string;readonly companyId:CompanyId;readonly branchId:string;readonly code:string;readonly arabicName:string;readonly englishName?:string;readonly hijriLabel?:string;readonly operatingStart:string;readonly operatingEnd:string;readonly salesStart:string;readonly salesEnd:string;readonly notes?:string;readonly status:SeasonStatus;readonly createdAt:string;readonly updatedAt:string;readonly version:number;}
+export interface SeasonHistory{readonly id:string;readonly companyId:CompanyId;readonly branchId:string;readonly seasonId:string;readonly action:'CREATED'|'UPDATED'|'CLOSED'|'CANCELLED';readonly reason?:string;readonly actorId:string;readonly occurredAt:string;}

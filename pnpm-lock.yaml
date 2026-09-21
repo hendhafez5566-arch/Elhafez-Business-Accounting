@@ -41,6 +41,12 @@ importers:
 
   apps/api:
     dependencies:
+      '@elhafez/hajj-umrah-programs':
+        specifier: workspace:*
+        version: link:../../modules/hajj-umrah-programs
+      '@elhafez/hajj-umrah-seasons':
+        specifier: workspace:*
+        version: link:../../modules/hajj-umrah-seasons
       '@elhafez/supplier-management':
         specifier: workspace:*
         version: link:../../modules/supplier-management
@@ -190,6 +196,42 @@ importers:
       '@elhafez/party-registry':
         specifier: workspace:*
         version: link:../party-registry
+      '@nestjs/common':
+        specifier: ^11.0.11
+        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@prisma/client':
+        specifier: 6.19.0
+        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
+
+  modules/hajj-umrah-seasons:
+    dependencies:
+      '@elhafez/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@elhafez/platform-core':
+        specifier: workspace:*
+        version: link:../platform-core
+      '@nestjs/common':
+        specifier: ^11.0.11
+        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@prisma/client':
+        specifier: 6.19.0
+        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
+
+  modules/hajj-umrah-programs:
+    dependencies:
+      '@elhafez/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@elhafez/platform-core':
+        specifier: workspace:*
+        version: link:../platform-core
+      '@elhafez/hajj-umrah-seasons':
+        specifier: workspace:*
+        version: link:../hajj-umrah-seasons
+      '@elhafez/tourism-contract-inventory':
+        specifier: workspace:*
+        version: link:../tourism-contract-inventory
       '@nestjs/common':
         specifier: ^11.0.11
         version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)

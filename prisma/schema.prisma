@@ -1475,6 +1475,7 @@ model TciContract {
  flightBlocks TciFlightBlock[]
  transportCapacities TciTransportCapacity[]
  visaQuotas TciVisaQuota[]
+ serviceInventories TciServiceInventory[]
  stopSales TciStopSale[]
  allocations TciAllocation[]
  history TciContractHistory[]
@@ -1586,6 +1587,28 @@ model TciVisaQuota {
  @@unique([companyId, id])
  @@unique([companyId, contractId, visaType, nationality, effectiveFrom, effectiveTo])
  @@map("tci_visa_quotas")
+}
+
+model TciServiceInventory {
+ id String @id
+ companyId String @map("company_id")
+ contractId String @map("contract_id")
+ category String
+ name String
+ description String?
+ unit String
+ serviceStart DateTime @map("service_start")
+ serviceEnd DateTime @map("service_end")
+ capacity Decimal @db.Decimal(38,18)
+ allocatedQuantity Decimal @map("allocated_quantity") @db.Decimal(38,18)
+ availableQuantity Decimal @map("available_quantity") @db.Decimal(38,18)
+ releaseDeadline DateTime? @map("release_deadline")
+ status String
+ contract TciContract @relation(fields:[companyId,contractId],references:[companyId,id],onDelete:Restrict)
+ @@unique([companyId,id])
+ @@unique([companyId,contractId,category,name,serviceStart,serviceEnd])
+ @@index([companyId,category,serviceStart,serviceEnd,status])
+ @@map("tci_service_inventory")
 }
 
 model TciStopSale {
@@ -2813,4 +2836,105 @@ model SdSupplierDisputeHistory {
   @@unique([companyId,branchId,disputeId,idempotencyKey],name:"companyId_branchId_disputeId_idempotencyKey")
   @@index([companyId,branchId,disputeId,actedAt])
   @@map("sd_supplier_dispute_history")
+}
+
+model HusSeason {
+ id String @id
+ companyId String @map("company_id")
+ branchId String @map("branch_id")
+ code String
+ arabicName String @map("arabic_name")
+ englishName String? @map("english_name")
+ hijriLabel String? @map("hijri_label")
+ operatingStart DateTime @map("operating_start") @db.Date
+ operatingEnd DateTime @map("operating_end") @db.Date
+ salesStart DateTime @map("sales_start") @db.Date
+ salesEnd DateTime @map("sales_end") @db.Date
+ notes String?
+ status String
+ version Int @default(1)
+ createdAt DateTime @map("created_at")
+ updatedAt DateTime @map("updated_at")
+ history HusSeasonHistory[]
+ @@unique([id,companyId,branchId])
+ @@unique([companyId,branchId,code])
+ @@index([companyId,branchId,status,operatingStart])
+ @@map("hus_seasons")
+}
+model HusSeasonHistory {
+ id String @id
+ companyId String @map("company_id")
+ branchId String @map("branch_id")
+ seasonId String @map("season_id")
+ action String
+ reason String?
+ actorId String @map("actor_id")
+ occurredAt DateTime @map("occurred_at")
+ season HusSeason @relation(fields:[seasonId,companyId,branchId],references:[id,companyId,branchId],onDelete:Restrict)
+ @@index([companyId,branchId,seasonId,occurredAt])
+ @@map("hus_season_history")
+}
+model HupProgram {
+ id String @id
+ companyId String @map("company_id")
+ branchId String @map("branch_id")
+ code String
+ type String
+ seasonId String @map("season_id")
+ arabicName String @map("arabic_name")
+ englishName String? @map("english_name")
+ groupNumber String? @map("group_number")
+ groupDescription String? @map("group_description")
+ snapshot Json
+ temporaryHoldMinutes Int @map("temporary_hold_minutes")
+ minimumDepositPolicy String? @map("minimum_deposit_policy")
+ notes String?
+ operationsManager String? @map("operations_manager")
+ groupLeader String? @map("group_leader")
+ guide String?
+ contact String?
+ status String
+ bookingOpen Boolean @map("booking_open")
+ currentVersion Int @map("current_version")
+ currentVersionId String @map("current_version_id")
+ departureRecordedAt DateTime? @map("departure_recorded_at")
+ returnRecordedAt DateTime? @map("return_recorded_at")
+ createdAt DateTime @map("created_at")
+ updatedAt DateTime @map("updated_at")
+ versions HupProgramVersion[]
+ history HupProgramHistory[]
+ @@unique([id,companyId,branchId])
+ @@unique([companyId,branchId,code])
+ @@index([companyId,branchId,status,type])
+ @@index([companyId,branchId,seasonId])
+ @@map("hup_programs")
+}
+model HupProgramVersion {
+ id String @id
+ companyId String @map("company_id")
+ branchId String @map("branch_id")
+ programId String @map("program_id")
+ version Int
+ snapshot Json
+ effectiveAt DateTime @map("effective_at")
+ reason String
+ actorId String @map("actor_id")
+ supersedesId String? @map("supersedes_id")
+ program HupProgram @relation(fields:[programId,companyId,branchId],references:[id,companyId,branchId],onDelete:Restrict)
+ @@unique([companyId,branchId,programId,version])
+ @@index([companyId,branchId,programId,effectiveAt])
+ @@map("hup_program_versions")
+}
+model HupProgramHistory {
+ id String @id
+ companyId String @map("company_id")
+ branchId String @map("branch_id")
+ programId String @map("program_id")
+ action String
+ reason String?
+ actorId String @map("actor_id")
+ occurredAt DateTime @map("occurred_at")
+ program HupProgram @relation(fields:[programId,companyId,branchId],references:[id,companyId,branchId],onDelete:Restrict)
+ @@index([companyId,branchId,programId,occurredAt])
+ @@map("hup_program_history")
 }

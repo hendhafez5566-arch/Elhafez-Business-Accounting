@@ -1,0 +1,1 @@
+import type{ExecutionContext}from'@elhafez/contracts';export interface SeasonAccess{requireBranch(c:ExecutionContext):Promise<void>;requirePermission(c:ExecutionContext,p:string):Promise<void>;audit(c:ExecutionContext,action:string,id:string,metadata?:Record<string,unknown>):Promise<void>;}export const SEASON_ACCESS=Symbol('SEASON_ACCESS');

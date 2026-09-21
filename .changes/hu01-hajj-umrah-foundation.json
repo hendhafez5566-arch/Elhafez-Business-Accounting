@@ -1,0 +1,34 @@
+{
+  "id": "hu01-hajj-umrah-foundation",
+  "summary": "Implement HU-01 generic tourism service inventory, multi-allocation finance orchestration, and canonical Hajj/Umrah Seasons and Programs foundations.",
+  "type": "phase",
+  "allowedModules": [
+    "tourism-contract-inventory",
+    "tourism-finance-orchestration",
+    "hajj-umrah-seasons",
+    "hajj-umrah-programs"
+  ],
+  "allowedPaths": [
+    ".changes/hu01-hajj-umrah-foundation.json",
+    "apps/api/package.json",
+    "apps/api/src/app.module.ts",
+    "apps/web/src/routes.tsx",
+    "apps/web/src/hajj-umrah-pages.tsx",
+    "apps/web/src/hajj-umrah.spec.ts",
+    "pnpm-lock.yaml",
+    "prisma/schema.prisma",
+    "prisma/migrations/20260921160000_hu01_hajj_umrah_foundation/migration.sql"
+  ],
+  "protectedPaths": [
+    "modules/tourism-contract-inventory/module.json",
+    "modules/tourism-finance-orchestration/module.json",
+    "modules/hajj-umrah-seasons/module.json",
+    "modules/hajj-umrah-programs/module.json",
+    "apps/api/src/app.module.ts",
+    "apps/web/src/routes.tsx",
+    "prisma/schema.prisma"
+  ],
+  "protectedReason": "HU-01 explicitly extends two accepted owners, creates the two exact owner-approved planned modules, registers their composition boundaries, and adds forward-only owned persistence.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": ""
+}

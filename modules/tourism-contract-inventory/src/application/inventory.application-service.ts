@@ -14,6 +14,7 @@ import type {
   TourismContract,
   TransportCapacity,
   VisaQuota,
+  GenericServiceInventory, ServiceCategory,
 } from '../domain/inventory.js';
 
 interface BaseInput {
@@ -68,6 +69,7 @@ export interface CreateVisaQuotaInput extends BaseInput {
   readonly effectiveFrom: string;
   readonly effectiveTo: string;
 }
+export interface CreateGenericServiceInput extends BaseInput {readonly contractId:string;readonly category:ServiceCategory;readonly name:string;readonly description?:string;readonly unit:string;readonly serviceStart:string;readonly serviceEnd:string;readonly capacity:DecimalAmount;readonly releaseDeadline?:string;}
 
 export interface CreateStopSaleInput extends BaseInput {
   readonly contractId: string;
@@ -205,6 +207,7 @@ export interface TourismContractInventoryApplicationService {
   createFlightBlock(input: CreateFlightBlockInput, key?: string): Promise<FlightBlock>;
   createTransportCapacity(input: CreateTransportCapacityInput, key?: string): Promise<TransportCapacity>;
   createVisaQuota(input: CreateVisaQuotaInput, key?: string): Promise<VisaQuota>;
+  createGenericService(input:CreateGenericServiceInput,key?:string):Promise<GenericServiceInventory>;
   createStopSale(input: CreateStopSaleInput, key?: string): Promise<StopSale>;
   checkAvailability(input: CheckAvailabilityInput): Promise<AvailabilityResult>;
   allocateCapacity(input: AllocateCapacityInput, key?: string): Promise<AllocationResult>;

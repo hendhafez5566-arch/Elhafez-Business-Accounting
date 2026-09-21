@@ -41,5 +41,7 @@
     "@elhafez/procurement-fulfillment": "workspace:*",
     "@elhafez/supplier-evaluation": "workspace:*",
     "@elhafez/supplier-disputes": "workspace:*"
+    ,"@elhafez/hajj-umrah-seasons": "workspace:*"
+    ,"@elhafez/hajj-umrah-programs": "workspace:*"
   }
 }
