@@ -76,7 +76,7 @@ export const travelDocumentId = (value: string): TravelDocumentId => {
 };
 
 export const requiredText = (value: string, field: string): string => {
-  const normalized = value.trim().replace(/s+/g, ' ');
+  const normalized = value.trim().replace(/\s+/g, ' ');
   if (!normalized) throw new ContractValidationError(field, 'is required');
   return normalized;
 };
@@ -86,14 +86,14 @@ export const optionalText = (value: string | undefined | null): string | null =>
 export const isoDate = (value: string | undefined | null, field: string): string | null => {
   if (!value?.trim()) return null;
   const normalized = value.trim();
-  if (!/^d{4}-d{2}-d{2}$/.test(normalized)) throw new ContractValidationError(field, 'must be an ISO date (YYYY-MM-DD)');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) throw new ContractValidationError(field, 'must be an ISO date (YYYY-MM-DD)');
   const date = new Date(`${normalized}T00:00:00Z`);
   if (Number.isNaN(date.valueOf()) || date.toISOString().slice(0, 10) !== normalized) throw new ContractValidationError(field, 'must be a valid calendar date');
   return normalized;
 };
 
 export const passportNumber = (value: string): string => {
-  const normalized = value.trim().toUpperCase().replace(/[s-]+/g, '');
+  const normalized = value.trim().toUpperCase().replace(/[\s-]+/g, '');
   if (!/^[A-Z0-9]{4,20}$/.test(normalized)) throw new ContractValidationError('documentNumber', 'must be 4-20 alphanumeric characters');
   return normalized;
 };
