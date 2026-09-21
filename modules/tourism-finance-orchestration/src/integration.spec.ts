@@ -690,20 +690,36 @@ function procurementFixture() {
     async po(companyId, id) {
       return purchaseOrders.get(key(companyId, id));
     },
+    async listPos(companyId, branchId) {
+      return [...purchaseOrders.values()].filter(
+        (value) =>
+          value.companyId === companyId &&
+          (branchId === undefined || value.branchId === branchId),
+      );
+    },
     async posByCommitment(companyId, commitmentId) {
       return [...purchaseOrders.values()].filter(
         (value) => value.companyId === companyId && value.commitmentId === commitmentId,
       );
     },
-    async poByNumber(companyId, number) {
+    async poByNumber(companyId, branchId, number) {
       return [...purchaseOrders.values()].find(
-        (value) => value.companyId === companyId && value.number === number,
+        (value) =>
+          value.companyId === companyId &&
+          value.branchId === branchId &&
+          value.number === number,
       );
+    },
+    async nextPoNumber(_companyId, _branchId, _year) {
+      throw new Error('PO numbering is not expected in cancellation cleanup coverage');
     },
     async savePo(value, record) {
       purchaseOrders.set(key(value.companyId, value.id), value);
       appendHistory(record);
       return value;
+    },
+    async updateDraftPo() {
+      throw new Error('PO draft editing is not expected in cancellation cleanup coverage');
     },
     async approvePo() {
       throw new Error('PO approval is not expected in cancellation cleanup coverage');
@@ -724,6 +740,9 @@ function procurementFixture() {
     },
     async receive() {
       throw new Error('PO receipt is not expected in cancellation cleanup coverage');
+    },
+    async adjustReceived() {
+      throw new Error('PO receipt correction is not expected in cancellation cleanup coverage');
     },
     async conversion(companyId, id) {
       return conversions.get(key(companyId, id));
