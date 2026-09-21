@@ -8,6 +8,7 @@
     "proc_supplier_commitments",
     "proc_commitment_history",
     "proc_purchase_orders",
+    "proc_po_number_counters",
     "proc_purchase_order_lines",
     "proc_po_history",
     "proc_invoice_conversions",
