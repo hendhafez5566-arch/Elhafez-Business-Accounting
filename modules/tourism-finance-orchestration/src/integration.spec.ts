@@ -69,7 +69,7 @@ import {
   InventoryAdapter,
   ProcurementAdapter,
   TreasuryAdapter,
-} from './tourism-finance-orchestration.module.js';
+} from './infrastructure/tourism-finance-orchestration.adapters.js';
 
 const company = companyId('company-integration');
 const program = sourceReference('TOURISM_PROGRAM', 'program-1');
