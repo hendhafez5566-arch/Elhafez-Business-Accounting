@@ -51,6 +51,7 @@ class ProcurementPublicAdapter implements ProcurementPort {
     const purchaseOrder = await this.procurement.createPurchaseOrder({
       id: input.requestId,
       companyId: input.companyId,
+      branchId: input.branchId,
       number: `TCI-${input.requestId}`,
       supplierId: input.supplierId,
       origin: 'AUTO',
