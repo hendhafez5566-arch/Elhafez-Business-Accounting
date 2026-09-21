@@ -1,7 +1,8 @@
 {
   "name": "tourism-finance-orchestration",
   "publicApi": [
-    "src/public/index.ts"
+    "src/public/index.ts",
+    "src/public/nest.ts"
   ],
   "ownedTables": [
     "tfo_financial_setups",
