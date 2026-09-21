@@ -282,7 +282,8 @@ test('legacy single procurement reference remains readable by cancellation and r
   const f = fixture(); await f.setup(); await f.confirm();
   const current = await f.repo.booking(company, booking);
   assert.ok(current);
-  await f.repo.saveBooking({ ...current!, procurementReference: { purchaseOrderId: 'legacy-po' }, procurementReferences: undefined });
+  const legacy = Object.fromEntries(Object.entries(current!).filter(([key]) => key !== 'procurementReferences')) as BookingReference;
+  await f.repo.saveBooking({ ...legacy, procurementReference: { purchaseOrderId: 'legacy-po' } });
   f.setProcurementSequence('SUPPLIER_EXECUTION');
   const cancellation = await f.service.getBookingCancellationBlockers({ companyId: company, branchId: 'branch-1', booking, travelStarted: false, travelEvidence: 'none' });
   assert.ok(cancellation.blockers.some((item) => item.type === 'SUPPLIER_EXECUTION'));
