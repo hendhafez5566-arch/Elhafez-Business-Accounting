@@ -57,45 +57,13 @@ SELECT
   split_part("number", '-', 2)::INTEGER AS "year",
   MAX(split_part("number", '-', 3)::INTEGER) AS "next_value"
 FROM "proc_purchase_orders"
-WHERE "number" ~ '^PO-[0-9]{4}-[0-9]{6}
-
-CREATE TABLE "pf_fulfillment_records" (
-  "id" TEXT NOT NULL,
-  "company_id" TEXT NOT NULL,
-  "branch_id" TEXT NOT NULL,
-  "purchase_order_id" TEXT NOT NULL,
-  "line_id" TEXT NOT NULL,
-  "supplier_id" TEXT NOT NULL,
-  "kind" TEXT NOT NULL,
-  "status" TEXT NOT NULL,
-  "requested_quantity" DECIMAL(38,18) NOT NULL,
-  "previous_received_quantity" DECIMAL(38,18),
-  "resulting_received_quantity" DECIMAL(38,18),
-  "correction_of_id" TEXT,
-  "reason" TEXT,
-  "note" TEXT,
-  "attachment_ids" JSONB NOT NULL,
-  "actor_id" TEXT NOT NULL,
-  "request_hash" TEXT NOT NULL,
-  "created_at" TIMESTAMP(3) NOT NULL,
-  "applied_at" TIMESTAMP(3),
-  CONSTRAINT "pf_fulfillment_records_pkey" PRIMARY KEY ("id")
-);
-
-CREATE UNIQUE INDEX "pf_fulfillment_records_company_id_id_key"
-  ON "pf_fulfillment_records"("company_id","id");
-CREATE INDEX "pf_fulfillment_records_company_id_branch_id_purchase_order_id_created_at_idx"
-  ON "pf_fulfillment_records"("company_id","branch_id","purchase_order_id","created_at");
-CREATE INDEX "pf_fulfillment_records_company_id_correction_of_id_idx"
-  ON "pf_fulfillment_records"("company_id","correction_of_id");
-
+WHERE "number" ~ '^PO-[0-9]{4}-[0-9]{6}'
 GROUP BY "company_id","branch_id",split_part("number", '-', 2)::INTEGER
 ON CONFLICT ("company_id","branch_id","year")
 DO UPDATE SET "next_value" = GREATEST(
   "proc_po_number_counters"."next_value",
   EXCLUDED."next_value"
 );
-
 
 CREATE TABLE "pf_fulfillment_records" (
   "id" TEXT NOT NULL,
