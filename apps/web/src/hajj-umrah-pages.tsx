@@ -266,7 +266,6 @@ function programToInput(program: Program): ProgramInput {
 
 export function ProgramsView({
   rows,
-  capabilities,
   loading = false,
   error = '',
 }: {
