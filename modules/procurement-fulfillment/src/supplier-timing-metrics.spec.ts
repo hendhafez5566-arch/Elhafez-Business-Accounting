@@ -7,7 +7,7 @@ import{InMemoryProcurementFulfillmentRepository}from'./infrastructure/in-memory-
 const company=companyId('company-a');
 function purchaseOrder(id:string,expectedDate?:string):PurchaseOrder{return{id,companyId:company,branchId:'branch-a',supplierId:'party-a',number:id,origin:'AUTO',status:'RECEIVED',...(expectedDate?{expectedDate}:{}),requestHash:id,createdAt:'2026-09-01T00:00:00Z',lines:[{id:id+'-line',companyId:company,purchaseOrderId:id,itemReference:'x',orderedQuantity:decimalAmount('10'),receivedQuantity:decimalAmount('10'),invoicedQuantity:decimalAmount('0')}]};}
 const orders=[purchaseOrder('on-time','2026-09-10'),purchaseOrder('late','2026-09-01'),purchaseOrder('no-date'),purchaseOrder('no-evidence','2026-09-10')];
-const procurement={purchaseOrdersForSupplierMetricsForIntegration:async(_c:CompanyId,_b:string,_s:string)=>orders};
+const procurement={purchaseOrdersForSupplierMetricsForIntegration:async(...args:[CompanyId,string,string])=>{assert.equal(args[0],company);assert.equal(args[1],'branch-a');assert.equal(args[2],'party-a');return orders;}};
 test('timing classification uses applied receipt evidence and corrections never fabricate completion',async()=>{
  const repo=new InMemoryProcurementFulfillmentRepository(),service=new ProcurementFulfillmentApplicationService(repo,procurement as never,{} as never);
  async function applied(id:string,purchaseOrderId:string,kind:'RECEIPT'|'CORRECTION',result:string,at:string){
