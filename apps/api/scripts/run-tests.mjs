@@ -20,20 +20,11 @@ if (!files.length) {
   process.exit(1);
 }
 
-const tsxCli = fileURLToPath(import.meta.resolve('tsx/cli'));
+const runtime = fileURLToPath(new URL('./typescript-test-runtime.mjs', import.meta.url));
 const result = spawnSync(
   process.execPath,
-  [
-    tsxCli,
-    '--tsconfig',
-    resolve('tsconfig.json'),
-    '--test',
-    ...files,
-  ],
-  {
-    stdio: 'inherit',
-    env: process.env,
-  },
+  ['--import', runtime, '--test', ...files],
+  { stdio: 'inherit', env: process.env },
 );
 
 if (result.error) throw result.error;
