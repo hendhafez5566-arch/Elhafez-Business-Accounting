@@ -22,7 +22,8 @@
     "docs/BUSINESS-MODULE-ARCHITECTURE.md",
     "pnpm-lock.yaml",
     "prisma/schema.prisma",
-    "prisma/migrations/20260920231000_sp02_procurement_operations/migration.sql"
+    "prisma/migrations/20260920231000_sp02_procurement_operations/migration.sql",
+    "apps/api/src/ac14-migration/ac14-migration.module.ts"
   ],
   "protectedPaths": [
     "modules/procurement-finance/module.json",
