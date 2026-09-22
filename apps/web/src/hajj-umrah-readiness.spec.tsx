@@ -15,7 +15,7 @@ const booking360={booking:{id:'b1',code:'BK-1',programId:'p1',status:'CONFIRMED'
 
 test('HU-03 web client calls the real readiness endpoints and HTTP method',async()=>{
  const calls:Array<{path:string;method?:string}>=[];
- const api=createHajjUmrahReadinessApi(async<T>(path:string,init?:RequestInit)=>{calls.push({path,...(init?.method?{method:init.method}:{})});return{}as T});
+ const api=createHajjUmrahReadinessApi(async <T,>(path:string,init?:RequestInit)=>{calls.push({path,...(init?.method?{method:init.method}:{})});return{}as T});
  await api.programReadiness('program /1');await api.booking360('booking/1');await api.workQueue('p1');await api.reports('p1');await api.closeProgram('p1');
  assert.deepEqual(calls,[
   {path:'/hajj-umrah/readiness/program/program%20%2F1'},
