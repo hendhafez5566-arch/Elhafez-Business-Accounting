@@ -405,6 +405,12 @@ export class HajjUmrahProgramsApplicationService {
     if (old.status === 'CANCELLED') {
       throw new ContractValidationError('status', 'cancelled program cannot be amended');
     }
+    if (old.status === 'CLOSED') {
+      throw new ContractValidationError(
+        'status',
+        'closed program cannot be amended; explicitly reopen it first',
+      );
+    }
     const packageSnapshot = normalized(input);
     await this.seasons.validate(
       context.companyId,
