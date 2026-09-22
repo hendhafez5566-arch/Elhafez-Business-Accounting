@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { executionContext, type CompanyId, type ExecutionContext } from '@elhafez/contracts';
+import { executionContext, sourceReference, type CompanyId, type ExecutionContext } from '@elhafez/contracts';
 import { HajjUmrahBookingsApplicationService } from './application/hajj-umrah-bookings.application-service.js';
 import type { BookingRepository } from './application/booking.repository.js';
 import type { BookingAccess, BookingFinancePort } from './application/booking.ports.js';
@@ -25,7 +25,7 @@ function fixture(){
 }
 const c=executionContext('c1','b1','u1');
 const create={code:'B1',programId:'p1',customerId:'cust',travelerIds:['t1','t2']};
-const confirm={commandKey:'confirm:B1',category:'OTHER' as const,costCenterId:'cc1',currency:'SAR',grossAmount:'1000',discountAmount:'0',postingDate:'2026-09-22',dueDate:'2027-01-01',invoiceNumber:'INV-B1',inventories:[{allocationId:'req-hotel',contractId:'hc',resourceType:'HOTEL',resourceId:'hotel-1',serviceDate:'2027-01-10',quantity:'2'},{allocationId:'req-flight',contractId:'fc',resourceType:'FLIGHT_BLOCK',resourceId:'flight-1',serviceDate:'2027-01-10',quantity:'2',flightSegmentReference:{sourceType:'SEGMENT',sourceId:'seg-1'}}]};
+const confirm={commandKey:'confirm:B1',category:'OTHER' as const,costCenterId:'cc1',currency:'SAR',grossAmount:'1000',discountAmount:'0',postingDate:'2026-09-22',dueDate:'2027-01-01',invoiceNumber:'INV-B1',inventories:[{allocationId:'req-hotel',contractId:'hc',resourceType:'HOTEL',resourceId:'hotel-1',serviceDate:'2027-01-10',quantity:'2'},{allocationId:'req-flight',contractId:'fc',resourceType:'FLIGHT_BLOCK',resourceId:'flight-1',serviceDate:'2027-01-10',quantity:'2',flightSegmentReference:sourceReference('SEGMENT','seg-1')}]};
 
 test('creates preliminary booking with canonical traveler validation and branch isolation',async()=>{const f=fixture();const b=await f.service.create(c,create);assert.equal(b.status,'PRELIMINARY');assert.equal(b.financialState,'UNCONFIRMED');assert.deepEqual(b.travelerIds,['t1','t2']);await assert.rejects(()=>f.service.get(executionContext('c1','other','u1'),b.id),/branch denied/);});
 test('invalid traveler reference is rejected through owner boundary',async()=>{const f=fixture();await assert.rejects(()=>f.service.create(c,{...create,travelerIds:['bad']}),/traveler/);});
