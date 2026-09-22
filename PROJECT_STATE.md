@@ -1,17 +1,18 @@
 # PROJECT STATE — UPDATE AFTER EVERY ACCEPTED PHASE MERGE
 
-Last verified: 2026-09-20
+Last verified: 2026-09-22
 
 ## Repository
 
 - Repository: `mhafez300300-byte/Elhafez-Business-Accounting`
 - Source of Truth: GitHub
-- Last accepted business implementation baseline SHA (AC-14 merge): `350ba7dfc5e9e46e355a805a2c3dada1420ca53b`
+- Current live `main` HEAD verified on 2026-09-22: `425b8b5288f716c9d4b7efbdd58fc3d488e6b70d` (PR #68 — Hajj & Umrah Umrah Barcode UI shell)
+- Last accepted Accounting implementation baseline SHA (AC-14 merge): `350ba7dfc5e9e46e355a805a2c3dada1420ca53b`
 - Always verify the live `main` HEAD before execution; governance-only commits may follow the business baseline.
 - Current closed accounting phase: **AC-14**
 - Accounting next phase: **None. There is no approved AC-15.**
 - Post-AC-14 Business Platform architecture: **OWNER APPROVED** and defined by `docs/BUSINESS-MODULE-ARCHITECTURE.md` + `docs/BUSINESS-MODULE-ROUTING.md` (governance PR #55).
-- Next business implementation phase: **NOT STARTED**. It must be selected from the canonical PLANNED module map; do not invent ownership from menu labels.
+- Post-AC-14 business implementation has progressed on `main`: CRM & Sales (CS-01 through CS-03), Suppliers & Procurement (SP-01 through SP-03), and Hajj & Umrah (HU-01 through HU-03) are merged. Egyptian Umrah Barcode is currently a UI shell only, with no backend/data implementation. Tourism & Services, Management & Control, and System Administration remain the primary unclosed suite-audit/build areas.
 
 ## Closed / accepted foundation
 
@@ -184,6 +185,50 @@ Final AC-14 hardening includes:
 
 Final cumulative PR #52 and final main-targeting PR #53 both passed CI for frozen install, Change Safety, Prisma generation, typecheck, lint, architecture check and full tests.
 
+## Post-AC-14 merged business-suite implementation status
+
+The live repository has progressed beyond the 2026-09-20 governance snapshot. The following implementation sequences are now present on `main`:
+
+### CRM & Sales
+
+Status: **CS-01 through CS-03 MERGED ON MAIN**
+
+- CS-01 — CRM Core: PR #56, main merge SHA `7df79615b1689c50c8f83b5b7d110a6d8c98bbd9`
+- CS-02 — Sales & Quotations: PR #58, main merge SHA `dc93941165a7cb34f0b209b09e50955542615bf7`
+- CS-03 — Final CRM Integration & Migration: PR #61, main merge SHA `c8be34ca7beef04f5b27b84ad5992c863060ff59`
+- Current merged owners include `party-registry`, `customer-management`, `agent-management`, `crm-leads`, `crm-followups`, `quotations`, and shared `traveler-management`.
+
+### Suppliers & Procurement
+
+Status: **SP-01 through SP-03 MERGED ON MAIN**
+
+- SP-01 — Supplier Foundation & Governance: PR #59, main merge SHA `a26c14411e8de57b4b0f66b5778dcca3e2748af3`
+- SP-02 — Procurement Operations & Fulfillment: PR #60, main merge SHA `56e6a27c1718f92727c7215926309029142b6ab8`
+- SP-02 migration-integrity repair: PR #62, main merge SHA `998b63c34ebc22c7f1630e6e1b7f9daf815bf69f`
+- SP-03 — Supplier Intelligence / Evaluation / Disputes: PR #63, main merge SHA `13ae747e9fa40a48eb3bd383b9d3c59bf4549ee5`
+- Current merged owners include `supplier-management`, `procurement-finance`, `procurement-fulfillment`, `supplier-evaluation`, and `supplier-disputes`.
+
+### Hajj & Umrah
+
+Status: **HU-01 through HU-03 MERGED ON MAIN**
+
+- HU-01 — Hajj & Umrah Foundation / Seasons / Programs: PR #64, main merge SHA `75e713cc6ac35b9040e45edbad4e15b77127fbb7`
+- HU-02 — Bookings & Full Operations: PR #66, main merge SHA `c47378dcfd61f55548fe4d4bc1ed8bf915c6a3ce`
+- HU-03 — Final Readiness, Reporting & Closure: PR #67, main merge SHA `9267a92aa6095c74260d8769b21f1c9eec3dc8b1`
+- Umrah Barcode UI shell: PR #68, main merge SHA `425b8b5288f716c9d4b7efbdd58fc3d488e6b70d`
+- Current merged owners include `hajj-umrah-seasons`, `hajj-umrah-programs`, `hajj-umrah-bookings`, `hajj-umrah-rooming`, `hajj-umrah-visa-operations`, `hajj-umrah-ticketing`, `hajj-umrah-transport-operations`, `hajj-umrah-trip-operations`, `hajj-umrah-readiness`, and shared `traveler-management`.
+- `hajj-umrah-barcode` is **not yet a functional backend module**. The current implementation is presentation-only / coming-soon UI and owns no business data.
+
+### Remaining primary suite-audit/build areas
+
+The principal top-level suites that have not yet received an equivalent completed implementation sequence are:
+
+1. Tourism & Services
+2. Management & Control
+3. System Administration
+
+Important: the canonical architecture/routing documents still contain some historical `PLANNED` labels for modules that have since been implemented. For implementation truth, prefer the actual current `main` modules, merged PR history, and public boundaries. Do not duplicate an owner merely because an older status label was not refreshed.
+
 ## Post-AC-14 Business Platform architecture
 
 Owner decision:
@@ -216,6 +261,8 @@ Governance record: PR #55.
 ## Post-AC-14 state
 
 The approved accounting build sequence AC-00 through AC-14 is **CLOSED / ACCEPTED / MERGED**.
+
+Current live platform state on 2026-09-22 also includes merged CRM & Sales CS-01..CS-03, Suppliers & Procurement SP-01..SP-03, and Hajj & Umrah HU-01..HU-03. PR #68 adds only the Umrah Barcode coming-soon UI shell; functional barcode behavior remains future work.
 
 There is currently **no approved AC-15**.
 
