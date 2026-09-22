@@ -40,8 +40,8 @@ function fixture(requirements:any[]=['HOTEL','VISA','FLIGHT','TRANSPORT']){
  const sources:ReadinessSources={
   async program(_c,id){if(id!=='p1')throw new Error('not found');return program as Program},
   async closeProgramOwner(_c,_id,expected){state.ownerClose++;if(program.updatedAt!==expected)throw new Error('concurrent');program={...program,status:'CLOSED',bookingOpen:false,returnRecordedAt:at,updatedAt:at};return program},
-  async booking(_c,id){const b=bookings.find(x=>x.id===id);if(!b)throw new Error('not found');return b},
-  async bookings(){return bookings},
+  async booking(_c,id){const b=bookings.find(x=>x.id===id);if(!b)throw new Error('not found');return{...b,status:state.bookingStatus}},
+  async bookings(){return bookings.map(b=>({...b,status:state.bookingStatus}))},
   async traveler(_c,id){return{id,companyId:ctx.companyId,fullName:id,status:'ACTIVE',dateOfBirth:null,gender:null,nationality:'EG',partyId:null,customerId:null,createdAt:at,updatedAt:at}as any},
   async passport(_c,id){return{id:'pass-'+id,companyId:ctx.companyId,travelerId:id,documentType:'PASSPORT',documentNumber:'P12345',issuingCountry:'EG',issuingPlace:null,holderNameSnapshot:id,issueDate:'2024-01-01',expiryDate:'2028-01-01',isCurrent:true,supersededByDocumentId:null,createdAt:at}as any},
   async rooming(){return state.rooming?bookings.flatMap((b:any)=>b.travelerIds.map((t:string)=>({id:'room-'+b.id+t,companyId:ctx.companyId,branchId:'b1',programId:'p1',bookingId:b.id,travelerId:t,allocationId:'ra',roomKey:'101',startDate:'2027-05-01',endDate:'2027-05-20',status:'ASSIGNED',revision:1,createdAt:at,updatedAt:at}as any))):[]},
