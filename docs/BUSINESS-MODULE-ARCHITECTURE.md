@@ -222,3 +222,7 @@ Examples:
 - Approval Center may aggregate decisions from several owners without becoming the owner of those decisions.
 
 This separation is deliberate and is the basis for safe future modifications.
+
+## MC-SA-01 finalized administration boundaries
+
+`data-exchange` is the canonical owner of scoped import/export job metadata, mappings, validation and row outcomes; imported business records remain owned and written through target-owner public APIs. `platform-operations` is the canonical owner of backup/restore/verification and diagnostic evidence and uses infrastructure provider ports rather than business-table access. Commercial licensing, custom fields and global numbering are not part of either owner.

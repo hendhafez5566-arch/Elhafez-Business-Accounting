@@ -1,0 +1,34 @@
+{
+  "id": "mc-sa01-system-admin-platform-ops",
+  "summary": "Complete company-scoped System Administration in platform-core and add the canonical data-exchange and platform-operations owners, API/web composition, persistence, and legacy administration migration coverage.",
+  "type": "phase",
+  "allowedModules": ["platform-core", "data-exchange", "platform-operations"],
+  "allowedPaths": [
+    ".changes/mc-sa01-system-admin-platform-ops.json",
+    "apps/api/package.json",
+    "apps/api/src/app.module.ts",
+    "apps/api/src/system-administration.controller.ts",
+    "apps/api/src/mc-sa01-system-administration.spec.ts",
+    "apps/api/src/mc-sa01-legacy-admin-migration.ts",
+    "apps/web/src/routes.tsx",
+    "apps/web/src/system-administration-client.ts",
+    "apps/web/src/system-administration-page.tsx",
+    "apps/web/src/system-administration.spec.ts",
+    "pnpm-lock.yaml",
+    "prisma/schema.prisma",
+    "prisma/migrations/20260922210000_mc_sa01_system_administration/migration.sql",
+    "docs/BUSINESS-MODULE-ARCHITECTURE.md"
+  ],
+  "protectedPaths": [
+    "modules/platform-core/module.json",
+    "modules/data-exchange/module.json",
+    "modules/platform-operations/module.json",
+    "apps/api/src/app.module.ts",
+    "apps/web/src/routes.tsx",
+    "prisma/schema.prisma",
+    "docs/BUSINESS-MODULE-ARCHITECTURE.md"
+  ],
+  "protectedReason": "MC-SA-01 extends the accepted platform-core owner, creates the two owner-approved modules, registers their API/web composition, adds forward-only owned persistence, and records the finalized public ownership boundary.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": ""
+}

@@ -17,6 +17,7 @@ model PcUser {
   updatedAt    DateTime             @updatedAt @map("updated_at")
   sessions     PcSession[]
   userRoles    PcUserRole[]
+  recoveryTokens PcPasswordRecovery[]
   branchAccess PcUserBranchAccess[]
 
   @@map("pc_users")
@@ -43,11 +44,14 @@ model PcPermission {
 
 model PcUserRole {
   userId String @map("user_id")
+  companyId String @map("company_id")
   roleId String @map("role_id")
   user   PcUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company PcCompany @relation(fields: [companyId], references: [id], onDelete: Cascade)
   role   PcRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
-  @@id([userId, roleId])
+  @@id([userId, companyId, roleId])
+  @@index([companyId, userId])
   @@map("pc_user_roles")
 }
 
@@ -67,6 +71,7 @@ model PcCompany {
   active    Boolean    @default(true)
   createdAt DateTime   @default(now()) @map("created_at")
   branches  PcBranch[]
+  userRoles PcUserRole[]
 
   @@map("pc_companies")
 }
@@ -105,6 +110,19 @@ model PcSession {
 
   @@index([userId])
   @@map("pc_sessions")
+}
+
+
+model PcPasswordRecovery {
+  id String @id @default(uuid())
+  userId String @map("user_id")
+  tokenHash String @unique @map("token_hash")
+  expiresAt DateTime @map("expires_at")
+  usedAt DateTime? @map("used_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  user PcUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, expiresAt])
+  @@map("pc_password_recovery")
 }
 
 model PcAuditLog {
@@ -3264,4 +3282,58 @@ model HureClosureEvidence {
  @@unique([companyId, commandKey], map: "hure_close_command_uq")
  @@index([companyId, branchId, programId, status, updatedAt], map: "hure_close_program_status_idx")
  @@map("hure_closure_evidence")
+}
+
+
+model DexJob {
+ id String @id @default(uuid())
+ companyId String @map("company_id")
+ branchId String? @map("branch_id")
+ direction String
+ status String
+ fileName String @map("file_name")
+ mapping Json
+ idempotencyKey String @map("idempotency_key")
+ resultKey String? @map("result_key")
+ createdAt DateTime @default(now()) @map("created_at")
+ rows DexRow[]
+ @@unique([companyId,idempotencyKey])
+ @@index([companyId,createdAt])
+ @@map("dex_jobs")
+}
+model DexRow {
+ id String @id @default(uuid())
+ jobId String @map("job_id")
+ rowNumber Int @map("row_number")
+ source Json
+ outcome String
+ error String?
+ job DexJob @relation(fields:[jobId],references:[id],onDelete:Cascade)
+ @@unique([jobId,rowNumber])
+ @@map("dex_rows")
+}
+model PopsBackupJob {
+ id String @id
+ actorId String @map("actor_id")
+ companyId String? @map("company_id")
+ status String
+ manifest Json
+ checksum String?
+ providerRef String? @map("provider_ref")
+ pinned Boolean @default(false)
+ error String?
+ createdAt DateTime @default(now()) @map("created_at")
+ restores PopsRestoreJob[]
+ @@index([companyId,createdAt])
+ @@map("pops_backup_jobs")
+}
+model PopsRestoreJob {
+ id String @id
+ backupId String @map("backup_id")
+ actorId String @map("actor_id")
+ status String
+ error String?
+ createdAt DateTime @default(now()) @map("created_at")
+ backup PopsBackupJob @relation(fields:[backupId],references:[id],onDelete:Restrict)
+ @@map("pops_restore_jobs")
 }

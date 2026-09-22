@@ -1,0 +1,1 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {foundationRoutes} from './routes.js';test('Arabic System Administration workspace exposes all approved areas',()=>{const route=foundationRoutes.find(x=>x.id==='system-administration');assert.equal(route?.path,'/system-administration');assert.equal(route?.group,'إدارة النظام')});
