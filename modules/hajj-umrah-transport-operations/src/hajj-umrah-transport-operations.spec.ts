@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { ContractValidationError, executionContext, type CompanyId, type ExecutionContext } from '@elhafez/contracts';
+import { ContractValidationError, executionContext, sourceReference, type CompanyId, type ExecutionContext } from '@elhafez/contracts';
 import { HajjUmrahTransportOperationsApplicationService } from './application/hajj-umrah-transport-operations.application-service.js';
 import type { TransportRepository } from './application/transport.repository.js';
 import type { TransportAccess } from './application/transport.ports.js';
@@ -129,7 +129,7 @@ function fixture(quantity='2'){
     repo,new Access(),
     {async requireTraveler(_context,bookingId,travelerId){return{id:bookingId,companyId:'c1' as CompanyId,branchId:'b1',code:'B',programId:'p1',customerId:'c',customerPartyId:'p',travelerIds:[travelerId],status:'CONFIRMED',financialState:'CONFIRMED',allocationIds:['a1'],createdAt:'',updatedAt:''}}},
     {async requireActive(_context,id){return{id:id as never,companyId:'c1' as CompanyId,fullName:'T',dateOfBirth:null,gender:null,nationality:null,partyId:null,customerId:null,status:'ACTIVE',createdAt:'',updatedAt:''}}},
-    {async allocation(){return{id:'a1',companyId:'c1' as CompanyId,contractId:'tc',contractVersionId:'tv',resourceType:'TRANSPORT',resourceId:'bus-cap',program:{sourceType:'HAJJ_UMRAH_PROGRAM',sourceId:'p1'},serviceDate:'2027-01-01T00:00:00.000Z',periodEnd:'2027-01-02T00:00:00.000Z',quantity:quantity as never,status:'CONFIRMED',createdAt:''}}},
+    {async allocation(){return{id:'a1',companyId:'c1' as CompanyId,contractId:'tc',contractVersionId:'tv',resourceType:'TRANSPORT',resourceId:'bus-cap',program:sourceReference('HAJJ_UMRAH_PROGRAM','p1'),serviceDate:'2027-01-01T00:00:00.000Z',periodEnd:'2027-01-02T00:00:00.000Z',quantity:quantity as never,status:'CONFIRMED',createdAt:''}}},
     ()=>new Date('2026-09-22T00:00:00Z'),()=>`id-${++sequence}`,
   );
   return{repo,service};
