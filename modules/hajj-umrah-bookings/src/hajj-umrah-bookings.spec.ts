@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { executionContext, type ExecutionContext } from '@elhafez/contracts';
+import { executionContext, type CompanyId, type ExecutionContext } from '@elhafez/contracts';
 import { HajjUmrahBookingsApplicationService } from './application/hajj-umrah-bookings.application-service.js';
 import type { BookingRepository } from './application/booking.repository.js';
 import type { BookingAccess, BookingFinancePort } from './application/booking.ports.js';
@@ -20,7 +20,7 @@ const program={id:'p1',companyId:'c1',branchId:'b1',code:'P',type:'UMRAH' as con
 function fixture(){
   const repo=new Repo();let n=0;let confirmCalls=0,cancelCalls=0;let open=true;let cancelResult:unknown={cancelled:true};
   const finance:BookingFinancePort={async confirm(i){confirmCalls++;return{workflowId:'w1',allocations:i.inventories.map((_,x)=>({id:`alloc-${x+1}`,quantity:'1'}))};},async cancel(){cancelCalls++;return cancelResult;}};
-  const service=new HajjUmrahBookingsApplicationService(repo,new Access(),{async require(){return{...program,bookingOpen:open};}},{async requireActive(_c,id){if(id==='bad')throw Error('traveler not found');return{id:id as any,companyId:'c1' as any,fullName:id,dateOfBirth:null,gender:null,nationality:null,partyId:null,customerId:'cust',status:'ACTIVE',createdAt:'',updatedAt:''};}},{async requireActive(){return{id:'cust' as any,companyId:'c1' as any,partyId:'party-c',number:'C',status:'ACTIVE',assignedAgentId:null,commercialNotes:null,createdAt:'',updatedAt:''};},async register(){}},{async requireActive(){return{id:'agent' as any,companyId:'c1' as any,partyId:'party-a',number:'A',status:'ACTIVE',notes:null,commission:{kind:'PERCENT' as const,value:'0',currency:null},createdAt:'',updatedAt:''};},async register(){}},finance,()=>new Date('2026-09-22T00:00:00Z'),()=>`id-${++n}`);
+  const service=new HajjUmrahBookingsApplicationService(repo,new Access(),{async require(){return{...program,bookingOpen:open};}},{async requireActive(_c,id){if(id==='bad')throw Error('traveler not found');return{id:id as never,companyId:'c1' as CompanyId,fullName:id,dateOfBirth:null,gender:null,nationality:null,partyId:null,customerId:'cust',status:'ACTIVE',createdAt:'',updatedAt:''};}},{async requireActive(){return{id:'cust' as never,companyId:'c1' as CompanyId,partyId:'party-c',number:'C',status:'ACTIVE',assignedAgentId:null,commercialNotes:null,createdAt:'',updatedAt:''};},async register(){}},{async requireActive(){return{id:'agent' as never,companyId:'c1' as CompanyId,partyId:'party-a',number:'A',status:'ACTIVE',notes:null,commission:{kind:'PERCENT' as const,value:'0',currency:null},createdAt:'',updatedAt:''};},async register(){}},finance,()=>new Date('2026-09-22T00:00:00Z'),()=>`id-${++n}`);
   return{repo,service,setOpen:(v:boolean)=>open=v,setCancel:(v:unknown)=>cancelResult=v,calls:()=>({confirmCalls,cancelCalls})};
 }
 const c=executionContext('c1','b1','u1');
