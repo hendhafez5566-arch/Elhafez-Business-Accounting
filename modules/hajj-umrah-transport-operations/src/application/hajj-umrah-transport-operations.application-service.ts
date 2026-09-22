@@ -38,7 +38,7 @@ export class HajjUmrahTransportOperationsApplicationService{
     if(end<=start)throw new ContractValidationError('endsAt','must be after startsAt');
     await this.allocation(context,input.allocationId,required(input.programId,'programId'),start,end);
     const at=this.now().toISOString();
-    const value:TransportRun={id:this.id(),companyId:context.companyId,branchId:context.branchId,programId:input.programId,allocationId:input.allocationId,code:required(input.code,'code'),route:required(input.route,'route'),startsAt:start,endsAt:end,...(input.vehicleReference?.trim()?{vehicleReference:input.vehicleReference.trim()}:{}),...(input.driverReference?.trim()?{driverReference:input.driverReference.trim()}:{}),status:'SCHEDULED',createdAt:at,updatedAt:at};
+    const value:TransportRun={id:this.id(),companyId:context.companyId,branchId:context.branchId,programId:input.programId,allocationId:input.allocationId,code:required(input.code,'code'),route:required(input.route,'route'),startsAt:start,endsAt:end,...(input.vehicleReference?.trim()?{vehicleReference:input.vehicleReference.trim()}:{}),...(input.driverReference?.trim()?{driverReference:input.driverReference.trim()}:{}),status:'SCHEDULED',revision:1,createdAt:at,updatedAt:at};
     return this.repo.createRun(value,this.history(context,'RUN',value.id,'CREATED'));
   }
 
@@ -51,7 +51,7 @@ export class HajjUmrahTransportOperationsApplicationService{
     await this.travelers.requireActive(context,travelerId);
     const allocation=await this.allocation(context,run.allocationId,run.programId,run.startsAt,run.endsAt);
     const at=this.now().toISOString();
-    const value:ManifestAssignment={id:this.id(),companyId:context.companyId,branchId:context.branchId,runId:run.id,bookingId,travelerId,status:'ASSIGNED',createdAt:at,updatedAt:at};
+    const value:ManifestAssignment={id:this.id(),companyId:context.companyId,branchId:context.branchId,runId:run.id,bookingId,travelerId,status:'ASSIGNED',revision:1,createdAt:at,updatedAt:at};
     return this.repo.assignGuarded(value,this.history(context,'MANIFEST',value.id,'ASSIGNED',{runId:run.id,travelerId}),run,allocation.capacity);
   }
 
@@ -62,8 +62,8 @@ export class HajjUmrahTransportOperationsApplicationService{
     const row=(await this.repo.manifest(context.companyId,context.branchId,runId)).find(value=>value.id===assignmentId);
     if(!row)throw new ContractValidationError('assignmentId','manifest assignment not found');
     if(row.status==='REMOVED')return row;
-    const next={...row,status:'REMOVED' as const,updatedAt:this.now().toISOString()};
-    return this.repo.saveAssignment(next,this.history(context,'MANIFEST',row.id,'REMOVED',{runId}));
+    const next={...row,status:'REMOVED' as const,revision:row.revision+1,updatedAt:this.now().toISOString()};
+    return this.repo.saveAssignment(next,this.history(context,'MANIFEST',row.id,'REMOVED',{runId}),row.revision,run.revision);
   }
 
   async dispatch(context:ExecutionContext,id:string){
@@ -72,13 +72,13 @@ export class HajjUmrahTransportOperationsApplicationService{
     if(old.status==='DISPATCHED')return old;
     if(old.status!=='SCHEDULED')throw new ContractValidationError('status','only scheduled run can dispatch');
     await this.allocation(context,old.allocationId,old.programId,old.startsAt,old.endsAt);
-    const next={...old,status:'DISPATCHED' as const,updatedAt:this.now().toISOString()};
-    const saved=await this.repo.saveRun(next,this.history(context,'RUN',id,'DISPATCHED'));
+    const next={...old,status:'DISPATCHED' as const,revision:old.revision+1,updatedAt:this.now().toISOString()};
+    const saved=await this.repo.saveRun(next,this.history(context,'RUN',id,'DISPATCHED'),old.revision,old.status);
     await this.access.audit(context,'hajj-umrah.transport.dispatched',id,{manifestCount:await this.repo.activeManifestCount(context.companyId,context.branchId,id)});
     return saved;
   }
-  async complete(context:ExecutionContext,id:string){await this.permission(context,TRANSPORT_PERMISSIONS.dispatch);const old=await this.run(context,id);if(old.status==='COMPLETED')return old;if(old.status!=='DISPATCHED')throw new ContractValidationError('status','only dispatched run can complete');const next={...old,status:'COMPLETED' as const,updatedAt:this.now().toISOString()};return this.repo.saveRun(next,this.history(context,'RUN',id,'COMPLETED'));}
-  async cancel(context:ExecutionContext,id:string,reason:string){await this.permission(context,TRANSPORT_PERMISSIONS.manage);const old=await this.run(context,id);if(old.status==='CANCELLED')return old;if(old.status!=='SCHEDULED')throw new ContractValidationError('status','dispatched run cannot be cancelled');const next={...old,status:'CANCELLED' as const,updatedAt:this.now().toISOString()};return this.repo.saveRun(next,this.history(context,'RUN',id,'CANCELLED',{reason:required(reason,'reason')}));}
+  async complete(context:ExecutionContext,id:string){await this.permission(context,TRANSPORT_PERMISSIONS.dispatch);const old=await this.run(context,id);if(old.status==='COMPLETED')return old;if(old.status!=='DISPATCHED')throw new ContractValidationError('status','only dispatched run can complete');const next={...old,status:'COMPLETED' as const,revision:old.revision+1,updatedAt:this.now().toISOString()};return this.repo.saveRun(next,this.history(context,'RUN',id,'COMPLETED'),old.revision,old.status);}
+  async cancel(context:ExecutionContext,id:string,reason:string){await this.permission(context,TRANSPORT_PERMISSIONS.manage);const old=await this.run(context,id);if(old.status==='CANCELLED')return old;if(old.status!=='SCHEDULED')throw new ContractValidationError('status','dispatched run cannot be cancelled');const next={...old,status:'CANCELLED' as const,revision:old.revision+1,updatedAt:this.now().toISOString()};return this.repo.saveRun(next,this.history(context,'RUN',id,'CANCELLED',{reason:required(reason,'reason')}),old.revision,old.status);}
   async listRuns(context:ExecutionContext,programId?:string){await this.permission(context,TRANSPORT_PERMISSIONS.view);return this.repo.listRuns(context.companyId,context.branchId,programId);}
   async manifest(context:ExecutionContext,id:string){await this.permission(context,TRANSPORT_PERMISSIONS.view);await this.run(context,id);return this.repo.manifest(context.companyId,context.branchId,id);}
   async historyFor(context:ExecutionContext,type:'RUN'|'MANIFEST',id:string){await this.permission(context,TRANSPORT_PERMISSIONS.view);return this.repo.history(context.companyId,context.branchId,type,id);}
