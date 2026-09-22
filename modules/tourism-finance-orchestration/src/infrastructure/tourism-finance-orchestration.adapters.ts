@@ -149,6 +149,7 @@ export class InventoryAdapter implements InventoryPort {
       resourceId: input.resourceId,
       program: input.program,
       serviceDate: input.serviceDate,
+      ...(input.periodEnd ? { periodEnd: input.periodEnd } : {}),
       quantity: input.quantity,
       ...(input.flightSegmentReference ? { flightSegmentReference: input.flightSegmentReference } : {}),
       ...(input.visaBatchReference ? { visaBatchReference: input.visaBatchReference } : {}),
