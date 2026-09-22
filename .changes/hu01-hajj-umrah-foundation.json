@@ -22,7 +22,9 @@
     "prisma/migrations/20260921160000_hu01_hajj_umrah_foundation/migration.sql",
     ".github/workflows/ci.yml",
     "apps/api/scripts/run-tests.mjs",
-    "apps/api/scripts/typescript-test-runtime.mjs"
+    "apps/api/scripts/typescript-test-runtime.mjs",
+    "apps/api/src/financial-reporting-evidence.adapter.ts",
+    "apps/api/src/crm-sales-read-model.controller.ts"
   ],
   "protectedPaths": [
     "modules/tourism-contract-inventory/module.json",
