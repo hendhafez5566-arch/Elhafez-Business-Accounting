@@ -1,4 +1,4 @@
-import type { ExecutionContext, SourceReference } from '@elhafez/contracts';
+import type { CompanyId, ExecutionContext, SourceReference } from '@elhafez/contracts';
 import type { Program } from '@elhafez/hajj-umrah-programs';
 import type { Traveler } from '@elhafez/traveler-management';
 import type { Customer } from '@elhafez/customer-management';
@@ -27,7 +27,7 @@ export interface BookingFinanceInventoryRequest {
 }
 export interface BookingFinancePort {
   confirm(input: {
-    companyId: string; branchId: string; commandKey: string; bookingId: string; programId: string;
+    companyId: CompanyId; branchId: string; commandKey: string; bookingId: string; programId: string;
     programEvidence: string; category: 'HOTEL'|'FLIGHT'|'TRANSPORT'|'VISA'|'OTHER';
     costCenterId: string; customerPartyId: string; currency: string; grossAmount: string; discountAmount: string;
     approvalRequestId?: string; postingDate: string; dueDate: string; invoiceNumber: string;
@@ -35,7 +35,7 @@ export interface BookingFinancePort {
     commission?: { agentPartyId: string; amount: string };
   }): Promise<unknown>;
   cancel(input: {
-    companyId: string; branchId: string; commandKey: string; bookingId: string;
+    companyId: CompanyId; branchId: string; commandKey: string; bookingId: string;
     travelStarted: boolean; travelEvidence: string; postingDate: string;
   }): Promise<unknown>;
 }
