@@ -343,11 +343,11 @@ export class HajjUmrahReadinessApplicationService{
  async program360(c:ExecutionContext,programId:string){
   await this.permission(c,READINESS_PERMISSIONS.view360);
   const program=await this.sources.program(c,programId),loaded=await this.loaded(c,program.id),readiness=await this.programInternal(c,program,loaded);
-  const travelers=await this.travelerRows(c,program,loaded.bookings);
+  const travelers=await this.travelerRows(c,program,loaded.bookings),supplyCoverage=await this.supplyCoverage(program,loaded.bookings);
   const statusCounts=Object.fromEntries(['PRELIMINARY','CONFIRMED','READY','TRAVELING','COMPLETED','CANCELLED'].map(status=>[status,loaded.bookings.filter(value=>value.status===status).length]));
   let accounting:unknown;try{accounting=await this.sources.programAccounting({companyId:c.companyId,branchIds:[c.branchId]},program.id)}catch(error){accounting={available:false,reason:messageOf(error)}}
   const closure=await this.closureInternal(c,program,loaded);
-  return{program,bookingSummary:{total:loaded.bookings.length,statusCounts},bookings:loaded.bookings,travelers,rooming:loaded.rooming,visas:loaded.visas,tickets:loaded.tickets,transport:loaded.transport,tasks:loaded.tasks,incidents:loaded.incidents,services:loaded.services,readiness,closure,accounting};
+  return{program,bookingSummary:{total:loaded.bookings.length,statusCounts},bookings:loaded.bookings,travelers,supplyCoverage,rooming:loaded.rooming,visas:loaded.visas,tickets:loaded.tickets,transport:loaded.transport,tasks:loaded.tasks,incidents:loaded.incidents,services:loaded.services,readiness,closure,accounting};
  }
 
  async workQueue(c:ExecutionContext,programId:string){
@@ -367,10 +367,10 @@ export class HajjUmrahReadinessApplicationService{
 
  async reports(c:ExecutionContext,programId:string){
   await this.permission(c,READINESS_PERMISSIONS.reports);
-  const program=await this.sources.program(c,programId),loaded=await this.loaded(c,program.id),readiness=await this.programInternal(c,program,loaded),travelers=await this.travelerRows(c,program,loaded.bookings);
+  const program=await this.sources.program(c,programId),loaded=await this.loaded(c,program.id),readiness=await this.programInternal(c,program,loaded),travelers=await this.travelerRows(c,program,loaded.bookings),supplyCoverage=await this.supplyCoverage(program,loaded.bookings);
   let financial:unknown;try{financial=await this.sources.programAccounting({companyId:c.companyId,branchIds:[c.branchId]},program.id)}catch(error){financial={available:false,reason:messageOf(error)}}
   const bookingStatus=Object.fromEntries(['PRELIMINARY','CONFIRMED','READY','TRAVELING','COMPLETED','CANCELLED'].map(status=>[status,loaded.bookings.filter(value=>value.status===status).length]));
-  return{generatedAt:this.now().toISOString(),program:{id:program.id,code:program.code,arabicName:program.arabicName,status:program.status},bookingStatus,bookings:loaded.bookings.map(value=>({id:value.id,code:value.code,status:value.status})),travelers,rooming:loaded.rooming,visas:loaded.visas,tickets:loaded.tickets,transport:loaded.transport,tasks:loaded.tasks,incidents:loaded.incidents,readiness:{status:readiness.status,blockers:readiness.blockers},financial};
+  return{generatedAt:this.now().toISOString(),program:{id:program.id,code:program.code,arabicName:program.arabicName,status:program.status},bookingStatus,bookings:loaded.bookings.map(value=>({id:value.id,code:value.code,status:value.status})),travelers,supplyCoverage,rooming:loaded.rooming,visas:loaded.visas,tickets:loaded.tickets,transport:loaded.transport,tasks:loaded.tasks,incidents:loaded.incidents,readiness:{status:readiness.status,blockers:readiness.blockers},financial};
  }
 
  private async closureInternal(c:ExecutionContext,program:Program,loaded?:LoadedEvidence):Promise<ClosureEvaluation>{
