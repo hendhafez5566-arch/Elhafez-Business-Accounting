@@ -25,7 +25,7 @@ export interface Program360{
 export interface WorkQueueItem{readonly key:string;readonly priority:'CRITICAL'|'HIGH'|'NORMAL';readonly category:ReadinessBlockerCategory;readonly title:string;readonly detail:string;readonly owner:string;readonly programId:string;readonly bookingId?:string;readonly travelerId?:string;readonly dueAt?:string;}
 export interface ReadinessCapabilities{readonly view:boolean;readonly view360:boolean;readonly reports:boolean;readonly close:boolean;}
 export interface HajjUmrahReportBundle{
- readonly generatedAt:string;readonly program:{readonly id:string;readonly code:string;readonly arabicName:string;readonly status:string};readonly bookingStatus:Readonly<Record<string,number>>;
+ readonly generatedAt:string;readonly program:{readonly id:string;readonly code:string;readonly arabicName:string;readonly status:string};readonly bookingStatus:Readonly<Record<string,number>>;readonly bookings:readonly {readonly id:string;readonly code:string;readonly status:string}[];
  readonly travelers:readonly TravelerProjection[];readonly rooming:readonly RoomAssignment[];readonly visas:readonly VisaCase[];readonly tickets:readonly TicketRecord[];readonly transport:readonly RunProjection[];
  readonly tasks:readonly OperationTask[];readonly incidents:readonly Incident[];readonly readiness:{readonly status:ReadinessStatus;readonly blockers:readonly ReadinessBlocker[]};readonly financial:unknown;
 }
