@@ -1,0 +1,3 @@
+import type {BackupProvider} from '../application/platform-operations.application-service.js';import {PlatformOperationsError} from '../application/platform-operations.application-service.js';
+/** Safe production default until deployment supplies a PostgreSQL physical-backup provider. */
+export class UnavailableBackupProvider implements BackupProvider{async health(){return false}async create():Promise<never>{throw new PlatformOperationsError('backup provider is unavailable')}async verify(){return false}async restore():Promise<never>{throw new PlatformOperationsError('backup provider is unavailable')}}

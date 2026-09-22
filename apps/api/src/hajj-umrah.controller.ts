@@ -310,7 +310,7 @@ export class HajjUmrahController {
 
   private async allowed(context: ExecutionContext, permission: string) {
     try {
-      await this.platform.authorize(context.actorId, permission);
+      await this.platform.authorize(context.actorId, context.companyId, permission);
       return true;
     } catch (error) {
       if (error instanceof PlatformError && error.code === 'FORBIDDEN') return false;

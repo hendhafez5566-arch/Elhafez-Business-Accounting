@@ -42,8 +42,8 @@ export class SupplierIntelligenceReadModelController {
 
   private async authorize(context: ExecutionContext, includeDisputes: boolean) {
     await this.platform.requireBranchAccess(context.actorId, context.companyId, context.branchId);
-    await this.platform.authorize(context.actorId, SUPPLIER_INTELLIGENCE_PERMISSIONS.read);
-    if (includeDisputes) await this.platform.authorize(context.actorId, SUPPLIER_INTELLIGENCE_PERMISSIONS.disputeRead);
+    await this.platform.authorize(context.actorId, context.companyId, SUPPLIER_INTELLIGENCE_PERMISSIONS.read);
+    if (includeDisputes) await this.platform.authorize(context.actorId, context.companyId, SUPPLIER_INTELLIGENCE_PERMISSIONS.disputeRead);
   }
 
   private async context(
