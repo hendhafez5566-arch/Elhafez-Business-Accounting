@@ -1,3 +1,5 @@
+ALTER TABLE "tci_allocations" ADD COLUMN "flight_segment_reference" JSONB;
+
 CREATE TABLE "hub_bookings" (
   "id" TEXT NOT NULL,
   "company_id" TEXT NOT NULL,
@@ -127,6 +129,7 @@ CREATE TABLE "hut_ticket_records" (
   "traveler_id" TEXT NOT NULL,
   "allocation_id" TEXT NOT NULL,
   "flight_block_id" TEXT NOT NULL,
+  "flight_segment_reference" JSONB NOT NULL,
   "pnr" TEXT NOT NULL,
   "ticket_number" TEXT,
   "seat" TEXT,
