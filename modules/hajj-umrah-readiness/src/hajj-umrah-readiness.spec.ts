@@ -60,3 +60,58 @@ function fixture(requirements:any[]=['HOTEL','VISA','FLIGHT','TRANSPORT']){
  const repo=new MemoryRepo(),access=new Access();let seq=0;const service=new HajjUmrahReadinessApplicationService(repo,access,sources,()=>new Date(at),()=>`id-${++seq}`);
  return{service,state,repo,access,get program(){return program as Program},setProgram(v:any){program={...program,...v}},get bookings(){return bookings as Booking[]},setBookings(v:Booking[]){bookings=[...v]}};
 }
+
+
+test('booking readiness derives every applicable owner signal and ignores non-applicable transport',async()=>{
+ const f=fixture();assert.equal((await f.service.bookingReadiness(ctx,'b1')).status,'READY');
+ f.state.rooming=false;assert.ok((await f.service.bookingReadiness(ctx,'b1')).blockers.some(x=>x.code==='ROOMING_REQUIRED'));f.state.rooming=true;
+ f.state.visa='SUBMITTED';assert.ok((await f.service.bookingReadiness(ctx,'b1')).blockers.some(x=>x.code==='VISA_NOT_ISSUED'));f.state.visa='ISSUED';
+ f.state.ticket='RESERVED';assert.ok((await f.service.bookingReadiness(ctx,'b1')).blockers.some(x=>x.code==='TICKET_NOT_ISSUED'));f.state.ticket='ISSUED';
+ f.state.transport=false;assert.ok((await f.service.bookingReadiness(ctx,'b1')).blockers.some(x=>x.code==='TRANSPORT_ASSIGNMENT_MISSING'));
+ const noTransport=fixture(['HOTEL','FLIGHT']);noTransport.state.transport=false;assert.equal((await noTransport.service.bookingReadiness(ctx,'b1')).status,'READY');
+});
+
+test('operational and TFO blockers are actionable and current evidence overrides stale readiness',async()=>{
+ const f=fixture();const first=await f.service.bookingReadiness(ctx,'b1');assert.equal(first.status,'READY');
+ f.state.task=true;f.state.incident=true;f.state.finance=false;
+ const blocked=await f.service.bookingReadiness(ctx,'b1');
+ assert.ok(blocked.blockers.some(x=>x.code==='OVERDUE_TASK'));
+ assert.ok(blocked.blockers.some(x=>x.code==='SERIOUS_INCIDENT_OPEN'));
+ assert.ok(blocked.blockers.some(x=>x.category==='FINANCIAL'&&x.code.startsWith('UNRESOLVED_WORKFLOW')));
+ f.state.task=false;f.state.incident=false;f.state.finance=true;f.state.ticket='RESERVED';
+ assert.equal((await f.service.bookingReadiness(ctx,'b1')).status,'NOT_READY');
+});
+
+test('program readiness identifies blocking booking and branch isolation is server side',async()=>{
+ const f=fixture();const second={...f.bookings[0]!,id:'b2',code:'B2',travelerIds:['t2']}as Booking;f.setBookings([f.bookings[0]!,second]);f.state.rooming=false;
+ const result=await f.service.programReadiness(ctx,'p1');assert.equal(result.status,'NOT_READY');assert.ok(result.blockers.some(x=>x.bookingId==='b2'));
+ await assert.rejects(()=>f.service.programReadiness(executionContext('c1','b2','u1'),'p1'),/branch denied/);
+});
+
+test('360 projections keep lifecycle financial state and readiness separate',async()=>{
+ const f=fixture();const booking=await f.service.booking360(ctx,'b1');
+ assert.equal(booking.booking.status,'CONFIRMED');assert.equal(booking.booking.financialState,'CONFIRMED');assert.equal(booking.readiness.status,'READY');assert.equal(booking.financialReadiness?.ready,true);
+ const program=await f.service.program360(ctx,'p1');assert.equal(program.bookingSummary.total,1);assert.equal(program.travelers.length,1);assert.equal(program.readiness.status,'READY');assert.deepEqual(program.accounting,{revenue:'1000',cost:'700'});
+});
+
+test('work queue is derived and resolved work disappears',async()=>{
+ const f=fixture();f.state.task=true;assert.ok((await f.service.workQueue(ctx,'p1')).some(x=>x.reference?.sourceId==='task1'));
+ f.state.task=false;assert.ok(!(await f.service.workQueue(ctx,'p1')).some(x=>x.reference?.sourceId==='task1'));
+});
+
+test('closure blockers never mutate program state',async()=>{
+ const f=fixture();f.setProgram({status:'IN_TRIP',departureRecordedAt:'2027-05-01T00:00:00.000Z'});
+ let result=await f.service.closeProgram(ctx,'p1');assert.equal(result.closed,false);assert.equal(f.program.status,'IN_TRIP');assert.equal(f.state.financeClose,0);assert.equal(f.state.ownerClose,0);
+ f.state.bookingStatus='COMPLETED';f.state.run='COMPLETED';f.state.finance=false;
+ result=await f.service.closeProgram(ctx,'p1');assert.equal(result.closed,false);assert.equal(f.program.status,'IN_TRIP');assert.equal(f.state.ownerClose,0);
+});
+
+test('safe closure retains durable evidence and replay is idempotent',async()=>{
+ const f=fixture();f.setProgram({status:'IN_TRIP',departureRecordedAt:'2027-05-01T00:00:00.000Z'});f.state.bookingStatus='COMPLETED';f.state.run='COMPLETED';
+ const first=await f.service.closeProgram(ctx,'p1');assert.equal(first.closed,true);assert.equal(f.program.status,'CLOSED');assert.equal(f.repo.rows[0]?.status,'COMPLETED');assert.equal(f.state.financeClose,1);assert.equal(f.state.ownerClose,1);
+ const replay=await f.service.closeProgram(ctx,'p1');assert.equal(replay.closed,true);assert.equal(replay.idempotent,true);assert.equal(f.state.financeClose,1);assert.equal(f.state.ownerClose,1);assert.equal(f.access.audits.length,1);
+});
+
+test('permission enforcement precedes readiness evaluation',async()=>{
+ const f=fixture();await assert.rejects(()=>f.service.programReadiness(executionContext('c1','b1','denied'),'p1'),/permission denied/);
+});
