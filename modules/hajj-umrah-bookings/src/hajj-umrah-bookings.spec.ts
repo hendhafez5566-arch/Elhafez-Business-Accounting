@@ -16,7 +16,7 @@ class Repo implements BookingRepository {
   async history(c:string,b:string,id:string){return this.logs.filter(x=>x.companyId===c&&x.branchId===b&&x.bookingId===id);}
 }
 class Access implements BookingAccess{async requireBranch(c:ExecutionContext){if(c.companyId==='other'||c.branchId==='other')throw Error('branch denied');}async requirePermission(){}async audit(){}}
-const program={id:'p1',companyId:'c1',branchId:'b1',code:'P',type:'UMRAH' as const,seasonId:'s',arabicName:'عمرة',snapshot:{departureDate:'2027-01-10',returnDate:'2027-01-20',salesStart:'2026-01-01',salesClose:'2027-01-01',capacity:'10',currency:'SAR',prices:{},requirements:[],components:[]},temporaryHoldMinutes:15,status:'BOOKABLE' as const,bookingOpen:true,currentVersion:1,currentVersionId:'pv1',createdAt:'',updatedAt:''};
+const program={id:'p1',companyId:'c1' as CompanyId,branchId:'b1',code:'P',type:'UMRAH' as const,seasonId:'s',arabicName:'عمرة',snapshot:{departureDate:'2027-01-10',returnDate:'2027-01-20',salesStart:'2026-01-01',salesClose:'2027-01-01',capacity:'10',currency:'SAR',prices:{},requirements:[],components:[]},temporaryHoldMinutes:15,status:'BOOKABLE' as const,bookingOpen:true,currentVersion:1,currentVersionId:'pv1',createdAt:'',updatedAt:''};
 function fixture(){
   const repo=new Repo();let n=0;let confirmCalls=0,cancelCalls=0;let open=true;let cancelResult:unknown={cancelled:true};
   const finance:BookingFinancePort={async confirm(i){confirmCalls++;return{workflowId:'w1',allocations:i.inventories.map((_,x)=>({id:`alloc-${x+1}`,quantity:'1'}))};},async cancel(){cancelCalls++;return cancelResult;}};
