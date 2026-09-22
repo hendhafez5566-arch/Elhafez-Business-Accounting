@@ -1,32 +1,109 @@
-import{randomUUID}from'node:crypto';import{ContractValidationError,type ExecutionContext}from'@elhafez/contracts';
-import type{RoomAssignment,RoomingHistory}from'../domain/rooming.js';import type{RoomingRepository}from'./rooming.repository.js';import type{RoomingAccess,RoomingBookingPort,RoomingInventoryPort,RoomingProgramPort,RoomingTravelerPort}from'./rooming.ports.js';
+import { randomUUID } from 'node:crypto';
+import { ContractValidationError, type ExecutionContext } from '@elhafez/contracts';
+import type { Allocation } from '@elhafez/tourism-contract-inventory';
+import type { RoomAssignment, RoomingHistory } from '../domain/rooming.js';
+import type { RoomingRepository } from './rooming.repository.js';
+import type { RoomingAccess, RoomingBookingPort, RoomingInventoryPort, RoomingProgramPort, RoomingTravelerPort } from './rooming.ports.js';
+
 export const ROOMING_PERMISSIONS=Object.freeze({view:'hajj_umrah.rooming.view',manage:'hajj_umrah.rooming.manage'});
 export interface AssignRoomInput{bookingId:string;travelerId:string;allocationId:string;roomKey:string;roomLabel?:string;startDate:string;endDate:string;}
 export type ReassignRoomInput=Omit<AssignRoomInput,'bookingId'|'travelerId'>;
-const req=(v:string,f:string)=>{const x=v.trim();if(!x)throw new ContractValidationError(f,'is required');return x;};const day=(v:string,f:string)=>{const x=req(v,f);if(!/^\d{4}-\d{2}-\d{2}$/.test(x))throw new ContractValidationError(f,'must be YYYY-MM-DD');return x;};
+
+const required=(value:string,field:string)=>{const result=value.trim();if(!result)throw new ContractValidationError(field,'is required');return result;};
+const day=(value:string,field:string)=>{const result=required(value,field);if(!/^\d{4}-\d{2}-\d{2}$/.test(result))throw new ContractValidationError(field,'must be YYYY-MM-DD');return result;};
+
 export class HajjUmrahRoomingApplicationService{
- constructor(private readonly repo:RoomingRepository,private readonly access:RoomingAccess,private readonly bookings:RoomingBookingPort,private readonly programs:RoomingProgramPort,private readonly travelers:RoomingTravelerPort,private readonly inventory:RoomingInventoryPort,private readonly now:()=>Date=()=>new Date(),private readonly id:()=>string=()=>randomUUID()){}
- private async perm(c:ExecutionContext,p:string){await this.access.requireBranch(c);await this.access.requirePermission(c,p);}private async required(c:ExecutionContext,id:string){const v=await this.repo.get(c.companyId,c.branchId,id);if(!v)throw new ContractValidationError('assignmentId','room assignment not found');return v;}
- private hist(c:ExecutionContext,v:RoomAssignment,action:RoomingHistory['action']):RoomingHistory{return{id:this.id(),companyId:c.companyId,branchId:c.branchId,assignmentId:v.id,action,snapshot:v,actorId:c.actorId,occurredAt:this.now().toISOString()};}
- private async validate(c:ExecutionContext,bookingId:string,travelerId:string,input:{allocationId:string;startDate:string;endDate:string},excludeId?:string){
-  const start=day(input.startDate,'startDate'),end=day(input.endDate,'endDate');if(end<start)throw new ContractValidationError('endDate','must be on or after startDate');
-  const booking=await this.bookings.requireTraveler(c,bookingId,travelerId);await this.travelers.requireActive(c,travelerId);const program=await this.programs.require(c,booking.programId);
-  if(start<program.snapshot.departureDate.slice(0,10)||end>program.snapshot.returnDate.slice(0,10))throw new ContractValidationError('stay','stay is outside program window');
-  const allocation=await this.inventory.allocation(c.companyId,req(input.allocationId,'allocationId'));
-  if(!allocation||allocation.resourceType!=='HOTEL'||allocation.program.sourceId!==program.id||!['CONFIRMED','PARTIALLY_RELEASED','CONSUMED'].includes(allocation.status))throw new ContractValidationError('allocationId','active HOTEL allocation evidence is required');
-  const allocationStart=allocation.serviceDate.slice(0,10),allocationEnd=(allocation.periodEnd??allocation.serviceDate).slice(0,10);
-  if(start<allocationStart||end>allocationEnd)throw new ContractValidationError('stay','stay is outside hotel allocation evidence window');
-  const overlap=await this.repo.overlappingTraveler(c.companyId,c.branchId,travelerId,start,end,excludeId);if(overlap)throw new ContractValidationError('travelerId','traveler already has an overlapping room assignment');
-  const capacity=Math.floor(Number(allocation.quantity));if(!Number.isFinite(capacity)||capacity<1)throw new ContractValidationError('allocationId','hotel allocation has no usable capacity');
-  const count=await this.repo.activeAllocationCount(c.companyId,c.branchId,allocation.id,start,end,excludeId);if(count>=capacity)throw new ContractValidationError('capacity','hotel allocation capacity exceeded');
-  return{booking,program,allocation,start,end};
- }
- async assign(c:ExecutionContext,input:AssignRoomInput){await this.perm(c,ROOMING_PERMISSIONS.manage);const v=await this.validate(c,input.bookingId,input.travelerId,input);const at=this.now().toISOString();const row:RoomAssignment={id:this.id(),companyId:c.companyId,branchId:c.branchId,programId:v.program.id,bookingId:input.bookingId,travelerId:input.travelerId,allocationId:v.allocation.id,roomKey:req(input.roomKey,'roomKey'),...(input.roomLabel?.trim()?{roomLabel:input.roomLabel.trim()}:{}),startDate:v.start,endDate:v.end,status:'ASSIGNED',createdAt:at,updatedAt:at};const saved=await this.repo.create(row,this.hist(c,row,'ASSIGNED'));await this.access.audit(c,'hajj-umrah.rooming.assigned',row.id,{travelerId:row.travelerId});return saved;}
- async reassign(c:ExecutionContext,id:string,input:ReassignRoomInput){await this.perm(c,ROOMING_PERMISSIONS.manage);const old=await this.required(c,id);if(old.status!=='ASSIGNED')throw new ContractValidationError('status','only active assignment can be moved');const v=await this.validate(c,old.bookingId,old.travelerId,input,id);const next:RoomAssignment={...old,programId:v.program.id,allocationId:v.allocation.id,roomKey:req(input.roomKey,'roomKey'),...(input.roomLabel?.trim()?{roomLabel:input.roomLabel.trim()}:{roomLabel:undefined}),startDate:v.start,endDate:v.end,updatedAt:this.now().toISOString()};const saved=await this.repo.save(next,this.hist(c,next,'REASSIGNED'));await this.access.audit(c,'hajj-umrah.rooming.reassigned',id,{});return saved;}
- async swap(c:ExecutionContext,leftId:string,rightId:string){await this.perm(c,ROOMING_PERMISSIONS.manage);if(leftId===rightId)throw new ContractValidationError('assignmentId','two different assignments are required');const a=await this.required(c,leftId),b=await this.required(c,rightId);if(a.status!=='ASSIGNED'||b.status!=='ASSIGNED')throw new ContractValidationError('status','both assignments must be active');if(a.programId!==b.programId)throw new ContractValidationError('programId','swap requires the same program');
-  const aa=await this.inventory.allocation(c.companyId,a.allocationId),ba=await this.inventory.allocation(c.companyId,b.allocationId);if(!aa||!ba||aa.resourceType!=='HOTEL'||ba.resourceType!=='HOTEL'||aa.program.sourceId!==a.programId||ba.program.sourceId!==b.programId)throw new ContractValidationError('allocationId','hotel allocation evidence is invalid');
-  const at=this.now().toISOString();const an={...a,allocationId:b.allocationId,roomKey:b.roomKey,...(b.roomLabel?{roomLabel:b.roomLabel}:{roomLabel:undefined}),updatedAt:at};const bn={...b,allocationId:a.allocationId,roomKey:a.roomKey,...(a.roomLabel?{roomLabel:a.roomLabel}:{roomLabel:undefined}),updatedAt:at};await this.repo.swap(an,this.hist(c,an,'SWAPPED'),bn,this.hist(c,bn,'SWAPPED'));await this.access.audit(c,'hajj-umrah.rooming.swapped',a.id,{otherAssignmentId:b.id});return[an,bn] as const;}
- async unassign(c:ExecutionContext,id:string){await this.perm(c,ROOMING_PERMISSIONS.manage);const old=await this.required(c,id);if(old.status==='UNASSIGNED')return old;const next={...old,status:'UNASSIGNED' as const,updatedAt:this.now().toISOString()};return this.repo.save(next,this.hist(c,next,'UNASSIGNED'));}
- async list(c:ExecutionContext,programId?:string){await this.perm(c,ROOMING_PERMISSIONS.view);return this.repo.list(c.companyId,c.branchId,programId);}
- async historyFor(c:ExecutionContext,id:string){await this.perm(c,ROOMING_PERMISSIONS.view);await this.required(c,id);return this.repo.history(c.companyId,c.branchId,id);}
+  constructor(
+    private readonly repo:RoomingRepository,
+    private readonly access:RoomingAccess,
+    private readonly bookings:RoomingBookingPort,
+    private readonly programs:RoomingProgramPort,
+    private readonly travelers:RoomingTravelerPort,
+    private readonly inventory:RoomingInventoryPort,
+    private readonly now:()=>Date=()=>new Date(),
+    private readonly id:()=>string=()=>randomUUID(),
+  ){}
+
+  private async permission(context:ExecutionContext,permission:string){await this.access.requireBranch(context);await this.access.requirePermission(context,permission);}
+  private async requiredAssignment(context:ExecutionContext,id:string){const value=await this.repo.get(context.companyId,context.branchId,id);if(!value)throw new ContractValidationError('assignmentId','room assignment not found');return value;}
+  private history(context:ExecutionContext,value:RoomAssignment,action:RoomingHistory['action']):RoomingHistory{return{id:this.id(),companyId:context.companyId,branchId:context.branchId,assignmentId:value.id,action,snapshot:value,actorId:context.actorId,occurredAt:this.now().toISOString()};}
+
+  private hotelCapacity(allocation:Allocation){
+    const capacity=Math.floor(Number(allocation.quantity));
+    if(!Number.isFinite(capacity)||capacity<1)throw new ContractValidationError('allocationId','hotel allocation has no usable capacity');
+    return capacity;
+  }
+  private assertHotelEvidence(allocation:Allocation|null,programId:string,start:string,end:string){
+    if(!allocation||allocation.resourceType!=='HOTEL'||allocation.program.sourceId!==programId||!['CONFIRMED','PARTIALLY_RELEASED','CONSUMED'].includes(allocation.status)){
+      throw new ContractValidationError('allocationId','active HOTEL allocation evidence is required');
+    }
+    const allocationStart=allocation.serviceDate.slice(0,10);
+    const allocationEnd=(allocation.periodEnd??allocation.serviceDate).slice(0,10);
+    if(start<allocationStart||end>allocationEnd)throw new ContractValidationError('stay','stay is outside hotel allocation evidence window');
+    return allocation;
+  }
+
+  private async validateEvidence(context:ExecutionContext,bookingId:string,travelerId:string,input:{allocationId:string;startDate:string;endDate:string}){
+    const start=day(input.startDate,'startDate'),end=day(input.endDate,'endDate');
+    if(end<start)throw new ContractValidationError('endDate','must be on or after startDate');
+    const booking=await this.bookings.requireTraveler(context,bookingId,travelerId);
+    await this.travelers.requireActive(context,travelerId);
+    const program=await this.programs.require(context,booking.programId);
+    if(start<program.snapshot.departureDate.slice(0,10)||end>program.snapshot.returnDate.slice(0,10))throw new ContractValidationError('stay','stay is outside program window');
+    const allocation=this.assertHotelEvidence(await this.inventory.allocation(context.companyId,required(input.allocationId,'allocationId')),program.id,start,end);
+    return{booking,program,allocation,start,end,capacity:this.hotelCapacity(allocation)};
+  }
+
+  async assign(context:ExecutionContext,input:AssignRoomInput){
+    await this.permission(context,ROOMING_PERMISSIONS.manage);
+    const evidence=await this.validateEvidence(context,input.bookingId,input.travelerId,input);
+    const at=this.now().toISOString();
+    const value:RoomAssignment={id:this.id(),companyId:context.companyId,branchId:context.branchId,programId:evidence.program.id,bookingId:input.bookingId,travelerId:input.travelerId,allocationId:evidence.allocation.id,roomKey:required(input.roomKey,'roomKey'),...(input.roomLabel?.trim()?{roomLabel:input.roomLabel.trim()}:{}),startDate:evidence.start,endDate:evidence.end,status:'ASSIGNED',createdAt:at,updatedAt:at};
+    const saved=await this.repo.createGuarded(value,this.history(context,value,'ASSIGNED'),evidence.capacity);
+    await this.access.audit(context,'hajj-umrah.rooming.assigned',value.id,{travelerId:value.travelerId});
+    return saved;
+  }
+
+  async reassign(context:ExecutionContext,id:string,input:ReassignRoomInput){
+    await this.permission(context,ROOMING_PERMISSIONS.manage);
+    const old=await this.requiredAssignment(context,id);
+    if(old.status!=='ASSIGNED')throw new ContractValidationError('status','only active assignment can be moved');
+    const evidence=await this.validateEvidence(context,old.bookingId,old.travelerId,input);
+    const next:RoomAssignment={...old,programId:evidence.program.id,allocationId:evidence.allocation.id,roomKey:required(input.roomKey,'roomKey'),...(input.roomLabel?.trim()?{roomLabel:input.roomLabel.trim()}:{roomLabel:undefined}),startDate:evidence.start,endDate:evidence.end,updatedAt:this.now().toISOString()};
+    const saved=await this.repo.saveGuarded(next,this.history(context,next,'REASSIGNED'),evidence.capacity);
+    await this.access.audit(context,'hajj-umrah.rooming.reassigned',id,{});
+    return saved;
+  }
+
+  async swap(context:ExecutionContext,leftId:string,rightId:string){
+    await this.permission(context,ROOMING_PERMISSIONS.manage);
+    if(leftId===rightId)throw new ContractValidationError('assignmentId','two different assignments are required');
+    const left=await this.requiredAssignment(context,leftId),right=await this.requiredAssignment(context,rightId);
+    if(left.status!=='ASSIGNED'||right.status!=='ASSIGNED')throw new ContractValidationError('status','both assignments must be active');
+    if(left.programId!==right.programId)throw new ContractValidationError('programId','swap requires the same program');
+
+    const [targetForLeft,targetForRight]=await Promise.all([
+      this.inventory.allocation(context.companyId,right.allocationId),
+      this.inventory.allocation(context.companyId,left.allocationId),
+    ]);
+    this.assertHotelEvidence(targetForLeft,left.programId,left.startDate,left.endDate);
+    this.assertHotelEvidence(targetForRight,right.programId,right.startDate,right.endDate);
+
+    const at=this.now().toISOString();
+    const nextLeft:RoomAssignment={...left,allocationId:right.allocationId,roomKey:right.roomKey,...(right.roomLabel?{roomLabel:right.roomLabel}:{roomLabel:undefined}),updatedAt:at};
+    const nextRight:RoomAssignment={...right,allocationId:left.allocationId,roomKey:left.roomKey,...(left.roomLabel?{roomLabel:left.roomLabel}:{roomLabel:undefined}),updatedAt:at};
+    await this.repo.swap(nextLeft,this.history(context,nextLeft,'SWAPPED'),nextRight,this.history(context,nextRight,'SWAPPED'));
+    await this.access.audit(context,'hajj-umrah.rooming.swapped',left.id,{otherAssignmentId:right.id});
+    return[nextLeft,nextRight] as const;
+  }
+
+  async unassign(context:ExecutionContext,id:string){
+    await this.permission(context,ROOMING_PERMISSIONS.manage);
+    const old=await this.requiredAssignment(context,id);
+    if(old.status==='UNASSIGNED')return old;
+    const next={...old,status:'UNASSIGNED' as const,updatedAt:this.now().toISOString()};
+    return this.repo.save(next,this.history(context,next,'UNASSIGNED'));
+  }
+  async list(context:ExecutionContext,programId?:string){await this.permission(context,ROOMING_PERMISSIONS.view);return this.repo.list(context.companyId,context.branchId,programId);}
+  async historyFor(context:ExecutionContext,id:string){await this.permission(context,ROOMING_PERMISSIONS.view);await this.requiredAssignment(context,id);return this.repo.history(context.companyId,context.branchId,id);}
 }
