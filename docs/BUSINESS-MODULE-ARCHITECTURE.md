@@ -46,6 +46,7 @@ This is a large operational system composed of independent modules.
 | Transport operations | `hajj-umrah-transport-operations` | PLANNED | buses/runs/assignments/routes; references transport capacity |
 | Trip operations | `hajj-umrah-trip-operations` | PLANNED | trip tasks, execution, incidents, operational checklists |
 | Readiness | `hajj-umrah-readiness` | PLANNED | aggregate operational readiness projection/orchestration |
+| Egyptian Umrah Barcode | `hajj-umrah-barcode` | PLANNED / UI SHELL | future Egypt-specific Umrah barcode request/status/evidence lifecycle. The current web page is presentation-only and owns no business data; financial effects must stay with accepted accounting owners. |
 
 Financial effects from these modules are delegated to accepted accounting owners, especially `tourism-finance-orchestration`, Billing, Treasury, Cost, Procurement Finance, and Financial Controls. Operational modules must not reproduce financial truth.
 

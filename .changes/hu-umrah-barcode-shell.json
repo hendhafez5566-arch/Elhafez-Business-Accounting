@@ -1,0 +1,20 @@
+{
+  "id": "hu-umrah-barcode-shell",
+  "summary": "Add a clean Arabic-first Umrah Barcode section under Hajj & Umrah as a presentation-only coming-soon shell, and reserve the future canonical hajj-umrah-barcode owner without inventing APIs, tables, or business behavior.",
+  "type": "feature",
+  "allowedModules": [],
+  "allowedPaths": [
+    ".changes/hu-umrah-barcode-shell.json",
+    "apps/web/src/routes.tsx",
+    "apps/web/src/hajj-umrah-barcode-page.tsx",
+    "apps/web/src/hajj-umrah-barcode.spec.ts",
+    "docs/BUSINESS-MODULE-ARCHITECTURE.md",
+    "docs/BUSINESS-MODULE-ROUTING.md"
+  ],
+  "protectedPaths": [
+    "apps/web/src/routes.tsx"
+  ],
+  "protectedReason": "The owner explicitly requested a new visible Hajj & Umrah navigation section. This change only registers the dedicated web route; it does not alter the app shell, create business data, or bypass module ownership rules.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": ""
+}
