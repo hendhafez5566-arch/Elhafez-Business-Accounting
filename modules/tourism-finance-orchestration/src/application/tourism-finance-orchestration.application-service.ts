@@ -191,15 +191,22 @@ export class TourismFinanceOrchestrationApplicationService {
       evidenceReferences.push(workflow.id);
     }
     
-    // 7. Check booking financial/cancellation state (from bookings owned state)
+    // 7. A cancelled booking is financially settled only when its own cancellation workflow completed.
+    // Program cancellation history is not required for an individually cancelled booking.
     for (const booking of bookings) {
-      if (booking.status === 'CANCELLED') {
-        const history = await this.repo.programHistory(input.companyId, input.program);
-        if (history.some((h) => h.kind === 'CANCELLED')) continue;
-        // Booking cancelled but program not yet cancelled - this indicates partial state
-        blockers.push(`BOOKING_CANCELLATION_INCOMPLETE:${booking.id}`);
-        evidenceReferences.push(booking.id);
+      if (booking.status !== 'CANCELLED') continue;
+      const cancellationWorkflows = await this.repo.workflowsForBooking(input.companyId, booking.booking);
+      const completedCancellation = cancellationWorkflows.find((workflow) =>
+        workflow.kind === 'BOOKING_CANCELLATION' &&
+        workflow.status === 'COMPLETED' &&
+        Boolean((workflow.result as { cancelled?: boolean } | undefined)?.cancelled),
+      );
+      if (completedCancellation) {
+        evidenceReferences.push(booking.id, completedCancellation.id);
+        continue;
       }
+      blockers.push(`BOOKING_CANCELLATION_INCOMPLETE:${booking.id}`);
+      evidenceReferences.push(booking.id);
     }
     
     // 8. Check approval requestId from booking confirmation evidence (from Controls owned data)
