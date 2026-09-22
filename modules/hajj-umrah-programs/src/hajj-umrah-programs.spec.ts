@@ -228,6 +228,34 @@ test('departure and return evidence drive lifecycle and cancellation stops after
   assert.ok(done.returnRecordedAt);
 });
 
+test('closed program rejects material amendment until explicit audited reopen', async () => {
+  const { service, access } = fixture();
+  const program = await service.create(ctx, base);
+  await service.openForBooking(ctx, program.id);
+  const trip = await service.recordDeparture(ctx, program.id);
+  const closed = await service.closeAfterReadinessForIntegration(ctx, program.id, trip.updatedAt);
+  assert.equal(closed.status, 'CLOSED');
+
+  await assert.rejects(
+    () => service.amend(ctx, program.id, { ...base, arabicName: 'تعديل بعد الإغلاق' }, 'must not bypass reopen'),
+    /explicitly reopen/,
+  );
+
+  const reopened = await service.reopen(ctx, program.id, 'owner-approved correction');
+  assert.equal(reopened.status, 'IN_TRIP');
+  assert.ok(access.audits.some((entry) => entry.action === 'hajj-umrah.program.reopened'));
+
+  const amended = await service.amend(
+    ctx,
+    program.id,
+    { ...base, arabicName: 'تعديل بعد إعادة الفتح' },
+    'approved after reopen',
+  );
+  assert.equal(amended.status, 'IN_TRIP');
+  assert.equal(amended.arabicName, 'تعديل بعد إعادة الفتح');
+  assert.equal(amended.currentVersion, 2);
+});
+
 test('historical closed accounting period blocks reopen even when current period is open', async () => {
   let now = new Date('2027-05-01T09:00:00Z');
   const checked: string[] = [];
