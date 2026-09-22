@@ -1451,6 +1451,7 @@ model ProcInvoiceConversion {
  reopenedQuantity Decimal @map("reopened_quantity") @db.Decimal(38,18)
  requestHash String @map("request_hash")
  status String
+ revision Int @default(0)
  createdAt DateTime @map("created_at")
  purchaseOrder ProcPurchaseOrder @relation(fields:[companyId,purchaseOrderId],references:[companyId,id],onDelete:Restrict)
  line ProcPurchaseOrderLine @relation(fields:[companyId,lineId],references:[companyId,id],onDelete:Restrict)
