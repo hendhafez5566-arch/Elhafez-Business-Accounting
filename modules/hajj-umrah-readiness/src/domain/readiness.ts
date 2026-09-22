@@ -19,7 +19,7 @@ export interface ReadinessResult{
  readonly blockers:readonly ReadinessBlocker[];
  readonly evidenceReferences:readonly string[];
 }
-export type ClosureEvidenceStatus='PREPARED'|'FINANCE_CONFIRMED'|'COMPLETED';
+export type ClosureEvidenceStatus='PREPARED'|'OWNER_CLOSED'|'FINANCE_CONFIRMED'|'COMPLETED';
 export interface ClosureEvidenceRecord{
  readonly id:string;
  readonly companyId:CompanyId;
@@ -31,6 +31,7 @@ export interface ClosureEvidenceRecord{
  readonly evidence:unknown;
  readonly financialEvidence?:unknown;
  readonly status:ClosureEvidenceStatus;
+ readonly revision:number;
  readonly createdAt:string;
  readonly updatedAt:string;
  readonly completedAt?:string;
