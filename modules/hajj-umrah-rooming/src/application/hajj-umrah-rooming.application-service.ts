@@ -104,6 +104,7 @@ export class HajjUmrahRoomingApplicationService{
     const next={...old,status:'UNASSIGNED' as const,revision:old.revision+1,updatedAt:this.now().toISOString()};
     return this.repo.save(next,this.history(context,next,'UNASSIGNED'),old.revision);
   }
+  async listForIntegration(context:ExecutionContext,programId:string){await this.access.requireBranch(context);return this.repo.list(context.companyId,context.branchId,programId);}
   async list(context:ExecutionContext,programId?:string){await this.permission(context,ROOMING_PERMISSIONS.view);return this.repo.list(context.companyId,context.branchId,programId);}
   async historyFor(context:ExecutionContext,id:string){await this.permission(context,ROOMING_PERMISSIONS.view);await this.requiredAssignment(context,id);return this.repo.history(context.companyId,context.branchId,id);}
 }
