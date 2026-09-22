@@ -104,7 +104,7 @@ function fixture(quantity='2'){
   let sequence=0;
   const allocations={
     h1:{id:'h1',companyId:'c1' as CompanyId,contractId:'hc',contractVersionId:'v',resourceType:'HOTEL' as const,resourceId:'hotel-1',program:sourceReference('HAJJ_UMRAH_PROGRAM','p1'),serviceDate:'2027-01-01T00:00:00.000Z',periodEnd:'2027-01-20T00:00:00.000Z',quantity:quantity as never,status:'CONFIRMED' as const,createdAt:''},
-    h2:{id:'h2',companyId:'c1' as CompanyId,contractId:'hc',contractVersionId:'v',resourceType:'HOTEL' as const,resourceId:'hotel-2',program:{sourceType:'HAJJ_UMRAH_PROGRAM',sourceId:'p1'},serviceDate:'2027-01-12T00:00:00.000Z',periodEnd:'2027-01-20T00:00:00.000Z',quantity:quantity as never,status:'CONFIRMED' as const,createdAt:''},
+    h2:{id:'h2',companyId:'c1' as CompanyId,contractId:'hc',contractVersionId:'v',resourceType:'HOTEL' as const,resourceId:'hotel-2',program:sourceReference('HAJJ_UMRAH_PROGRAM','p1'),serviceDate:'2027-01-12T00:00:00.000Z',periodEnd:'2027-01-20T00:00:00.000Z',quantity:quantity as never,status:'CONFIRMED' as const,createdAt:''},
   };
   const service=new HajjUmrahRoomingApplicationService(
     repo,new Access(),
