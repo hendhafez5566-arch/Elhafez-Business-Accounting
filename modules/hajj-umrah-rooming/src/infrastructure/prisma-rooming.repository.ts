@@ -1,16 +1,16 @@
-import { Prisma, type PrismaClient } from '@prisma/client';
+import { Prisma, type HurRoomAssignment, type HurRoomingHistory, type PrismaClient } from '@prisma/client';
 import { ContractValidationError } from '@elhafez/contracts';
 import type { RoomAssignment, RoomingHistory } from '../domain/rooming.js';
 import type { RoomingRepository } from '../application/rooming.repository.js';
 
 const json=(value:unknown)=>value as Prisma.InputJsonValue;
-const map=(row:any):RoomAssignment=>({
+const map=(row:HurRoomAssignment):RoomAssignment=>({
   id:row.id,companyId:row.companyId,branchId:row.branchId,programId:row.programId,bookingId:row.bookingId,
   travelerId:row.travelerId,allocationId:row.allocationId,roomKey:row.roomKey,...(row.roomLabel?{roomLabel:row.roomLabel}:{}),
-  startDate:row.startDate.toISOString().slice(0,10),endDate:row.endDate.toISOString().slice(0,10),status:row.status,
+  startDate:row.startDate.toISOString().slice(0,10),endDate:row.endDate.toISOString().slice(0,10),status:row.status as RoomAssignment['status'],
   createdAt:row.createdAt.toISOString(),updatedAt:row.updatedAt.toISOString(),
 });
-const historyMap=(row:any):RoomingHistory=>({
+const historyMap=(row:HurRoomingHistory):RoomingHistory=>({
   id:row.id,companyId:row.companyId,branchId:row.branchId,assignmentId:row.assignmentId,action:row.action,
   snapshot:row.snapshot as unknown as RoomAssignment,actorId:row.actorId,occurredAt:row.occurredAt.toISOString(),
 });
