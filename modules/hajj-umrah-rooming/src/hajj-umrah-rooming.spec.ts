@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { ContractValidationError, executionContext, type CompanyId, type ExecutionContext } from '@elhafez/contracts';
+import { ContractValidationError, executionContext, sourceReference, type CompanyId, type ExecutionContext } from '@elhafez/contracts';
 import { HajjUmrahRoomingApplicationService } from './application/hajj-umrah-rooming.application-service.js';
 import type { RoomingRepository } from './application/rooming.repository.js';
 import type { RoomingAccess } from './application/rooming.ports.js';
@@ -103,7 +103,7 @@ function fixture(quantity='2'){
   const repo=new MemoryRooming();
   let sequence=0;
   const allocations={
-    h1:{id:'h1',companyId:'c1' as CompanyId,contractId:'hc',contractVersionId:'v',resourceType:'HOTEL' as const,resourceId:'hotel-1',program:{sourceType:'HAJJ_UMRAH_PROGRAM',sourceId:'p1'},serviceDate:'2027-01-01T00:00:00.000Z',periodEnd:'2027-01-20T00:00:00.000Z',quantity:quantity as never,status:'CONFIRMED' as const,createdAt:''},
+    h1:{id:'h1',companyId:'c1' as CompanyId,contractId:'hc',contractVersionId:'v',resourceType:'HOTEL' as const,resourceId:'hotel-1',program:sourceReference('HAJJ_UMRAH_PROGRAM','p1'),serviceDate:'2027-01-01T00:00:00.000Z',periodEnd:'2027-01-20T00:00:00.000Z',quantity:quantity as never,status:'CONFIRMED' as const,createdAt:''},
     h2:{id:'h2',companyId:'c1' as CompanyId,contractId:'hc',contractVersionId:'v',resourceType:'HOTEL' as const,resourceId:'hotel-2',program:{sourceType:'HAJJ_UMRAH_PROGRAM',sourceId:'p1'},serviceDate:'2027-01-12T00:00:00.000Z',periodEnd:'2027-01-20T00:00:00.000Z',quantity:quantity as never,status:'CONFIRMED' as const,createdAt:''},
   };
   const service=new HajjUmrahRoomingApplicationService(
