@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { executionContext, type CompanyId, type ExecutionContext, type SourceReference } from '@elhafez/contracts';
+import { executionContext, sourceReference, type CompanyId, type ExecutionContext, type SourceReference } from '@elhafez/contracts';
 import { HajjUmrahTicketingApplicationService } from './application/hajj-umrah-ticketing.application-service.js';
 import type { TicketRepository } from './application/ticket.repository.js';
 import type { TicketAccess, TicketFinancePort } from './application/ticket.ports.js';
@@ -21,7 +21,7 @@ class Access implements TicketAccess {
   async audit() {}
 }
 const context=executionContext('c1','b1','u1');
-const realSegment:SourceReference={sourceType:'FLIGHT_SEGMENT',sourceId:'MS-845:CAI-JED:2027-01-01T06:00Z'};
+const realSegment:SourceReference=sourceReference('FLIGHT_SEGMENT','MS-845:CAI-JED:2027-01-01T06:00Z');
 
 function fixture(segment:SourceReference|undefined=realSegment){
   const repo=new MemoryTickets();
@@ -31,7 +31,7 @@ function fixture(segment:SourceReference|undefined=realSegment){
     repo,new Access(),
     {async requireTraveler(){return{id:'b',companyId:'c1' as CompanyId,branchId:'b1',code:'B',programId:'p1',customerId:'c',customerPartyId:'party',travelerIds:['t1'],status:'CONFIRMED',financialState:'CONFIRMED',allocationIds:['a1'],createdAt:'',updatedAt:''}}},
     {async requireActive(_context,id){return{id:id as never,companyId:'c1' as CompanyId,fullName:'T',dateOfBirth:null,gender:null,nationality:null,partyId:null,customerId:null,status:'ACTIVE',createdAt:'',updatedAt:''}}},
-    {async allocation(){return{id:'a1',companyId:'c1' as CompanyId,contractId:'fc',contractVersionId:'fv',resourceType:'FLIGHT_BLOCK',resourceId:'flight-block-1',program:{sourceType:'HAJJ_UMRAH_PROGRAM',sourceId:'p1'},serviceDate:'2027-01-01',quantity:'1' as never,status:'CONFIRMED',...(segment?{flightSegmentReference:segment}:{}),createdAt:''}}},
+    {async allocation(){return{id:'a1',companyId:'c1' as CompanyId,contractId:'fc',contractVersionId:'fv',resourceType:'FLIGHT_BLOCK',resourceId:'flight-block-1',program:sourceReference('HAJJ_UMRAH_PROGRAM','p1'),serviceDate:'2027-01-01',quantity:'1' as never,status:'CONFIRMED',...(segment?{flightSegmentReference:segment}:{}),createdAt:''}}},
     {async actualize(input){forwarded.push(input);return{workflowId:`w-${forwarded.length}`}}},
     ()=>new Date('2026-09-22T00:00:00Z'),()=>`id-${++sequence}`,
   );
