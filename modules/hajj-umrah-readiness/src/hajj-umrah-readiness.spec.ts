@@ -31,7 +31,7 @@ class Access implements ReadinessAccess{
 }
 interface MutableState{
  bookingStatus:BookingStatus;rooming:boolean;visa:VisaStatus;ticket:TicketStatus;transport:boolean;run:TransportRunStatus;finance:boolean;
- task:boolean;incident:boolean;supply:boolean;financeClose:number;ownerClose:number;ownerFailure:boolean;
+ task:boolean;incident:boolean;supply:boolean;roomingOwnerFailure:boolean;financeClose:number;ownerClose:number;ownerFailure:boolean;
 }
 function makeProgram(requirements:readonly Requirement[]):Program{
  const components=[
@@ -48,7 +48,7 @@ function allocation(id:string,resourceType:Allocation['resourceType'],resourceId
 function fixture(requirements:readonly Requirement[]=['HOTEL','VISA','FLIGHT','TRANSPORT']){
  let program=makeProgram(requirements);
  let bookings:Booking[]=[makeBooking()];
- const state:MutableState={bookingStatus:'CONFIRMED',rooming:true,visa:'ISSUED',ticket:'ISSUED',transport:true,run:'SCHEDULED',finance:true,task:false,incident:false,supply:true,financeClose:0,ownerClose:0,ownerFailure:false};
+ const state:MutableState={bookingStatus:'CONFIRMED',rooming:true,visa:'ISSUED',ticket:'ISSUED',transport:true,run:'SCHEDULED',finance:true,task:false,incident:false,supply:true,roomingOwnerFailure:false,financeClose:0,ownerClose:0,ownerFailure:false};
  const allocations=new Map<string,Allocation>([
   ['ra',allocation('ra','HOTEL','hotel-1')],['va',allocation('va','VISA','visa-1')],['fa',allocation('fa','FLIGHT_BLOCK','flight-1')],['ba',allocation('ba','TRANSPORT','bus-1')],
  ]);
@@ -59,7 +59,7 @@ function fixture(requirements:readonly Requirement[]=['HOTEL','VISA','FLIGHT','T
   async bookings(){return bookings.map(row=>({...row,status:state.bookingStatus}))},
   async traveler(_c,id){return{id,companyId:ctx.companyId,fullName:'مسافر '+id,dateOfBirth:null,gender:null,nationality:'EG',partyId:null,customerId:null,status:'ACTIVE',createdAt:now,updatedAt:now}as never},
   async passport(_c,id){return{id:'passport-'+id,companyId:ctx.companyId,travelerId:id,documentType:'PASSPORT',documentNumber:'P12345',issuingCountry:'EG',issuingPlace:null,holderNameSnapshot:'مسافر',issueDate:'2024-01-01',expiryDate:'2028-01-01',isCurrent:true,supersededByDocumentId:null,createdAt:now}as never},
-  async rooming(){if(!state.rooming)return[];return bookings.flatMap(booking=>booking.travelerIds.map(travelerId=>({id:'room-'+booking.id+travelerId,companyId:ctx.companyId,branchId:'b1',programId:'p1',bookingId:booking.id,travelerId,allocationId:'ra',roomKey:'101',startDate:'2027-05-01',endDate:'2027-05-20',status:'ASSIGNED',revision:1,createdAt:now,updatedAt:now}as RoomAssignment)))},
+  async rooming(){if(state.roomingOwnerFailure)throw new Error('rooming owner unavailable');if(!state.rooming)return[];return bookings.flatMap(booking=>booking.travelerIds.map(travelerId=>({id:'room-'+booking.id+travelerId,companyId:ctx.companyId,branchId:'b1',programId:'p1',bookingId:booking.id,travelerId,allocationId:'ra',roomKey:'101',startDate:'2027-05-01',endDate:'2027-05-20',status:'ASSIGNED',revision:1,createdAt:now,updatedAt:now}as RoomAssignment)))},
   async visas(){return bookings.flatMap(booking=>booking.travelerIds.map(travelerId=>({id:'visa-'+booking.id+travelerId,companyId:ctx.companyId,branchId:'b1',bookingId:booking.id,programId:'p1',travelerId,passportDocumentId:'passport-'+travelerId,allocationId:'va',status:state.visa,attempt:1,createdAt:now,updatedAt:now}as VisaCase)))},
   async tickets(){return bookings.flatMap(booking=>booking.travelerIds.map(travelerId=>({id:'ticket-'+booking.id+travelerId,companyId:ctx.companyId,branchId:'b1',bookingId:booking.id,programId:'p1',travelerId,allocationId:'fa',flightBlockId:'flight-1',flightSegmentReference:sourceReference('FLIGHT_SEGMENT','seg'),pnr:'PNR',status:state.ticket,revision:1,createdAt:now,updatedAt:now}as TicketRecord)))},
   async transportRuns(){return state.transport?[{id:'run1',companyId:ctx.companyId,branchId:'b1',programId:'p1',allocationId:'ba',code:'BUS1',route:'A-B',startsAt:'2027-05-01T08:00:00.000Z',endsAt:'2027-05-01T12:00:00.000Z',status:state.run,revision:1,createdAt:now,updatedAt:now}as TransportRun]:[]},
@@ -120,13 +120,10 @@ test('program readiness aggregates exact blocking bookings and enforces branch i
 });
 
 test('owner evidence failure is never silently omitted',async()=>{
- const f=fixture();
- const failingSources:ReadinessSources={...((f.service as unknown) as{sources:ReadinessSources}).sources};
- void failingSources;
- // The production path is covered through finance owner failure, which must become an explicit blocker.
- f.state.finance=false;
+ const f=fixture();f.state.roomingOwnerFailure=true;
  const result=await f.service.programReadiness(ctx,'p1');
- assert.ok(result.blockers.some(row=>row.category==='FINANCIAL'));
+ assert.equal(result.status,'NOT_READY');
+ assert.ok(result.blockers.some(row=>row.code==='OWNER_EVIDENCE_UNAVAILABLE'&&row.owner==='hajj-umrah-rooming'));
 });
 
 test('Booking 360 and Program 360 keep lifecycle financial and readiness states separate',async()=>{
