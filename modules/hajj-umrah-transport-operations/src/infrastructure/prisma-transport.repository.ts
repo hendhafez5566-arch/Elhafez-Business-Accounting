@@ -13,7 +13,7 @@ export class PrismaTransportRepository implements TransportRepository{
   private runData(value:TransportRun){return{id:value.id,companyId:value.companyId,branchId:value.branchId,programId:value.programId,allocationId:value.allocationId,code:value.code,route:value.route,startsAt:new Date(value.startsAt),endsAt:new Date(value.endsAt),vehicleReference:value.vehicleReference??null,driverReference:value.driverReference??null,status:value.status,createdAt:new Date(value.createdAt),updatedAt:new Date(value.updatedAt)}}
   private assignmentData(value:ManifestAssignment){return{id:value.id,companyId:value.companyId,branchId:value.branchId,runId:value.runId,bookingId:value.bookingId,travelerId:value.travelerId,status:value.status,createdAt:new Date(value.createdAt),updatedAt:new Date(value.updatedAt)}}
   private historyData(value:TransportHistory){return{id:value.id,companyId:value.companyId,branchId:value.branchId,aggregateType:value.aggregateType,aggregateId:value.aggregateId,action:value.action,evidence:value.evidence===undefined?Prisma.JsonNull:json(value.evidence),actorId:value.actorId,occurredAt:new Date(value.occurredAt)}}
-  private async locks(tx:Prisma.TransactionClient,keys:readonly string[]){for(const key of [...new Set(keys)].sort())await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${key}))`;}
+  private async locks(tx:Prisma.TransactionClient,keys:readonly string[]){for(const key of [...new Set(keys)].sort())await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${key}))`;}
   private scope(companyId:string,branchId:string){return `${companyId}:${branchId}`; }
 
   async createRun(value:TransportRun,history:TransportHistory){
