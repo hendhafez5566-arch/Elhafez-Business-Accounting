@@ -58,7 +58,7 @@ export class HajjUmrahRoomingApplicationService{
     await this.permission(context,ROOMING_PERMISSIONS.manage);
     const evidence=await this.validateEvidence(context,input.bookingId,input.travelerId,input);
     const at=this.now().toISOString();
-    const value:RoomAssignment={id:this.id(),companyId:context.companyId,branchId:context.branchId,programId:evidence.program.id,bookingId:input.bookingId,travelerId:input.travelerId,allocationId:evidence.allocation.id,roomKey:required(input.roomKey,'roomKey'),...(input.roomLabel?.trim()?{roomLabel:input.roomLabel.trim()}:{}),startDate:evidence.start,endDate:evidence.end,status:'ASSIGNED',createdAt:at,updatedAt:at};
+    const value:RoomAssignment={id:this.id(),companyId:context.companyId,branchId:context.branchId,programId:evidence.program.id,bookingId:input.bookingId,travelerId:input.travelerId,allocationId:evidence.allocation.id,roomKey:required(input.roomKey,'roomKey'),...(input.roomLabel?.trim()?{roomLabel:input.roomLabel.trim()}:{}),startDate:evidence.start,endDate:evidence.end,status:'ASSIGNED',revision:1,createdAt:at,updatedAt:at};
     const saved=await this.repo.createGuarded(value,this.history(context,value,'ASSIGNED'),evidence.capacity);
     await this.access.audit(context,'hajj-umrah.rooming.assigned',value.id,{travelerId:value.travelerId});
     return saved;
@@ -69,8 +69,8 @@ export class HajjUmrahRoomingApplicationService{
     const old=await this.requiredAssignment(context,id);
     if(old.status!=='ASSIGNED')throw new ContractValidationError('status','only active assignment can be moved');
     const evidence=await this.validateEvidence(context,old.bookingId,old.travelerId,input);
-    const next:RoomAssignment={...old,programId:evidence.program.id,allocationId:evidence.allocation.id,roomKey:required(input.roomKey,'roomKey'),...(input.roomLabel?.trim()?{roomLabel:input.roomLabel.trim()}:{roomLabel:undefined}),startDate:evidence.start,endDate:evidence.end,updatedAt:this.now().toISOString()};
-    const saved=await this.repo.saveGuarded(next,this.history(context,next,'REASSIGNED'),evidence.capacity);
+    const next:RoomAssignment={...old,programId:evidence.program.id,allocationId:evidence.allocation.id,roomKey:required(input.roomKey,'roomKey'),...(input.roomLabel?.trim()?{roomLabel:input.roomLabel.trim()}:{roomLabel:undefined}),startDate:evidence.start,endDate:evidence.end,revision:old.revision+1,updatedAt:this.now().toISOString()};
+    const saved=await this.repo.saveGuarded(next,this.history(context,next,'REASSIGNED'),evidence.capacity,old.revision);
     await this.access.audit(context,'hajj-umrah.rooming.reassigned',id,{});
     return saved;
   }
@@ -90,9 +90,9 @@ export class HajjUmrahRoomingApplicationService{
     const rightTarget=this.assertHotelEvidence(targetForRight,right.programId,right.startDate,right.endDate);
 
     const at=this.now().toISOString();
-    const nextLeft:RoomAssignment={...left,allocationId:right.allocationId,roomKey:right.roomKey,...(right.roomLabel?{roomLabel:right.roomLabel}:{roomLabel:undefined}),updatedAt:at};
-    const nextRight:RoomAssignment={...right,allocationId:left.allocationId,roomKey:left.roomKey,...(left.roomLabel?{roomLabel:left.roomLabel}:{roomLabel:undefined}),updatedAt:at};
-    await this.repo.swap(nextLeft,this.history(context,nextLeft,'SWAPPED'),this.hotelCapacity(leftTarget),nextRight,this.history(context,nextRight,'SWAPPED'),this.hotelCapacity(rightTarget));
+    const nextLeft:RoomAssignment={...left,allocationId:right.allocationId,roomKey:right.roomKey,...(right.roomLabel?{roomLabel:right.roomLabel}:{roomLabel:undefined}),revision:left.revision+1,updatedAt:at};
+    const nextRight:RoomAssignment={...right,allocationId:left.allocationId,roomKey:left.roomKey,...(left.roomLabel?{roomLabel:left.roomLabel}:{roomLabel:undefined}),revision:right.revision+1,updatedAt:at};
+    await this.repo.swap(nextLeft,this.history(context,nextLeft,'SWAPPED'),this.hotelCapacity(leftTarget),left.revision,nextRight,this.history(context,nextRight,'SWAPPED'),this.hotelCapacity(rightTarget),right.revision);
     await this.access.audit(context,'hajj-umrah.rooming.swapped',left.id,{otherAssignmentId:right.id});
     return[nextLeft,nextRight] as const;
   }
@@ -101,8 +101,8 @@ export class HajjUmrahRoomingApplicationService{
     await this.permission(context,ROOMING_PERMISSIONS.manage);
     const old=await this.requiredAssignment(context,id);
     if(old.status==='UNASSIGNED')return old;
-    const next={...old,status:'UNASSIGNED' as const,updatedAt:this.now().toISOString()};
-    return this.repo.save(next,this.history(context,next,'UNASSIGNED'));
+    const next={...old,status:'UNASSIGNED' as const,revision:old.revision+1,updatedAt:this.now().toISOString()};
+    return this.repo.save(next,this.history(context,next,'UNASSIGNED'),old.revision);
   }
   async list(context:ExecutionContext,programId?:string){await this.permission(context,ROOMING_PERMISSIONS.view);return this.repo.list(context.companyId,context.branchId,programId);}
   async historyFor(context:ExecutionContext,id:string){await this.permission(context,ROOMING_PERMISSIONS.view);await this.requiredAssignment(context,id);return this.repo.history(context.companyId,context.branchId,id);}
