@@ -133,7 +133,7 @@ test('Booking 360 and Program 360 keep lifecycle financial and readiness states 
  const booking=await f.service.booking360(ctx,'b1');
  assert.equal(booking.booking.status,'CONFIRMED');assert.equal(booking.booking.financialState,'CONFIRMED');assert.equal(booking.readiness.status,'READY');assert.equal(booking.financialReadiness?.ready,true);
  const program=await f.service.program360(ctx,'p1');
- assert.equal(program.bookingSummary.total,1);assert.equal(program.travelers.length,1);assert.equal(program.readiness.status,'READY');
+ assert.equal(program.bookingSummary.total,1);assert.equal(program.travelers.length,1);assert.equal(program.readiness.status,'READY');assert.ok(program.supplyCoverage.length>=4);assert.ok(program.supplyCoverage.every(row=>row.status==='ALLOCATED'));
 });
 
 test('work queue derives canonical work once and resolved work disappears',async()=>{
