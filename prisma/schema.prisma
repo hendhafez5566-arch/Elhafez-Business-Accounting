@@ -3074,6 +3074,7 @@ model HutTicketRecord {
  travelerId String @map("traveler_id")
  allocationId String @map("allocation_id")
  flightBlockId String @map("flight_block_id")
+ flightSegmentReference Json @map("flight_segment_reference")
  pnr String
  ticketNumber String? @map("ticket_number")
  seat String?
