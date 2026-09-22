@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { registerHooks } from 'node:module';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, URL } from 'node:url';
 import process from 'node:process';
 import ts from 'typescript';
 
