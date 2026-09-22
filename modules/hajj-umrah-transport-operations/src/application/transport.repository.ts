@@ -1,3 +1,14 @@
-import type{ManifestAssignment,TransportHistory,TransportRun}from'../domain/transport.js';
-export interface TransportRepository{createRun(v:TransportRun,h:TransportHistory):Promise<TransportRun>;saveRun(v:TransportRun,h:TransportHistory):Promise<TransportRun>;getRun(c:string,b:string,id:string):Promise<TransportRun|null>;listRuns(c:string,b:string,p?:string):Promise<TransportRun[]>;assign(v:ManifestAssignment,h:TransportHistory):Promise<ManifestAssignment>;saveAssignment(v:ManifestAssignment,h:TransportHistory):Promise<ManifestAssignment>;manifest(c:string,b:string,runId:string):Promise<ManifestAssignment[]>;activeManifestCount(c:string,b:string,runId:string):Promise<number>;conflictingTraveler(c:string,b:string,travelerId:string,start:string,end:string,excludeRunId?:string):Promise<ManifestAssignment|null>;history(c:string,b:string,type:'RUN'|'MANIFEST',id:string):Promise<TransportHistory[]>;}
+import type { ManifestAssignment, TransportHistory, TransportRun } from '../domain/transport.js';
+
+export interface TransportRepository {
+  createRun(value:TransportRun,history:TransportHistory):Promise<TransportRun>;
+  saveRun(value:TransportRun,history:TransportHistory):Promise<TransportRun>;
+  getRun(companyId:string,branchId:string,id:string):Promise<TransportRun|null>;
+  listRuns(companyId:string,branchId:string,programId?:string):Promise<TransportRun[]>;
+  assignGuarded(value:ManifestAssignment,history:TransportHistory,run:TransportRun,capacity:number):Promise<ManifestAssignment>;
+  saveAssignment(value:ManifestAssignment,history:TransportHistory):Promise<ManifestAssignment>;
+  manifest(companyId:string,branchId:string,runId:string):Promise<ManifestAssignment[]>;
+  activeManifestCount(companyId:string,branchId:string,runId:string):Promise<number>;
+  history(companyId:string,branchId:string,type:'RUN'|'MANIFEST',id:string):Promise<TransportHistory[]>;
+}
 export const TRANSPORT_REPOSITORY=Symbol('TRANSPORT_REPOSITORY');
