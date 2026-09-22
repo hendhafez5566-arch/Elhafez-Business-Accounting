@@ -8,7 +8,7 @@ const map=(row:HurRoomAssignment):RoomAssignment=>({
   id:row.id,companyId:companyId(row.companyId),branchId:row.branchId,programId:row.programId,bookingId:row.bookingId,
   travelerId:row.travelerId,allocationId:row.allocationId,roomKey:row.roomKey,...(row.roomLabel?{roomLabel:row.roomLabel}:{}),
   startDate:row.startDate.toISOString().slice(0,10),endDate:row.endDate.toISOString().slice(0,10),status:row.status as RoomAssignment['status'],
-  createdAt:row.createdAt.toISOString(),updatedAt:row.updatedAt.toISOString(),
+  revision:row.revision,createdAt:row.createdAt.toISOString(),updatedAt:row.updatedAt.toISOString(),
 });
 const historyMap=(row:HurRoomingHistory):RoomingHistory=>({
   id:row.id,companyId:companyId(row.companyId),branchId:row.branchId,assignmentId:row.assignmentId,action:row.action as RoomingHistory['action'],
@@ -21,7 +21,7 @@ export class PrismaRoomingRepository implements RoomingRepository {
   private data(value:RoomAssignment){
     return{id:value.id,companyId:value.companyId,branchId:value.branchId,programId:value.programId,bookingId:value.bookingId,
       travelerId:value.travelerId,allocationId:value.allocationId,roomKey:value.roomKey,roomLabel:value.roomLabel??null,
-      startDate:new Date(value.startDate),endDate:new Date(value.endDate),status:value.status,
+      startDate:new Date(value.startDate),endDate:new Date(value.endDate),status:value.status,revision:value.revision,
       createdAt:new Date(value.createdAt),updatedAt:new Date(value.updatedAt)};
   }
   private historyData(value:RoomingHistory){
@@ -41,6 +41,9 @@ export class PrismaRoomingRepository implements RoomingRepository {
       `hur:allocation:${scope}:${value.allocationId}`,
     ];
   }
+  private stale(expected:number,actual:number){
+    if(actual!==expected)throw new ContractValidationError('revision','room assignment changed; reload and retry');
+  }
   private async assertIntegrity(tx:Prisma.TransactionClient,value:RoomAssignment,capacity:number,excludeId?:string){
     const overlap=await tx.hurRoomAssignment.findFirst({where:{
       companyId:value.companyId,branchId:value.branchId,travelerId:value.travelerId,status:'ASSIGNED',
@@ -58,41 +61,53 @@ export class PrismaRoomingRepository implements RoomingRepository {
     return this.db.$transaction(async tx=>{
       await this.locks(tx,this.lockKeys(value));
       await this.assertIntegrity(tx,value,capacity);
-      await tx.hurRoomAssignment.create({data:this.data(value)});
+      const created=await tx.hurRoomAssignment.create({data:this.data(value)});
       await tx.hurRoomingHistory.create({data:this.historyData(history)});
-      return value;
+      return map(created);
     },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
   }
 
-  async saveGuarded(value:RoomAssignment,history:RoomingHistory,capacity:number){
+  async saveGuarded(value:RoomAssignment,history:RoomingHistory,capacity:number,expectedRevision:number){
     return this.db.$transaction(async tx=>{
       await this.locks(tx,this.lockKeys(value));
       const current=await tx.hurRoomAssignment.findUnique({where:{id_companyId_branchId:{id:value.id,companyId:value.companyId,branchId:value.branchId}}});
-      if(!current||current.status!=='ASSIGNED')throw new ContractValidationError('status','only active assignment can be moved');
+      if(!current)throw new ContractValidationError('assignmentId','room assignment not found');
+      this.stale(expectedRevision,current.revision);
+      if(current.status!=='ASSIGNED')throw new ContractValidationError('status','only active assignment can be moved');
       await this.assertIntegrity(tx,value,capacity,value.id);
-      await tx.hurRoomAssignment.update({where:{id_companyId_branchId:{id:value.id,companyId:value.companyId,branchId:value.branchId}},data:this.data(value)});
+      const updated=await tx.hurRoomAssignment.update({where:{id_companyId_branchId:{id:value.id,companyId:value.companyId,branchId:value.branchId}},data:this.data(value)});
       await tx.hurRoomingHistory.create({data:this.historyData(history)});
-      return value;
+      return map(updated);
     },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
   }
 
-  async save(value:RoomAssignment,history:RoomingHistory){
+  async save(value:RoomAssignment,history:RoomingHistory,expectedRevision:number){
     return this.db.$transaction(async tx=>{
       await this.locks(tx,this.lockKeys(value));
-      await tx.hurRoomAssignment.update({where:{id_companyId_branchId:{id:value.id,companyId:value.companyId,branchId:value.branchId}},data:this.data(value)});
+      const current=await tx.hurRoomAssignment.findUnique({where:{id_companyId_branchId:{id:value.id,companyId:value.companyId,branchId:value.branchId}}});
+      if(!current)throw new ContractValidationError('assignmentId','room assignment not found');
+      this.stale(expectedRevision,current.revision);
+      const updated=await tx.hurRoomAssignment.update({where:{id_companyId_branchId:{id:value.id,companyId:value.companyId,branchId:value.branchId}},data:this.data(value)});
       await tx.hurRoomingHistory.create({data:this.historyData(history)});
-      return value;
+      return map(updated);
     },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
   }
 
-  async swap(a:RoomAssignment,historyA:RoomingHistory,capacityA:number,b:RoomAssignment,historyB:RoomingHistory,capacityB:number){
+  async swap(
+    a:RoomAssignment,historyA:RoomingHistory,capacityA:number,expectedRevisionA:number,
+    b:RoomAssignment,historyB:RoomingHistory,capacityB:number,expectedRevisionB:number,
+  ){
     await this.db.$transaction(async tx=>{
       await this.locks(tx,[...this.lockKeys(a),...this.lockKeys(b)]);
       const [currentA,currentB]=await Promise.all([
         tx.hurRoomAssignment.findUnique({where:{id_companyId_branchId:{id:a.id,companyId:a.companyId,branchId:a.branchId}}}),
         tx.hurRoomAssignment.findUnique({where:{id_companyId_branchId:{id:b.id,companyId:b.companyId,branchId:b.branchId}}}),
       ]);
-      if(!currentA||!currentB||currentA.status!=='ASSIGNED'||currentB.status!=='ASSIGNED')throw new ContractValidationError('status','both assignments must remain active during swap');
+      if(!currentA||!currentB)throw new ContractValidationError('assignmentId','room assignment not found');
+      this.stale(expectedRevisionA,currentA.revision);
+      this.stale(expectedRevisionB,currentB.revision);
+      if(currentA.status!=='ASSIGNED'||currentB.status!=='ASSIGNED')throw new ContractValidationError('status','both assignments must remain active during swap');
+
       const excluded=[a.id,b.id];
       const leftOverlap=await tx.hurRoomAssignment.findFirst({where:{companyId:a.companyId,branchId:a.branchId,travelerId:a.travelerId,status:'ASSIGNED',id:{notIn:excluded},startDate:{lte:new Date(a.endDate)},endDate:{gte:new Date(a.startDate)}}});
       if(leftOverlap)throw new ContractValidationError('travelerId','traveler already has an overlapping room assignment');
@@ -104,9 +119,10 @@ export class PrismaRoomingRepository implements RoomingRepository {
         const overlap=a.startDate<=b.endDate&&b.startDate<=a.endDate;
         const extra=overlap?2:1;
         if(leftCount+extra>capacityA||rightCount+extra>capacityB)throw new ContractValidationError('capacity','hotel allocation capacity exceeded');
-      }else{
-        if(leftCount+1>capacityA||rightCount+1>capacityB)throw new ContractValidationError('capacity','hotel allocation capacity exceeded');
+      }else if(leftCount+1>capacityA||rightCount+1>capacityB){
+        throw new ContractValidationError('capacity','hotel allocation capacity exceeded');
       }
+
       await tx.hurRoomAssignment.update({where:{id_companyId_branchId:{id:a.id,companyId:a.companyId,branchId:a.branchId}},data:this.data(a)});
       await tx.hurRoomingHistory.create({data:this.historyData(historyA)});
       await tx.hurRoomAssignment.update({where:{id_companyId_branchId:{id:b.id,companyId:b.companyId,branchId:b.branchId}},data:this.data(b)});
