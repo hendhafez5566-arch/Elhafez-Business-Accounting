@@ -10,7 +10,7 @@ import type{Program}from'./hajj-umrah-client.js';
 const program:Program={id:'p1',code:'UM-1',type:'UMRAH',seasonId:'s1',arabicName:'برنامج العمرة',snapshot:{departureDate:'2027-05-01',returnDate:'2027-05-20',salesStart:'2027-01-01',salesClose:'2027-04-01',capacity:'20',currency:'SAR',prices:{},requirements:['HOTEL'],components:[]},temporaryHoldMinutes:20,status:'IN_TRIP',bookingOpen:false,currentVersion:1,currentVersionId:'pv1',departureRecordedAt:'2027-05-01T00:00:00.000Z'};
 const ready:ReadinessResult={status:'READY',blockers:[],evidenceReferences:['e1']};
 const blocked:ReadinessResult={status:'NOT_READY',blockers:[{category:'VISA',code:'VISA_NOT_ISSUED',message:'التأشيرة المطلوبة للمسافر غير صادرة.',owner:'hajj-umrah-visa-operations',responsibility:'التأشيرات',programId:'p1',bookingId:'b1',travelerId:'t1',evidenceReferences:[]}],evidenceReferences:[]};
-const program360={program,bookingSummary:{total:1,statusCounts:{CONFIRMED:1}},bookings:[{id:'b1',code:'BK-1',programId:'p1',status:'CONFIRMED',financialState:'CONFIRMED'}],travelers:[],rooming:[],visas:[],tickets:[],transport:[],tasks:[],incidents:[],services:[],readiness:{...ready,bookingResults:{b1:ready}},closure:{canClose:true,program,blockers:[],evidenceReferences:[]},accounting:{byCurrency:[{currency:'SAR',revenue:'1000',cost:'700',profit:'300'}]}}as unknown as Program360;
+const program360={program,bookingSummary:{total:1,statusCounts:{CONFIRMED:1}},bookings:[{id:'b1',code:'BK-1',programId:'p1',status:'CONFIRMED',financialState:'CONFIRMED'}],travelers:[],supplyCoverage:[{requirement:'HOTEL',componentTitle:'فندق مكة',status:'ALLOCATED',evidenceReferences:['a1']}],rooming:[],visas:[],tickets:[],transport:[],tasks:[],incidents:[],services:[],readiness:{...ready,bookingResults:{b1:ready}},closure:{canClose:true,program,blockers:[],evidenceReferences:[]},accounting:{byCurrency:[{currency:'SAR',revenue:'1000',cost:'700',profit:'300'}]}}as unknown as Program360;
 const booking360={booking:{id:'b1',code:'BK-1',programId:'p1',status:'CONFIRMED',financialState:'CONFIRMED'},program,travelers:[],rooming:[],visas:[],tickets:[],transport:[],tasks:[],incidents:[],services:[],readiness:blocked,financialReadiness:{ready:false,blockers:['UNRESOLVED_WORKFLOW'],warnings:[],evidenceReferences:['w1']}}as unknown as Booking360;
 
 test('HU-03 web client calls the real readiness endpoints and HTTP method',async()=>{
@@ -24,6 +24,11 @@ test('HU-03 web client calls the real readiness endpoints and HTTP method',async
   {path:'/hajj-umrah/readiness/program/p1/reports'},
   {path:'/hajj-umrah/readiness/program/p1/closure',method:'POST'},
  ]);
+});
+
+test('Program 360 renders canonical supply coverage without exposing raw technical controls',()=>{
+ const html=renderToStaticMarkup(createElement(ReadinessWorkspaceView,{programs:[program],programId:'p1',onProgramChange:()=>undefined,tab:'program360',onTabChange:()=>undefined,capabilities:{view:true,view360:true,reports:true,close:true},program360,bookingId:'',onBookingChange:()=>undefined,onCloseRequest:()=>undefined,closing:false}));
+ assert.match(html,/تغطية التوريد/);assert.match(html,/فندق مكة/);assert.match(html,/مغطى بتخصيص مؤكد/);assert.doesNotMatch(html,/commandKey|idempotency|JSON/i);
 });
 
 test('Booking 360 renders lifecycle financial and final readiness as separate states with actionable blocker',()=>{
