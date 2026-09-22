@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -23,6 +24,7 @@ import {
   PROGRAM_PERMISSIONS,
   type ProgramInput,
 } from '@elhafez/hajj-umrah-programs';
+import { HajjUmrahReadinessApplicationService } from '@elhafez/hajj-umrah-readiness';
 
 type RequestHeaders = {
   authorization: string | undefined;
@@ -35,12 +37,14 @@ export class HajjUmrahController {
   static readonly runtimeDependencies = [
     HajjUmrahSeasonsApplicationService,
     HajjUmrahProgramsApplicationService,
+    HajjUmrahReadinessApplicationService,
     PlatformCoreApplicationService,
   ] as const;
 
   constructor(
     private readonly seasons: HajjUmrahSeasonsApplicationService,
     private readonly programs: HajjUmrahProgramsApplicationService,
+    private readonly readiness: HajjUmrahReadinessApplicationService,
     private readonly platform: PlatformCoreApplicationService,
   ) {}
 
@@ -259,10 +263,18 @@ export class HajjUmrahController {
     @Headers('x-branch-id') branchId: string | undefined,
     @Param('id') id: string,
   ) {
-    return this.programs.recordReturn(
+    const result = await this.readiness.closeProgram(
       await this.context({ authorization, companyId, branchId }),
       id,
     );
+    if (!result.closed) {
+      throw new BadRequestException({
+        code: 'HU03_CLOSURE_BLOCKED',
+        message: 'program closure is blocked by current canonical evidence',
+        blockers: result.blockers,
+      });
+    }
+    return result.program;
   }
 
   @Post('programs/:id/cancel')
