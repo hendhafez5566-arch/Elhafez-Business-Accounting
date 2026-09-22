@@ -13,16 +13,17 @@ export interface FinancialReadiness{readonly ready:boolean;readonly blockers:rea
 export interface TravelerProjection{readonly traveler:{readonly id:string;readonly fullName:string;readonly nationality:string|null;readonly status:string};readonly passport:{readonly id:string;readonly documentNumber:string;readonly expiryDate:string|null}|null;}
 export interface RunProjection{readonly run:TransportRun;readonly manifest:readonly ManifestAssignment[];}
 export interface Booking360{
- readonly booking:Booking;readonly program:Program;readonly travelers:readonly TravelerProjection[];readonly rooming:readonly RoomAssignment[];readonly visas:readonly VisaCase[];readonly tickets:readonly TicketRecord[];
+ readonly booking:Booking;readonly program:Program;readonly travelers:readonly TravelerProjection[];readonly supplyCoverage:readonly SupplyCoverageItem[];readonly rooming:readonly RoomAssignment[];readonly visas:readonly VisaCase[];readonly tickets:readonly TicketRecord[];
  readonly transport:readonly RunProjection[];readonly tasks:readonly OperationTask[];readonly incidents:readonly Incident[];readonly services:readonly ServiceExecution[];readonly readiness:ReadinessResult;readonly financialReadiness?:FinancialReadiness;
 }
 export interface ClosureEvaluation{readonly canClose:boolean;readonly program:Program;readonly blockers:readonly ReadinessBlocker[];readonly evidenceReferences:readonly string[];}
 export interface Program360{
- readonly program:Program;readonly bookingSummary:{readonly total:number;readonly statusCounts:Readonly<Record<string,number>>};readonly bookings:readonly Booking[];readonly travelers:readonly TravelerProjection[];
+ readonly program:Program;readonly bookingSummary:{readonly total:number;readonly statusCounts:Readonly<Record<string,number>>};readonly bookings:readonly Booking[];readonly travelers:readonly TravelerProjection[];readonly supplyCoverage:readonly SupplyCoverageItem[];
  readonly rooming:readonly RoomAssignment[];readonly visas:readonly VisaCase[];readonly tickets:readonly TicketRecord[];readonly transport:readonly RunProjection[];readonly tasks:readonly OperationTask[];readonly incidents:readonly Incident[];
  readonly services:readonly ServiceExecution[];readonly readiness:ReadinessResult&{readonly bookingResults:Readonly<Record<string,ReadinessResult>>};readonly closure:ClosureEvaluation;readonly accounting:unknown;
 }
 export interface WorkQueueItem{readonly key:string;readonly priority:'CRITICAL'|'HIGH'|'NORMAL';readonly category:ReadinessBlockerCategory;readonly title:string;readonly detail:string;readonly owner:string;readonly programId:string;readonly bookingId?:string;readonly travelerId?:string;readonly dueAt?:string;}
+export interface SupplyCoverageItem{readonly requirement:string;readonly componentTitle:string;readonly status:'ALLOCATED'|'AVAILABLE'|'BLOCKED'|'MISSING_COMPONENT'|'MISSING_REFERENCE'|'OWNER_UNAVAILABLE';readonly resourceReference?:string;readonly evidenceReferences:readonly string[];readonly detail?:string;}
 export interface ReadinessCapabilities{readonly view:boolean;readonly view360:boolean;readonly reports:boolean;readonly close:boolean;}
 export interface HajjUmrahReportBundle{
  readonly generatedAt:string;readonly program:{readonly id:string;readonly code:string;readonly arabicName:string;readonly status:string};readonly bookingStatus:Readonly<Record<string,number>>;readonly bookings:readonly {readonly id:string;readonly code:string;readonly status:string}[];
