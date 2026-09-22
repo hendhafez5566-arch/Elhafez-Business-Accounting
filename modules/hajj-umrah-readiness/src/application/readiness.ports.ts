@@ -9,6 +9,7 @@ import type{ManifestAssignment,TransportRun}from'@elhafez/hajj-umrah-transport-o
 import type{Incident,OperationTask,ServiceExecution}from'@elhafez/hajj-umrah-trip-operations';
 import type{Allocation,ProgramSupplyEvidence,ProgramSupplyEvidenceInput}from'@elhafez/tourism-contract-inventory';
 import type{ServiceCategory as FinancialServiceCategory}from'@elhafez/tourism-finance-orchestration';
+import type{ReportScope}from'@elhafez/financial-reporting';
 
 export interface FinancialReadinessEvidence{
  readonly ready:boolean;
@@ -41,5 +42,5 @@ export interface ReadinessSources{
  bookingFinancial(input:{companyId:string;branchId:string;booking:SourceReference;program:SourceReference;requiredCategories:readonly FinancialServiceCategory[]}):Promise<FinancialReadinessEvidence>;
  programFinancial(input:{companyId:string;branchId:string;program:SourceReference;requiredCategories:readonly FinancialServiceCategory[]}):Promise<FinancialReadinessEvidence>;
  closeFinancial(input:{companyId:string;branchId:string;commandKey:string;program:SourceReference;operationalEvidence:string}):Promise<unknown>;
- programAccounting(input:{companyId:string;branchIds:readonly string[]},programId:string):Promise<unknown>;
+ programAccounting(input:ReportScope,programId:string):Promise<unknown>;
 }
