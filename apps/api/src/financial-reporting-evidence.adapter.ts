@@ -5,7 +5,7 @@ import type { Invoice, Advance } from '@elhafez/billing-subledgers';
 import type { Voucher } from '@elhafez/treasury-settlement';
 import type { ProgramCostCenterAssociation } from '@elhafez/cost-budget-accounting';
 import type { TaxSnapshot } from '@elhafez/tax';
-import type { FinancialReportingApplicationService } from '@elhafez/financial-reporting';
+import { FinancialReportingApplicationService } from '@elhafez/financial-reporting';
 
 /** Composition-root-only trusted adapter: maps owner public results into disposable Reporting evidence. */
 @Injectable()
