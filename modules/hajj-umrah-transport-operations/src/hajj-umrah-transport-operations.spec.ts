@@ -4,14 +4,44 @@ import { ContractValidationError, executionContext, type CompanyId, type Executi
 import { HajjUmrahTransportOperationsApplicationService } from './application/hajj-umrah-transport-operations.application-service.js';
 import type { TransportRepository } from './application/transport.repository.js';
 import type { TransportAccess } from './application/transport.ports.js';
-import type { ManifestAssignment, TransportHistory, TransportRun } from './domain/transport.js';
+import type { ManifestAssignment, TransportHistory, TransportRun, TransportRunStatus } from './domain/transport.js';
 
 class MemoryTransport implements TransportRepository {
   readonly runs=new Map<string,TransportRun>();
   readonly assignments=new Map<string,ManifestAssignment>();
   readonly logs:TransportHistory[]=[];
   private tail:Promise<void>=Promise.resolve();
+  private pausedRunAction:string|null=null;
+  private runEnteredResolve:(()=>void)|null=null;
+  private runReleasePromise:Promise<void>|null=null;
+  private runReleaseResolve:(()=>void)|null=null;
+  private pauseAssignment=false;
+  private assignmentEnteredResolve:(()=>void)|null=null;
+  private assignmentReleasePromise:Promise<void>|null=null;
+  private assignmentReleaseResolve:(()=>void)|null=null;
 
+  pauseNextRunAction(action:string){
+    this.pausedRunAction=action;
+    const entered=new Promise<void>(resolve=>{this.runEnteredResolve=resolve;});
+    this.runReleasePromise=new Promise<void>(resolve=>{this.runReleaseResolve=resolve;});
+    return{entered,release:()=>this.runReleaseResolve?.()};
+  }
+  pauseNextAssignmentSave(){
+    this.pauseAssignment=true;
+    const entered=new Promise<void>(resolve=>{this.assignmentEnteredResolve=resolve;});
+    this.assignmentReleasePromise=new Promise<void>(resolve=>{this.assignmentReleaseResolve=resolve;});
+    return{entered,release:()=>this.assignmentReleaseResolve?.()};
+  }
+  private async maybePauseRun(action:string){
+    if(this.pausedRunAction!==action)return;
+    this.pausedRunAction=null;this.runEnteredResolve?.();await this.runReleasePromise;
+    this.runEnteredResolve=null;this.runReleasePromise=null;this.runReleaseResolve=null;
+  }
+  private async maybePauseAssignment(){
+    if(!this.pauseAssignment)return;
+    this.pauseAssignment=false;this.assignmentEnteredResolve?.();await this.assignmentReleasePromise;
+    this.assignmentEnteredResolve=null;this.assignmentReleasePromise=null;this.assignmentReleaseResolve=null;
+  }
   private async atomic<T>(work:()=>Promise<T>|T):Promise<T>{
     const previous=this.tail;
     let release!:()=>void;
@@ -19,14 +49,29 @@ class MemoryTransport implements TransportRepository {
     await previous;
     try{return await work();}finally{release();}
   }
+  private stale(kind:'run'|'manifest',expected:number,actual:number){
+    if(actual!==expected)throw new ContractValidationError('revision',`${kind} changed; reload and retry`);
+  }
+
   async createRun(value:TransportRun,history:TransportHistory){this.runs.set(value.id,value);this.logs.push(history);return value;}
-  async saveRun(value:TransportRun,history:TransportHistory){return this.atomic(()=>{this.runs.set(value.id,value);this.logs.push(history);return value;});}
+  async saveRun(value:TransportRun,history:TransportHistory,expectedRevision:number,expectedStatus:TransportRunStatus){
+    await this.maybePauseRun(history.action);
+    return this.atomic(()=>{
+      const current=this.runs.get(value.id);
+      if(!current)throw new ContractValidationError('runId','transport run not found');
+      this.stale('run',expectedRevision,current.revision);
+      if(current.status!==expectedStatus)throw new ContractValidationError('status','transport run changed; reload and retry');
+      this.runs.set(value.id,value);this.logs.push(history);return value;
+    });
+  }
   async getRun(companyId:string,branchId:string,id:string){const value=this.runs.get(id);return value?.companyId===companyId&&value.branchId===branchId?value:null;}
   async listRuns(companyId:string,branchId:string,programId?:string){return[...this.runs.values()].filter(value=>value.companyId===companyId&&value.branchId===branchId&&(!programId||value.programId===programId));}
   async assignGuarded(value:ManifestAssignment,history:TransportHistory,run:TransportRun,capacity:number){
     return this.atomic(()=>{
       const currentRun=this.runs.get(run.id);
-      if(!currentRun||currentRun.status!=='SCHEDULED')throw new ContractValidationError('status','manifest can only change before dispatch');
+      if(!currentRun)throw new ContractValidationError('runId','transport run not found');
+      this.stale('run',run.revision,currentRun.revision);
+      if(currentRun.status!=='SCHEDULED')throw new ContractValidationError('status','manifest can only change before dispatch');
       const existing=[...this.assignments.values()].find(row=>row.companyId===value.companyId&&row.branchId===value.branchId&&row.runId===value.runId&&row.travelerId===value.travelerId);
       if(existing&&existing.bookingId!==value.bookingId)throw new ContractValidationError('bookingId','retained manifest identity belongs to another booking');
       if(existing?.status==='ASSIGNED')return existing;
@@ -43,7 +88,7 @@ class MemoryTransport implements TransportRepository {
       }).length;
       if(used>=capacity)throw new ContractValidationError('capacity','transport allocation capacity exceeded across overlapping runs');
       if(existing){
-        const reactivated={...existing,status:'ASSIGNED' as const,updatedAt:value.updatedAt};
+        const reactivated={...existing,status:'ASSIGNED' as const,revision:existing.revision+1,updatedAt:value.updatedAt};
         this.assignments.set(existing.id,reactivated);
         this.logs.push({...history,aggregateId:existing.id,action:'REACTIVATED'});
         return reactivated;
@@ -51,7 +96,20 @@ class MemoryTransport implements TransportRepository {
       this.assignments.set(value.id,value);this.logs.push(history);return value;
     });
   }
-  async saveAssignment(value:ManifestAssignment,history:TransportHistory){return this.atomic(()=>{this.assignments.set(value.id,value);this.logs.push(history);return value;});}
+  async saveAssignment(value:ManifestAssignment,history:TransportHistory,expectedRevision:number,expectedRunRevision:number){
+    await this.maybePauseAssignment();
+    return this.atomic(()=>{
+      const run=this.runs.get(value.runId);
+      if(!run)throw new ContractValidationError('runId','transport run not found');
+      this.stale('run',expectedRunRevision,run.revision);
+      if(run.status!=='SCHEDULED')throw new ContractValidationError('status','manifest can only change before dispatch');
+      const current=this.assignments.get(value.id);
+      if(!current)throw new ContractValidationError('assignmentId','manifest assignment not found');
+      this.stale('manifest',expectedRevision,current.revision);
+      if(current.status!=='ASSIGNED')throw new ContractValidationError('status','manifest assignment is no longer active');
+      this.assignments.set(value.id,value);this.logs.push(history);return value;
+    });
+  }
   async manifest(companyId:string,branchId:string,runId:string){return[...this.assignments.values()].filter(value=>value.companyId===companyId&&value.branchId===branchId&&value.runId===runId);}
   async activeManifestCount(companyId:string,branchId:string,runId:string){return(await this.manifest(companyId,branchId,runId)).filter(value=>value.status==='ASSIGNED').length;}
   async history(companyId:string,branchId:string,type:'RUN'|'MANIFEST',id:string){return this.logs.filter(value=>value.companyId===companyId&&value.branchId===branchId&&value.aggregateType===type&&value.aggregateId===id);}
@@ -78,7 +136,7 @@ function fixture(quantity='2'){
 const firstRun={programId:'p1',allocationId:'a1',code:'RUN-1',route:'Makkah → Madinah',startsAt:'2027-01-01T10:00:00Z',endsAt:'2027-01-01T15:00:00Z'};
 const secondRun={...firstRun,code:'RUN-2',startsAt:'2027-01-01T11:00:00Z',endsAt:'2027-01-01T14:00:00Z'};
 
-test('run creation validates canonical transport capacity evidence',async()=>{const value=fixture();const run=await value.service.createRun(context,firstRun);assert.equal(run.status,'SCHEDULED');});
+test('run creation validates canonical transport capacity evidence',async()=>{const value=fixture();const run=await value.service.createRun(context,firstRun);assert.equal(run.status,'SCHEDULED');assert.equal(run.revision,1);});
 
 test('overlapping runs share the same canonical allocation capacity',async()=>{const value=fixture('1');const a=await value.service.createRun(context,firstRun);const b=await value.service.createRun(context,secondRun);await value.service.assignTraveler(context,a.id,'b1','t1');await assert.rejects(()=>value.service.assignTraveler(context,b.id,'b2','t2'),/capacity exceeded across overlapping runs/);});
 
@@ -89,8 +147,42 @@ test('concurrent manifest writes cannot over-consume shared allocation capacity'
 
 test('traveler conflict is enforced across overlapping active runs',async()=>{const value=fixture('2');const a=await value.service.createRun(context,firstRun);const b=await value.service.createRun(context,secondRun);await value.service.assignTraveler(context,a.id,'b1','t1');await assert.rejects(()=>value.service.assignTraveler(context,b.id,'b1','t1'),/conflicting transport run/);});
 
-test('removed traveler can be re-added by reactivating retained assignment and history',async()=>{const value=fixture('2');const run=await value.service.createRun(context,firstRun);const first=await value.service.assignTraveler(context,run.id,'b1','t1');await value.service.removeTraveler(context,first.id,run.id);const reactivated=await value.service.assignTraveler(context,run.id,'b1','t1');assert.equal(reactivated.id,first.id);assert.equal(reactivated.status,'ASSIGNED');assert.deepEqual((await value.service.historyFor(context,'MANIFEST',first.id)).map(row=>row.action),['ASSIGNED','REMOVED','REACTIVATED']);});
+test('removed traveler can be re-added by reactivating retained assignment and history',async()=>{const value=fixture('2');const run=await value.service.createRun(context,firstRun);const first=await value.service.assignTraveler(context,run.id,'b1','t1');assert.equal(first.revision,1);const removed=await value.service.removeTraveler(context,first.id,run.id);assert.equal(removed.revision,2);const reactivated=await value.service.assignTraveler(context,run.id,'b1','t1');assert.equal(reactivated.id,first.id);assert.equal(reactivated.status,'ASSIGNED');assert.equal(reactivated.revision,3);assert.deepEqual((await value.service.historyFor(context,'MANIFEST',first.id)).map(row=>row.action),['ASSIGNED','REMOVED','REACTIVATED']);});
 
 test('removed manifest identity cannot be reused under another booking',async()=>{const value=fixture('2');const run=await value.service.createRun(context,firstRun);const first=await value.service.assignTraveler(context,run.id,'b1','t1');await value.service.removeTraveler(context,first.id,run.id);await assert.rejects(()=>value.service.assignTraveler(context,run.id,'b2','t1'),/retained manifest identity belongs to another booking/);});
 
-test('dispatch and completion retain run history',async()=>{const value=fixture();const run=await value.service.createRun(context,firstRun);await value.service.assignTraveler(context,run.id,'b1','t1');await value.service.dispatch(context,run.id);const done=await value.service.complete(context,run.id);assert.equal(done.status,'COMPLETED');assert.deepEqual((await value.service.historyFor(context,'RUN',run.id)).map(value=>value.action),['CREATED','DISPATCHED','COMPLETED']);});
+test('dispatch and completion advance revisions and retain run history',async()=>{const value=fixture();const run=await value.service.createRun(context,firstRun);await value.service.assignTraveler(context,run.id,'b1','t1');const dispatched=await value.service.dispatch(context,run.id);assert.equal(dispatched.revision,2);const done=await value.service.complete(context,run.id);assert.equal(done.status,'COMPLETED');assert.equal(done.revision,3);assert.deepEqual((await value.service.historyFor(context,'RUN',run.id)).map(value=>value.action),['CREATED','DISPATCHED','COMPLETED']);});
+
+test('stale cancel cannot overwrite a dispatch that wins the race',async()=>{
+  const value=fixture();
+  const run=await value.service.createRun(context,firstRun);
+  const gate=value.repo.pauseNextRunAction('CANCELLED');
+  const staleCancel=value.service.cancel(context,run.id,'operator cancellation');
+  await gate.entered;
+  const dispatched=await value.service.dispatch(context,run.id);
+  assert.equal(dispatched.status,'DISPATCHED');
+  assert.equal(dispatched.revision,2);
+  gate.release();
+  await assert.rejects(()=>staleCancel,/changed; reload and retry/);
+  const persisted=await value.repo.getRun('c1','b1',run.id);
+  assert.equal(persisted?.status,'DISPATCHED');
+  assert.equal(persisted?.revision,2);
+  assert.deepEqual((await value.service.historyFor(context,'RUN',run.id)).map(row=>row.action),['CREATED','DISPATCHED']);
+});
+
+test('manifest removal cannot commit after dispatch wins the race',async()=>{
+  const value=fixture();
+  const run=await value.service.createRun(context,firstRun);
+  const assignment=await value.service.assignTraveler(context,run.id,'b1','t1');
+  const gate=value.repo.pauseNextAssignmentSave();
+  const staleRemoval=value.service.removeTraveler(context,assignment.id,run.id);
+  await gate.entered;
+  const dispatched=await value.service.dispatch(context,run.id);
+  assert.equal(dispatched.status,'DISPATCHED');
+  gate.release();
+  await assert.rejects(()=>staleRemoval,/changed; reload and retry|before dispatch/);
+  const manifest=await value.service.manifest(context,run.id);
+  assert.equal(manifest[0]?.status,'ASSIGNED');
+  assert.equal(manifest[0]?.revision,1);
+  assert.deepEqual((await value.service.historyFor(context,'MANIFEST',assignment.id)).map(row=>row.action),['ASSIGNED']);
+});
