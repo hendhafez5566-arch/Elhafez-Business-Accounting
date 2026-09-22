@@ -1,6 +1,6 @@
 import{Module}from'@nestjs/common';
 import{PrismaClient}from'@prisma/client';
-import{companyId,type SourceReference}from'@elhafez/contracts';
+import{companyId}from'@elhafez/contracts';
 import{PlatformCoreApplicationService,PlatformCoreModule}from'@elhafez/platform-core';
 import{HajjUmrahProgramsApplicationService}from'@elhafez/hajj-umrah-programs';
 import{HajjUmrahProgramsModule}from'@elhafez/hajj-umrah-programs/nest';
@@ -60,7 +60,7 @@ import{PrismaReadinessRepository}from'./infrastructure/prisma-readiness.reposito
     supply:(input)=>inventory.checkProgramSupplyEvidence(input),
     bookingFinancial:(input)=>finance.evaluateBookingFinancialReadiness({...input,companyId:companyId(input.companyId)}),
     programFinancial:(input)=>finance.evaluateFinancialReadiness({...input,companyId:companyId(input.companyId)}),
-    closeFinancial:(input)=>finance.closeProgram({...input,companyId:companyId(input.companyId),program:input.program as SourceReference}),
+    closeFinancial:(input)=>finance.closeProgram({...input,companyId:companyId(input.companyId),program:input.program}),
     programAccounting:(input,id)=>reporting.getProgramAccountingSnapshot(input,id),
    };
    return new HajjUmrahReadinessApplicationService(repository,new PlatformReadinessAccess(platform),sources);
