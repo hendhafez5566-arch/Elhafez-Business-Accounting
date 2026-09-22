@@ -103,8 +103,9 @@ test('confirmed allocation remains valid supply evidence when remaining capacity
  f.setBookingAllocations([]);assert.ok((await f.service.bookingReadiness(ctx,'b1')).blockers.some(row=>row.code==='SUPPLY_NOT_AVAILABLE'));
 });
 
-test('current operational and financial state overrides any earlier READY result',async()=>{
- const f=fixture();assert.equal((await f.service.bookingReadiness(ctx,'b1')).status,'READY');
+test('current canonical evidence overrides booking lifecycle READY',async()=>{
+ const f=fixture();f.state.bookingStatus='READY';
+ assert.equal((await f.service.bookingReadiness(ctx,'b1')).status,'READY');
  f.state.task=true;f.state.incident=true;f.state.finance=false;
  const blocked=await f.service.bookingReadiness(ctx,'b1');
  assert.equal(blocked.status,'NOT_READY');
@@ -117,6 +118,7 @@ test('program readiness aggregates exact blocking bookings and enforces branch i
  const f=fixture();f.setBookings([makeBooking('b1','t1'),makeBooking('b2','t2')]);f.state.rooming=false;
  const result=await f.service.programReadiness(ctx,'p1');assert.equal(result.status,'NOT_READY');assert.ok(result.blockers.some(row=>row.bookingId==='b2'));
  await assert.rejects(()=>f.service.programReadiness(executionContext('c1','b2','u1'),'p1'),/branch denied/);
+ await assert.rejects(()=>f.service.programReadiness(executionContext('c2','b1','u1'),'p1'),/branch denied/);
 });
 
 test('owner evidence failure is never silently omitted',async()=>{
