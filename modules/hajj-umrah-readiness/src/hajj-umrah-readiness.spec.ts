@@ -163,16 +163,52 @@ test('closure blockers and financial blockers leave program state unchanged',asy
  result=await f.service.closeProgram(ctx,'p1');assert.equal(result.closed,false);assert.equal(f.program.status,'IN_TRIP');assert.equal(f.state.ownerClose,0);
 });
 
-test('safe closure retains evidence and replay is idempotent',async()=>{
+test('safe closure retains one durable completed record and replay is idempotent',async()=>{
  const f=fixture();f.setProgram({status:'IN_TRIP',departureRecordedAt:'2027-05-01T00:00:00.000Z'});f.state.bookingStatus='COMPLETED';f.state.run='COMPLETED';
- const first=await f.service.closeProgram(ctx,'p1');assert.equal(first.closed,true);assert.equal(f.program.status,'CLOSED');assert.equal(f.repo.rows[0]?.status,'COMPLETED');assert.equal(f.state.financeClose,1);assert.equal(f.state.ownerClose,1);
- const replay=await f.service.closeProgram(ctx,'p1');assert.equal(replay.closed,true);assert.equal(replay.idempotent,true);assert.equal(f.state.financeClose,1);assert.equal(f.state.ownerClose,1);assert.equal(f.access.audits.length,1);
+ const first=await f.service.closeProgram(ctx,'p1');
+ assert.equal(first.closed,true);assert.equal(f.program.status,'CLOSED');assert.equal(f.repo.rows.length,1);assert.equal(f.repo.rows[0]?.status,'COMPLETED');assert.equal(f.repo.rows[0]?.revision,3);assert.ok(f.repo.rows[0]?.completedAt);assert.equal(f.state.financeClose,1);assert.equal(f.state.ownerClose,1);
+ const replay=await f.service.closeProgram(ctx,'p1');
+ assert.equal(replay.closed,true);assert.equal(f.state.financeClose,1);assert.equal(f.state.financeCommandKeys.length,1);assert.equal(f.state.ownerClose,1);assert.equal(f.access.audits.length,1);
 });
 
-test('concurrent owner rejection cannot be reported as successful closure',async()=>{
- const f=fixture();f.setProgram({status:'IN_TRIP',departureRecordedAt:'2027-05-01T00:00:00.000Z'});f.state.bookingStatus='COMPLETED';f.state.run='COMPLETED';f.state.ownerFailure=true;
- await assert.rejects(()=>f.service.closeProgram(ctx,'p1'),/concurrent/);
- assert.equal(f.program.status,'IN_TRIP');
+test('concurrent close callers converge to CLOSED and one durable COMPLETED evidence record',async()=>{
+ const f=fixture();f.setProgram({status:'IN_TRIP',departureRecordedAt:'2027-05-01T00:00:00.000Z'});f.state.bookingStatus='COMPLETED';f.state.run='COMPLETED';
+ let release!:()=>void;f.state.ownerGate=new Promise<void>(resolve=>{release=resolve});
+ const left=f.service.closeProgram(ctx,'p1'),right=f.service.closeProgram(ctx,'p1');
+ while(f.state.ownerEntered<2)await new Promise<void>(resolve=>setImmediate(resolve));
+ release();
+ const results=await Promise.all([left,right]);
+ assert.ok(results.every(result=>result.closed));
+ assert.equal(f.program.status,'CLOSED');assert.equal(f.repo.rows.length,1);assert.equal(f.repo.rows[0]?.status,'COMPLETED');assert.equal(f.repo.rows[0]?.revision,3);
+ assert.equal(f.state.financeClose,1);assert.equal(f.state.financeCommandKeys.length,1);assert.equal(f.access.audits.length,1);
+});
+
+test('failure after Program owner close but before evidence advance resumes safely on retry',async()=>{
+ const f=fixture();f.setProgram({status:'IN_TRIP',departureRecordedAt:'2027-05-01T00:00:00.000Z'});f.state.bookingStatus='COMPLETED';f.state.run='COMPLETED';f.repo.failAdvanceFrom='PREPARED';
+ await assert.rejects(()=>f.service.closeProgram(ctx,'p1'),/injected advance failure/);
+ assert.equal(f.program.status,'CLOSED');assert.equal(f.repo.rows[0]?.status,'PREPARED');assert.equal(f.state.financeClose,0);
+ const retry=await f.service.closeProgram(ctx,'p1');
+ assert.equal(retry.closed,true);assert.equal(f.repo.rows[0]?.status,'COMPLETED');assert.equal(f.state.financeClose,1);assert.equal(f.state.financeCommandKeys.length,1);assert.equal(f.access.audits.length,1);
+});
+
+test('failure after COMPLETED but before audit is recoverable and auditOnce eventually records exactly once',async()=>{
+ const f=fixture();f.setProgram({status:'IN_TRIP',departureRecordedAt:'2027-05-01T00:00:00.000Z'});f.state.bookingStatus='COMPLETED';f.state.run='COMPLETED';f.access.failAuditOnce=true;
+ await assert.rejects(()=>f.service.closeProgram(ctx,'p1'),/injected audit failure/);
+ assert.equal(f.program.status,'CLOSED');assert.equal(f.repo.rows[0]?.status,'COMPLETED');assert.equal(f.access.audits.length,0);assert.equal(f.state.financeClose,1);
+ const retry=await f.service.closeProgram(ctx,'p1');
+ assert.equal(retry.closed,true);assert.equal(f.access.auditAttempts,2);assert.equal(f.access.audits.length,1);assert.equal(f.state.financeClose,1);assert.equal(f.state.financeCommandKeys.length,1);
+});
+
+test('concurrent program amendment/version change cannot commit TFO close while Program remains IN_TRIP',async()=>{
+ const f=fixture();f.setProgram({status:'IN_TRIP',departureRecordedAt:'2027-05-01T00:00:00.000Z'});f.state.bookingStatus='COMPLETED';f.state.run='COMPLETED';
+ let release!:()=>void;f.state.ownerGate=new Promise<void>(resolve=>{release=resolve});
+ const closing=f.service.closeProgram(ctx,'p1');
+ while(f.state.ownerEntered<1)await new Promise<void>(resolve=>setImmediate(resolve));
+ f.setProgram({updatedAt:'2027-04-02T00:00:00.000Z',currentVersion:2,currentVersionId:'pv2'});
+ release();
+ const result=await closing;
+ assert.equal(result.closed,false);assert.equal(f.program.status,'IN_TRIP');assert.equal(f.state.financeClose,0);assert.equal(f.state.financeCalls,0);assert.equal(f.repo.rows[0]?.status,'PREPARED');
+ assert.ok(result.blockers.some(row=>row.code==='CONCURRENT_PROGRAM_CHANGE'));
 });
 
 test('permission enforcement happens before readiness evaluation',async()=>{
