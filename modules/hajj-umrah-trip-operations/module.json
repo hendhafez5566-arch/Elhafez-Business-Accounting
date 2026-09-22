@@ -1,0 +1,1 @@
+{"name":"hajj-umrah-trip-operations","publicApi":["src/public/index.ts","src/public/nest.ts"],"ownedTables":["huo_tasks","huo_incidents","huo_service_executions","huo_history"],"allowedDependencies":["@elhafez/contracts","@elhafez/platform-core","@elhafez/hajj-umrah-bookings","@elhafez/traveler-management","@elhafez/tourism-contract-inventory"]}
