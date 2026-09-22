@@ -245,6 +245,7 @@ class BehavioralRepository {
         periodEnd: input.periodEnd,
         quantity: input.quantity,
         status: 'CONFIRMED',
+        flightSegmentReference: input.flightSegmentReference,
         visaBatchReference: input.visaBatchReference,
         createdAt: new Date().toISOString(),
       };
@@ -836,6 +837,23 @@ test('GS-039 flight allocation requires real segment evidence', () => {
       quantity: quantity('1'),
     }),
   );
+});
+
+test('GS-039 canonical flight allocation preserves the exact segment evidence', async () => {
+  const repository = new BehavioralRepository();
+  const { implementation } = service(repository);
+  repository.setCapacity(company, 'FLIGHT_BLOCK', 'flight', '2026-10-01', '1');
+  const result = await implementation.allocateCapacity({
+    companyId: company,
+    contractId: 'flight-contract',
+    resourceType: 'FLIGHT_BLOCK',
+    resourceId: 'flight',
+    program,
+    serviceDate: '2026-10-01',
+    quantity: quantity('1'),
+    flightSegmentReference: segment,
+  }, 'segment-evidence');
+  assert.deepEqual(result.allocation?.flightSegmentReference, segment);
 });
 
 test('BR-060 and BR-063 release decisions use persisted server-side coverage/economic evidence', async () => {
