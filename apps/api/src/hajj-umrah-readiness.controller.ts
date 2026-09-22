@@ -26,7 +26,7 @@ export class HajjUmrahReadinessController{
  @Get('program/:id')
  programReadiness(@Headers('authorization') a:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined,@Param('id') id:string){return this.context({authorization:a,companyId,branchId}).then(c=>this.readiness.programReadiness(c,id))}
  @Get('booking/:id/360')
- booking360(@Headers('authorization') a:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined,@Param('id') id:string){return this.context({authorization:a,companyId,branchId}).then(c=>this.readiness.booking360(c,id))}
+ booking360(@Headers('authorization') a:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined,@Param('id') id:string):ReturnType<HajjUmrahReadinessApplicationService['booking360']>{return this.context({authorization:a,companyId,branchId}).then(c=>this.readiness.booking360(c,id))}
  @Get('program/:id/360')
  program360(@Headers('authorization') a:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined,@Param('id') id:string){return this.context({authorization:a,companyId,branchId}).then(c=>this.readiness.program360(c,id))}
  @Get('program/:id/work-queue')
