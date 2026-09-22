@@ -2938,3 +2938,302 @@ model HupProgramHistory {
  @@index([companyId,branchId,programId,occurredAt])
  @@map("hup_program_history")
 }
+
+
+// HU-02 — Hajj & Umrah operational booking truth.
+model HubBooking {
+ id String @id
+ companyId String @map("company_id")
+ branchId String @map("branch_id")
+ code String
+ programId String @map("program_id")
+ customerId String @map("customer_id")
+ customerPartyId String @map("customer_party_id")
+ agentId String? @map("agent_id")
+ agentPartyId String? @map("agent_party_id")
+ travelerIds Json @map("traveler_ids")
+ status String
+ financialState String @map("financial_state")
+ allocationIds Json @map("allocation_ids")
+ confirmationCommandKey String? @map("confirmation_command_key")
+ confirmationPayloadHash String? @map("confirmation_payload_hash")
+ financialEvidence Json? @map("financial_evidence")
+ cancellationEvidence Json? @map("cancellation_evidence")
+ sourceReference Json? @map("source_reference")
+ createdAt DateTime @map("created_at")
+ updatedAt DateTime @map("updated_at")
+ @@unique([id, companyId, branchId])
+ @@unique([companyId, branchId, code])
+ @@unique([companyId, confirmationCommandKey])
+ @@index([companyId, branchId, programId, status])
+ @@index([companyId, branchId, customerId])
+ @@map("hub_bookings")
+}
+
+model HubBookingHistory {
+ id String @id
+ companyId String @map("company_id")
+ branchId String @map("branch_id")
+ bookingId String @map("booking_id")
+ action String
+ fromStatus String? @map("from_status")
+ toStatus String? @map("to_status")
+ reason String?
+ evidence Json?
+ actorId String @map("actor_id")
+ occurredAt DateTime @map("occurred_at")
+ @@index([companyId, branchId, bookingId, occurredAt])
+ @@map("hub_booking_history")
+}
+
+// HU-02 — operational room assignment truth. TCI remains hotel capacity owner.
+model HurRoomAssignment {
+ id String @id
+ companyId String @map("company_id")
+ branchId String @map("branch_id")
+ programId String @map("program_id")
+ bookingId String @map("booking_id")
+ travelerId String @map("traveler_id")
+ allocationId String @map("allocation_id")
+ roomKey String @map("room_key")
+ roomLabel String? @map("room_label")
+ startDate DateTime @map("start_date") @db.Date
+ endDate DateTime @map("end_date") @db.Date
+ status String
+ createdAt DateTime @map("created_at")
+ updatedAt DateTime @map("updated_at")
+ @@unique([id, companyId, branchId])
+ @@index([companyId, branchId, programId, status])
+ @@index([companyId, branchId, travelerId, startDate, endDate, status])
+ @@index([companyId, branchId, allocationId, startDate, endDate, status])
+ @@map("hur_room_assignments")
+}
+
+model HurRoomingHistory {
+ id String @id
+ companyId String @map("company_id")
+ branchId String @map("branch_id")
+ assignmentId String @map("assignment_id")
+ action String
+ snapshot Json
+ actorId String @map("actor_id")
+ occurredAt DateTime @map("occurred_at")
+ @@index([companyId, branchId, assignmentId, occurredAt])
+ @@map("hur_rooming_history")
+}
+
+// HU-02 — visa processing truth. Passport identity remains traveler-management owned.
+model HuvVisaCase {
+ id String @id
+ companyId String @map("company_id")
+ branchId String @map("branch_id")
+ bookingId String @map("booking_id")
+ programId String @map("program_id")
+ travelerId String @map("traveler_id")
+ passportDocumentId String @map("passport_document_id")
+ allocationId String @map("allocation_id")
+ status String
+ attempt Int @default(0)
+ applicationReference String? @map("application_reference")
+ visaNumber String? @map("visa_number")
+ rejectionReason String? @map("rejection_reason")
+ issuanceEvidence Json? @map("issuance_evidence")
+ createdAt DateTime @map("created_at")
+ updatedAt DateTime @map("updated_at")
+ @@unique([id, companyId, branchId])
+ @@unique([companyId, branchId, bookingId, travelerId, allocationId])
+ @@index([companyId, branchId, programId, status])
+ @@index([companyId, branchId, travelerId, status])
+ @@map("huv_visa_cases")
+}
+
+model HuvVisaHistory {
+ id String @id
+ companyId String @map("company_id")
+ branchId String @map("branch_id")
+ visaCaseId String @map("visa_case_id")
+ action String
+ fromStatus String? @map("from_status")
+ toStatus String @map("to_status")
+ attempt Int
+ evidence Json?
+ actorId String @map("actor_id")
+ occurredAt DateTime @map("occurred_at")
+ @@index([companyId, branchId, visaCaseId, occurredAt])
+ @@map("huv_visa_history")
+}
+
+// HU-02 — traveler ticket operational truth. TCI remains flight supply owner.
+model HutTicketRecord {
+ id String @id
+ companyId String @map("company_id")
+ branchId String @map("branch_id")
+ bookingId String @map("booking_id")
+ programId String @map("program_id")
+ travelerId String @map("traveler_id")
+ allocationId String @map("allocation_id")
+ flightBlockId String @map("flight_block_id")
+ pnr String
+ ticketNumber String? @map("ticket_number")
+ seat String?
+ baggage String?
+ fareClass String? @map("fare_class")
+ status String
+ revision Int @default(1)
+ issuanceEvidence Json? @map("issuance_evidence")
+ createdAt DateTime @map("created_at")
+ updatedAt DateTime @map("updated_at")
+ @@unique([id, companyId, branchId])
+ @@unique([companyId, branchId, bookingId, travelerId, allocationId])
+ @@index([companyId, branchId, programId, status])
+ @@index([companyId, branchId, travelerId, status])
+ @@index([companyId, ticketNumber])
+ @@map("hut_ticket_records")
+}
+
+model HutTicketHistory {
+ id String @id
+ companyId String @map("company_id")
+ branchId String @map("branch_id")
+ ticketId String @map("ticket_id")
+ action String
+ fromStatus String? @map("from_status")
+ toStatus String @map("to_status")
+ revision Int
+ evidence Json?
+ actorId String @map("actor_id")
+ occurredAt DateTime @map("occurred_at")
+ @@index([companyId, branchId, ticketId, occurredAt])
+ @@map("hut_ticket_history")
+}
+
+// HU-02 — movement execution; contract and capacity remain TCI owned.
+model HutrRun {
+ id String @id
+ companyId String @map("company_id")
+ branchId String @map("branch_id")
+ programId String @map("program_id")
+ allocationId String @map("allocation_id")
+ code String
+ route String
+ startsAt DateTime @map("starts_at")
+ endsAt DateTime @map("ends_at")
+ vehicleReference String? @map("vehicle_reference")
+ driverReference String? @map("driver_reference")
+ status String
+ createdAt DateTime @map("created_at")
+ updatedAt DateTime @map("updated_at")
+ assignments HutrManifestAssignment[]
+ @@unique([id, companyId, branchId])
+ @@unique([companyId, branchId, code])
+ @@index([companyId, branchId, programId, status, startsAt])
+ @@index([companyId, branchId, allocationId, startsAt, endsAt])
+ @@map("hutr_runs")
+}
+
+model HutrManifestAssignment {
+ id String @id
+ companyId String @map("company_id")
+ branchId String @map("branch_id")
+ runId String @map("run_id")
+ bookingId String @map("booking_id")
+ travelerId String @map("traveler_id")
+ status String
+ createdAt DateTime @map("created_at")
+ updatedAt DateTime @map("updated_at")
+ run HutrRun @relation(fields:[runId, companyId, branchId], references:[id, companyId, branchId], onDelete:Restrict)
+ @@unique([id, companyId, branchId])
+ @@unique([companyId, branchId, runId, travelerId])
+ @@index([companyId, branchId, travelerId, status])
+ @@map("hutr_manifest_assignments")
+}
+
+model HutrHistory {
+ id String @id
+ companyId String @map("company_id")
+ branchId String @map("branch_id")
+ aggregateType String @map("aggregate_type")
+ aggregateId String @map("aggregate_id")
+ action String
+ evidence Json?
+ actorId String @map("actor_id")
+ occurredAt DateTime @map("occurred_at")
+ @@index([companyId, branchId, aggregateType, aggregateId, occurredAt])
+ @@map("hutr_history")
+}
+
+// HU-02 — preparation/travel tasks, incidents and execution evidence.
+model HuoTask {
+ id String @id
+ companyId String @map("company_id")
+ branchId String @map("branch_id")
+ programId String @map("program_id")
+ bookingId String? @map("booking_id")
+ travelerId String? @map("traveler_id")
+ title String
+ assignedTo String? @map("assigned_to")
+ dueAt DateTime @map("due_at")
+ status String
+ completedAt DateTime? @map("completed_at")
+ cancelledAt DateTime? @map("cancelled_at")
+ createdAt DateTime @map("created_at")
+ updatedAt DateTime @map("updated_at")
+ @@unique([id, companyId, branchId])
+ @@index([companyId, branchId, programId, status, dueAt])
+ @@index([companyId, branchId, bookingId, status])
+ @@map("huo_tasks")
+}
+
+model HuoIncident {
+ id String @id
+ companyId String @map("company_id")
+ branchId String @map("branch_id")
+ programId String @map("program_id")
+ bookingId String? @map("booking_id")
+ travelerId String? @map("traveler_id")
+ severity String
+ summary String
+ details String?
+ status String
+ resolvedAt DateTime? @map("resolved_at")
+ cancelledAt DateTime? @map("cancelled_at")
+ createdAt DateTime @map("created_at")
+ updatedAt DateTime @map("updated_at")
+ @@unique([id, companyId, branchId])
+ @@index([companyId, branchId, programId, status, severity])
+ @@index([companyId, branchId, travelerId, status])
+ @@map("huo_incidents")
+}
+
+model HuoServiceExecution {
+ id String @id
+ companyId String @map("company_id")
+ branchId String @map("branch_id")
+ programId String @map("program_id")
+ bookingId String @map("booking_id")
+ travelerId String? @map("traveler_id")
+ allocationId String @map("allocation_id")
+ category String
+ executedAt DateTime @map("executed_at")
+ evidenceReference Json? @map("evidence_reference")
+ notes String?
+ createdAt DateTime @map("created_at")
+ @@unique([id, companyId, branchId])
+ @@index([companyId, branchId, programId, category, executedAt])
+ @@index([companyId, branchId, bookingId, travelerId])
+ @@map("huo_service_executions")
+}
+
+model HuoHistory {
+ id String @id
+ companyId String @map("company_id")
+ branchId String @map("branch_id")
+ aggregateType String @map("aggregate_type")
+ aggregateId String @map("aggregate_id")
+ action String
+ evidence Json?
+ actorId String @map("actor_id")
+ occurredAt DateTime @map("occurred_at")
+ @@index([companyId, branchId, aggregateType, aggregateId, occurredAt])
+ @@map("huo_history")
+}
