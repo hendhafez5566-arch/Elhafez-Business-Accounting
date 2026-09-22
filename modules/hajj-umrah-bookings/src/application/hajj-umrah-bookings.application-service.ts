@@ -86,7 +86,8 @@ export class HajjUmrahBookingsApplicationService {
   }
 
   async get(c:ExecutionContext,id:string){await this.permission(c,BOOKING_PERMISSIONS.view);return this.required(c,id);}
-  async list(c:ExecutionContext){await this.permission(c,BOOKING_PERMISSIONS.view);return this.repo.list(c.companyId,c.branchId);}
+  async listForProgramForIntegration(c:ExecutionContext,programId:string){await this.access.requireBranch(c);return(await this.repo.list(c.companyId,c.branchId)).filter(value=>value.programId===programId)}
+ async list(c:ExecutionContext){await this.permission(c,BOOKING_PERMISSIONS.view);return this.repo.list(c.companyId,c.branchId);}
   async historyFor(c:ExecutionContext,id:string){await this.permission(c,BOOKING_PERMISSIONS.view);await this.required(c,id);return this.repo.history(c.companyId,c.branchId,id);}
 
   async requireForIntegration(c:ExecutionContext,id:string){await this.access.requireBranch(c);return this.required(c,id);}
