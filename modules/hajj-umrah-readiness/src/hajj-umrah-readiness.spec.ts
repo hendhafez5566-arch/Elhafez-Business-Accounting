@@ -166,9 +166,9 @@ test('closure blockers and financial blockers leave program state unchanged',asy
 test('safe closure retains one durable completed record and replay is idempotent',async()=>{
  const f=fixture();f.setProgram({status:'IN_TRIP',departureRecordedAt:'2027-05-01T00:00:00.000Z'});f.state.bookingStatus='COMPLETED';f.state.run='COMPLETED';
  const first=await f.service.closeProgram(ctx,'p1');
- assert.equal(first.closed,true);assert.equal(f.program.status,'CLOSED');assert.equal(f.repo.rows.length,1);assert.equal(f.repo.rows[0]?.status,'COMPLETED');assert.equal(f.repo.rows[0]?.revision,3);assert.ok(f.repo.rows[0]?.completedAt);assert.equal(f.state.financeClose,1);assert.equal(f.state.ownerClose,1);
+ assert.equal(first.closed,true);assert.equal(first.idempotent,false);assert.equal(f.program.status,'CLOSED');assert.equal(f.repo.rows.length,1);assert.equal(f.repo.rows[0]?.status,'COMPLETED');assert.equal(f.repo.rows[0]?.revision,3);assert.ok(f.repo.rows[0]?.completedAt);assert.equal(f.state.financeClose,1);assert.equal(f.state.ownerClose,1);
  const replay=await f.service.closeProgram(ctx,'p1');
- assert.equal(replay.closed,true);assert.equal(f.state.financeClose,1);assert.equal(f.state.financeCommandKeys.length,1);assert.equal(f.state.ownerClose,1);assert.equal(f.access.audits.length,1);
+ assert.equal(replay.closed,true);assert.equal(replay.idempotent,true);assert.equal(f.state.financeClose,1);assert.equal(f.state.financeCommandKeys.length,1);assert.equal(f.state.ownerClose,1);assert.equal(f.access.audits.length,1);
 });
 
 test('concurrent close callers converge to CLOSED and one durable COMPLETED evidence record',async()=>{
