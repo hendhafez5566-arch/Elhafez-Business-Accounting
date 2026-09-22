@@ -34,6 +34,13 @@ export class PrismaTransportRepository implements TransportRepository{
     id:value.id,companyId:value.companyId,branchId:value.branchId,aggregateType:value.aggregateType,aggregateId:value.aggregateId,action:value.action,
     evidence:value.evidence===undefined?Prisma.JsonNull:json(value.evidence),actorId:value.actorId,occurredAt:new Date(value.occurredAt),
   }}
+  private async serializable<T>(work:(tx:Prisma.TransactionClient)=>Promise<T>):Promise<T>{
+    try{return await this.db.$transaction(work,{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});}
+    catch(error){
+      if((error as {code?:string}).code==='P2034')throw new ContractValidationError('revision','transport state changed; reload and retry');
+      throw error;
+    }
+  }
   private async locks(tx:Prisma.TransactionClient,keys:readonly string[]){
     for(const key of [...new Set(keys)].sort())await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${key}))`;
   }
@@ -43,7 +50,7 @@ export class PrismaTransportRepository implements TransportRepository{
   }
 
   async createRun(value:TransportRun,history:TransportHistory){
-    return this.db.$transaction(async tx=>{
+    return this.serializable(async tx=>{
       const created=await tx.hutrRun.create({data:this.runData(value)});
       await tx.hutrHistory.create({data:this.historyData(history)});
       return runMap(created);
@@ -51,17 +58,21 @@ export class PrismaTransportRepository implements TransportRepository{
   }
 
   async saveRun(value:TransportRun,history:TransportHistory,expectedRevision:number,expectedStatus:TransportRunStatus){
-    return this.db.$transaction(async tx=>{
+    return this.serializable(async tx=>{
       const scope=this.scope(value.companyId,value.branchId);
       await this.locks(tx,[`hutr:allocation:${scope}:${value.allocationId}`,`hutr:run:${scope}:${value.id}`]);
       const current=await tx.hutrRun.findUnique({where:{id_companyId_branchId:{id:value.id,companyId:value.companyId,branchId:value.branchId}}});
       if(!current)throw new ContractValidationError('runId','transport run not found');
       this.stale('run',expectedRevision,current.revision);
       if(current.status!==expectedStatus)throw new ContractValidationError('status','transport run changed; reload and retry');
-      const updated=await tx.hutrRun.update({where:{id_companyId_branchId:{id:value.id,companyId:value.companyId,branchId:value.branchId}},data:this.runData(value)});
+      const write=await tx.hutrRun.updateMany({
+        where:{id:value.id,companyId:value.companyId,branchId:value.branchId,revision:expectedRevision,status:expectedStatus},
+        data:this.runData(value),
+      });
+      if(write.count!==1)throw new ContractValidationError('revision','run changed; reload and retry');
       await tx.hutrHistory.create({data:this.historyData(history)});
-      return runMap(updated);
-    },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
+      return value;
+    });
   }
 
   async getRun(companyId:string,branchId:string,id:string){
@@ -73,7 +84,7 @@ export class PrismaTransportRepository implements TransportRepository{
   }
 
   async assignGuarded(value:ManifestAssignment,history:TransportHistory,run:TransportRun,capacity:number){
-    return this.db.$transaction(async tx=>{
+    return this.serializable(async tx=>{
       const scope=this.scope(value.companyId,value.branchId);
       await this.locks(tx,[`hutr:allocation:${scope}:${run.allocationId}`,`hutr:traveler:${scope}:${value.travelerId}`,`hutr:run:${scope}:${run.id}`]);
       const currentRun=await tx.hutrRun.findUnique({where:{id_companyId_branchId:{id:run.id,companyId:run.companyId,branchId:run.branchId}}});
@@ -98,30 +109,31 @@ export class PrismaTransportRepository implements TransportRepository{
       if(used>=capacity)throw new ContractValidationError('capacity','transport allocation capacity exceeded across overlapping runs');
 
       if(existing){
-        const reactivated=await tx.hutrManifestAssignment.update({
-          where:{id_companyId_branchId:{id:existing.id,companyId:existing.companyId,branchId:existing.branchId}},
-          data:{status:'ASSIGNED',revision:existing.revision+1,updatedAt:new Date(value.updatedAt)},
+        const reactivatedRevision=existing.revision+1;
+        const write=await tx.hutrManifestAssignment.updateMany({
+          where:{id:existing.id,companyId:existing.companyId,branchId:existing.branchId,revision:existing.revision,status:'REMOVED'},
+          data:{status:'ASSIGNED',revision:reactivatedRevision,updatedAt:new Date(value.updatedAt)},
         });
+        if(write.count!==1)throw new ContractValidationError('revision','manifest changed; reload and retry');
         await tx.hutrHistory.create({data:this.historyData({...history,aggregateId:existing.id,action:'REACTIVATED',evidence:{runId:run.id,travelerId:value.travelerId}})});
-        return assignmentMap(reactivated);
+        return assignmentMap({...existing,status:'ASSIGNED',revision:reactivatedRevision,updatedAt:new Date(value.updatedAt)});
       }
 
       const created=await tx.hutrManifestAssignment.create({data:this.assignmentData(value)});
       await tx.hutrHistory.create({data:this.historyData(history)});
       return assignmentMap(created);
-    },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
+    });
   }
 
-  async saveAssignment(value:ManifestAssignment,history:TransportHistory,expectedRevision:number,expectedRunRevision:number){
-    return this.db.$transaction(async tx=>{
-      const preRun=await tx.hutrRun.findUnique({where:{id_companyId_branchId:{id:value.runId,companyId:value.companyId,branchId:value.branchId}}});
-      if(!preRun)throw new ContractValidationError('runId','transport run not found');
+  async saveAssignment(value:ManifestAssignment,history:TransportHistory,expectedRevision:number,expectedRun:TransportRun){
+    return this.serializable(async tx=>{
+      if(expectedRun.id!==value.runId)throw new ContractValidationError('runId','expected run does not match manifest assignment');
       const scope=this.scope(value.companyId,value.branchId);
-      await this.locks(tx,[`hutr:allocation:${scope}:${preRun.allocationId}`,`hutr:traveler:${scope}:${value.travelerId}`,`hutr:run:${scope}:${preRun.id}`]);
+      await this.locks(tx,[`hutr:allocation:${scope}:${expectedRun.allocationId}`,`hutr:traveler:${scope}:${value.travelerId}`,`hutr:run:${scope}:${expectedRun.id}`]);
 
-      const currentRun=await tx.hutrRun.findUnique({where:{id_companyId_branchId:{id:value.runId,companyId:value.companyId,branchId:value.branchId}}});
+      const currentRun=await tx.hutrRun.findUnique({where:{id_companyId_branchId:{id:expectedRun.id,companyId:value.companyId,branchId:value.branchId}}});
       if(!currentRun)throw new ContractValidationError('runId','transport run not found');
-      this.stale('run',expectedRunRevision,currentRun.revision);
+      this.stale('run',expectedRun.revision,currentRun.revision);
       if(currentRun.status!=='SCHEDULED')throw new ContractValidationError('status','manifest can only change before dispatch');
 
       const current=await tx.hutrManifestAssignment.findUnique({where:{id_companyId_branchId:{id:value.id,companyId:value.companyId,branchId:value.branchId}}});
@@ -129,10 +141,14 @@ export class PrismaTransportRepository implements TransportRepository{
       this.stale('manifest',expectedRevision,current.revision);
       if(current.status!=='ASSIGNED')throw new ContractValidationError('status','manifest assignment is no longer active');
 
-      const updated=await tx.hutrManifestAssignment.update({where:{id_companyId_branchId:{id:value.id,companyId:value.companyId,branchId:value.branchId}},data:this.assignmentData(value)});
+      const write=await tx.hutrManifestAssignment.updateMany({
+        where:{id:value.id,companyId:value.companyId,branchId:value.branchId,revision:expectedRevision,status:'ASSIGNED'},
+        data:this.assignmentData(value),
+      });
+      if(write.count!==1)throw new ContractValidationError('revision','manifest changed; reload and retry');
       await tx.hutrHistory.create({data:this.historyData(history)});
-      return assignmentMap(updated);
-    },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
+      return value;
+    });
   }
 
   async manifest(companyId:string,branchId:string,runId:string){
