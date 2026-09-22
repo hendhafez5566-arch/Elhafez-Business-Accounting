@@ -74,9 +74,8 @@ export class HajjUmrahOperationsController {
     return Object.fromEntries(await Promise.all(Object.entries(permissions).map(async([key,p])=>[key,await this.allowed(c,p)])));
   }
 
-  @Get('bookings') async listBookings(...args:never[]):Promise<never>{throw new Error(String(args));}
-  @Get('bookings-list')
-  async listBookingsCompat(@Headers('authorization') authorization:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined){
+  @Get('bookings')
+  async listBookings(@Headers('authorization') authorization:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined){
     return this.bookings.list(await this.context({authorization,companyId,branchId}));
   }
 
@@ -125,6 +124,10 @@ export class HajjUmrahOperationsController {
   async reassignRoom(@Headers('authorization') authorization:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined,@Param('id') id:string,@Body() input:ReassignRoomInput){
     return this.rooming.reassign(await this.context({authorization,companyId,branchId}),id,input);
   }
+  @Get('rooming/:id/history')
+  async roomingHistory(@Headers('authorization') authorization:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined,@Param('id') id:string){
+    return this.rooming.historyFor(await this.context({authorization,companyId,branchId}),id);
+  }
   @Post('rooming/:id/unassign')
   async unassignRoom(@Headers('authorization') authorization:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined,@Param('id') id:string){
     return this.rooming.unassign(await this.context({authorization,companyId,branchId}),id);
@@ -138,6 +141,8 @@ export class HajjUmrahOperationsController {
   async listVisas(@Headers('authorization') authorization:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined,@Query('programId') programId?:string){return this.visas.list(await this.context({authorization,companyId,branchId}),programId)}
   @Post('visas')
   async createVisa(@Headers('authorization') authorization:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined,@Body() input:CreateVisaCaseInput){return this.visas.create(await this.context({authorization,companyId,branchId}),input)}
+  @Get('visas/:id/history')
+  async visaHistory(@Headers('authorization') authorization:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined,@Param('id') id:string){return this.visas.historyFor(await this.context({authorization,companyId,branchId}),id)}
   @Post('visas/:id/submit')
   async submitVisa(@Headers('authorization') authorization:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined,@Param('id') id:string,@Body() body:{applicationReference:string}){return this.visas.submit(await this.context({authorization,companyId,branchId}),id,body.applicationReference)}
   @Post('visas/:id/issue')
@@ -151,6 +156,8 @@ export class HajjUmrahOperationsController {
   async listTickets(@Headers('authorization') authorization:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined,@Query('programId') programId?:string){return this.tickets.list(await this.context({authorization,companyId,branchId}),programId)}
   @Post('tickets')
   async reserveTicket(@Headers('authorization') authorization:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined,@Body() input:ReserveTicketInput){return this.tickets.reserve(await this.context({authorization,companyId,branchId}),input)}
+  @Get('tickets/:id/history')
+  async ticketHistory(@Headers('authorization') authorization:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined,@Param('id') id:string){return this.tickets.historyFor(await this.context({authorization,companyId,branchId}),id)}
   @Post('tickets/:id/issue')
   async issueTicket(@Headers('authorization') authorization:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined,@Param('id') id:string,@Body() input:TicketIssueInput){return this.tickets.issue(await this.context({authorization,companyId,branchId}),id,input)}
   @Post('tickets/:id/reissue')
@@ -168,8 +175,14 @@ export class HajjUmrahOperationsController {
   async manifest(@Headers('authorization') authorization:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined,@Param('id') id:string){return this.transport.manifest(await this.context({authorization,companyId,branchId}),id)}
   @Post('transport/runs/:id/manifest')
   async assignRun(@Headers('authorization') authorization:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined,@Param('id') id:string,@Body() body:{bookingId:string;travelerId:string}){return this.transport.assignTraveler(await this.context({authorization,companyId,branchId}),id,body.bookingId,body.travelerId)}
+  @Post('transport/runs/:id/manifest/:assignmentId/remove')
+  async removeRunTraveler(@Headers('authorization') authorization:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined,@Param('id') id:string,@Param('assignmentId') assignmentId:string){return this.transport.removeTraveler(await this.context({authorization,companyId,branchId}),assignmentId,id)}
+  @Get('transport/runs/:id/history')
+  async transportHistory(@Headers('authorization') authorization:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined,@Param('id') id:string){return this.transport.historyFor(await this.context({authorization,companyId,branchId}),'RUN',id)}
   @Post('transport/runs/:id/dispatch')
   async dispatch(@Headers('authorization') authorization:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined,@Param('id') id:string){return this.transport.dispatch(await this.context({authorization,companyId,branchId}),id)}
+  @Post('transport/runs/:id/cancel')
+  async cancelRun(@Headers('authorization') authorization:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined,@Param('id') id:string,@Body() body:{reason:string}){return this.transport.cancel(await this.context({authorization,companyId,branchId}),id,body.reason)}
   @Post('transport/runs/:id/complete')
   async completeRun(@Headers('authorization') authorization:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined,@Param('id') id:string){return this.transport.complete(await this.context({authorization,companyId,branchId}),id)}
 
@@ -190,6 +203,8 @@ export class HajjUmrahOperationsController {
   async listIncidents(@Headers('authorization') authorization:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined,@Query('programId') programId?:string){return this.trip.listIncidents(await this.context({authorization,companyId,branchId}),programId)}
   @Post('trip/incidents')
   async createIncident(@Headers('authorization') authorization:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined,@Body() input:CreateIncidentInput){return this.trip.createIncident(await this.context({authorization,companyId,branchId}),input)}
+  @Get('trip/incidents/:id/history')
+  async incidentHistory(@Headers('authorization') authorization:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined,@Param('id') id:string){return this.trip.historyFor(await this.context({authorization,companyId,branchId}),'INCIDENT',id)}
   @Post('trip/incidents/:id/resolve')
   async resolveIncident(@Headers('authorization') authorization:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined,@Param('id') id:string,@Body() body:{resolution:string}){return this.trip.resolveIncident(await this.context({authorization,companyId,branchId}),id,body.resolution)}
   @Post('trip/incidents/:id/cancel')
