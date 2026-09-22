@@ -9,6 +9,7 @@ CREATE TABLE "hure_closure_evidence" (
   "evidence" JSONB NOT NULL,
   "financial_evidence" JSONB,
   "status" TEXT NOT NULL,
+  "revision" INTEGER NOT NULL DEFAULT 0,
   "created_at" TIMESTAMP(3) NOT NULL,
   "updated_at" TIMESTAMP(3) NOT NULL,
   "completed_at" TIMESTAMP(3),
