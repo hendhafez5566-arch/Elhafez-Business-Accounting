@@ -1213,6 +1213,13 @@ export class PrismaTourismInventoryRepository implements TourismInventoryReposit
     if (updated.count !== 1) throw new Error('procurement evidence not found for company');
   }
 
+  async allocation(companyId: CompanyId, allocationId: string): Promise<Allocation | null> {
+    const row = await this.db.tciAllocation.findUnique({
+      where: { companyId_id: { companyId, id: allocationId } },
+    });
+    return row ? allocation(row as AllocationRow) : null;
+  }
+
   async registerEconomicEvidence(
     input: RegisterAllocationEconomicEvidenceInput,
     key: string | undefined,
