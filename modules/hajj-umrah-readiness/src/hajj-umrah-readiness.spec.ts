@@ -39,6 +39,7 @@ function fixture(requirements:any[]=['HOTEL','VISA','FLIGHT','TRANSPORT']){
  };
  const sources:ReadinessSources={
   async program(_c,id){if(id!=='p1')throw new Error('not found');return program as Program},
+  async programs(){return[program as Program]},
   async closeProgramOwner(_c,_id,expected){state.ownerClose++;if(program.updatedAt!==expected)throw new Error('concurrent');program={...program,status:'CLOSED',bookingOpen:false,returnRecordedAt:at,updatedAt:at};return program},
   async booking(_c,id){const b=bookings.find(x=>x.id===id);if(!b)throw new Error('not found');return{...b,status:state.bookingStatus}},
   async bookings(){return bookings.map(b=>({...b,status:state.bookingStatus}))},
