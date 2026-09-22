@@ -23,7 +23,7 @@ class Access implements TicketAccess {
 const context=executionContext('c1','b1','u1');
 const realSegment:SourceReference=sourceReference('FLIGHT_SEGMENT','MS-845:CAI-JED:2027-01-01T06:00Z');
 
-function fixture(segment:SourceReference|undefined=realSegment){
+function fixture(segment:SourceReference|null=realSegment){
   const repo=new MemoryTickets();
   let sequence=0;
   const forwarded:Parameters<TicketFinancePort['actualize']>[0][]=[];
@@ -39,7 +39,7 @@ function fixture(segment:SourceReference|undefined=realSegment){
 }
 
 test('ticket reservation blocks a flight allocation that lacks persisted real segment evidence',async()=>{
-  const value=fixture(undefined);
+  const value=fixture(null);
   await assert.rejects(
     ()=>value.service.reserve(context,{bookingId:'b',travelerId:'t1',allocationId:'a1',pnr:'PNR1'}),
     /persisted real flight-segment evidence/,
