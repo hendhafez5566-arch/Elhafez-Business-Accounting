@@ -135,6 +135,28 @@ test('readiness discovers unresolved BOOKING_DEPOSIT and BOOKING_SETTLEMENT work
   }
 });
 
+test('completed individual booking cancellation does not falsely block program readiness', async () => {
+  const f = fixture(); await f.setup(); await f.confirm();
+  const result = await f.service.cancelBooking({
+    companyId: company,
+    branchId: 'branch-1',
+    commandKey: 'hu03-clean-cancel',
+    booking,
+    travelStarted: false,
+    travelEvidence: 'not-started',
+    postingDate: '2026-09-22',
+  }) as { cancelled?: boolean };
+  assert.equal(result.cancelled, true);
+  const readiness = await f.service.evaluateFinancialReadiness({
+    companyId: company,
+    branchId: 'branch-1',
+    program,
+    requiredCategories: ['HOTEL'],
+  });
+  assert.equal(readiness.ready, true);
+  assert.equal(readiness.blockers.some((item) => item.startsWith('BOOKING_CANCELLATION_INCOMPLETE:')), false);
+});
+
 test('booking financial readiness scopes unresolved booking workflows and branch identity', async () => {
   const f = fixture(); await f.setup(); await f.confirm();
   const ready = await f.service.evaluateBookingFinancialReadiness({
