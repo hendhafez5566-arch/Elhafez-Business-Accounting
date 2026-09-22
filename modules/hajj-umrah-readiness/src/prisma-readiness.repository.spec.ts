@@ -3,10 +3,11 @@ import test from'node:test';
 import{PrismaReadinessRepository}from'./infrastructure/prisma-readiness.repository.js';
 
 test('Prisma closure CAS rejects stale intermediate writers and preserves terminal COMPLETED evidence',async()=>{
- let row={
+ type FakeRow={id:string;companyId:string;branchId:string;programId:string;programUpdatedAt:Date;commandKey:string;evidenceHash:string;evidence:unknown;financialEvidence:unknown|null;status:string;revision:number;createdAt:Date;updatedAt:Date;completedAt:Date|null};
+ let row:FakeRow={
   id:'e1',companyId:'c1',branchId:'b1',programId:'p1',programUpdatedAt:new Date('2027-04-01T00:00:00.000Z'),
-  commandKey:'close-1',evidenceHash:'hash-1',evidence:{stage:'prepared'},financialEvidence:null as unknown|null,
-  status:'PREPARED',revision:0,createdAt:new Date('2027-04-20T10:00:00.000Z'),updatedAt:new Date('2027-04-20T10:00:00.000Z'),completedAt:null as Date|null,
+  commandKey:'close-1',evidenceHash:'hash-1',evidence:{stage:'prepared'},financialEvidence:null,
+  status:'PREPARED',revision:0,createdAt:new Date('2027-04-20T10:00:00.000Z'),updatedAt:new Date('2027-04-20T10:00:00.000Z'),completedAt:null,
  };
  type UpdateInput={where:{id:string;status:string;revision:number};data:{status?:string;revision?:{increment:number};updatedAt?:Date;evidenceHash?:string;evidence?:unknown;financialEvidence?:unknown;completedAt?:Date}};
  const db={hureClosureEvidence:{
