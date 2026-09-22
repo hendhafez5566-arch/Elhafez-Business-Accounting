@@ -22,7 +22,14 @@ export async function createBookingAndReload(api:HajjUmrahOperationsApi,input:Pa
 export async function loadRooming(api:HajjUmrahOperationsApi){return api.listRooming();}
 export async function loadVisas(api:HajjUmrahOperationsApi){return api.listVisas();}
 
-function PermissionState({allowed,children}:{readonly allowed:boolean;readonly children:ReactNode}){
+export function makeOperationCommandKey(operation:string,entityId:string,qualifier:string=''){return ['hu02',operation,entityId,qualifier].map(value=>encodeURIComponent(value)).join(':');}
+type InventoryRowForm={allocationId:string;contractId:string;resourceType:string;resourceId:string;serviceDate:string;periodEnd:string;quantity:string;flightSegmentSourceType:string;flightSegmentSourceId:string;visaBatchSourceType:string;visaBatchSourceId:string;};
+const emptyInventoryRow=():InventoryRowForm=>({allocationId:'',contractId:'',resourceType:'HOTEL',resourceId:'',serviceDate:'',periodEnd:'',quantity:'1',flightSegmentSourceType:'',flightSegmentSourceId:'',visaBatchSourceType:'',visaBatchSourceId:''});
+function inventoryRequest(row:InventoryRowForm):BookingInventoryRequest{return{allocationId:row.allocationId,contractId:row.contractId,resourceType:row.resourceType,resourceId:row.resourceId,serviceDate:row.serviceDate,quantity:row.quantity,...(row.periodEnd?{periodEnd:row.periodEnd}:{}),...(row.flightSegmentSourceType&&row.flightSegmentSourceId?{flightSegmentReference:{sourceType:row.flightSegmentSourceType,sourceId:row.flightSegmentSourceId}}:{}),...(row.visaBatchSourceType&&row.visaBatchSourceId?{visaBatchReference:{sourceType:row.visaBatchSourceType,sourceId:row.visaBatchSourceId}}:{})};}
+
+export function BookingStatusPair({booking}:{readonly booking:Booking}){return <><span data-state-kind="booking-lifecycle"><Badge tone={bookingTone(booking.status)}>{bookingLifecycleLabels[booking.status]}</Badge></span><span data-state-kind="booking-financial"><Badge tone={financialTone(booking.financialState)}>{bookingFinancialLabels[booking.financialState]}</Badge></span></>;}
+
+export function PermissionState({allowed,children}:{readonly allowed:boolean;readonly children:ReactNode}){
   return allowed?<>{children}</>:<EmptyState title="لا توجد صلاحية لهذا الجزء"><p>الصلاحية تُحسم من الخادم وفق الشركة والفرع والمستخدم الحالي.</p></EmptyState>;
 }
 
@@ -31,69 +38,60 @@ export function BookingsPage({api=hajjUmrahOperationsApi}:{readonly api?:HajjUmr
   const [loading,setLoading]=useState(true),[error,setError]=useState(''),[notice,setNotice]=useState('');
   const [form,setForm]=useState({code:'',programId:'',customerId:'',agentId:'',travelerIds:''});
   const [confirmId,setConfirmId]=useState<string|null>(null),[cancelId,setCancelId]=useState<string|null>(null);
-  const [confirm,setConfirm]=useState({commandKey:'',category:'OTHER' as ConfirmBookingInput['category'],costCenterId:'',currency:'SAR',grossAmount:'0',discountAmount:'0',postingDate:'',dueDate:'',invoiceNumber:'',inventories:'[]',commissionAmount:''});
-  const [cancel,setCancel]=useState({commandKey:'',postingDate:'',reason:''});
-  async function reload(){setLoading(true);try{const [r,c]=await Promise.all([api.listBookings(),api.capabilities()]);setRows(r);setCap(c);setError('')}catch(e){setError(errorMessage(e))}finally{setLoading(false)}}
+  const [confirm,setConfirm]=useState({category:'OTHER' as ConfirmBookingInput['category'],costCenterId:'',currency:'SAR',grossAmount:'0',discountAmount:'0',postingDate:'',dueDate:'',invoiceNumber:'',commissionAmount:''});
+  const [inventories,setInventories]=useState<InventoryRowForm[]>([emptyInventoryRow()]);
+  const [cancel,setCancel]=useState({postingDate:'',reason:''});
+  async function reload(){setLoading(true);try{const [data,capabilities]=await Promise.all([api.listBookings(),api.capabilities()]);setRows(data);setCap(capabilities);setError('')}catch(value){setError(errorMessage(value))}finally{setLoading(false)}}
   useEffect(()=>{void reload()},[api]);
-  async function create(e:FormEvent){e.preventDefault();try{await api.createBooking({code:form.code,programId:form.programId,customerId:form.customerId,...(form.agentId.trim()?{agentId:form.agentId.trim()}:{}),travelerIds:csv(form.travelerIds)});setForm({code:'',programId:'',customerId:'',agentId:'',travelerIds:''});setNotice('تم إنشاء الحجز المبدئي على الخادم.');await reload()}catch(e){setNotice(errorMessage(e))}}
-  function openConfirm(row:Booking){setConfirmId(row.id);setConfirm(v=>({...v,commandKey:`confirm:${row.id}`,invoiceNumber:`HU-${row.code}`}))}
-  async function confirmBooking(e:FormEvent){e.preventDefault();if(!confirmId)return;try{let inventories:BookingInventoryRequest[];try{inventories=JSON.parse(confirm.inventories) as BookingInventoryRequest[]}catch{setNotice('صيغة مراجع المخزون JSON غير صحيحة.');return}await api.confirmBooking(confirmId,{commandKey:confirm.commandKey,category:confirm.category,costCenterId:confirm.costCenterId,currency:confirm.currency,grossAmount:confirm.grossAmount,discountAmount:confirm.discountAmount,postingDate:confirm.postingDate,dueDate:confirm.dueDate,invoiceNumber:confirm.invoiceNumber,inventories,...(confirm.commissionAmount.trim()?{commissionAmount:confirm.commissionAmount.trim()}: {})});setConfirmId(null);setNotice('تم تأكيد الحجز عبر مسار التمويل والمخزون المعتمد.');await reload()}catch(e){setNotice(errorMessage(e))}}
-  function openCancel(row:Booking){setCancelId(row.id);setCancel({commandKey:`cancel:${row.id}`,postingDate:'',reason:''})}
-  async function cancelBooking(e:FormEvent){e.preventDefault();if(!cancelId)return;try{const result=await api.cancelBooking(cancelId,cancel);setCancelId(null);setNotice(result.status==='CANCELLED'?'تم إلغاء الحجز.':'لم يُلغ الحجز؛ يوجد مانع مالي ظاهر في الحالة المالية.');await reload()}catch(e){setNotice(errorMessage(e))}}
-  async function lifecycle(row:Booking,action:'ready'|'travel'|'complete'){try{if(action==='ready')await api.markReady(row.id);else if(action==='travel')await api.startTravel(row.id);else await api.completeBooking(row.id);setNotice('تم تحديث دورة الحجز.');await reload()}catch(e){setNotice(errorMessage(e))}}
+  async function create(event:FormEvent){event.preventDefault();try{await api.createBooking({code:form.code,programId:form.programId,customerId:form.customerId,...(form.agentId.trim()?{agentId:form.agentId.trim()}:{}),travelerIds:csv(form.travelerIds)});setForm({code:'',programId:'',customerId:'',agentId:'',travelerIds:''});setNotice('تم إنشاء الحجز المبدئي على الخادم.');await reload()}catch(value){setNotice(errorMessage(value))}}
+  function openConfirm(row:Booking){setConfirmId(row.id);setConfirm(value=>({...value,invoiceNumber:`HU-${row.code}`}));setInventories([emptyInventoryRow()]);}
+  function updateInventory(index:number,patch:Partial<InventoryRowForm>){setInventories(values=>values.map((value,i)=>i===index?{...value,...patch}:value));}
+  async function confirmBooking(event:FormEvent){event.preventDefault();if(!confirmId)return;try{const requests=inventories.map(inventoryRequest);await api.confirmBooking(confirmId,{commandKey:makeOperationCommandKey('booking-confirm',confirmId,confirm.invoiceNumber),category:confirm.category,costCenterId:confirm.costCenterId,currency:confirm.currency,grossAmount:confirm.grossAmount,discountAmount:confirm.discountAmount,postingDate:confirm.postingDate,dueDate:confirm.dueDate,invoiceNumber:confirm.invoiceNumber,inventories:requests,...(confirm.commissionAmount.trim()?{commissionAmount:confirm.commissionAmount.trim()}: {})});setConfirmId(null);setNotice('تم تأكيد الحجز عبر مسار التمويل والمخزون المعتمد.');await reload()}catch(value){setNotice(errorMessage(value))}}
+  function openCancel(row:Booking){setCancelId(row.id);setCancel({postingDate:'',reason:''});}
+  async function cancelBooking(event:FormEvent){event.preventDefault();if(!cancelId)return;try{const result=await api.cancelBooking(cancelId,{...cancel,commandKey:makeOperationCommandKey('booking-cancel',cancelId,cancel.postingDate)});setCancelId(null);setNotice(result.status==='CANCELLED'?'تم إلغاء الحجز.':'لم يُلغ الحجز؛ يوجد مانع مالي ظاهر في الحالة المالية.');await reload()}catch(value){setNotice(errorMessage(value))}}
+  async function lifecycle(row:Booking,action:'ready'|'travel'|'complete'){try{if(action==='ready')await api.markReady(row.id);else if(action==='travel')await api.startTravel(row.id);else await api.completeBooking(row.id);setNotice('تم تحديث دورة الحجز.');await reload()}catch(value){setNotice(errorMessage(value))}}
   return <section aria-label="الحجوزات">
     <PermissionState allowed={cap.bookingView||loading}>
-      {cap.bookingManage&&<Card title="حجز جديد">
-        <form onSubmit={create}>
-          <FormField label="كود الحجز" required><Input required value={form.code} onChange={e=>setForm({...form,code:e.target.value})}/></FormField>
-          <FormField label="معرّف البرنامج" required><Input required value={form.programId} onChange={e=>setForm({...form,programId:e.target.value})}/></FormField>
-          <FormField label="معرّف العميل" required><Input required value={form.customerId} onChange={e=>setForm({...form,customerId:e.target.value})}/></FormField>
-          <FormField label="معرّف الوكيل"><Input value={form.agentId} onChange={e=>setForm({...form,agentId:e.target.value})}/></FormField>
-          <FormField label="معرّفات المسافرين" required><Input required placeholder="traveler-1, traveler-2" value={form.travelerIds} onChange={e=>setForm({...form,travelerIds:e.target.value})}/></FormField>
-          <Button type="submit">إنشاء حجز مبدئي</Button>
-        </form>
-      </Card>}
-      <Card title="الحجوزات التشغيلية">
-        {loading?<LoadingState/>:error?<ErrorState message={error}/>:!rows.length?<EmptyState title="لا توجد حجوزات"/>:
-        <DataGrid columns={['الكود','البرنامج','المسافرون','حالة الحجز','الحالة المالية','إجراءات']}>{rows.map(row=><tr key={row.id}>
-          <td>{row.code}</td><td>{row.programId}</td><td>{row.travelerIds.length}</td>
-          <td><Badge tone={bookingTone(row.status)}>{bookingLifecycleLabels[row.status]}</Badge></td>
-          <td><Badge tone={financialTone(row.financialState)}>{bookingFinancialLabels[row.financialState]}</Badge></td>
-          <td>
-            {cap.bookingConfirm&&row.status==='PRELIMINARY'&&<Button type="button" onClick={()=>openConfirm(row)}>تأكيد</Button>}
-            {cap.bookingLifecycle&&row.status==='CONFIRMED'&&<Button type="button" onClick={()=>void lifecycle(row,'ready')}>تعيين جاهز</Button>}
-            {cap.bookingLifecycle&&row.status==='READY'&&<Button type="button" onClick={()=>void lifecycle(row,'travel')}>بدء السفر</Button>}
-            {cap.bookingLifecycle&&row.status==='TRAVELING'&&<Button type="button" onClick={()=>void lifecycle(row,'complete')}>إكمال</Button>}
-            {cap.bookingCancel&&!['CANCELLED','COMPLETED'].includes(row.status)&&<Button type="button" onClick={()=>openCancel(row)}>إلغاء</Button>}
-          </td>
-        </tr>)}</DataGrid>}
-      </Card>
+      {cap.bookingManage&&<Card title="حجز جديد"><form onSubmit={create}>
+        <FormField label="كود الحجز" required><Input required value={form.code} onChange={e=>setForm({...form,code:e.target.value})}/></FormField>
+        <FormField label="معرّف البرنامج" required><Input required value={form.programId} onChange={e=>setForm({...form,programId:e.target.value})}/></FormField>
+        <FormField label="معرّف العميل" required><Input required value={form.customerId} onChange={e=>setForm({...form,customerId:e.target.value})}/></FormField>
+        <FormField label="معرّف الوكيل"><Input value={form.agentId} onChange={e=>setForm({...form,agentId:e.target.value})}/></FormField>
+        <FormField label="معرّفات المسافرين" required><Input required placeholder="traveler-1, traveler-2" value={form.travelerIds} onChange={e=>setForm({...form,travelerIds:e.target.value})}/></FormField>
+        <Button type="submit">إنشاء حجز مبدئي</Button>
+      </form></Card>}
+      <Card title="الحجوزات التشغيلية">{loading?<LoadingState/>:error?<ErrorState message={error}/>:!rows.length?<EmptyState title="لا توجد حجوزات"/>:<DataGrid columns={['الكود','البرنامج','المسافرون','حالة الحجز','الحالة المالية','إجراءات']}>{rows.map(row=><tr key={row.id}><td>{row.code}</td><td>{row.programId}</td><td>{row.travelerIds.length}</td><td><Badge tone={bookingTone(row.status)}>{bookingLifecycleLabels[row.status]}</Badge></td><td><Badge tone={financialTone(row.financialState)}>{bookingFinancialLabels[row.financialState]}</Badge></td><td>{cap.bookingConfirm&&row.status==='PRELIMINARY'&&<Button type="button" onClick={()=>openConfirm(row)}>تأكيد</Button>}{cap.bookingLifecycle&&row.status==='CONFIRMED'&&<Button type="button" onClick={()=>void lifecycle(row,'ready')}>تعيين جاهز</Button>}{cap.bookingLifecycle&&row.status==='READY'&&<Button type="button" onClick={()=>void lifecycle(row,'travel')}>بدء السفر</Button>}{cap.bookingLifecycle&&row.status==='TRAVELING'&&<Button type="button" onClick={()=>void lifecycle(row,'complete')}>إكمال</Button>}{cap.bookingCancel&&!['CANCELLED','COMPLETED'].includes(row.status)&&<Button type="button" onClick={()=>openCancel(row)}>إلغاء</Button>}</td></tr>)}</DataGrid>}</Card>
     </PermissionState>
-    {notice&&<Toast tone={notice.includes('تعذر')||notice.includes('غير صحيحة')?'error':'info'}>{notice}</Toast>}
-    <Dialog open={Boolean(confirmId)} title="تأكيد الحجز" onClose={()=>setConfirmId(null)}>
-      <form onSubmit={confirmBooking}>
-        <FormField label="مفتاح الأمر" required><Input required value={confirm.commandKey} onChange={e=>setConfirm({...confirm,commandKey:e.target.value})}/></FormField>
-        <FormField label="الفئة المالية"><Select value={confirm.category} onChange={e=>setConfirm({...confirm,category:e.target.value as ConfirmBookingInput['category']})}><option value="OTHER">أخرى</option><option value="HOTEL">فندق</option><option value="FLIGHT">طيران</option><option value="TRANSPORT">نقل</option><option value="VISA">تأشيرة</option></Select></FormField>
-        <FormField label="مركز التكلفة" required><Input required value={confirm.costCenterId} onChange={e=>setConfirm({...confirm,costCenterId:e.target.value})}/></FormField>
-        <FormField label="العملة" required><Input required value={confirm.currency} onChange={e=>setConfirm({...confirm,currency:e.target.value.toUpperCase()})}/></FormField>
-        <FormField label="الإجمالي" required><Input required inputMode="decimal" value={confirm.grossAmount} onChange={e=>setConfirm({...confirm,grossAmount:e.target.value})}/></FormField>
-        <FormField label="الخصم" required><Input required inputMode="decimal" value={confirm.discountAmount} onChange={e=>setConfirm({...confirm,discountAmount:e.target.value})}/></FormField>
-        <FormField label="تاريخ القيد" required><Input required type="date" value={confirm.postingDate} onChange={e=>setConfirm({...confirm,postingDate:e.target.value})}/></FormField>
-        <FormField label="تاريخ الاستحقاق" required><Input required type="date" value={confirm.dueDate} onChange={e=>setConfirm({...confirm,dueDate:e.target.value})}/></FormField>
-        <FormField label="رقم الفاتورة" required><Input required value={confirm.invoiceNumber} onChange={e=>setConfirm({...confirm,invoiceNumber:e.target.value})}/></FormField>
-        <FormField label="طلبات التخصيص من TCI (JSON)" required><Textarea required value={confirm.inventories} onChange={e=>setConfirm({...confirm,inventories:e.target.value})}/></FormField>
-        <FormField label="عمولة الوكيل"><Input inputMode="decimal" value={confirm.commissionAmount} onChange={e=>setConfirm({...confirm,commissionAmount:e.target.value})}/></FormField>
-        <Button type="submit">تنفيذ التأكيد</Button>
-      </form>
-    </Dialog>
-    <Dialog open={Boolean(cancelId)} title="إلغاء الحجز" onClose={()=>setCancelId(null)}>
-      <form onSubmit={cancelBooking}>
-        <FormField label="مفتاح الأمر" required><Input required value={cancel.commandKey} onChange={e=>setCancel({...cancel,commandKey:e.target.value})}/></FormField>
-        <FormField label="تاريخ القيد" required><Input required type="date" value={cancel.postingDate} onChange={e=>setCancel({...cancel,postingDate:e.target.value})}/></FormField>
-        <FormField label="سبب الإلغاء" required><Textarea required value={cancel.reason} onChange={e=>setCancel({...cancel,reason:e.target.value})}/></FormField>
-        <Button type="submit">فحص وتنفيذ الإلغاء</Button>
-      </form>
-    </Dialog>
+    {notice&&<Toast tone={notice.includes('تعذر')?'error':'info'}>{notice}</Toast>}
+    <Dialog open={Boolean(confirmId)} title="تأكيد الحجز" onClose={()=>setConfirmId(null)}><form onSubmit={confirmBooking}>
+      <FormField label="الفئة المالية"><Select value={confirm.category} onChange={e=>setConfirm({...confirm,category:e.target.value as ConfirmBookingInput['category']})}><option value="OTHER">أخرى</option><option value="HOTEL">فندق</option><option value="FLIGHT">طيران</option><option value="TRANSPORT">نقل</option><option value="VISA">تأشيرة</option></Select></FormField>
+      <FormField label="مركز التكلفة" required><Input required value={confirm.costCenterId} onChange={e=>setConfirm({...confirm,costCenterId:e.target.value})}/></FormField>
+      <FormField label="العملة" required><Input required value={confirm.currency} onChange={e=>setConfirm({...confirm,currency:e.target.value.toUpperCase()})}/></FormField>
+      <FormField label="الإجمالي" required><Input required inputMode="decimal" value={confirm.grossAmount} onChange={e=>setConfirm({...confirm,grossAmount:e.target.value})}/></FormField>
+      <FormField label="الخصم" required><Input required inputMode="decimal" value={confirm.discountAmount} onChange={e=>setConfirm({...confirm,discountAmount:e.target.value})}/></FormField>
+      <FormField label="تاريخ القيد" required><Input required type="date" value={confirm.postingDate} onChange={e=>setConfirm({...confirm,postingDate:e.target.value})}/></FormField>
+      <FormField label="تاريخ الاستحقاق" required><Input required type="date" value={confirm.dueDate} onChange={e=>setConfirm({...confirm,dueDate:e.target.value})}/></FormField>
+      <FormField label="رقم الفاتورة" required><Input required value={confirm.invoiceNumber} onChange={e=>setConfirm({...confirm,invoiceNumber:e.target.value})}/></FormField>
+      <Card title="طلبات المخزون والتخصيص">{inventories.map((row,index)=><section key={index} aria-label={`طلب مخزون ${index+1}`}>
+        <FormField label="معرّف التخصيص" required><Input required value={row.allocationId} onChange={e=>updateInventory(index,{allocationId:e.target.value})}/></FormField>
+        <FormField label="العقد" required><Input required value={row.contractId} onChange={e=>updateInventory(index,{contractId:e.target.value})}/></FormField>
+        <FormField label="نوع المورد"><Select value={row.resourceType} onChange={e=>updateInventory(index,{resourceType:e.target.value})}><option value="HOTEL">فندق</option><option value="FLIGHT_BLOCK">طيران</option><option value="TRANSPORT">نقل</option><option value="VISA">تأشيرة</option><option value="SERVICE">خدمة</option></Select></FormField>
+        <FormField label="المورد" required><Input required value={row.resourceId} onChange={e=>updateInventory(index,{resourceId:e.target.value})}/></FormField>
+        <FormField label="تاريخ الخدمة" required><Input required type="date" value={row.serviceDate} onChange={e=>updateInventory(index,{serviceDate:e.target.value})}/></FormField>
+        <FormField label="نهاية الفترة"><Input type="date" value={row.periodEnd} onChange={e=>updateInventory(index,{periodEnd:e.target.value})}/></FormField>
+        <FormField label="الكمية" required><Input required inputMode="decimal" value={row.quantity} onChange={e=>updateInventory(index,{quantity:e.target.value})}/></FormField>
+        {row.resourceType==='FLIGHT_BLOCK'&&<><FormField label="نوع مرجع قطاع الطيران" required><Input required value={row.flightSegmentSourceType} onChange={e=>updateInventory(index,{flightSegmentSourceType:e.target.value})}/></FormField><FormField label="مرجع قطاع الطيران" required><Input required value={row.flightSegmentSourceId} onChange={e=>updateInventory(index,{flightSegmentSourceId:e.target.value})}/></FormField></>}
+        {row.resourceType==='VISA'&&<><FormField label="نوع مرجع دفعة التأشيرات" required><Input required value={row.visaBatchSourceType} onChange={e=>updateInventory(index,{visaBatchSourceType:e.target.value})}/></FormField><FormField label="مرجع دفعة التأشيرات" required><Input required value={row.visaBatchSourceId} onChange={e=>updateInventory(index,{visaBatchSourceId:e.target.value})}/></FormField></>}
+        {inventories.length>1&&<Button type="button" onClick={()=>setInventories(values=>values.filter((_,i)=>i!==index))}>حذف الطلب</Button>}
+      </section>)}<Button type="button" onClick={()=>setInventories(values=>[...values,emptyInventoryRow()])}>إضافة طلب مخزون</Button></Card>
+      <FormField label="عمولة الوكيل"><Input inputMode="decimal" value={confirm.commissionAmount} onChange={e=>setConfirm({...confirm,commissionAmount:e.target.value})}/></FormField>
+      <Button type="submit">تنفيذ التأكيد</Button>
+    </form></Dialog>
+    <Dialog open={Boolean(cancelId)} title="إلغاء الحجز" onClose={()=>setCancelId(null)}><form onSubmit={cancelBooking}>
+      <FormField label="تاريخ القيد" required><Input required type="date" value={cancel.postingDate} onChange={e=>setCancel({...cancel,postingDate:e.target.value})}/></FormField>
+      <FormField label="سبب الإلغاء" required><Textarea required value={cancel.reason} onChange={e=>setCancel({...cancel,reason:e.target.value})}/></FormField>
+      <Button type="submit">فحص وتنفيذ الإلغاء</Button>
+    </form></Dialog>
   </section>;
 }
 
