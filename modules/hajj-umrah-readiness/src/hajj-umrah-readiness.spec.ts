@@ -11,27 +11,38 @@ import type{Incident,OperationTask}from'@elhafez/hajj-umrah-trip-operations';
 import type{Allocation}from'@elhafez/tourism-contract-inventory';
 import{HajjUmrahReadinessApplicationService}from'./application/hajj-umrah-readiness.application-service.js';
 import type{ReadinessAccess,ReadinessSources}from'./application/readiness.ports.js';
-import type{ReadinessRepository}from'./application/readiness.repository.js';
-import type{ClosureEvidenceRecord}from'./domain/readiness.js';
+import type{ClosureEvidenceAdvance,ReadinessRepository}from'./application/readiness.repository.js';
+import type{ClosureEvidenceRecord,ClosureEvidenceStatus}from'./domain/readiness.js';
 
 const now='2027-04-20T10:00:00.000Z',ctx=executionContext('c1','b1','u1');
 
 class MemoryRepo implements ReadinessRepository{
  readonly rows:ClosureEvidenceRecord[]=[];
- async reserve(value:ClosureEvidenceRecord){const prior=this.rows.find(row=>row.companyId===value.companyId&&row.branchId===value.branchId&&row.programId===value.programId&&row.programUpdatedAt===value.programUpdatedAt);if(prior)return prior;this.rows.push(value);return value}
- async findByProgramVersion(companyId:string,branchId:string,programId:string,programUpdatedAt:string){return this.rows.find(row=>row.companyId===companyId&&row.branchId===branchId&&row.programId===programId&&row.programUpdatedAt===programUpdatedAt)??null}
- async latestForProgram(companyId:string,branchId:string,programId:string){return[...this.rows].reverse().find(row=>row.companyId===companyId&&row.branchId===branchId&&row.programId===programId)??null}
- async save(value:ClosureEvidenceRecord){const index=this.rows.findIndex(row=>row.id===value.id);if(index>=0)this.rows[index]=value;else this.rows.push(value);return value}
+ failAdvanceFrom:ClosureEvidenceStatus|null=null;
+ async reserve(value:ClosureEvidenceRecord){const prior=this.rows.find(row=>row.companyId===value.companyId&&row.branchId===value.branchId&&row.programId===value.programId&&row.programUpdatedAt===value.programUpdatedAt);if(prior)return prior;this.rows.push(structuredClone(value));return structuredClone(value)}
+ async findByProgramVersion(companyId:string,branchId:string,programId:string,programUpdatedAt:string){const value=this.rows.find(row=>row.companyId===companyId&&row.branchId===branchId&&row.programId===programId&&row.programUpdatedAt===programUpdatedAt);return value?structuredClone(value):null}
+ async latestForProgram(companyId:string,branchId:string,programId:string){const value=[...this.rows].reverse().find(row=>row.companyId===companyId&&row.branchId===branchId&&row.programId===programId);return value?structuredClone(value):null}
+ async advance(id:string,expectedStatus:ClosureEvidenceStatus,expectedRevision:number,next:ClosureEvidenceAdvance){
+  if(this.failAdvanceFrom===expectedStatus){this.failAdvanceFrom=null;throw new Error(`injected advance failure after ${expectedStatus}`)}
+  const index=this.rows.findIndex(row=>row.id===id);if(index<0)throw new Error('closure evidence not found');
+  const current=this.rows[index]!;
+  const order:Record<ClosureEvidenceStatus,number>={PREPARED:0,OWNER_CLOSED:1,FINANCE_CONFIRMED:2,COMPLETED:3};
+  const expectedNext:Partial<Record<ClosureEvidenceStatus,ClosureEvidenceStatus>>={PREPARED:'OWNER_CLOSED',OWNER_CLOSED:'FINANCE_CONFIRMED',FINANCE_CONFIRMED:'COMPLETED'};
+  if(expectedNext[expectedStatus]!==next.status)throw new Error('invalid transition');
+  if(current.status!==expectedStatus||current.revision!==expectedRevision){if(order[current.status]>=order[next.status])return structuredClone(current);throw new Error('closure evidence CAS conflict')}
+  const value:ClosureEvidenceRecord={...current,status:next.status,revision:current.revision+1,updatedAt:next.updatedAt,evidenceHash:next.evidenceHash??current.evidenceHash,evidence:next.evidence??current.evidence,...(next.financialEvidence!==undefined?{financialEvidence:next.financialEvidence}:current.financialEvidence!==undefined?{financialEvidence:current.financialEvidence}:{}),...(next.status==='COMPLETED'&&next.completedAt?{completedAt:next.completedAt}:current.completedAt?{completedAt:current.completedAt}:{})};
+  this.rows[index]=value;return structuredClone(value);
+ }
 }
 class Access implements ReadinessAccess{
- readonly audits:string[]=[];
+ readonly audits:string[]=[];auditAttempts=0;failAuditOnce=false;
  async requireBranch(c:ExecutionContext){if(c.companyId!=='c1'||c.branchId!=='b1')throw new Error('branch denied')}
  async requirePermission(c:ExecutionContext,_permission:string){if(c.actorId==='denied')throw new Error('permission denied')}
- async auditOnce(_c:ExecutionContext,key:string){if(!this.audits.includes(key))this.audits.push(key)}
+ async auditOnce(_c:ExecutionContext,key:string){this.auditAttempts++;if(this.failAuditOnce){this.failAuditOnce=false;throw new Error('injected audit failure')}if(!this.audits.includes(key))this.audits.push(key)}
 }
 interface MutableState{
  bookingStatus:BookingStatus;rooming:boolean;visa:VisaStatus;ticket:TicketStatus;transport:boolean;run:TransportRunStatus;finance:boolean;
- task:boolean;incident:boolean;supply:boolean;roomingOwnerFailure:boolean;financeClose:number;ownerClose:number;ownerFailure:boolean;
+ task:boolean;incident:boolean;supply:boolean;roomingOwnerFailure:boolean;financeClose:number;financeCalls:number;financeCommandKeys:string[];ownerClose:number;ownerEntered:number;ownerFailure:boolean;ownerGate?:Promise<void>;
 }
 function makeProgram(requirements:readonly Requirement[]):Program{
  const components=[
@@ -48,13 +59,13 @@ function allocation(id:string,resourceType:Allocation['resourceType'],resourceId
 function fixture(requirements:readonly Requirement[]=['HOTEL','VISA','FLIGHT','TRANSPORT']){
  let program=makeProgram(requirements);
  let bookings:Booking[]=[makeBooking()];
- const state:MutableState={bookingStatus:'CONFIRMED',rooming:true,visa:'ISSUED',ticket:'ISSUED',transport:true,run:'SCHEDULED',finance:true,task:false,incident:false,supply:true,roomingOwnerFailure:false,financeClose:0,ownerClose:0,ownerFailure:false};
+ const state:MutableState={bookingStatus:'CONFIRMED',rooming:true,visa:'ISSUED',ticket:'ISSUED',transport:true,run:'SCHEDULED',finance:true,task:false,incident:false,supply:true,roomingOwnerFailure:false,financeClose:0,financeCalls:0,financeCommandKeys:[],ownerClose:0,ownerEntered:0,ownerFailure:false};
  const allocations=new Map<string,Allocation>([
   ['ra',allocation('ra','HOTEL','hotel-1')],['va',allocation('va','VISA','visa-1')],['fa',allocation('fa','FLIGHT_BLOCK','flight-1')],['ba',allocation('ba','TRANSPORT','bus-1')],
  ]);
  const sources:ReadinessSources={
   async program(_c,id){if(id!=='p1')throw new Error('program not found');return program},
-  async closeProgramOwner(_c,_id,expected){state.ownerClose++;if(state.ownerFailure)throw new Error('concurrent');if(program.updatedAt!==expected)throw new Error('concurrent');program={...program,status:'CLOSED',bookingOpen:false,returnRecordedAt:now,updatedAt:now};return program},
+  async closeProgramOwner(_c,_id,expected){state.ownerClose++;state.ownerEntered++;if(state.ownerGate)await state.ownerGate;if(program.status==='CLOSED')return program;if(state.ownerFailure)throw new Error('concurrent');if(program.updatedAt!==expected)throw new Error('concurrent');program={...program,status:'CLOSED',bookingOpen:false,returnRecordedAt:now,updatedAt:now};return program},
   async booking(_c,id){const value=bookings.find(row=>row.id===id);if(!value)throw new Error('booking not found');return{...value,status:state.bookingStatus}},
   async bookings(){return bookings.map(row=>({...row,status:state.bookingStatus}))},
   async traveler(_c,id){return{id,companyId:ctx.companyId,fullName:'مسافر '+id,dateOfBirth:null,gender:null,nationality:'EG',partyId:null,customerId:null,status:'ACTIVE',createdAt:now,updatedAt:now}as never},
@@ -71,7 +82,7 @@ function fixture(requirements:readonly Requirement[]=['HOTEL','VISA','FLIGHT','T
   async supply(input){return{available:state.supply,resourceType:input.resourceType,resourceId:input.resourceId,contractId:'contract-'+input.resourceId,availableQuantity:state.supply?'10':'0'}as never},
   async bookingFinancial(){return state.finance?{ready:true,blockers:[],warnings:[],evidenceReferences:['booking-finance']}:{ready:false,blockers:['UNRESOLVED_WORKFLOW:BOOKING_DEPOSIT:w1'],warnings:[],evidenceReferences:['w1']}},
   async programFinancial(){return state.finance?{ready:true,blockers:[],warnings:[],evidenceReferences:['program-finance']}:{ready:false,blockers:['UNRESOLVED_WORKFLOW:PROGRAM_CLOSE:w2'],warnings:[],evidenceReferences:['w2']}},
-  async closeFinancial(){state.financeClose++;return{closed:true,workflowId:'wf-close'}},
+  async closeFinancial(input){state.financeCalls++;if(!state.financeCommandKeys.includes(input.commandKey)){state.financeCommandKeys.push(input.commandKey);state.financeClose++}return{closed:true,workflowId:'wf-close'}},
   async programAccounting(){return{byCurrency:[{currency:'SAR',revenue:'1000',cost:'700',profit:'300'}]}},
  };
  const repo=new MemoryRepo(),access=new Access();let sequence=0;
