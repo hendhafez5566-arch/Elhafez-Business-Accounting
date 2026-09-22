@@ -44,6 +44,57 @@ export interface OperationsCapabilities{
  readonly tripView:boolean;readonly tripManage:boolean;
 }
 
+export interface IssueVisaInput{readonly commandKey:string;readonly visaNumber:string;readonly amount:string;readonly postingDate:string;}
+export type ReassignRoomInput=Omit<AssignRoomInput,'bookingId'|'travelerId'>;
+
+export interface HajjUmrahOperationsApi{
+ readonly capabilities:()=>Promise<OperationsCapabilities>;
+ readonly listBookings:()=>Promise<Booking[]>;
+ readonly createBooking:(input:CreateBookingInput)=>Promise<Booking>;
+ readonly confirmBooking:(id:string,input:ConfirmBookingInput)=>Promise<Booking>;
+ readonly cancelBooking:(id:string,input:CancelBookingInput)=>Promise<Booking>;
+ readonly markReady:(id:string)=>Promise<Booking>;
+ readonly startTravel:(id:string)=>Promise<Booking>;
+ readonly completeBooking:(id:string)=>Promise<Booking>;
+ readonly listRooming:(programId?:string)=>Promise<RoomAssignment[]>;
+ readonly assignRoom:(input:AssignRoomInput)=>Promise<RoomAssignment>;
+ readonly reassignRoom:(id:string,input:ReassignRoomInput)=>Promise<RoomAssignment>;
+ readonly unassignRoom:(id:string)=>Promise<RoomAssignment>;
+ readonly swapRooms:(leftId:string,rightId:string)=>Promise<readonly [RoomAssignment,RoomAssignment]>;
+ readonly listVisas:(programId?:string)=>Promise<VisaCase[]>;
+ readonly createVisa:(input:CreateVisaInput)=>Promise<VisaCase>;
+ readonly submitVisa:(id:string,applicationReference:string)=>Promise<VisaCase>;
+ readonly issueVisa:(id:string,input:IssueVisaInput)=>Promise<VisaCase>;
+ readonly rejectVisa:(id:string,reason:string)=>Promise<VisaCase>;
+ readonly cancelVisa:(id:string,reason:string)=>Promise<VisaCase>;
+ readonly listTickets:(programId?:string)=>Promise<TicketRecord[]>;
+ readonly reserveTicket:(input:ReserveTicketInput)=>Promise<TicketRecord>;
+ readonly issueTicket:(id:string,input:TicketIssueInput)=>Promise<TicketRecord>;
+ readonly reissueTicket:(id:string,input:TicketIssueInput)=>Promise<TicketRecord>;
+ readonly voidTicket:(id:string,reason:string)=>Promise<TicketRecord>;
+ readonly cancelTicket:(id:string,reason:string)=>Promise<TicketRecord>;
+ readonly listRuns:(programId?:string)=>Promise<TransportRun[]>;
+ readonly createRun:(input:CreateTransportRunInput)=>Promise<TransportRun>;
+ readonly manifest:(id:string)=>Promise<ManifestAssignment[]>;
+ readonly assignRun:(id:string,bookingId:string,travelerId:string)=>Promise<ManifestAssignment>;
+ readonly removeRunTraveler:(id:string,assignmentId:string)=>Promise<ManifestAssignment>;
+ readonly dispatchRun:(id:string)=>Promise<TransportRun>;
+ readonly completeRun:(id:string)=>Promise<TransportRun>;
+ readonly cancelRun:(id:string,reason:string)=>Promise<TransportRun>;
+ readonly listTasks:(programId?:string)=>Promise<OperationTask[]>;
+ readonly createTask:(input:CreateTaskInput)=>Promise<OperationTask>;
+ readonly completeTask:(id:string)=>Promise<OperationTask>;
+ readonly cancelTask:(id:string,reason:string)=>Promise<OperationTask>;
+ readonly dueTasks:(date:string)=>Promise<OperationTask[]>;
+ readonly overdueTasks:(at:string)=>Promise<OperationTask[]>;
+ readonly listIncidents:(programId?:string)=>Promise<Incident[]>;
+ readonly createIncident:(input:CreateIncidentInput)=>Promise<Incident>;
+ readonly resolveIncident:(id:string,resolution:string)=>Promise<Incident>;
+ readonly cancelIncident:(id:string,reason:string)=>Promise<Incident>;
+ readonly listServices:(programId?:string)=>Promise<ServiceExecution[]>;
+ readonly recordService:(input:RecordServiceInput)=>Promise<ServiceExecution>;
+}
+
 export type OperationsRequest=<T>(path:string,init?:RequestInit)=>Promise<T>;
 const base='/hajj-umrah/operations', enc=encodeURIComponent;
 
