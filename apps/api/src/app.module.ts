@@ -16,6 +16,12 @@ import { TourismContractInventoryModule } from '@elhafez/tourism-contract-invent
 import { TourismFinanceOrchestrationModule } from '@elhafez/tourism-finance-orchestration/nest';
 import { HajjUmrahSeasonsModule } from '@elhafez/hajj-umrah-seasons/nest';
 import { HajjUmrahProgramsModule } from '@elhafez/hajj-umrah-programs/nest';
+import { HajjUmrahBookingsModule } from '@elhafez/hajj-umrah-bookings/nest';
+import { HajjUmrahRoomingModule } from '@elhafez/hajj-umrah-rooming/nest';
+import { HajjUmrahVisaOperationsModule } from '@elhafez/hajj-umrah-visa-operations/nest';
+import { HajjUmrahTicketingModule } from '@elhafez/hajj-umrah-ticketing/nest';
+import { HajjUmrahTransportOperationsModule } from '@elhafez/hajj-umrah-transport-operations/nest';
+import { HajjUmrahTripOperationsModule } from '@elhafez/hajj-umrah-trip-operations/nest';
 import { FinancialReportingModule } from '@elhafez/financial-reporting';
 import { PartyRegistryModule } from '@elhafez/party-registry';
 import { AgentManagementApplicationService } from '@elhafez/agent-management';
@@ -45,6 +51,7 @@ import { CrmSalesReadModelService } from './crm-sales-read-model.service.js';
 import { SupplierIntelligenceReadModelController } from './supplier-intelligence-read-model.controller.js';
 import { SupplierIntelligenceReadModelService } from './supplier-intelligence-read-model.service.js';
 import { HajjUmrahController } from './hajj-umrah.controller.js';
+import { HajjUmrahOperationsController } from './hajj-umrah-operations.controller.js';
 
 /** Composition root only. Business modules are registered here through public module APIs. */
 @Module({
@@ -52,9 +59,9 @@ import { HajjUmrahController } from './hajj-umrah.controller.js';
     PlatformCoreModule, PartyRegistryModule, AgentManagementModule, CustomerManagementModule, CrmLeadsModule, CrmFollowupsModule, QuotationsModule, SupplierManagementModule, SupplierEvaluationModule, SupplierDisputesModule, ProcurementFulfillmentModule, TravelerManagementModule,
     PeriodControlModule, GeneralLedgerModule, FinancialControlsModule, TaxModule, BillingSubledgersModule, TreasurySettlementModule, PartyAccountingModule,
     ExpenseCommissionRecognitionModule, CostBudgetAccountingModule, AssetsFinancingModule, ProcurementFinanceModule, TourismContractInventoryModule,
-    TourismFinanceOrchestrationModule, HajjUmrahSeasonsModule, HajjUmrahProgramsModule, FinancialReportingModule, Ac14MigrationModule,
+    TourismFinanceOrchestrationModule, HajjUmrahSeasonsModule, HajjUmrahProgramsModule, HajjUmrahBookingsModule, HajjUmrahRoomingModule, HajjUmrahVisaOperationsModule, HajjUmrahTicketingModule, HajjUmrahTransportOperationsModule, HajjUmrahTripOperationsModule, FinancialReportingModule, Ac14MigrationModule,
   ],
-  controllers: [CrmSalesReadModelController, SupplierIntelligenceReadModelController, HajjUmrahController],
+  controllers: [CrmSalesReadModelController, SupplierIntelligenceReadModelController, HajjUmrahController, HajjUmrahOperationsController],
   providers: [
     FinancialReportingEvidenceAdapter,
     {
