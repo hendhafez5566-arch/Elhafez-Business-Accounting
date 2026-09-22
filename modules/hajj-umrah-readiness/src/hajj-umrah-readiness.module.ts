@@ -22,7 +22,7 @@ import type{TourismContractInventoryApplicationService}from'@elhafez/tourism-con
 import{TOURISM_CONTRACT_INVENTORY_SERVICE,TourismContractInventoryModule}from'@elhafez/tourism-contract-inventory/nest';
 import{TourismFinanceOrchestrationApplicationService}from'@elhafez/tourism-finance-orchestration';
 import{TourismFinanceOrchestrationModule}from'@elhafez/tourism-finance-orchestration/nest';
-import{FinancialReportingApplicationService,FinancialReportingModule,type ReportScope}from'@elhafez/financial-reporting';
+import{FinancialReportingApplicationService,FinancialReportingModule}from'@elhafez/financial-reporting';
 import{HajjUmrahReadinessApplicationService}from'./application/hajj-umrah-readiness.application-service.js';
 import{READINESS_REPOSITORY,type ReadinessRepository}from'./application/readiness.repository.js';
 import type{ReadinessSources}from'./application/readiness.ports.js';
@@ -61,7 +61,7 @@ import{PrismaReadinessRepository}from'./infrastructure/prisma-readiness.reposito
     bookingFinancial:(input)=>finance.evaluateBookingFinancialReadiness({...input,companyId:companyId(input.companyId)}),
     programFinancial:(input)=>finance.evaluateFinancialReadiness({...input,companyId:companyId(input.companyId)}),
     closeFinancial:(input)=>finance.closeProgram({...input,companyId:companyId(input.companyId),program:input.program as SourceReference}),
-    programAccounting:(input,id)=>reporting.getProgramAccountingSnapshot(input as unknown as ReportScope,id),
+    programAccounting:(input,id)=>reporting.getProgramAccountingSnapshot(input,id),
    };
    return new HajjUmrahReadinessApplicationService(repository,new PlatformReadinessAccess(platform),sources);
   },inject:[READINESS_REPOSITORY,PlatformCoreApplicationService,HajjUmrahProgramsApplicationService,HajjUmrahBookingsApplicationService,TravelerManagementApplicationService,HajjUmrahRoomingApplicationService,HajjUmrahVisaOperationsApplicationService,HajjUmrahTicketingApplicationService,HajjUmrahTransportOperationsApplicationService,HajjUmrahTripOperationsApplicationService,TOURISM_CONTRACT_INVENTORY_SERVICE,TourismFinanceOrchestrationApplicationService,FinancialReportingApplicationService]},
