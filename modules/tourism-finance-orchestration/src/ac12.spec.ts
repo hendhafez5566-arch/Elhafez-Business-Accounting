@@ -135,6 +135,50 @@ test('readiness discovers unresolved BOOKING_DEPOSIT and BOOKING_SETTLEMENT work
   }
 });
 
+test('booking financial readiness scopes unresolved booking workflows and branch identity', async () => {
+  const f = fixture(); await f.setup(); await f.confirm();
+  const ready = await f.service.evaluateBookingFinancialReadiness({
+    companyId: company,
+    branchId: 'branch-1',
+    booking,
+    program,
+    requiredCategories: ['HOTEL'],
+  });
+  assert.equal(ready.ready, true);
+  const workflow = await f.repo.reserveWorkflow({
+    id: 'hu03-booking-deposit-running',
+    companyId: company,
+    branchId: 'branch-1',
+    kind: 'BOOKING_DEPOSIT',
+    commandKey: 'hu03-booking-deposit-running',
+    payloadHash: 'hu03-deposit-hash',
+    sourceType: booking.sourceType,
+    sourceId: booking.sourceId,
+    status: 'RUNNING',
+    payload: { booking },
+    createdAt: '2026-09-22T00:00:00.000Z',
+    updatedAt: '2026-09-22T00:00:00.000Z',
+  });
+  const blocked = await f.service.evaluateBookingFinancialReadiness({
+    companyId: company,
+    branchId: 'branch-1',
+    booking,
+    program,
+    requiredCategories: ['HOTEL'],
+  });
+  assert.equal(blocked.ready, false);
+  assert.ok(blocked.blockers.includes(`UNRESOLVED_WORKFLOW:BOOKING_DEPOSIT:${workflow.id}`));
+  const wrongBranch = await f.service.evaluateBookingFinancialReadiness({
+    companyId: company,
+    branchId: 'branch-2',
+    booking,
+    program,
+    requiredCategories: ['HOTEL'],
+  });
+  assert.equal(wrongBranch.ready, false);
+  assert.ok(wrongBranch.blockers.includes('BRANCH_SCOPE_MISMATCH'));
+});
+
 test('readiness becomes true after booking workflows complete and owner blockers are clear', async () => {
   const f = fixture(); await f.setup(); await f.confirm();
   const workflows = await Promise.all(
