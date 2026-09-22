@@ -221,6 +221,7 @@ export interface TourismContractInventoryApplicationService {
   amendContract(input: AmendContractInput, key?: string): Promise<ContractVersion>;
   getContract(companyId: CompanyId, id: string): Promise<TourismContract | null>;
   getContractVersions(companyId: CompanyId, id: string): Promise<ContractVersion[]>;
+  getAllocation(companyId: CompanyId, allocationId: string): Promise<Allocation | null>;
   createHotelInventory(input: CreateHotelInventoryInput, key?: string): Promise<HotelInventory>;
   createFlightBlock(input: CreateFlightBlockInput, key?: string): Promise<FlightBlock>;
   createTransportCapacity(input: CreateTransportCapacityInput, key?: string): Promise<TransportCapacity>;
