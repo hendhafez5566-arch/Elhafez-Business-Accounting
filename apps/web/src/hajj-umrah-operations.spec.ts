@@ -49,7 +49,7 @@ test('operations client maps Ticket, Transport, and Trip mutations to real HU-02
     ['POST','/hajj-umrah/operations/trip/services'],
   ]);
   assert.deepEqual(calls[3]?.body,{bookingId:'b1',travelerId:'t1'});
-  assert.deepEqual(calls[4]?.body,undefined);
+  assert.deepEqual(calls[4]?.body,{});
 });
 
 test('booking lifecycle and financial state are rendered as separate operational states', () => {
