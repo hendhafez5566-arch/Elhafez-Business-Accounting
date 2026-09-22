@@ -1,12 +1,12 @@
-import type {RoomAssignment,RoomingHistory}from'../domain/rooming.js';
-export interface RoomingRepository{
- create(v:RoomAssignment,h:RoomingHistory):Promise<RoomAssignment>;
- save(v:RoomAssignment,h:RoomingHistory):Promise<RoomAssignment>;
- swap(a:RoomAssignment,ha:RoomingHistory,b:RoomAssignment,hb:RoomingHistory):Promise<void>;
- get(companyId:string,branchId:string,id:string):Promise<RoomAssignment|null>;
- list(companyId:string,branchId:string,programId?:string):Promise<RoomAssignment[]>;
- history(companyId:string,branchId:string,assignmentId:string):Promise<RoomingHistory[]>;
- overlappingTraveler(companyId:string,branchId:string,travelerId:string,startDate:string,endDate:string,excludeId?:string):Promise<RoomAssignment|null>;
- activeAllocationCount(companyId:string,branchId:string,allocationId:string,startDate:string,endDate:string,excludeId?:string):Promise<number>;
+import type { RoomAssignment, RoomingHistory } from '../domain/rooming.js';
+
+export interface RoomingRepository {
+  createGuarded(value: RoomAssignment, history: RoomingHistory, capacity: number): Promise<RoomAssignment>;
+  saveGuarded(value: RoomAssignment, history: RoomingHistory, capacity: number): Promise<RoomAssignment>;
+  save(value: RoomAssignment, history: RoomingHistory): Promise<RoomAssignment>;
+  swap(a: RoomAssignment, historyA: RoomingHistory, b: RoomAssignment, historyB: RoomingHistory): Promise<void>;
+  get(companyId: string, branchId: string, id: string): Promise<RoomAssignment | null>;
+  list(companyId: string, branchId: string, programId?: string): Promise<RoomAssignment[]>;
+  history(companyId: string, branchId: string, assignmentId: string): Promise<RoomingHistory[]>;
 }
-export const ROOMING_REPOSITORY=Symbol('ROOMING_REPOSITORY');
+export const ROOMING_REPOSITORY = Symbol('ROOMING_REPOSITORY');
