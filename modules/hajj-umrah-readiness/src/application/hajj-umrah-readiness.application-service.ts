@@ -416,7 +416,7 @@ export class HajjUmrahReadinessApplicationService{
   }
 
   if(record.status==='PREPARED'){
-   const financial=await this.sources.closeFinancial({companyId:c.companyId,branchId:c.branchId,commandKey:record.commandKey,program:this.programRef(programId),operationalEvidence:JSON.stringify(record.evidence)});
+   const financial=await this.sources.closeFinancial({companyId:c.companyId,branchId:c.branchId,commandKey:record.commandKey,program:this.programRef(programId),operationalEvidence:`HU03_CLOSURE_EVIDENCE:${record.id}`});
    if(!(financial as{closed?:boolean}|null)?.closed)throw new ContractValidationError('closure','financial orchestration did not confirm closure');
    record=await this.repo.save({...record,status:'FINANCE_CONFIRMED',financialEvidence:financial,updatedAt:this.now().toISOString()});
   }
