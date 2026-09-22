@@ -1,16 +1,19 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { decimalAmount, sourceReference, type BranchId, type CurrencyCode, type DecimalAmount } from '@elhafez/contracts';
 import type { Account, Journal, JournalLine } from '@elhafez/general-ledger';
 import type { Invoice, Advance } from '@elhafez/billing-subledgers';
 import type { Voucher } from '@elhafez/treasury-settlement';
 import type { ProgramCostCenterAssociation } from '@elhafez/cost-budget-accounting';
 import type { TaxSnapshot } from '@elhafez/tax';
-import type { FinancialReportingApplicationService } from '@elhafez/financial-reporting';
+import { FinancialReportingApplicationService } from '@elhafez/financial-reporting';
 
 /** Composition-root-only trusted adapter: maps owner public results into disposable Reporting evidence. */
 @Injectable()
 export class FinancialReportingEvidenceAdapter {
-  constructor(private readonly reporting: FinancialReportingApplicationService) {}
+  constructor(
+    @Inject(FinancialReportingApplicationService)
+    private readonly reporting: FinancialReportingApplicationService,
+  ) {}
   async consumeJournal(journal: Journal, branchId: BranchId | undefined, baseCurrency: Readonly<{ code: CurrencyCode }>, accounts: readonly Account[]) {
     const classifications = new Map(accounts.map((account) => [account.id, account.classification]));
     return Promise.all(journal.lines.map((line) => this.reporting.ingest({ evidenceId: `GL:${journal.id}:${line.id}`, companyId: journal.companyId, ...(branchId ? { branchId } : {}), occurredAt: `${journal.postingDate}T00:00:00.000Z`, postingDate: journal.postingDate, currency: baseCurrency.code, kind: 'GL_LINE', source: sourceReference('JOURNAL', journal.id), authoritativeReference: sourceReference('JOURNAL_LINE', line.id), amount: subtract(line.debit ?? decimalAmount('0'), line.credit ?? decimalAmount('0')), accountId: line.accountId, accountClass: classifications.get(line.accountId) ?? fail(`missing classification for ${line.accountId}`), ...(journal.reversalOfId ? { reversesEvidenceId: `GL:${journal.reversalOfId}:${line.id}` } : {}) })));

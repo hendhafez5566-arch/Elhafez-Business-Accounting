@@ -22,6 +22,7 @@ import type {
   TourismContract,
   TransportCapacity,
   VisaQuota,
+  GenericServiceInventory,
 } from '../domain/inventory.js';
 import type {
   AdjustAllocationInput,
@@ -37,8 +38,11 @@ import type {
   CreateTourismContractInput,
   CreateTransportCapacityInput,
   CreateVisaQuotaInput,
+  CreateGenericServiceInput,
   InternalFirstFulfillmentInput,
   ProtectAllocationCoverageInput,
+  ProgramSupplyEvidence,
+  ProgramSupplyEvidenceInput,
   RegisterAllocationEconomicEvidenceInput,
   ReleaseAllocationCoverageInput,
   ReleaseAllocationInput,
@@ -472,6 +476,8 @@ export class PrismaTourismInventoryRepository implements TourismInventoryReposit
     });
   }
 
+  async createService(input:CreateGenericServiceInput,key:string|undefined,hash:string):Promise<GenericServiceInventory>{return this.command(input.companyId,key,hash,async(tx)=>{await this.requireContract(tx,input.companyId,input.contractId,'SERVICE');const row=await tx.tciServiceInventory.create({data:{id:randomUUID(),companyId:input.companyId,contractId:input.contractId,category:input.category,name:input.name,description:input.description,unit:input.unit,serviceStart:new Date(input.serviceStart),serviceEnd:new Date(input.serviceEnd),capacity:input.capacity,allocatedQuantity:'0',availableQuantity:input.capacity,releaseDeadline:input.releaseDeadline?new Date(input.releaseDeadline):null,status:'ACTIVE'}});return{id:row.id,companyId:row.companyId as CompanyId,contractId:row.contractId,category:row.category as GenericServiceInventory['category'],name:row.name,description:row.description??undefined,unit:row.unit,serviceStart:iso(row.serviceStart),serviceEnd:iso(row.serviceEnd),capacity:amount(row.capacity),allocatedQuantity:amount(row.allocatedQuantity),availableQuantity:amount(row.availableQuantity),releaseDeadline:row.releaseDeadline?iso(row.releaseDeadline):undefined,status:row.status as GenericServiceInventory['status']}})}
+
   async createStopSale(
     input: CreateStopSaleInput,
     key: string | undefined,
@@ -522,6 +528,119 @@ export class PrismaTourismInventoryRepository implements TourismInventoryReposit
     }
     const availableQuantity = await this.resourceAvailable(this.db, input);
     return { available: availableQuantity !== '0', availableQuantity };
+  }
+
+  async supplyEvidence(input: ProgramSupplyEvidenceInput): Promise<ProgramSupplyEvidence> {
+    const serviceDate = new Date(input.serviceDate);
+    const periodEnd = new Date(input.periodEnd ?? input.serviceDate);
+    let contractId: string | undefined;
+
+    if (input.resourceType === 'HOTEL') {
+      contractId = (
+        await this.db.tciHotelInventory.findFirst({
+          where: {
+            companyId: input.companyId,
+            id: input.resourceId,
+            serviceDate,
+            status: 'ACTIVE',
+          },
+          select: { contractId: true },
+        })
+      )?.contractId;
+    } else if (input.resourceType === 'FLIGHT_BLOCK') {
+      contractId = (
+        await this.db.tciFlightBlock.findFirst({
+          where: {
+            companyId: input.companyId,
+            id: input.resourceId,
+            departureDate: serviceDate,
+          },
+          select: { contractId: true },
+        })
+      )?.contractId;
+    } else if (input.resourceType === 'TRANSPORT') {
+      contractId = (
+        await this.db.tciTransportCapacity.findFirst({
+          where: {
+            companyId: input.companyId,
+            id: input.resourceId,
+            periodStart: { lte: serviceDate },
+            periodEnd: { gte: periodEnd },
+          },
+          select: { contractId: true },
+        })
+      )?.contractId;
+    } else if (input.resourceType === 'VISA') {
+      contractId = (
+        await this.db.tciVisaQuota.findFirst({
+          where: {
+            companyId: input.companyId,
+            id: input.resourceId,
+            effectiveFrom: { lte: serviceDate },
+            effectiveTo: { gte: periodEnd },
+          },
+          select: { contractId: true },
+        })
+      )?.contractId;
+    } else if (input.resourceType === 'SERVICE') {
+      contractId = (
+        await this.db.tciServiceInventory.findFirst({
+          where: {
+            companyId: input.companyId,
+            id: input.resourceId,
+            ...(input.serviceCategory ? { category: input.serviceCategory } : {}),
+            serviceStart: { lte: serviceDate },
+            serviceEnd: { gte: periodEnd },
+            status: 'ACTIVE',
+          },
+          select: { contractId: true },
+        })
+      )?.contractId;
+    }
+
+    if (!contractId) {
+      return {
+        available: false,
+        resourceType: input.resourceType,
+        resourceId: input.resourceId,
+        availableQuantity: decimalAmount('0'),
+        blockerReason: 'no matching contracted resource evidence',
+      };
+    }
+
+    const owner = await this.db.tciContract.findUnique({
+      where: { companyId_id: { companyId: input.companyId, id: contractId } },
+    });
+    if (
+      !owner ||
+      !['ACTIVE', 'AMENDED'].includes(owner.status) ||
+      owner.effectiveFrom > serviceDate ||
+      owner.effectiveTo < periodEnd
+    ) {
+      return {
+        available: false,
+        resourceType: input.resourceType,
+        resourceId: input.resourceId,
+        contractId,
+        availableQuantity: decimalAmount('0'),
+        blockerReason: 'contract is not active for the required service window',
+      };
+    }
+
+    const availability = await this.availability({
+      companyId: input.companyId,
+      contractId,
+      resourceType: input.resourceType,
+      resourceId: input.resourceId,
+      serviceDate: input.serviceDate,
+      ...(input.periodEnd ? { periodEnd: input.periodEnd } : {}),
+    });
+    return {
+      ...availability,
+      resourceType: input.resourceType,
+      resourceId: input.resourceId,
+      contractId,
+    };
   }
 
   async allocate(
@@ -675,6 +794,8 @@ export class PrismaTourismInventoryRepository implements TourismInventoryReposit
           },
         })
       ).count;
+    } else if(input.resourceType==='SERVICE'){
+      count=(await tx.tciServiceInventory.updateMany({where:{companyId:input.companyId,id:input.resourceId,contractId:input.contractId,serviceStart:{lte:new Date(input.serviceDate)},serviceEnd:{gte:new Date(input.periodEnd??input.serviceDate)},status:'ACTIVE',availableQuantity:{gte:input.quantity}},data:{allocatedQuantity:{increment:input.quantity},availableQuantity:{decrement:input.quantity}}})).count;
     } else {
       if (!input.periodEnd) throw new Error('transport periodEnd is required');
       const capacity = await tx.tciTransportCapacity.findUnique({
@@ -1283,6 +1404,7 @@ export class PrismaTourismInventoryRepository implements TourismInventoryReposit
         message: 'allocation has already been consumed',
       });
     }
+    if(row.resourceType==='SERVICE'){const service=await db.tciServiceInventory.findFirst({where:{companyId:row.companyId,id:row.resourceId}});if(service?.releaseDeadline&&service.releaseDeadline<new Date()){blockers.push({code:'RELEASE_DEADLINE',message:'contracted service release deadline has passed'})}}
 
     const evidence = await db.tciAllocationEconomicEvidence.findFirst({
       where: { companyId: row.companyId, allocationId: row.id },
@@ -1365,6 +1487,8 @@ export class PrismaTourismInventoryRepository implements TourismInventoryReposit
           quotaRemaining: { increment: quantity },
         },
       });
+    } else if(type==='SERVICE'){
+      await tx.tciServiceInventory.update({where:{companyId_id:{companyId,id}},data:{allocatedQuantity:{decrement:quantity},availableQuantity:{increment:quantity}}});
     }
     // Transport availability is derived from overlapping active allocations, so no scalar restore exists.
   }
@@ -1410,6 +1534,7 @@ export class PrismaTourismInventoryRepository implements TourismInventoryReposit
       });
       return row ? amount(row.quotaRemaining) : decimalAmount('0');
     }
+    if(input.resourceType==='SERVICE'){const row=await db.tciServiceInventory.findFirst({where:{companyId:input.companyId,id:input.resourceId,...contractFilter,serviceStart:{lte:new Date(input.serviceDate)},serviceEnd:{gte:new Date(input.periodEnd??input.serviceDate)},status:'ACTIVE'}});return row?amount(row.availableQuantity):decimalAmount('0');}
 
     const capacity = await db.tciTransportCapacity.findFirst({
       where: {
@@ -1465,11 +1590,21 @@ export class PrismaTourismInventoryRepository implements TourismInventoryReposit
         })
       )?.contractId;
     }
-    return (
-      await tx.tciVisaQuota.findUnique({
-        where: { companyId_id: { companyId, id } },
-      })
-    )?.contractId;
+    if (type === 'VISA') {
+      return (
+        await tx.tciVisaQuota.findUnique({
+          where: { companyId_id: { companyId, id } },
+        })
+      )?.contractId;
+    }
+    if (type === 'SERVICE') {
+      return (
+        await tx.tciServiceInventory.findUnique({
+          where: { companyId_id: { companyId, id } },
+        })
+      )?.contractId;
+    }
+    return undefined;
   }
 
   private async requireContract(

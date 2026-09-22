@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { Prisma } from '@prisma/client';
 import {
   companyId,
   decimalAmount,
@@ -34,6 +35,7 @@ import type {
   AdjustmentResult,
   TourismInventoryRepository,
 } from './infrastructure/inventory.repository.js';
+import { PrismaTourismInventoryRepository } from './infrastructure/prisma-inventory.repository.js';
 
 const company = companyId('11111111-1111-4111-8111-111111111111');
 const other = companyId('22222222-2222-4222-8222-222222222222');
@@ -627,6 +629,8 @@ test('GS-032 hotel exact capacity succeeds, +1 fails, and companies remain isola
   );
 });
 
+test('generic SERVICE capacity allocates, rejects over-allocation, replays, releases, stops sale, and isolates companies',async()=>{const repository=new BehavioralRepository();const{implementation}=service(repository);repository.setCapacity(company,'SERVICE','camp','2027-05-01','10');repository.setCapacity(other,'SERVICE','camp','2027-05-01','4');const input:AllocateCapacityInput={companyId:company,contractId:'service-contract',resourceType:'SERVICE',resourceId:'camp',program,serviceDate:'2027-05-01',quantity:quantity('6')};const first=await implementation.allocateCapacity(input,'service-allocation');const replay=await implementation.allocateCapacity(input,'service-allocation');assert.equal(first.allocation?.id,replay.allocation?.id);await assert.rejects(()=>implementation.allocateCapacity({...input,quantity:quantity('5')},'service-over'),/insufficient/);await assert.rejects(()=>implementation.allocateCapacity({...input,quantity:quantity('5')},'service-allocation'),/Idempotency conflict/);await implementation.releaseAllocation({companyId:company,allocationId:first.allocation!.id,quantity:quantity('2')},'service-release');assert.equal((await implementation.checkAvailability({...input})).availableQuantity,'6');assert.equal((await implementation.checkAvailability({...input,companyId:other})).availableQuantity,'4');await implementation.createStopSale({companyId:company,contractId:'service-contract',reason:'supplier stop',effectiveFrom:'2027-05-01',effectiveTo:'2027-05-02'},'service-stop');await assert.rejects(()=>implementation.allocateCapacity({...input,quantity:quantity('1')},'service-stopped'),/stop sale/)});
+
 test('GS-033 partial hotel adjustment restores/consumes capacity and retries Cost after owner failure', async () => {
   const repository = new BehavioralRepository();
   const { implementation, costCalls } = service(repository, { failCostOnce: true });
@@ -884,4 +888,92 @@ test('BR-060 and BR-063 release decisions use persisted server-side coverage/eco
     (await implementation.getReleaseBlockers(company, allocationId))[0]?.code,
     'FINANCIAL_HISTORY',
   );
+});
+
+
+test('Prisma TCI public supply evidence is company-safe for contracted SERVICE inventory', async () => {
+  const db = {
+    tciServiceInventory: {
+      async findFirst(args: { where: { companyId: CompanyId } }) {
+        return args.where.companyId === company
+          ? { contractId: 'service-contract', availableQuantity: new Prisma.Decimal('3') }
+          : null;
+      },
+    },
+    tciContract: {
+      async findUnique(args: { where: { companyId_id: { companyId: CompanyId } } }) {
+        return args.where.companyId_id.companyId === company
+          ? { status: 'ACTIVE', effectiveFrom: new Date('2027-01-01'), effectiveTo: new Date('2027-12-31') }
+          : null;
+      },
+    },
+    tciStopSale: { async findFirst() { return null; } },
+  };
+  const repository = new PrismaTourismInventoryRepository(db as never);
+  const available = await repository.supplyEvidence({
+    companyId: company,
+    resourceType: 'SERVICE',
+    resourceId: 'camp',
+    serviceDate: '2027-05-01',
+    periodEnd: '2027-05-20',
+    serviceCategory: 'CAMP',
+  });
+  assert.equal(available.available, true);
+  assert.equal(available.contractId, 'service-contract');
+  const isolated = await repository.supplyEvidence({
+    companyId: other,
+    resourceType: 'SERVICE',
+    resourceId: 'camp',
+    serviceDate: '2027-05-01',
+    periodEnd: '2027-05-20',
+    serviceCategory: 'CAMP',
+  });
+  assert.equal(isolated.available, false);
+});
+
+test('Prisma internal-first SERVICE resolves service inventory instead of falling through to VISA', async () => {
+  const row = {
+    id: 'allocation-service',
+    companyId: company,
+    contractId: 'service-contract',
+    contractVersionId: 'version-1',
+    resourceType: 'SERVICE',
+    resourceId: 'camp',
+    program,
+    serviceDate: new Date('2027-05-01'),
+    periodEnd: null,
+    quantity: new Prisma.Decimal('1'),
+    status: 'CONFIRMED',
+    releaseBlockerReason: null,
+    visaBatchReference: null,
+    createdAt: new Date('2026-09-21T00:00:00Z'),
+    sourceReference: null,
+  };
+  const tx = {
+    tciServiceInventory: {
+      async findFirst() { return { contractId: 'service-contract', availableQuantity: new Prisma.Decimal('2') }; },
+      async findUnique() { return { contractId: 'service-contract' }; },
+      async updateMany() { return { count: 1 }; },
+    },
+    tciStopSale: { async findFirst() { return null; } },
+    tciContractVersion: { async findFirst() { return { id: 'version-1' }; } },
+    tciAllocation: { async create() { return row; } },
+    tciContractHistory: { async create() { return {}; } },
+  };
+  const db = { async $transaction(work: (value: typeof tx) => Promise<unknown>) { return work(tx); } };
+  const repository = new PrismaTourismInventoryRepository(db as never);
+  const result = await repository.internalFirst({
+    companyId: company,
+    branchId: 'branch-1',
+    program,
+    contractType: 'SERVICE',
+    resourceId: 'camp',
+    serviceDate: '2027-05-01',
+    requiredQuantity: quantity('1'),
+    referenceData: { itemReference: 'camp' },
+    supplierId: 'supplier-1',
+  }, undefined, 'service-hash');
+  assert.equal(result.allocation?.contractId, 'service-contract');
+  assert.equal(result.allocation?.resourceType, 'SERVICE');
+  assert.equal(result.procurementRequest, undefined);
 });

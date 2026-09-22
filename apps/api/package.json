@@ -5,7 +5,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "tsx --tsconfig tsconfig.json --test src/**/*.spec.ts",
+    "test": "node scripts/run-tests.mjs",
     "ac14": "tsx src/ac14-migration/main.ts"
   },
   "dependencies": {
@@ -40,6 +40,8 @@
     "@elhafez/traveler-management": "workspace:*",
     "@elhafez/procurement-fulfillment": "workspace:*",
     "@elhafez/supplier-evaluation": "workspace:*",
-    "@elhafez/supplier-disputes": "workspace:*"
+    "@elhafez/supplier-disputes": "workspace:*",
+    "@elhafez/hajj-umrah-seasons": "workspace:*",
+    "@elhafez/hajj-umrah-programs": "workspace:*"
   }
 }

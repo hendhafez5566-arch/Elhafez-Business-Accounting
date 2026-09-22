@@ -3,29 +3,32 @@ import assert from 'node:assert/strict';
 import { companyId, decimalAmount, sourceReference } from '@elhafez/contracts';
 import { TourismFinanceOrchestrationApplicationService, type ConfirmBookingInput } from './application/tourism-finance-orchestration.application-service.js';
 import { InMemoryTourismFinanceRepository } from './infrastructure/in-memory-tourism-finance.repository.js';
+import { PrismaTourismFinanceRepository } from './infrastructure/prisma-tourism-finance.repository.js';
+import type { BookingReference } from './domain/orchestration.js';
 import type { BillingPort, CommissionPort, ControlsPort, CostPort, InventoryPort, ProcurementPort, TreasuryPort } from './application/ports.js';
 
 const company = companyId('company-a'); const other = companyId('company-b'); const booking = sourceReference('TOURISM_BOOKING', 'booking-1'); const program = sourceReference('TOURISM_PROGRAM', 'program-1');
 class FailingRepository extends InMemoryTourismFinanceRepository { failStep?: string; failed = false; override async completeStep(companyId: typeof company, id: string, ownerReference: string | undefined, result: unknown) { const step = [...this.steps.values()].find((item) => item.id === id); if (!this.failed && step?.name === this.failStep) { this.failed = true; throw new Error('local completion failure'); } return super.completeStep(companyId, id, ownerReference, result); } }
 function fixture(repo = new FailingRepository()) {
-  const calls = { invoice: 0, deposit: 0, commission: 0, release: 0, allocation: 0, cost: 0, cleanup: 0, cancelInvoice: 0 }; let paid = false; let historical = false; let commissionPaid = false; let inventoryBlocked = false; let approval = true; let costLinked = true; let procurementSequence: Array<'NONE' | 'SUPPLIER_EXECUTION' | 'SUPPLIER_INVOICE'> = ['NONE']; const effects = new Set<string>();
+  const calls = { invoice: 0, deposit: 0, commission: 0, release: 0, allocation: 0, cost: 0, cleanup: 0, cancelInvoice: 0 }; let paid = false; let historical = false; let commissionPaid = false; let inventoryBlocked = false; let approval = true; let costLinked = true; let procurementSequence: Array<'NONE' | 'SUPPLIER_EXECUTION' | 'SUPPLIER_INVOICE'> = ['NONE']; const procurementFallbacks = new Map<string, string>(); const effects = new Set<string>();
   const once = (key: string, field: keyof typeof calls) => { if (!effects.has(key)) { effects.add(key); calls[field]++; } };
   const billing: BillingPort = { async createBookingInvoice(input) { once(input.id, 'invoice'); return { id: input.id }; }, async cancellationEvidence() { return { hasHistoricalAllocationEvidence: historical, activeAllocationIds: paid ? ['allocation-payment'] : [], hasAvailableAdvance: false, settlementRequired: paid, cancellationSafe: !paid, outstanding: decimalAmount(paid ? '0' : '100') }; }, async cancelInvoice(_company, id) { once(`cancel:${id}`, 'cancelInvoice'); return { id }; } };
   const treasury: TreasuryPort = { async postDeposit(input) { once(input.id, 'deposit'); paid = true; historical = true; return { id: input.id }; }, async reverseDeposit(_company, id) { paid = false; return { id }; } };
   const commission: CommissionPort = { async create(input) { once(input.id, 'commission'); return { id: input.id }; }, async evidence() { return { hasPostedPaymentHistory: commissionPaid, reversible: !commissionPaid }; }, async reverse(_company, id) { return { id }; } };
   const cost: CostPort = { async ensureProgram(_company, _program, id) { return { costCenterId: id }; }, async resolveProgram() { if (!costLinked) throw new Error('missing'); return { costCenterId: 'cc-1' }; }, async actualize(input) { once(input.id, 'cost'); return { id: input.id }; } };
-  const inventory: InventoryPort = { async allocate(input) { once(`inventory:${input.allocationId}`, 'allocation'); return { allocationId: input.allocationId }; }, async blockers() { return inventoryBlocked ? [{ type: 'FINANCIAL_HISTORY' }] : []; }, async release(_company, id, _quantity, key) { once(`release:${key}`, 'release'); return { success: true, id }; } };
+  const inventory: InventoryPort = { async allocate(input) { once(`inventory:${input.allocationId}`, 'allocation'); const procurementReference = procurementFallbacks.get(input.allocationId); return procurementReference ? { procurementReference } : { allocationId: input.allocationId }; }, async blockers() { return inventoryBlocked ? [{ type: 'FINANCIAL_HISTORY' }] : []; }, async release(_company, id, _quantity, key) { once(`release:${key}`, 'release'); return { success: true, id }; } };
   const procurement: ProcurementPort = { async blockers() { const value = procurementSequence.length > 1 ? procurementSequence.shift()! : procurementSequence[0]!; return value === 'NONE' ? [] : [{ type: value, purchaseOrderId: 'po-1', lineId: 'line-1' }]; }, async cleanupForProgramCancellation(_company, reference) { once(`cleanup:${reference.purchaseOrderId ?? reference.commitmentId}`, 'cleanup'); return { id: reference.purchaseOrderId ?? reference.commitmentId!, status: 'CANCELLED' }; } };
   const controls: ControlsPort = { async authorizeDiscount() { if (!approval) throw new Error('denied'); }, async approvalResolved() { return approval; } };
   const create = () => new TourismFinanceOrchestrationApplicationService(repo, billing, treasury, commission, cost, inventory, procurement, controls); const service = create();
   const setup = () => service.configureFinancialSetup({ id: 'setup-hotel', companyId: company, category: 'HOTEL', receivableAccountId: 'ar', customerAdvanceAccountId: 'advance', revenueAccountId: 'revenue', costAccountId: 'cost', commissionExpenseAccountId: 'commission-expense', commissionLiabilityAccountId: 'commission-payable', active: true });
   const base: ConfirmBookingInput = { companyId: company, branchId: 'branch-1', commandKey: 'confirm-1', booking, program, programState: 'OPEN', programStateEvidence: 'program-version-7', category: 'HOTEL', costCenterId: 'cc-1', customerPartyId: 'customer-1', currency: 'EGP', grossAmount: decimalAmount('100'), discountAmount: decimalAmount('0'), postingDate: '2026-09-19', dueDate: '2026-09-30', invoiceNumber: 'INV-1', inventory: { allocationId: 'allocation-1', contractId: 'contract-1', resourceType: 'HOTEL', resourceId: 'room-1', serviceDate: '2026-10-01', quantity: decimalAmount('2') } };
   const confirm = (change: Partial<ConfirmBookingInput> = {}, target = service) => target.confirmBooking({ ...base, ...change });
-  return { repo, calls, service, create, setup, confirm, setPaid: (value: boolean) => { paid = value; historical ||= value; }, setCommissionPaid: (value: boolean) => { commissionPaid = value; }, setInventoryBlocked: (value: boolean) => { inventoryBlocked = value; }, setApproval: (value: boolean) => { approval = value; }, setCostLinked: (value: boolean) => { costLinked = value; }, setProcurementSequence: (...value: typeof procurementSequence) => { procurementSequence = value; }, isHistorical: () => historical };
+  return { repo, calls, service, create, setup, confirm, setPaid: (value: boolean) => { paid = value; historical ||= value; }, setCommissionPaid: (value: boolean) => { commissionPaid = value; }, setInventoryBlocked: (value: boolean) => { inventoryBlocked = value; }, setApproval: (value: boolean) => { approval = value; }, setCostLinked: (value: boolean) => { costLinked = value; }, setProcurementSequence: (...value: typeof procurementSequence) => { procurementSequence = value; }, setProcurementFallback: (allocationId: string, reference: string) => procurementFallbacks.set(allocationId, reference), isHistorical: () => historical };
 }
 
 test('GS-023 BR-043 claims booking identity across different command keys and rejects conflicting payload', async () => { const f = fixture(); await f.setup(); const [first, second] = await Promise.all([f.confirm(), f.confirm({ commandKey: 'confirm-other' })]); assert.deepEqual(first, second); assert.equal(f.calls.invoice, 1); await assert.rejects(() => f.confirm({ commandKey: 'confirm-third', grossAmount: decimalAmount('101') }), /conflicting financial confirmation/); });
 test('category setup supports distinct booking customers', async () => { const f = fixture(); await f.setup(); await f.confirm(); await f.confirm({ commandKey: 'confirm-2', booking: sourceReference('TOURISM_BOOKING', 'booking-2'), customerPartyId: 'customer-2', invoiceNumber: 'INV-2', inventory: { allocationId: 'allocation-2', contractId: 'contract-1', resourceType: 'HOTEL', resourceId: 'room-2', serviceDate: '2026-10-01', quantity: decimalAmount('1') } }); assert.equal(f.calls.invoice, 2); });
+test('multi-allocation confirmation normalizes ordering, persists all references, and rejects duplicates',async()=>{const f=fixture();await f.setup();const hotel={allocationId:'hotel',contractId:'c1',resourceType:'HOTEL',resourceId:'h1',serviceDate:'2026-10-01',quantity:decimalAmount('2')},flight={allocationId:'flight',contractId:'c2',resourceType:'FLIGHT_BLOCK',resourceId:'f1',serviceDate:'2026-10-01',quantity:decimalAmount('2'),flightSegmentReference:sourceReference('FLIGHT_SEGMENT','seg')},service={allocationId:'camp',contractId:'c3',resourceType:'SERVICE',resourceId:'s1',serviceDate:'2026-10-01',quantity:decimalAmount('2')};const first=await f.confirm({inventory:undefined,inventories:[hotel,flight,service]}) as BookingReference;assert.deepEqual(first.allocations.map((x)=>x.id),['camp','flight','hotel']);assert.equal(f.calls.allocation,3);const replay=await f.confirm({commandKey:'reordered',inventory:undefined,inventories:[service,hotel,flight]}) as BookingReference;assert.deepEqual(replay.allocations,first.allocations);assert.equal(f.calls.allocation,3);const f2=fixture();await f2.setup();await assert.rejects(()=>f2.confirm({inventory:undefined,inventories:[hotel,hotel]}),/duplicate allocation/)});
 test('GS-024 uses setup accounts, due-date confirmation, and deposit replay', async () => { const f = fixture(); await f.setup(); await f.confirm(); const input = { companyId: company, branchId: 'branch-1', commandKey: 'deposit-1', booking, treasuryId: 'cash', number: 'R-1', postingDate: '2026-09-19', amount: decimalAmount('25') }; await f.service.recordBookingDeposit(input); await f.service.recordBookingDeposit(input); assert.equal(f.calls.deposit, 1); });
 test('GS-025 paid cancellation settles through owner then resumes with retained history', async () => { const f = fixture(); await f.setup(); await f.confirm(); await f.service.recordBookingDeposit({ companyId: company, branchId: 'branch-1', commandKey: 'deposit', booking, treasuryId: 'cash', number: 'R', postingDate: '2026-09-19', amount: decimalAmount('25') }); const cancellation = { companyId: company, branchId: 'branch-1', commandKey: 'cancel', booking, travelStarted: false, travelEvidence: 'not-started', postingDate: '2026-09-20' }; const blocked = await f.service.cancelBooking(cancellation) as { blockers: { type: string }[] }; assert.equal(blocked.blockers[0]?.type, 'CUSTOMER_SETTLEMENT_REQUIRED'); await f.service.settleBookingCancellation({ companyId: company, branchId: 'branch-1', commandKey: 'settle', booking, postingDate: '2026-09-20', number: 'REF' }); const done = await f.service.cancelBooking(cancellation) as { cancelled: boolean }; assert.equal(done.cancelled, true); assert.equal(f.isHistorical(), true); assert.equal(f.calls.cancelInvoice, 1); });
 test('branch and company isolation protect deposit and cancellation', async () => { const f = fixture(); await f.setup(); await f.confirm(); await assert.rejects(() => f.service.recordBookingDeposit({ companyId: company, branchId: 'branch-2', commandKey: 'x', booking, treasuryId: 'cash', number: 'R', postingDate: '2026-09-19', amount: decimalAmount('1') }), /different branch/); await assert.rejects(() => f.service.cancelBooking({ companyId: company, branchId: 'branch-2', commandKey: 'y', booking, travelStarted: false, travelEvidence: 'none', postingDate: '2026-09-19' }), /different branch/); await assert.rejects(() => f.service.cancelBooking({ companyId: other, branchId: 'branch-1', commandKey: 'z', booking, travelStarted: false, travelEvidence: 'none', postingDate: '2026-09-19' }), /not found/); });
@@ -225,3 +228,110 @@ test('BLOCKER-5 confirmed booking preserves financial setup snapshot for later d
   assert.ok(depositB, 'booking B deposit should succeed with V2 setup');
 });
 
+
+test('multi-allocation booking preserves zero one and multiple procurement fallbacks', async () => {
+  const hotel = { allocationId: 'hotel', contractId: 'c1', resourceType: 'HOTEL', resourceId: 'h1', serviceDate: '2026-10-01', quantity: decimalAmount('1') };
+  const serviceRequest = { allocationId: 'camp', contractId: 'c2', resourceType: 'SERVICE', resourceId: 's1', serviceDate: '2026-10-01', quantity: decimalAmount('1') };
+
+  const zero = fixture(); await zero.setup();
+  const zeroResult = await zero.confirm({ inventory: undefined, inventories: [hotel, serviceRequest] }) as BookingReference;
+  assert.deepEqual(zeroResult.procurementReferences, []);
+  assert.equal(zeroResult.procurementReference, undefined);
+
+  const one = fixture(); await one.setup(); one.setProcurementFallback('camp', 'po-camp');
+  const oneResult = await one.confirm({ inventory: undefined, inventories: [hotel, serviceRequest] }) as BookingReference;
+  assert.deepEqual(oneResult.procurementReferences, [{ purchaseOrderId: 'po-camp' }]);
+  assert.deepEqual(oneResult.procurementReference, { purchaseOrderId: 'po-camp' });
+
+  const many = fixture(); await many.setup(); many.setProcurementFallback('hotel', 'po-hotel'); many.setProcurementFallback('camp', 'po-camp');
+  const manyResult = await many.confirm({ inventory: undefined, inventories: [hotel, serviceRequest] }) as BookingReference;
+  assert.deepEqual(manyResult.procurementReferences, [{ purchaseOrderId: 'po-camp' }, { purchaseOrderId: 'po-hotel' }]);
+  assert.equal(manyResult.procurementReference, undefined);
+  assert.equal((await many.repo.booking(company, booking))?.procurementReferences?.length, 2);
+});
+
+test('multi-procurement confirmation retries idempotently and rejects conflicting replay', async () => {
+  const f = fixture(); await f.setup();
+  f.setProcurementFallback('hotel', 'po-hotel'); f.setProcurementFallback('camp', 'po-camp');
+  const inventories = [
+    { allocationId: 'hotel', contractId: 'c1', resourceType: 'HOTEL', resourceId: 'h1', serviceDate: '2026-10-01', quantity: decimalAmount('1') },
+    { allocationId: 'camp', contractId: 'c2', resourceType: 'SERVICE', resourceId: 's1', serviceDate: '2026-10-01', quantity: decimalAmount('1') },
+  ];
+  const first = await f.confirm({ inventory: undefined, inventories }) as BookingReference;
+  const replay = await f.confirm({ inventory: undefined, inventories }) as BookingReference;
+  assert.deepEqual(replay.procurementReferences, first.procurementReferences);
+  assert.equal(f.calls.allocation, 2);
+  await assert.rejects(() => f.confirm({ inventory: undefined, inventories: [{ ...inventories[0]!, quantity: decimalAmount('2') }, inventories[1]!] }), /conflicting replay/);
+});
+
+test('cancellation and readiness inspect every persisted procurement reference', async () => {
+  const f = fixture(); await f.setup();
+  f.setProcurementFallback('hotel', 'po-hotel'); f.setProcurementFallback('camp', 'po-camp');
+  await f.confirm({ inventory: undefined, inventories: [
+    { allocationId: 'hotel', contractId: 'c1', resourceType: 'HOTEL', resourceId: 'h1', serviceDate: '2026-10-01', quantity: decimalAmount('1') },
+    { allocationId: 'camp', contractId: 'c2', resourceType: 'SERVICE', resourceId: 's1', serviceDate: '2026-10-01', quantity: decimalAmount('1') },
+  ] });
+  f.setProcurementSequence('NONE', 'SUPPLIER_INVOICE');
+  const cancellation = await f.service.getBookingCancellationBlockers({ companyId: company, branchId: 'branch-1', booking, travelStarted: false, travelEvidence: 'none' });
+  assert.ok(cancellation.blockers.some((item) => item.type === 'SUPPLIER_INVOICE'));
+  const readiness = await f.service.evaluateFinancialReadiness({ companyId: company, program, requiredCategories: ['HOTEL'] });
+  assert.equal(readiness.ready, false);
+  assert.ok(readiness.blockers.some((item) => item.startsWith('PROCUREMENT:SUPPLIER_INVOICE:')));
+});
+
+test('legacy single procurement reference remains readable by cancellation and readiness', async () => {
+  const f = fixture(); await f.setup(); await f.confirm();
+  const current = await f.repo.booking(company, booking);
+  assert.ok(current);
+  const legacy = Object.fromEntries(Object.entries(current!).filter(([key]) => key !== 'procurementReferences')) as BookingReference;
+  await f.repo.saveBooking({ ...legacy, procurementReference: { purchaseOrderId: 'legacy-po' } });
+  f.setProcurementSequence('SUPPLIER_EXECUTION');
+  const cancellation = await f.service.getBookingCancellationBlockers({ companyId: company, branchId: 'branch-1', booking, travelStarted: false, travelEvidence: 'none' });
+  assert.ok(cancellation.blockers.some((item) => item.type === 'SUPPLIER_EXECUTION'));
+  const readiness = await f.service.evaluateFinancialReadiness({ companyId: company, program, requiredCategories: ['HOTEL'] });
+  assert.ok(readiness.blockers.some((item) => item.startsWith('PROCUREMENT:SUPPLIER_EXECUTION:')));
+});
+
+
+test('Prisma booking repository reads legacy single and new multi procurement JSON shapes', async () => {
+  const baseRow = {
+    id: 'booking-ref',
+    companyId: company,
+    branchId: 'branch-1',
+    bookingType: booking.sourceType,
+    bookingId: booking.sourceId,
+    programType: program.sourceType,
+    programId: program.sourceId,
+    customerPartyId: 'customer-1',
+    confirmationPayloadHash: 'hash',
+    status: 'ACTIVE',
+    invoiceId: 'invoice-1',
+    allocations: [],
+    approvalRequestId: null,
+    commissionClaimId: null,
+    depositVoucherIds: [],
+    workflowId: 'workflow-1',
+    financialSetup: {
+      receivableAccountId: 'ar',
+      customerAdvanceAccountId: 'advance',
+      revenueAccountId: 'revenue',
+    },
+  };
+  let procurementValue: unknown = { purchaseOrderId: 'legacy-po' };
+  const db = {
+    tfoBookingReference: {
+      async findUnique() {
+        return { ...baseRow, procurementReference: procurementValue };
+      },
+    },
+  };
+  const repository = new PrismaTourismFinanceRepository(db as never);
+  const legacy = await repository.booking(company, booking);
+  assert.deepEqual(legacy?.procurementReference, { purchaseOrderId: 'legacy-po' });
+  assert.deepEqual(legacy?.procurementReferences, [{ purchaseOrderId: 'legacy-po' }]);
+
+  procurementValue = [{ purchaseOrderId: 'po-1' }, { purchaseOrderId: 'po-2' }];
+  const multi = await repository.booking(company, booking);
+  assert.equal(multi?.procurementReference, undefined);
+  assert.deepEqual(multi?.procurementReferences, [{ purchaseOrderId: 'po-1' }, { purchaseOrderId: 'po-2' }]);
+});

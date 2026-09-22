@@ -1,6 +1,7 @@
 import type { CompanyId, DecimalAmount, SourceReference } from '@elhafez/contracts';
 
-export type ContractType = 'HOTEL' | 'FLIGHT_BLOCK' | 'TRANSPORT' | 'VISA';
+export type ContractType = 'HOTEL' | 'FLIGHT_BLOCK' | 'TRANSPORT' | 'VISA' | 'SERVICE';
+export type ServiceCategory = 'CAMP'|'MEAL'|'VISIT'|'GUIDE'|'RAWDA'|'INSURANCE'|'OTHER';
 export type ContractStatus = 'DRAFT' | 'ACTIVE' | 'AMENDED' | 'EXPIRED' | 'CANCELLED';
 export type ResourceType = ContractType;
 export type AllocationStatus =
@@ -93,6 +94,7 @@ export interface VisaQuota {
   readonly effectiveFrom: string;
   readonly effectiveTo: string;
 }
+export interface GenericServiceInventory {readonly id:string;readonly companyId:CompanyId;readonly contractId:string;readonly category:ServiceCategory;readonly name:string;readonly description?:string;readonly unit:string;readonly serviceStart:string;readonly serviceEnd:string;readonly capacity:DecimalAmount;readonly allocatedQuantity:DecimalAmount;readonly availableQuantity:DecimalAmount;readonly releaseDeadline?:string;readonly status:'ACTIVE'|'STOP_SALE'|'EXPIRED';}
 
 export interface StopSale {
   readonly id: string;
@@ -182,7 +184,7 @@ export interface AllocationCoverageRequirement {
 }
 
 export interface ReleaseBlocker {
-  readonly code: 'CONSUMED' | 'FINANCIAL_HISTORY' | 'PROGRAM_COVERAGE';
+  readonly code: 'CONSUMED' | 'FINANCIAL_HISTORY' | 'PROGRAM_COVERAGE' | 'RELEASE_DEADLINE';
   readonly message: string;
   readonly evidence?: SourceReference;
 }

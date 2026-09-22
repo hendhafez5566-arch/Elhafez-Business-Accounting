@@ -14,6 +14,7 @@ import type {
   TourismContract,
   TransportCapacity,
   VisaQuota,
+  GenericServiceInventory, ServiceCategory,
 } from '../domain/inventory.js';
 
 interface BaseInput {
@@ -68,6 +69,7 @@ export interface CreateVisaQuotaInput extends BaseInput {
   readonly effectiveFrom: string;
   readonly effectiveTo: string;
 }
+export interface CreateGenericServiceInput extends BaseInput {readonly contractId:string;readonly category:ServiceCategory;readonly name:string;readonly description?:string;readonly unit:string;readonly serviceStart:string;readonly serviceEnd:string;readonly capacity:DecimalAmount;readonly releaseDeadline?:string;}
 
 export interface CreateStopSaleInput extends BaseInput {
   readonly contractId: string;
@@ -129,6 +131,24 @@ export interface CheckAvailabilityInput {
   readonly resourceId: string;
   readonly serviceDate: string;
   readonly periodEnd?: string;
+}
+
+export interface ProgramSupplyEvidenceInput {
+  readonly companyId: CompanyId;
+  readonly resourceType: ContractType;
+  readonly resourceId: string;
+  readonly serviceDate: string;
+  readonly periodEnd?: string;
+  readonly serviceCategory?: ServiceCategory;
+}
+
+export interface ProgramSupplyEvidence {
+  readonly available: boolean;
+  readonly resourceType: ContractType;
+  readonly resourceId: string;
+  readonly contractId?: string;
+  readonly availableQuantity: DecimalAmount;
+  readonly blockerReason?: string;
 }
 
 export interface RegisterAllocationEconomicEvidenceInput extends BaseInput {
@@ -205,8 +225,10 @@ export interface TourismContractInventoryApplicationService {
   createFlightBlock(input: CreateFlightBlockInput, key?: string): Promise<FlightBlock>;
   createTransportCapacity(input: CreateTransportCapacityInput, key?: string): Promise<TransportCapacity>;
   createVisaQuota(input: CreateVisaQuotaInput, key?: string): Promise<VisaQuota>;
+  createGenericService(input:CreateGenericServiceInput,key?:string):Promise<GenericServiceInventory>;
   createStopSale(input: CreateStopSaleInput, key?: string): Promise<StopSale>;
   checkAvailability(input: CheckAvailabilityInput): Promise<AvailabilityResult>;
+  checkProgramSupplyEvidence(input: ProgramSupplyEvidenceInput): Promise<ProgramSupplyEvidence>;
   allocateCapacity(input: AllocateCapacityInput, key?: string): Promise<AllocationResult>;
   releaseAllocation(input: ReleaseAllocationInput, key?: string): Promise<ReleaseResult>;
   adjustAllocation(input: AdjustAllocationInput, key?: string): Promise<Allocation>;

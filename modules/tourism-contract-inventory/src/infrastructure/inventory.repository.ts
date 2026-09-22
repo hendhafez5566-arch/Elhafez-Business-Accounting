@@ -13,6 +13,7 @@ import type {
   TourismContract,
   TransportCapacity,
   VisaQuota,
+  GenericServiceInventory,
 } from '../domain/inventory.js';
 import type {
   AdjustAllocationInput,
@@ -28,8 +29,11 @@ import type {
   CreateTourismContractInput,
   CreateTransportCapacityInput,
   CreateVisaQuotaInput,
+  CreateGenericServiceInput,
   InternalFirstFulfillmentInput,
   ProtectAllocationCoverageInput,
+  ProgramSupplyEvidence,
+  ProgramSupplyEvidenceInput,
   RegisterAllocationEconomicEvidenceInput,
   ReleaseAllocationCoverageInput,
   ReleaseAllocationInput,
@@ -75,12 +79,14 @@ export interface TourismInventoryRepository {
     key: string | undefined,
     hash: string,
   ): Promise<VisaQuota>;
+  createService(input:CreateGenericServiceInput,key:string|undefined,hash:string):Promise<GenericServiceInventory>;
   createStopSale(
     input: CreateStopSaleInput,
     key: string | undefined,
     hash: string,
   ): Promise<StopSale>;
   availability(input: CheckAvailabilityInput): Promise<AvailabilityResult>;
+  supplyEvidence(input: ProgramSupplyEvidenceInput): Promise<ProgramSupplyEvidence>;
   allocate(
     input: AllocateCapacityInput,
     key: string | undefined,

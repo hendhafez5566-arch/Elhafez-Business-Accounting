@@ -26,10 +26,12 @@ import type {
   CreateTourismContractInput,
   CreateTransportCapacityInput,
   CreateVisaQuotaInput,
+  CreateGenericServiceInput,
   IdempotencyCheckResult,
   InternalFirstFulfillmentInput,
   ProcurementPort,
   ProtectAllocationCoverageInput,
+  ProgramSupplyEvidenceInput,
   RegisterAllocationEconomicEvidenceInput,
   ReleaseAllocationCoverageInput,
   ReleaseAllocationInput,
@@ -91,6 +93,7 @@ export class TourismContractInventoryApplicationServiceImpl
     positiveQuantity(input.quotaTotal);
     return this.repo.createVisa(input, key, idempotencyHash(input));
   }
+  createGenericService(input:CreateGenericServiceInput,key?:string){positiveQuantity(input.capacity);if(input.serviceEnd<input.serviceStart)throw new Error('serviceEnd must be on or after serviceStart');if(input.releaseDeadline&&input.releaseDeadline>input.serviceStart)throw new Error('releaseDeadline must not follow serviceStart');return this.repo.createService(input,key,idempotencyHash(input));}
 
   createStopSale(input: CreateStopSaleInput, key?: string): Promise<StopSale> {
     return this.repo.createStopSale(input, key, idempotencyHash(input));
@@ -98,6 +101,10 @@ export class TourismContractInventoryApplicationServiceImpl
 
   checkAvailability(input: CheckAvailabilityInput): Promise<AvailabilityResult> {
     return this.repo.availability(input);
+  }
+
+  checkProgramSupplyEvidence(input: ProgramSupplyEvidenceInput) {
+    return this.repo.supplyEvidence(input);
   }
 
   allocateCapacity(input: AllocateCapacityInput, key?: string): Promise<AllocationResult> {

@@ -12,6 +12,7 @@
     "tci_flight_block_consumption",
     "tci_transport_capacity",
     "tci_visa_quotas",
+    "tci_service_inventory",
     "tci_stop_sales",
     "tci_allocations",
     "tci_allocation_releases",

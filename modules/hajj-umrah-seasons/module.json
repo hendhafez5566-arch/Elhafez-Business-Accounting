@@ -1,0 +1,1 @@
+{"name":"hajj-umrah-seasons","publicApi":["src/public/index.ts","src/public/nest.ts"],"ownedTables":["hus_seasons","hus_season_history"],"allowedDependencies":["@elhafez/contracts","@elhafez/core","@elhafez/platform-core"]}

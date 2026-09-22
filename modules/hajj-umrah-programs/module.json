@@ -1,0 +1,20 @@
+{
+  "name": "hajj-umrah-programs",
+  "publicApi": [
+    "src/public/index.ts",
+    "src/public/nest.ts"
+  ],
+  "ownedTables": [
+    "hup_programs",
+    "hup_program_versions",
+    "hup_program_history"
+  ],
+  "allowedDependencies": [
+    "@elhafez/contracts",
+    "@elhafez/core",
+    "@elhafez/platform-core",
+    "@elhafez/hajj-umrah-seasons",
+    "@elhafez/tourism-contract-inventory",
+    "@elhafez/period-control"
+  ]
+}

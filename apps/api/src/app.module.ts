@@ -14,6 +14,8 @@ import { ProcurementFinanceApplicationService } from '@elhafez/procurement-finan
 import { ProcurementFinanceModule } from '@elhafez/procurement-finance/nest';
 import { TourismContractInventoryModule } from '@elhafez/tourism-contract-inventory/nest';
 import { TourismFinanceOrchestrationModule } from '@elhafez/tourism-finance-orchestration/nest';
+import { HajjUmrahSeasonsModule } from '@elhafez/hajj-umrah-seasons/nest';
+import { HajjUmrahProgramsModule } from '@elhafez/hajj-umrah-programs/nest';
 import { FinancialReportingModule } from '@elhafez/financial-reporting';
 import { PartyRegistryModule } from '@elhafez/party-registry';
 import { AgentManagementApplicationService } from '@elhafez/agent-management';
@@ -42,6 +44,7 @@ import { CrmSalesReadModelController } from './crm-sales-read-model.controller.j
 import { CrmSalesReadModelService } from './crm-sales-read-model.service.js';
 import { SupplierIntelligenceReadModelController } from './supplier-intelligence-read-model.controller.js';
 import { SupplierIntelligenceReadModelService } from './supplier-intelligence-read-model.service.js';
+import { HajjUmrahController } from './hajj-umrah.controller.js';
 
 /** Composition root only. Business modules are registered here through public module APIs. */
 @Module({
@@ -49,9 +52,9 @@ import { SupplierIntelligenceReadModelService } from './supplier-intelligence-re
     PlatformCoreModule, PartyRegistryModule, AgentManagementModule, CustomerManagementModule, CrmLeadsModule, CrmFollowupsModule, QuotationsModule, SupplierManagementModule, SupplierEvaluationModule, SupplierDisputesModule, ProcurementFulfillmentModule, TravelerManagementModule,
     PeriodControlModule, GeneralLedgerModule, FinancialControlsModule, TaxModule, BillingSubledgersModule, TreasurySettlementModule, PartyAccountingModule,
     ExpenseCommissionRecognitionModule, CostBudgetAccountingModule, AssetsFinancingModule, ProcurementFinanceModule, TourismContractInventoryModule,
-    TourismFinanceOrchestrationModule, FinancialReportingModule, Ac14MigrationModule,
+    TourismFinanceOrchestrationModule, HajjUmrahSeasonsModule, HajjUmrahProgramsModule, FinancialReportingModule, Ac14MigrationModule,
   ],
-  controllers: [CrmSalesReadModelController, SupplierIntelligenceReadModelController],
+  controllers: [CrmSalesReadModelController, SupplierIntelligenceReadModelController, HajjUmrahController],
   providers: [
     FinancialReportingEvidenceAdapter,
     {
