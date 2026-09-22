@@ -148,8 +148,9 @@ export class HajjUmrahReadinessApplicationService{
   return result;
  }
 
- private async supplyBlockers(program:Program,evidence:string[]){
-  const blockers:ReadinessBlocker[]=[];
+ private async supplyBlockers(program:Program,evidence:string[],bookings:readonly Booking[]=[]){
+  const blockers:ReadinessBlocker[]=[],allocationCache=new Map<string,Allocation|null>();
+  const allocationIds=[...new Set(bookings.flatMap(value=>value.allocationIds))];
   for(const requirement of program.snapshot.requirements){
    if(requirement==='HEALTH'){
     blockers.push(this.block('PROGRAM','REQUIRED_EVIDENCE_OWNER_MISSING','البرنامج يتطلب دليلًا صحيًا ولا يوجد مالك معتمد لهذا الدليل بعد.','hajj-umrah-programs','إدارة البرنامج',program.id));
@@ -167,11 +168,21 @@ export class HajjUmrahReadinessApplicationService{
      blockers.push(this.block('PROGRAM','SUPPLY_REFERENCE_MISSING',`المكوّن ${component.title} لا يملك مرجع توريد معتمدًا.`,'hajj-umrah-programs','إدارة البرنامج',program.id));
      continue;
     }
+    let allocated=false;
+    for(const allocationId of allocationIds){
+     try{
+      const allocation=await this.allocation(program.companyId,allocationId,allocationCache);
+      if(allocation&&allocation.program.sourceId===program.id&&allocation.resourceId===component.inventoryReference&&allocation.resourceType===mapping.resourceType&&['CONFIRMED','PARTIALLY_RELEASED','CONSUMED'].includes(allocation.status)){
+       allocated=true;evidence.push(allocation.id,allocation.contractId,component.inventoryReference);break;
+      }
+     }catch(error){blockers.push(this.ownerFailure('tourism-contract-inventory',program.id,error));allocated=true;break}
+    }
+    if(allocated)continue;
     try{
      const supplied=await this.sources.supply({companyId:program.companyId,resourceType:mapping.resourceType,resourceId:component.inventoryReference,serviceDate:component.start??program.snapshot.departureDate,...(component.end?{periodEnd:component.end}:{}),...(mapping.serviceCategory?{serviceCategory:mapping.serviceCategory}:{})});
      if(supplied.contractId)evidence.push(supplied.contractId);
      evidence.push(component.inventoryReference);
-     if(!supplied.available)blockers.push(this.block('PROGRAM','SUPPLY_NOT_AVAILABLE',`التوريد المطلوب للمكوّن ${component.title} غير متاح حاليًا.`,'tourism-contract-inventory','التعاقدات والتوريد',program.id,{reference:sourceReference('TOURISM_RESOURCE',component.inventoryReference),evidenceReferences:supplied.contractId?[supplied.contractId]:[]}));
+     if(!supplied.available)blockers.push(this.block('PROGRAM','SUPPLY_NOT_AVAILABLE',`التوريد المطلوب للمكوّن ${component.title} غير متاح ولم يوجد تخصيص مؤكد يغطيه.`,'tourism-contract-inventory','التعاقدات والتوريد',program.id,{reference:sourceReference('TOURISM_RESOURCE',component.inventoryReference),evidenceReferences:supplied.contractId?[supplied.contractId]:[]}));
     }catch(error){blockers.push(this.ownerFailure('tourism-contract-inventory',program.id,error))}
    }
   }
@@ -187,7 +198,7 @@ export class HajjUmrahReadinessApplicationService{
   if(booking.status==='PRELIMINARY')blockers.push(this.block('PROGRAM','BOOKING_NOT_CONFIRMED','الحجز ما زال مبدئيًا ولم يكتمل تأكيده.','hajj-umrah-bookings','الحجوزات',program.id,{bookingId:booking.id,reference:this.bookingRef(booking.id)}));
   if(booking.status==='CANCELLED')blockers.push(this.block('PROGRAM','BOOKING_CANCELLED','الحجز ملغي ولا يمكن اعتباره جاهزًا للسفر.','hajj-umrah-bookings','الحجوزات',program.id,{bookingId:booking.id,reference:this.bookingRef(booking.id)}));
   await this.travelerEvidence(c,program,booking,blockers,evidence);
-  if(includeSupply)blockers.push(...await this.supplyBlockers(program,evidence));
+  if(includeSupply)blockers.push(...await this.supplyBlockers(program,evidence,[booking]));
 
   for(const task of loaded.tasks.filter(value=>value.status==='OPEN'&&value.bookingId===booking.id&&value.dueAt<this.now().toISOString())){
    blockers.push(this.block('SERVICE_OPERATION','OVERDUE_TASK','يوجد إجراء تشغيلي متأخر لم يكتمل.','hajj-umrah-trip-operations','التشغيل',program.id,{bookingId:booking.id,...(task.travelerId?{travelerId:task.travelerId}:{}),reference:sourceReference('HAJJ_UMRAH_TASK',task.id),evidenceReferences:[task.id]}));
@@ -261,7 +272,7 @@ export class HajjUmrahReadinessApplicationService{
 
  private async programInternal(c:ExecutionContext,program:Program,loaded?:LoadedEvidence){
   const source=loaded??await this.loaded(c,program.id),blockers:ReadinessBlocker[]=[...source.blockers],evidence=[program.id,program.currentVersionId];
-  blockers.push(...await this.supplyBlockers(program,evidence));
+  blockers.push(...await this.supplyBlockers(program,evidence,source.bookings));
   for(const task of source.tasks.filter(value=>value.status==='OPEN'&&!value.bookingId&&value.dueAt<this.now().toISOString()))blockers.push(this.block('SERVICE_OPERATION','OVERDUE_TASK','يوجد إجراء تشغيلي عام متأخر لم يكتمل.','hajj-umrah-trip-operations','التشغيل',program.id,{reference:sourceReference('HAJJ_UMRAH_TASK',task.id),evidenceReferences:[task.id]}));
   for(const incident of source.incidents.filter(value=>value.status==='OPEN'&&!value.bookingId&&['HIGH','CRITICAL'].includes(value.severity)))blockers.push(this.block('SERVICE_OPERATION','SERIOUS_INCIDENT_OPEN','يوجد بلاغ تشغيلي عام مرتفع الخطورة لم يُحل.','hajj-umrah-trip-operations','التشغيل',program.id,{reference:sourceReference('HAJJ_UMRAH_INCIDENT',incident.id),evidenceReferences:[incident.id]}));
 
