@@ -40,6 +40,14 @@ export interface ClosureEvaluation{
  readonly blockers:readonly ReadinessBlocker[];
  readonly evidenceReferences:readonly string[];
 }
+export interface SupplyCoverageItem{
+ readonly requirement:Requirement;
+ readonly componentTitle:string;
+ readonly status:'ALLOCATED'|'AVAILABLE'|'BLOCKED'|'MISSING_COMPONENT'|'MISSING_REFERENCE'|'OWNER_UNAVAILABLE';
+ readonly resourceReference?:string;
+ readonly evidenceReferences:readonly string[];
+ readonly detail?:string;
+}
 type TravelerEvidence={traveler:Traveler;passport:TravelDocument|null};
 type RunEvidence={run:TransportRun;manifest:readonly ManifestAssignment[]};
 type LoadedEvidence={
@@ -187,6 +195,26 @@ export class HajjUmrahReadinessApplicationService{
    }
   }
   return blockers;
+ }
+
+ private async supplyCoverage(program:Program,bookings:readonly Booking[]):Promise<SupplyCoverageItem[]>{
+  const result:SupplyCoverageItem[]=[],cache=new Map<string,Allocation|null>(),allocationIds=[...new Set(bookings.flatMap(value=>value.allocationIds))];
+  for(const requirement of program.snapshot.requirements){
+   if(requirement==='HEALTH'){result.push({requirement,componentTitle:'الدليل الصحي',status:'OWNER_UNAVAILABLE',evidenceReferences:[],detail:'لا يوجد مالك معتمد للدليل الصحي في النطاق الحالي.'});continue}
+   const mapping=tciMap(requirement);if(!mapping)continue;
+   const components=this.components(program,requirement);
+   if(!components.length){result.push({requirement,componentTitle:requirement,status:'MISSING_COMPONENT',evidenceReferences:[],detail:'لا يوجد مكوّن برنامج معرف لهذا المتطلب.'});continue}
+   for(const component of components){
+    if(!component.inventoryReference){result.push({requirement,componentTitle:component.title,status:'MISSING_REFERENCE',evidenceReferences:[],detail:'لا يوجد مرجع توريد معتمد.'});continue}
+    let allocated:Allocation|undefined;
+    try{for(const allocationId of allocationIds){const value=await this.allocation(program.companyId,allocationId,cache);if(value&&value.program.sourceId===program.id&&value.resourceId===component.inventoryReference&&value.resourceType===mapping.resourceType&&['CONFIRMED','PARTIALLY_RELEASED','CONSUMED'].includes(value.status)){allocated=value;break}}}
+    catch(error){result.push({requirement,componentTitle:component.title,status:'OWNER_UNAVAILABLE',resourceReference:component.inventoryReference,evidenceReferences:[],detail:messageOf(error)});continue}
+    if(allocated){result.push({requirement,componentTitle:component.title,status:'ALLOCATED',resourceReference:component.inventoryReference,evidenceReferences:[allocated.id,allocated.contractId]});continue}
+    try{const supplied=await this.sources.supply({companyId:program.companyId,resourceType:mapping.resourceType,resourceId:component.inventoryReference,serviceDate:component.start??program.snapshot.departureDate,...(component.end?{periodEnd:component.end}:{}),...(mapping.serviceCategory?{serviceCategory:mapping.serviceCategory}:{})});result.push({requirement,componentTitle:component.title,status:supplied.available?'AVAILABLE':'BLOCKED',resourceReference:component.inventoryReference,evidenceReferences:supplied.contractId?[supplied.contractId]:[],...(supplied.blockerReason?{detail:supplied.blockerReason}:{})})}
+    catch(error){result.push({requirement,componentTitle:component.title,status:'OWNER_UNAVAILABLE',resourceReference:component.inventoryReference,evidenceReferences:[],detail:messageOf(error)})}
+   }
+  }
+  return result;
  }
 
  private financialBlockers(program:Program,bookingId:string|undefined,value:FinancialReadinessEvidence){
