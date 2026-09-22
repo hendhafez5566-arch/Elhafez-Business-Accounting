@@ -96,12 +96,13 @@ class MemoryTransport implements TransportRepository {
       this.assignments.set(value.id,value);this.logs.push(history);return value;
     });
   }
-  async saveAssignment(value:ManifestAssignment,history:TransportHistory,expectedRevision:number,expectedRunRevision:number){
+  async saveAssignment(value:ManifestAssignment,history:TransportHistory,expectedRevision:number,expectedRun:TransportRun){
     await this.maybePauseAssignment();
     return this.atomic(()=>{
+      if(expectedRun.id!==value.runId)throw new ContractValidationError('runId','expected run does not match manifest assignment');
       const run=this.runs.get(value.runId);
       if(!run)throw new ContractValidationError('runId','transport run not found');
-      this.stale('run',expectedRunRevision,run.revision);
+      this.stale('run',expectedRun.revision,run.revision);
       if(run.status!=='SCHEDULED')throw new ContractValidationError('status','manifest can only change before dispatch');
       const current=this.assignments.get(value.id);
       if(!current)throw new ContractValidationError('assignmentId','manifest assignment not found');
