@@ -59,6 +59,7 @@ export interface TourismInventoryRepository {
   ): Promise<ContractVersion>;
   contract(companyId: CompanyId, id: string): Promise<TourismContract | null>;
   versions(companyId: CompanyId, id: string): Promise<ContractVersion[]>;
+  allocation(companyId: CompanyId, allocationId: string): Promise<Allocation | null>;
   createHotel(
     input: CreateHotelInventoryInput,
     key: string | undefined,

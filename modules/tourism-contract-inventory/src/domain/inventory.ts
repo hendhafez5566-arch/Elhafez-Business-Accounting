@@ -120,6 +120,7 @@ export interface Allocation {
   readonly quantity: DecimalAmount;
   readonly status: AllocationStatus;
   readonly releaseBlockerReason?: string;
+  readonly flightSegmentReference?: SourceReference;
   readonly visaBatchReference?: SourceReference;
   readonly createdAt: string;
   readonly sourceReference?: SourceReference;

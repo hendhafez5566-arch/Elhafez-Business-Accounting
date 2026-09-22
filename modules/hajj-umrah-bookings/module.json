@@ -1,0 +1,14 @@
+{
+  "name": "hajj-umrah-bookings",
+  "publicApi": ["src/public/index.ts", "src/public/nest.ts"],
+  "ownedTables": ["hub_bookings", "hub_booking_history"],
+  "allowedDependencies": [
+    "@elhafez/contracts",
+    "@elhafez/platform-core",
+    "@elhafez/hajj-umrah-programs",
+    "@elhafez/traveler-management",
+    "@elhafez/customer-management",
+    "@elhafez/agent-management",
+    "@elhafez/tourism-finance-orchestration"
+  ]
+}

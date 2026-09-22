@@ -1,0 +1,6 @@
+{
+  "name":"hajj-umrah-rooming",
+  "publicApi":["src/public/index.ts","src/public/nest.ts"],
+  "ownedTables":["hur_room_assignments","hur_rooming_history"],
+  "allowedDependencies":["@elhafez/contracts","@elhafez/platform-core","@elhafez/hajj-umrah-bookings","@elhafez/hajj-umrah-programs","@elhafez/traveler-management","@elhafez/tourism-contract-inventory"]
+}

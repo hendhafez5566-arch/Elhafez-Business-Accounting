@@ -1,0 +1,43 @@
+{
+  "id": "hu02-hajj-umrah-operations",
+  "summary": "Implement HU-02 Hajj and Umrah bookings, rooming, visa, ticketing, transport, and trip operations with canonical owner integrations and Arabic operational UI.",
+  "type": "phase",
+  "allowedModules": [
+    "hajj-umrah-bookings",
+    "hajj-umrah-programs",
+    "hajj-umrah-rooming",
+    "hajj-umrah-ticketing",
+    "hajj-umrah-transport-operations",
+    "hajj-umrah-trip-operations",
+    "hajj-umrah-visa-operations",
+    "tourism-contract-inventory",
+    "tourism-finance-orchestration",
+    "traveler-management"
+  ],
+  "allowedPaths": [
+    "apps/api/package.json",
+    "apps/api/src/app.module.ts",
+    "apps/api/src/hajj-umrah-operations.controller.ts",
+    "apps/api/src/hajj-umrah-operations.spec.ts",
+    "apps/web/src/hajj-umrah-operations-client.ts",
+    "apps/web/src/hajj-umrah-operations-primary-pages.tsx",
+    "apps/web/src/hajj-umrah-operations-secondary-pages.tsx",
+    "apps/web/src/hajj-umrah-operations.spec.ts",
+    "apps/web/src/routes.tsx",
+    "pnpm-lock.yaml",
+    "prisma/migrations/20260922100000_hu02_hajj_umrah_operations/migration.sql",
+    "prisma/schema.prisma"
+  ],
+  "protectedPaths": [
+    "apps/web/src/routes.tsx",
+    "modules/hajj-umrah-bookings/module.json",
+    "modules/hajj-umrah-rooming/module.json",
+    "modules/hajj-umrah-visa-operations/module.json",
+    "modules/hajj-umrah-ticketing/module.json",
+    "modules/hajj-umrah-transport-operations/module.json",
+    "modules/hajj-umrah-trip-operations/module.json"
+  ],
+  "protectedReason": "HU-02 creates the six owner-approved operational modules and wires their public composition boundaries and application routes without changing accepted historical migrations.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": ""
+}

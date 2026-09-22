@@ -1,0 +1,1 @@
+{"name":"hajj-umrah-visa-operations","publicApi":["src/public/index.ts","src/public/nest.ts"],"ownedTables":["huv_visa_cases","huv_visa_history"],"allowedDependencies":["@elhafez/contracts","@elhafez/platform-core","@elhafez/hajj-umrah-bookings","@elhafez/traveler-management","@elhafez/tourism-contract-inventory","@elhafez/tourism-finance-orchestration"]}

@@ -126,6 +126,20 @@ export class TravelerManagementApplicationService {
     return this.repository.listDocuments(context.companyId, id);
   }
 
+  async requireActiveForIntegration(context: ExecutionContext, id: TravelerId): Promise<Traveler> {
+    await this.access.requireBranch(context);
+    const traveler = await this.require(context, id);
+    if (traveler.status !== 'ACTIVE') throw new ContractValidationError('travelerId', 'traveler is archived');
+    return traveler;
+  }
+
+  async currentPassportForIntegration(context: ExecutionContext, id: TravelerId): Promise<TravelDocument | null> {
+    await this.access.requireBranch(context);
+    await this.requireActiveForIntegration(context, id);
+    const documents = await this.repository.listDocuments(context.companyId, id);
+    return documents.find((value) => value.documentType === 'PASSPORT' && value.isCurrent) ?? null;
+  }
+
   async legacyImportHistory(context: ExecutionContext): Promise<LegacyImportRecord[]> {
     await this.perm(context, TRAVELER_PERMISSIONS.migrate);
     return this.repository.legacyImports(context.companyId, context.branchId);

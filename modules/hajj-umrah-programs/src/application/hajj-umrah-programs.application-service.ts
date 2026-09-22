@@ -310,6 +310,11 @@ export class HajjUmrahProgramsApplicationService {
     return this.required(context, id);
   }
 
+  async getForIntegration(context: ExecutionContext, id: string) {
+    await this.access.requireBranch(context);
+    return this.required(context, id);
+  }
+
   async list(context: ExecutionContext) {
     await this.permission(context, PROGRAM_PERMISSIONS.view);
     return this.repo.list(context.companyId, context.branchId);

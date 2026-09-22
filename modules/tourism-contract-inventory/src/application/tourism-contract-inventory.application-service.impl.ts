@@ -71,6 +71,10 @@ export class TourismContractInventoryApplicationServiceImpl
     return this.repo.versions(companyId, id);
   }
 
+  getAllocation(companyId: CompanyId, allocationId: string): Promise<Allocation | null> {
+    return this.repo.allocation(companyId, allocationId);
+  }
+
   createHotelInventory(input: CreateHotelInventoryInput, key?: string): Promise<HotelInventory> {
     positiveQuantity(input.contractedQuantity);
     return this.repo.createHotel(input, key, idempotencyHash(input));
