@@ -85,7 +85,7 @@ export class PrismaRoomingRepository implements RoomingRepository {
     },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
   }
 
-  async swap(a:RoomAssignment,historyA:RoomingHistory,b:RoomAssignment,historyB:RoomingHistory){
+  async swap(a:RoomAssignment,historyA:RoomingHistory,capacityA:number,b:RoomAssignment,historyB:RoomingHistory,capacityB:number){
     await this.db.$transaction(async tx=>{
       await this.locks(tx,[...this.lockKeys(a),...this.lockKeys(b)]);
       const [currentA,currentB]=await Promise.all([
@@ -93,6 +93,18 @@ export class PrismaRoomingRepository implements RoomingRepository {
         tx.hurRoomAssignment.findUnique({where:{id_companyId_branchId:{id:b.id,companyId:b.companyId,branchId:b.branchId}}}),
       ]);
       if(!currentA||!currentB||currentA.status!=='ASSIGNED'||currentB.status!=='ASSIGNED')throw new ContractValidationError('status','both assignments must remain active during swap');
+      const excluded=[a.id,b.id];
+      const leftOverlap=await tx.hurRoomAssignment.findFirst({where:{companyId:a.companyId,branchId:a.branchId,travelerId:a.travelerId,status:'ASSIGNED',id:{notIn:excluded},startDate:{lte:new Date(a.endDate)},endDate:{gte:new Date(a.startDate)}}});
+      if(leftOverlap)throw new ContractValidationError('travelerId','traveler already has an overlapping room assignment');
+      const rightOverlap=await tx.hurRoomAssignment.findFirst({where:{companyId:b.companyId,branchId:b.branchId,travelerId:b.travelerId,status:'ASSIGNED',id:{notIn:excluded},startDate:{lte:new Date(b.endDate)},endDate:{gte:new Date(b.startDate)}}});
+      if(rightOverlap)throw new ContractValidationError('travelerId','traveler already has an overlapping room assignment');
+      const leftCount=await tx.hurRoomAssignment.count({where:{companyId:a.companyId,branchId:a.branchId,allocationId:a.allocationId,status:'ASSIGNED',id:{notIn:excluded},startDate:{lte:new Date(a.endDate)},endDate:{gte:new Date(a.startDate)}}});
+      const rightCount=await tx.hurRoomAssignment.count({where:{companyId:b.companyId,branchId:b.branchId,allocationId:b.allocationId,status:'ASSIGNED',id:{notIn:excluded},startDate:{lte:new Date(b.endDate)},endDate:{gte:new Date(b.startDate)}}});
+      if(a.allocationId===b.allocationId){
+        if(Math.max(leftCount,rightCount)+2>Math.min(capacityA,capacityB))throw new ContractValidationError('capacity','hotel allocation capacity exceeded');
+      }else{
+        if(leftCount+1>capacityA||rightCount+1>capacityB)throw new ContractValidationError('capacity','hotel allocation capacity exceeded');
+      }
       await tx.hurRoomAssignment.update({where:{id_companyId_branchId:{id:a.id,companyId:a.companyId,branchId:a.branchId}},data:this.data(a)});
       await tx.hurRoomingHistory.create({data:this.historyData(historyA)});
       await tx.hurRoomAssignment.update({where:{id_companyId_branchId:{id:b.id,companyId:b.companyId,branchId:b.branchId}},data:this.data(b)});
