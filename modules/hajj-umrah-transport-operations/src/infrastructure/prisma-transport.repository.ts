@@ -42,10 +42,8 @@ export class PrismaTransportRepository implements TransportRepository{
       if(!currentRun||currentRun.status!=='SCHEDULED')throw new ContractValidationError('status','manifest can only change before dispatch');
 
       const existing=await tx.hutrManifestAssignment.findUnique({where:{companyId_branchId_runId_travelerId:{companyId:value.companyId,branchId:value.branchId,runId:value.runId,travelerId:value.travelerId}}});
-      if(existing?.status==='ASSIGNED'){
-        if(existing.bookingId!==value.bookingId)throw new ContractValidationError('travelerId','traveler is already assigned to this run under another booking');
-        return assignmentMap(existing);
-      }
+      if(existing&&existing.bookingId!==value.bookingId)throw new ContractValidationError('bookingId','retained manifest identity belongs to another booking');
+      if(existing?.status==='ASSIGNED')return assignmentMap(existing);
 
       const conflict=await tx.hutrManifestAssignment.findFirst({where:{
         companyId:value.companyId,branchId:value.branchId,travelerId:value.travelerId,status:'ASSIGNED',
@@ -60,7 +58,7 @@ export class PrismaTransportRepository implements TransportRepository{
       if(used>=capacity)throw new ContractValidationError('capacity','transport allocation capacity exceeded across overlapping runs');
 
       if(existing){
-        const reactivated=await tx.hutrManifestAssignment.update({where:{id_companyId_branchId:{id:existing.id,companyId:existing.companyId,branchId:existing.branchId}},data:{bookingId:value.bookingId,status:'ASSIGNED',updatedAt:new Date(value.updatedAt)}});
+        const reactivated=await tx.hutrManifestAssignment.update({where:{id_companyId_branchId:{id:existing.id,companyId:existing.companyId,branchId:existing.branchId}},data:{status:'ASSIGNED',updatedAt:new Date(value.updatedAt)}});
         await tx.hutrHistory.create({data:this.historyData({...history,aggregateId:existing.id,action:'REACTIVATED',evidence:{runId:run.id,travelerId:value.travelerId}})});
         return assignmentMap(reactivated);
       }
