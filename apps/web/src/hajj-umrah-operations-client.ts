@@ -16,7 +16,7 @@ export interface VisaCase{readonly id:string;readonly bookingId:string;readonly 
 export interface CreateVisaInput{readonly bookingId:string;readonly travelerId:string;readonly allocationId:string;}
 
 export type TicketStatus='RESERVED'|'ISSUED'|'REISSUED'|'VOIDED'|'CANCELLED';
-export interface TicketRecord{readonly id:string;readonly bookingId:string;readonly programId:string;readonly travelerId:string;readonly flightBlockId:string;readonly pnr:string;readonly ticketNumber?:string;readonly seat?:string;readonly baggage?:string;readonly fareClass?:string;readonly status:TicketStatus;readonly revision:number;}
+export interface TicketRecord{readonly id:string;readonly bookingId:string;readonly programId:string;readonly travelerId:string;readonly flightBlockId:string;readonly flightSegmentReference:{sourceType:string;sourceId:string};readonly pnr:string;readonly ticketNumber?:string;readonly seat?:string;readonly baggage?:string;readonly fareClass?:string;readonly status:TicketStatus;readonly revision:number;}
 export interface ReserveTicketInput{readonly bookingId:string;readonly travelerId:string;readonly allocationId:string;readonly pnr:string;readonly seat?:string;readonly baggage?:string;readonly fareClass?:string;}
 export interface TicketIssueInput{readonly commandKey:string;readonly ticketNumber:string;readonly amount:string;readonly postingDate:string;readonly pnr?:string;readonly seat?:string;readonly baggage?:string;readonly fareClass?:string;}
 
