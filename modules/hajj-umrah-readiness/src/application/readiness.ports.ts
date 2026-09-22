@@ -23,7 +23,6 @@ export interface ReadinessAccess{
 }
 export interface ReadinessSources{
  program(context:ExecutionContext,id:string):Promise<Program>;
- programs(context:ExecutionContext):Promise<Program[]>;
  closeProgramOwner(context:ExecutionContext,id:string,expectedUpdatedAt:string):Promise<Program>;
  booking(context:ExecutionContext,id:string):Promise<Booking>;
  bookings(context:ExecutionContext,programId:string):Promise<Booking[]>;
