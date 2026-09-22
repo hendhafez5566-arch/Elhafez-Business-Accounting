@@ -1641,6 +1641,7 @@ model TciAllocation {
  status String
  releaseBlockerReason String? @map("release_blocker_reason")
  visaBatchKey String? @map("visa_batch_key")
+ flightSegmentReference Json? @map("flight_segment_reference")
  visaBatchReference Json? @map("visa_batch_reference")
  createdAt DateTime @default(now()) @map("created_at")
  sourceReference Json? @map("source_reference")
