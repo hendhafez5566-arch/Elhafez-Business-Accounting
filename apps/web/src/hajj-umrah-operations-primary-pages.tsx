@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useState } from 'react';
+import { type FormEvent, type ReactNode, useEffect, useState } from 'react';
 import {
   Badge,Button,Card,DataGrid,Dialog,EmptyState,ErrorState,FormField,Input,LoadingState,Select,Textarea,Toast,
 } from './ui.js';
@@ -22,7 +22,7 @@ export async function createBookingAndReload(api:HajjUmrahOperationsApi,input:Pa
 export async function loadRooming(api:HajjUmrahOperationsApi){return api.listRooming();}
 export async function loadVisas(api:HajjUmrahOperationsApi){return api.listVisas();}
 
-function PermissionState({allowed,children}:{readonly allowed:boolean;readonly children:React.ReactNode}){
+function PermissionState({allowed,children}:{readonly allowed:boolean;readonly children:ReactNode}){
   return allowed?<>{children}</>:<EmptyState title="لا توجد صلاحية لهذا الجزء"><p>الصلاحية تُحسم من الخادم وفق الشركة والفرع والمستخدم الحالي.</p></EmptyState>;
 }
 
@@ -117,7 +117,7 @@ export function RoomingPage({api=hajjUmrahOperationsApi}:{readonly api?:HajjUmra
         <FormField label="من" required><Input required type="date" value={form.startDate} onChange={e=>setForm({...form,startDate:e.target.value})}/></FormField>
         <FormField label="إلى" required><Input required type="date" value={form.endDate} onChange={e=>setForm({...form,endDate:e.target.value})}/></FormField><Button type="submit">تسكين</Button>
       </form></Card>}
-      {cap.roomingManage&&<Card title="تبديل مسافرين"><p>استخدم معرّفي تسكين نشطين من الجدول.</p><FormField label="التسكين الأول"><Input value={swap.leftId} onChange={e=>setSwap({...swap,leftId:e.target.value})}/></FormField><FormField label="التسكين الثاني"><Input value={swap.rightId} onChange={e=>setSwap({...swap,rightId:e.target.value})}/></FormField><Button type="button" disabled={!swap.leftId||!swap.rightId} onClick={async()=>{try{await crmSwap(api,swap.leftId,swap.rightId);setNotice('تم تبديل الغرف مع حفظ التاريخ.');setSwap({leftId:'',rightId:''});await reload()}catch(e){setNotice(errorMessage(e))}}}>تبديل</Button></Card>}
+      {cap.roomingManage&&<Card title="تبديل مسافرين"><p>استخدم معرّفي تسكين نشطين من الجدول.</p><FormField label="التسكين الأول"><Input value={swap.leftId} onChange={e=>setSwap({...swap,leftId:e.target.value})}/></FormField><FormField label="التسكين الثاني"><Input value={swap.rightId} onChange={e=>setSwap({...swap,rightId:e.target.value})}/></FormField><Button type="button" disabled={!swap.leftId||!swap.rightId} onClick={async()=>{try{await api.swapRooms(swap.leftId,swap.rightId);setNotice('تم تبديل الغرف مع حفظ التاريخ.');setSwap({leftId:'',rightId:''});await reload()}catch(e){setNotice(errorMessage(e))}}}>تبديل</Button></Card>}
       <Card title="قائمة التسكين">{loading?<LoadingState/>:error?<ErrorState message={error}/>:!rows.length?<EmptyState title="لا توجد تسكينات"/>:<DataGrid columns={['المعرّف','الحجز','المسافر','الغرفة','الفترة','الحالة','إجراءات']}>{rows.map(r=><tr key={r.id}><td>{r.id}</td><td>{r.bookingId}</td><td>{r.travelerId}</td><td>{r.roomLabel??r.roomKey}</td><td>{r.startDate.slice(0,10)} — {r.endDate.slice(0,10)}</td><td><Badge tone={r.status==='ASSIGNED'?'success':'neutral'}>{r.status==='ASSIGNED'?'مسكن':'غير مسكن'}</Badge></td><td>{cap.roomingManage&&r.status==='ASSIGNED'&&<><Button type="button" onClick={()=>beginMove(r)}>نقل</Button><Button type="button" onClick={()=>void unassign(r.id)}>إلغاء التسكين</Button></>}</td></tr>)}</DataGrid>}</Card>
     </PermissionState>
     {notice&&<Toast>{notice}</Toast>}
@@ -125,12 +125,6 @@ export function RoomingPage({api=hajjUmrahOperationsApi}:{readonly api?:HajjUmra
       <FormField label="تخصيص الفندق" required><Input required value={moveForm.allocationId} onChange={e=>setMoveForm({...moveForm,allocationId:e.target.value})}/></FormField><FormField label="الغرفة" required><Input required value={moveForm.roomKey} onChange={e=>setMoveForm({...moveForm,roomKey:e.target.value})}/></FormField><FormField label="وصف الغرفة"><Input value={moveForm.roomLabel} onChange={e=>setMoveForm({...moveForm,roomLabel:e.target.value})}/></FormField><FormField label="من" required><Input required type="date" value={moveForm.startDate} onChange={e=>setMoveForm({...moveForm,startDate:e.target.value})}/></FormField><FormField label="إلى" required><Input required type="date" value={moveForm.endDate} onChange={e=>setMoveForm({...moveForm,endDate:e.target.value})}/></FormField><Button type="submit">حفظ النقل</Button>
     </form></Dialog>
   </section>;
-}
-
-async function crmSwap(api:HajjUmrahOperationsApi,leftId:string,rightId:string){
-  const extended=api as HajjUmrahOperationsApi&{swapRooms?:(leftId:string,rightId:string)=>Promise<readonly RoomAssignment[]>};
-  if(!extended.swapRooms) throw new Error('واجهة تبديل الغرف غير متاحة.');
-  return extended.swapRooms(leftId,rightId);
 }
 
 export function VisasPage({api=hajjUmrahOperationsApi}:{readonly api?:HajjUmrahOperationsApi}={}){
