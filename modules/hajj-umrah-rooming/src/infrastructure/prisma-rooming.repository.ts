@@ -101,7 +101,9 @@ export class PrismaRoomingRepository implements RoomingRepository {
       const leftCount=await tx.hurRoomAssignment.count({where:{companyId:a.companyId,branchId:a.branchId,allocationId:a.allocationId,status:'ASSIGNED',id:{notIn:excluded},startDate:{lte:new Date(a.endDate)},endDate:{gte:new Date(a.startDate)}}});
       const rightCount=await tx.hurRoomAssignment.count({where:{companyId:b.companyId,branchId:b.branchId,allocationId:b.allocationId,status:'ASSIGNED',id:{notIn:excluded},startDate:{lte:new Date(b.endDate)},endDate:{gte:new Date(b.startDate)}}});
       if(a.allocationId===b.allocationId){
-        if(Math.max(leftCount,rightCount)+2>Math.min(capacityA,capacityB))throw new ContractValidationError('capacity','hotel allocation capacity exceeded');
+        const overlap=a.startDate<=b.endDate&&b.startDate<=a.endDate;
+        const extra=overlap?2:1;
+        if(leftCount+extra>capacityA||rightCount+extra>capacityB)throw new ContractValidationError('capacity','hotel allocation capacity exceeded');
       }else{
         if(leftCount+1>capacityA||rightCount+1>capacityB)throw new ContractValidationError('capacity','hotel allocation capacity exceeded');
       }
