@@ -43,6 +43,7 @@ import{PrismaReadinessRepository}from'./infrastructure/prisma-readiness.reposito
   )=>{
    const sources:ReadinessSources={
     program:(c,id)=>programs.getForIntegration(c,id),
+    programs:(c)=>programs.listForIntegration(c),
     closeProgramOwner:(c,id,expected)=>programs.closeAfterReadinessForIntegration(c,id,expected),
     booking:(c,id)=>bookings.requireForIntegration(c,id),
     bookings:(c,id)=>bookings.listForProgramForIntegration(c,id),
