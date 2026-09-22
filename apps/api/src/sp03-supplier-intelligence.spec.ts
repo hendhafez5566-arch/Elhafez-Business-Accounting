@@ -46,7 +46,7 @@ test('Supplier Intelligence controller resolves currentUser and enforces branch/
   const platform={
     currentUser:async(value:string)=>{token=value;return{id:'user-1'};},
     requireBranchAccess:async(value:string)=>{actor=value;},
-    authorize:async(...args:[string,string])=>{assert.equal(args[0],'user-1');permissions.push(args[1]);},
+    authorize:async(...args:[string,string,string])=>{assert.equal(args[0],'user-1');assert.equal(args[1],'co');permissions.push(args[2]);},
   };
   const service={searchSuppliers:async()=>[],overview:async()=>({})};
   const controller=new SupplierIntelligenceReadModelController(service as never,platform as never);

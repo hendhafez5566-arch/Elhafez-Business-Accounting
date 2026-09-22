@@ -215,6 +215,6 @@ export class HajjUmrahOperationsController {
   @Post('trip/services')
   async recordService(@Headers('authorization') authorization:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined,@Body() input:RecordServiceExecutionInput){return this.trip.recordServiceExecution(await this.context({authorization,companyId,branchId}),input)}
 
-  private async allowed(c:ExecutionContext,p:string){try{await this.platform.authorize(c.actorId,p);return true}catch(error){if(error instanceof PlatformError&&error.code==='FORBIDDEN')return false;throw error}}
+  private async allowed(c:ExecutionContext,p:string){try{await this.platform.authorize(c.actorId,c.companyId,p);return true}catch(error){if(error instanceof PlatformError&&error.code==='FORBIDDEN')return false;throw error}}
   private async context(h:RequestHeaders):Promise<ExecutionContext>{if(!h.authorization?.startsWith('Bearer ')||!h.companyId||!h.branchId)throw new UnauthorizedException('authenticated company and branch context required');const user=await this.platform.currentUser(h.authorization.slice(7));return executionContext(h.companyId,h.branchId,user.id)}
 }

@@ -3292,10 +3292,12 @@ model DexJob {
  direction String
  status String
  fileName String @map("file_name")
+ format String
  mapping Json
  idempotencyKey String @map("idempotency_key")
  resultKey String? @map("result_key")
  createdAt DateTime @default(now()) @map("created_at")
+ updatedAt DateTime @updatedAt @map("updated_at")
  rows DexRow[]
  @@unique([companyId,idempotencyKey])
  @@index([companyId,createdAt])

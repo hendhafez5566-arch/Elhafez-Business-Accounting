@@ -20,7 +20,7 @@ function fixture(){
  const platform={
   async currentUser(token:string){calls.push({name:'currentUser',id:token});return{id:'user-1'}},
   async requireBranchAccess(actorId:string,companyId:string,branchId:string){calls.push({name:'requireBranchAccess',context:{actorId,companyId,branchId}})},
-  async authorize(_actorId:string,permission:string){calls.push({name:'authorize',permission});if(denied.has(permission))throw new PlatformError('FORBIDDEN','denied')},
+  async authorize(_actorId:string,_companyId:string,permission:string){calls.push({name:'authorize',permission});if(denied.has(permission))throw new PlatformError('FORBIDDEN','denied')},
  };
  return{controller:new HajjUmrahReadinessController(readiness as never,platform as never),calls,denied};
 }
