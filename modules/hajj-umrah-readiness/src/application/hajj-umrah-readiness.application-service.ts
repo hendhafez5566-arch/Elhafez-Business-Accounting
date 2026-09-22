@@ -335,15 +335,15 @@ export class HajjUmrahReadinessApplicationService{
  async workQueue(c:ExecutionContext,programId:string){
   await this.permission(c,READINESS_PERMISSIONS.view);
   const program=await this.sources.program(c,programId),loaded=await this.loaded(c,program.id),readiness=await this.programInternal(c,program,loaded),items=new Map<string,WorkQueueItem>();
-  const add=(item:WorkQueueItem)=>{if(!items.has(item.key))items.set(item.key,item)};
+  const rank={CRITICAL:0,HIGH:1,NORMAL:2}as const;
+  const add=(item:WorkQueueItem)=>{const current=items.get(item.key);if(!current||rank[item.priority]<rank[current.priority])items.set(item.key,item)};
   for(const blocker of readiness.blockers){
-   const key=[blocker.owner,blocker.reference?.sourceType??blocker.code,blocker.reference?.sourceId??blocker.bookingId??'',blocker.travelerId??''].join(':');
+   const key=blocker.reference?`${blocker.reference.sourceType}:${blocker.reference.sourceId}`:[blocker.owner,blocker.code,blocker.bookingId??'',blocker.travelerId??''].join(':');
    add({key,priority:blocker.category==='FINANCIAL'||blocker.category==='CONTROL'?'HIGH':'NORMAL',category:blocker.category,title:blocker.message,detail:blocker.code,owner:blocker.owner,programId,...(blocker.bookingId?{bookingId:blocker.bookingId}:{}),...(blocker.travelerId?{travelerId:blocker.travelerId}:{}),...(blocker.reference?{reference:blocker.reference}:{})});
   }
   const now=this.now().toISOString();
-  for(const task of loaded.tasks.filter(value=>value.status==='OPEN'))add({key:`task:${task.id}`,priority:task.dueAt<now?'HIGH':'NORMAL',category:'SERVICE_OPERATION',title:task.title,detail:task.dueAt<now?'إجراء متأخر':'إجراء مفتوح',owner:'hajj-umrah-trip-operations',programId,...(task.bookingId?{bookingId:task.bookingId}:{}),...(task.travelerId?{travelerId:task.travelerId}:{}),dueAt:task.dueAt,reference:sourceReference('HAJJ_UMRAH_TASK',task.id)});
-  for(const incident of loaded.incidents.filter(value=>value.status==='OPEN'))add({key:`incident:${incident.id}`,priority:incident.severity==='CRITICAL'?'CRITICAL':incident.severity==='HIGH'?'HIGH':'NORMAL',category:'SERVICE_OPERATION',title:incident.summary,detail:`بلاغ ${incident.severity}`,owner:'hajj-umrah-trip-operations',programId,...(incident.bookingId?{bookingId:incident.bookingId}:{}),...(incident.travelerId?{travelerId:incident.travelerId}:{}),reference:sourceReference('HAJJ_UMRAH_INCIDENT',incident.id)});
-  const rank={CRITICAL:0,HIGH:1,NORMAL:2}as const;
+  for(const task of loaded.tasks.filter(value=>value.status==='OPEN'))add({key:`HAJJ_UMRAH_TASK:${task.id}`,priority:task.dueAt<now?'HIGH':'NORMAL',category:'SERVICE_OPERATION',title:task.title,detail:task.dueAt<now?'إجراء متأخر':'إجراء مفتوح',owner:'hajj-umrah-trip-operations',programId,...(task.bookingId?{bookingId:task.bookingId}:{}),...(task.travelerId?{travelerId:task.travelerId}:{}),dueAt:task.dueAt,reference:sourceReference('HAJJ_UMRAH_TASK',task.id)});
+  for(const incident of loaded.incidents.filter(value=>value.status==='OPEN'))add({key:`HAJJ_UMRAH_INCIDENT:${incident.id}`,priority:incident.severity==='CRITICAL'?'CRITICAL':incident.severity==='HIGH'?'HIGH':'NORMAL',category:'SERVICE_OPERATION',title:incident.summary,detail:`بلاغ ${incident.severity}`,owner:'hajj-umrah-trip-operations',programId,...(incident.bookingId?{bookingId:incident.bookingId}:{}),...(incident.travelerId?{travelerId:incident.travelerId}:{}),reference:sourceReference('HAJJ_UMRAH_INCIDENT',incident.id)});
   return[...items.values()].sort((a,b)=>rank[a.priority]-rank[b.priority]||(a.dueAt??'').localeCompare(b.dueAt??'')||a.key.localeCompare(b.key));
  }
 
