@@ -31,6 +31,7 @@ Before editing:
 | bus run, transport assignment | `hajj-umrah-transport-operations` |
 | تشغيل فوج, tasks, incidents | `hajj-umrah-trip-operations` |
 | جاهزية حج/عمرة | `hajj-umrah-readiness` |
+| باركود العمرة المصري, Egyptian Umrah barcode | `hajj-umrah-barcode` (PLANNED; current UI shell only until functional implementation is explicitly started) |
 | برنامج/رحلة سياحة عامة | `tourism-programs` |
 | حجز سياحة عامة | `tourism-bookings` |
 | برنامج يومي / itinerary | `tourism-itineraries` |
