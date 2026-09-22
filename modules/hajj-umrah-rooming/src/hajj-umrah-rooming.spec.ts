@@ -1,10 +1,77 @@
-import assert from'node:assert/strict';import test from'node:test';import{executionContext,type ExecutionContext}from'@elhafez/contracts';import{HajjUmrahRoomingApplicationService}from'./application/hajj-umrah-rooming.application-service.js';import type{RoomingRepository}from'./application/rooming.repository.js';import type{RoomingAccess}from'./application/rooming.ports.js';import type{RoomAssignment,RoomingHistory}from'./domain/rooming.js';
-class R implements RoomingRepository{rows=new Map<string,RoomAssignment>();logs:RoomingHistory[]=[];async create(v:RoomAssignment,h:RoomingHistory){this.rows.set(v.id,v);this.logs.push(h);return v}async save(v:RoomAssignment,h:RoomingHistory){this.rows.set(v.id,v);this.logs.push(h);return v}async swap(a:RoomAssignment,ha:RoomingHistory,b:RoomAssignment,hb:RoomingHistory){this.rows.set(a.id,a);this.rows.set(b.id,b);this.logs.push(ha,hb)}async get(c:string,b:string,id:string){const v=this.rows.get(id);return v?.companyId===c&&v.branchId===b?v:null}async list(c:string,b:string,p?:string){return[...this.rows.values()].filter(v=>v.companyId===c&&v.branchId===b&&(!p||v.programId===p))}async history(c:string,b:string,id:string){return this.logs.filter(v=>v.companyId===c&&v.branchId===b&&v.assignmentId===id)}async overlappingTraveler(c:string,b:string,t:string,s:string,e:string,x?:string){return[...this.rows.values()].find(v=>v.companyId===c&&v.branchId===b&&v.travelerId===t&&v.status==='ASSIGNED'&&v.id!==x&&v.startDate<=e&&v.endDate>=s)??null}async activeAllocationCount(c:string,b:string,a:string,s:string,e:string,x?:string){return[...this.rows.values()].filter(v=>v.companyId===c&&v.branchId===b&&v.allocationId===a&&v.status==='ASSIGNED'&&v.id!==x&&v.startDate<=e&&v.endDate>=s).length}}
-class A implements RoomingAccess{async requireBranch(c:ExecutionContext){if(c.companyId!=='c1'||c.branchId!=='b1')throw Error('branch denied')}async requirePermission(){}async audit(){}}
-const c=executionContext('c1','b1','u1');function f(q='2'){const repo=new R();let n=0;const service=new HajjUmrahRoomingApplicationService(repo,new A(),{async requireTraveler(_c,b,t){return{id:b,companyId:'c1' as any,branchId:'b1',code:'B',programId:'p1',customerId:'c',customerPartyId:'party',travelerIds:[t],status:'CONFIRMED',financialState:'CONFIRMED',allocationIds:['a1'],createdAt:'',updatedAt:''}}},{async require(){return{id:'p1',companyId:'c1' as any,branchId:'b1',code:'P',type:'UMRAH',seasonId:'s',arabicName:'P',snapshot:{departureDate:'2027-01-01',returnDate:'2027-01-20',salesStart:'',salesClose:'',capacity:'2',currency:'SAR',prices:{},requirements:[],components:[]},temporaryHoldMinutes:15,status:'BOOKABLE',bookingOpen:true,currentVersion:1,currentVersionId:'v',createdAt:'',updatedAt:''}}},{async requireActive(_c,id){return{id:id as any,companyId:'c1' as any,fullName:id,dateOfBirth:null,gender:null,nationality:null,partyId:null,customerId:null,status:'ACTIVE',createdAt:'',updatedAt:''}}},{async allocation(_c,id){return{id,companyId:'c1' as any,contractId:'hc',contractVersionId:'v',resourceType:'HOTEL',resourceId:'h1',program:{sourceType:'HAJJ_UMRAH_PROGRAM',sourceId:'p1'},serviceDate:'2027-01-01T00:00:00.000Z',periodEnd:'2027-01-20T00:00:00.000Z',quantity:q as any,status:'CONFIRMED',createdAt:''}}},()=>new Date('2026-09-22T00:00:00Z'),()=>`id-${++n}`);return{repo,service}}
-const input={bookingId:'b1',travelerId:'t1',allocationId:'a1',roomKey:'R1',startDate:'2027-01-02',endDate:'2027-01-10'};
-test('valid assignment is persisted from canonical hotel evidence',async()=>{const x=f();const a=await x.service.assign(c,input);assert.equal(a.status,'ASSIGNED');assert.equal((await x.service.list(c)).length,1)});
-test('overlapping assignment for same traveler is rejected',async()=>{const x=f();await x.service.assign(c,input);await assert.rejects(()=>x.service.assign(c,{...input,roomKey:'R2'}),/overlapping/)});
-test('allocation capacity is enforced',async()=>{const x=f('1');await x.service.assign(c,input);await assert.rejects(()=>x.service.assign(c,{...input,bookingId:'b2',travelerId:'t2',roomKey:'R2'}),/capacity/)});
-test('reassignment and unassignment retain history',async()=>{const x=f();const a=await x.service.assign(c,input);await x.service.reassign(c,a.id,{allocationId:'a1',roomKey:'R2',startDate:'2027-01-03',endDate:'2027-01-09'});await x.service.unassign(c,a.id);assert.deepEqual((await x.service.historyFor(c,a.id)).map(h=>h.action),['ASSIGNED','REASSIGNED','UNASSIGNED'])});
-test('company and branch isolation are mandatory',async()=>{const x=f();const a=await x.service.assign(c,input);await assert.rejects(()=>x.service.historyFor(executionContext('c1','other','u1'),a.id),/branch denied/)});
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { ContractValidationError, executionContext, type CompanyId, type ExecutionContext } from '@elhafez/contracts';
+import { HajjUmrahRoomingApplicationService } from './application/hajj-umrah-rooming.application-service.js';
+import type { RoomingRepository } from './application/rooming.repository.js';
+import type { RoomingAccess } from './application/rooming.ports.js';
+import type { RoomAssignment, RoomingHistory } from './domain/rooming.js';
+
+class MemoryRooming implements RoomingRepository {
+  readonly rows=new Map<string,RoomAssignment>();
+  readonly logs:RoomingHistory[]=[];
+  private tail:Promise<void>=Promise.resolve();
+
+  private async atomic<T>(work:()=>Promise<T>|T):Promise<T>{
+    const previous=this.tail;
+    let release!:()=>void;
+    this.tail=new Promise<void>(resolve=>{release=resolve});
+    await previous;
+    try{return await work();}finally{release();}
+  }
+  private check(value:RoomAssignment,capacity:number,excludeId?:string){
+    const overlap=[...this.rows.values()].find(row=>row.companyId===value.companyId&&row.branchId===value.branchId&&row.travelerId===value.travelerId&&row.status==='ASSIGNED'&&row.id!==excludeId&&row.startDate<=value.endDate&&row.endDate>=value.startDate);
+    if(overlap)throw new ContractValidationError('travelerId','traveler already has an overlapping room assignment');
+    const count=[...this.rows.values()].filter(row=>row.companyId===value.companyId&&row.branchId===value.branchId&&row.allocationId===value.allocationId&&row.status==='ASSIGNED'&&row.id!==excludeId&&row.startDate<=value.endDate&&row.endDate>=value.startDate).length;
+    if(count>=capacity)throw new ContractValidationError('capacity','hotel allocation capacity exceeded');
+  }
+  async createGuarded(value:RoomAssignment,history:RoomingHistory,capacity:number){return this.atomic(()=>{this.check(value,capacity);this.rows.set(value.id,value);this.logs.push(history);return value;});}
+  async saveGuarded(value:RoomAssignment,history:RoomingHistory,capacity:number){return this.atomic(()=>{const current=this.rows.get(value.id);if(!current||current.status!=='ASSIGNED')throw new ContractValidationError('status','only active assignment can be moved');this.check(value,capacity,value.id);this.rows.set(value.id,value);this.logs.push(history);return value;});}
+  async save(value:RoomAssignment,history:RoomingHistory){return this.atomic(()=>{this.rows.set(value.id,value);this.logs.push(history);return value;});}
+  async swap(a:RoomAssignment,ha:RoomingHistory,b:RoomAssignment,hb:RoomingHistory){return this.atomic(()=>{this.rows.set(a.id,a);this.rows.set(b.id,b);this.logs.push(ha,hb);});}
+  async get(companyId:string,branchId:string,id:string){const value=this.rows.get(id);return value?.companyId===companyId&&value.branchId===branchId?value:null;}
+  async list(companyId:string,branchId:string,programId?:string){return[...this.rows.values()].filter(value=>value.companyId===companyId&&value.branchId===branchId&&(!programId||value.programId===programId));}
+  async history(companyId:string,branchId:string,id:string){return this.logs.filter(value=>value.companyId===companyId&&value.branchId===branchId&&value.assignmentId===id);}
+}
+class Access implements RoomingAccess {
+  async requireBranch(context:ExecutionContext){if(context.companyId!=='c1'||context.branchId!=='b1')throw new Error('branch denied');}
+  async requirePermission(){}
+  async audit(){}
+}
+const context=executionContext('c1','b1','u1');
+
+function fixture(quantity='2'){
+  const repo=new MemoryRooming();
+  let sequence=0;
+  const allocations={
+    h1:{id:'h1',companyId:'c1' as CompanyId,contractId:'hc',contractVersionId:'v',resourceType:'HOTEL' as const,resourceId:'hotel-1',program:{sourceType:'HAJJ_UMRAH_PROGRAM',sourceId:'p1'},serviceDate:'2027-01-01T00:00:00.000Z',periodEnd:'2027-01-20T00:00:00.000Z',quantity:quantity as never,status:'CONFIRMED' as const,createdAt:''},
+    h2:{id:'h2',companyId:'c1' as CompanyId,contractId:'hc',contractVersionId:'v',resourceType:'HOTEL' as const,resourceId:'hotel-2',program:{sourceType:'HAJJ_UMRAH_PROGRAM',sourceId:'p1'},serviceDate:'2027-01-12T00:00:00.000Z',periodEnd:'2027-01-20T00:00:00.000Z',quantity:quantity as never,status:'CONFIRMED' as const,createdAt:''},
+  };
+  const service=new HajjUmrahRoomingApplicationService(
+    repo,new Access(),
+    {async requireTraveler(_context,bookingId,travelerId){return{id:bookingId,companyId:'c1' as CompanyId,branchId:'b1',code:'B',programId:'p1',customerId:'c',customerPartyId:'party',travelerIds:[travelerId],status:'CONFIRMED',financialState:'CONFIRMED',allocationIds:['h1','h2'],createdAt:'',updatedAt:''}}},
+    {async require(){return{id:'p1',companyId:'c1' as CompanyId,branchId:'b1',code:'P',type:'UMRAH',seasonId:'s',arabicName:'P',snapshot:{departureDate:'2027-01-01',returnDate:'2027-01-20',salesStart:'',salesClose:'',capacity:'2',currency:'SAR',prices:{},requirements:[],components:[]},temporaryHoldMinutes:15,status:'BOOKABLE',bookingOpen:true,currentVersion:1,currentVersionId:'v',createdAt:'',updatedAt:''}}},
+    {async requireActive(_context,id){return{id:id as never,companyId:'c1' as CompanyId,fullName:id,dateOfBirth:null,gender:null,nationality:null,partyId:null,customerId:null,status:'ACTIVE',createdAt:'',updatedAt:''}}},
+    {async allocation(_companyId,id){return allocations[id as keyof typeof allocations]??null}},
+    ()=>new Date('2026-09-22T00:00:00Z'),()=>`id-${++sequence}`,
+  );
+  return{repo,service};
+}
+const base={bookingId:'b1',travelerId:'t1',allocationId:'h1',roomKey:'R1',startDate:'2027-01-02',endDate:'2027-01-10'};
+
+test('valid assignment is persisted from canonical hotel evidence',async()=>{const value=fixture();const assigned=await value.service.assign(context,base);assert.equal(assigned.status,'ASSIGNED');assert.equal((await value.service.list(context)).length,1);});
+
+test('atomic rooming guard rejects overlapping assignments for one traveler',async()=>{const value=fixture();const results=await Promise.allSettled([
+  value.service.assign(context,{...base,roomKey:'R1'}),
+  value.service.assign(context,{...base,roomKey:'R2'}),
+]);assert.equal(results.filter(result=>result.status==='fulfilled').length,1);assert.equal(results.filter(result=>result.status==='rejected').length,1);});
+
+test('atomic rooming guard cannot exceed allocation capacity under concurrency',async()=>{const value=fixture('1');const results=await Promise.allSettled([
+  value.service.assign(context,{...base,bookingId:'b1',travelerId:'t1',roomKey:'R1'}),
+  value.service.assign(context,{...base,bookingId:'b2',travelerId:'t2',roomKey:'R2'}),
+]);assert.equal(results.filter(result=>result.status==='fulfilled').length,1);const rejected=results.find(result=>result.status==='rejected');assert.match(String(rejected&&rejected.status==='rejected'?rejected.reason:''),/capacity/);});
+
+test('reassignment and unassignment retain history atomically with state',async()=>{const value=fixture();const assigned=await value.service.assign(context,base);await value.service.reassign(context,assigned.id,{allocationId:'h1',roomKey:'R2',startDate:'2027-01-03',endDate:'2027-01-09'});await value.service.unassign(context,assigned.id);assert.deepEqual((await value.service.historyFor(context,assigned.id)).map(row=>row.action),['ASSIGNED','REASSIGNED','UNASSIGNED']);});
+
+test('swap rejects a target hotel allocation that does not cover the traveler stay',async()=>{const value=fixture();const left=await value.service.assign(context,base);const right=await value.service.assign(context,{bookingId:'b2',travelerId:'t2',allocationId:'h2',roomKey:'R2',startDate:'2027-01-12',endDate:'2027-01-15'});await assert.rejects(()=>value.service.swap(context,left.id,right.id),/outside hotel allocation evidence window/);});
+
+test('company and branch isolation are mandatory',async()=>{const value=fixture();const assigned=await value.service.assign(context,base);await assert.rejects(()=>value.service.historyFor(executionContext('c1','other','u1'),assigned.id),/branch denied/);});
