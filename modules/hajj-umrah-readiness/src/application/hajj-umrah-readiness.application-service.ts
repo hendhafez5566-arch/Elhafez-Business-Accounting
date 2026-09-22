@@ -277,6 +277,16 @@ export class HajjUmrahReadinessApplicationService{
   return{...this.result(blockers,evidence),bookingResults};
  }
 
+ async programOptions(c:ExecutionContext){
+  await this.permission(c,READINESS_PERMISSIONS.view);
+  return(await this.sources.programs(c)).map(value=>({id:value.id,code:value.code,arabicName:value.arabicName,type:value.type,status:value.status}));
+ }
+ async bookingOptions(c:ExecutionContext,programId:string){
+  await this.permission(c,READINESS_PERMISSIONS.view);
+  await this.sources.program(c,programId);
+  return(await this.sources.bookings(c,programId)).map(value=>({id:value.id,code:value.code,status:value.status,financialState:value.financialState,travelerCount:value.travelerIds.length}));
+ }
+
  async bookingReadiness(c:ExecutionContext,bookingId:string){
   await this.permission(c,READINESS_PERMISSIONS.view);
   const booking=await this.sources.booking(c,bookingId),program=await this.sources.program(c,booking.programId),loaded=await this.loaded(c,program.id);
