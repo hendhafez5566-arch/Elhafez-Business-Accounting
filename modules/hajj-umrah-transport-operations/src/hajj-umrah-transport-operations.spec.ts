@@ -28,6 +28,7 @@ class MemoryTransport implements TransportRepository {
       const currentRun=this.runs.get(run.id);
       if(!currentRun||currentRun.status!=='SCHEDULED')throw new ContractValidationError('status','manifest can only change before dispatch');
       const existing=[...this.assignments.values()].find(row=>row.companyId===value.companyId&&row.branchId===value.branchId&&row.runId===value.runId&&row.travelerId===value.travelerId);
+      if(existing&&existing.bookingId!==value.bookingId)throw new ContractValidationError('bookingId','retained manifest identity belongs to another booking');
       if(existing?.status==='ASSIGNED')return existing;
       const conflict=[...this.assignments.values()].find(row=>{
         if(row.companyId!==value.companyId||row.branchId!==value.branchId||row.travelerId!==value.travelerId||row.status!=='ASSIGNED'||row.runId===run.id)return false;
@@ -42,7 +43,7 @@ class MemoryTransport implements TransportRepository {
       }).length;
       if(used>=capacity)throw new ContractValidationError('capacity','transport allocation capacity exceeded across overlapping runs');
       if(existing){
-        const reactivated={...existing,bookingId:value.bookingId,status:'ASSIGNED' as const,updatedAt:value.updatedAt};
+        const reactivated={...existing,status:'ASSIGNED' as const,updatedAt:value.updatedAt};
         this.assignments.set(existing.id,reactivated);
         this.logs.push({...history,aggregateId:existing.id,action:'REACTIVATED'});
         return reactivated;
@@ -89,5 +90,7 @@ test('concurrent manifest writes cannot over-consume shared allocation capacity'
 test('traveler conflict is enforced across overlapping active runs',async()=>{const value=fixture('2');const a=await value.service.createRun(context,firstRun);const b=await value.service.createRun(context,secondRun);await value.service.assignTraveler(context,a.id,'b1','t1');await assert.rejects(()=>value.service.assignTraveler(context,b.id,'b1','t1'),/conflicting transport run/);});
 
 test('removed traveler can be re-added by reactivating retained assignment and history',async()=>{const value=fixture('2');const run=await value.service.createRun(context,firstRun);const first=await value.service.assignTraveler(context,run.id,'b1','t1');await value.service.removeTraveler(context,first.id,run.id);const reactivated=await value.service.assignTraveler(context,run.id,'b1','t1');assert.equal(reactivated.id,first.id);assert.equal(reactivated.status,'ASSIGNED');assert.deepEqual((await value.service.historyFor(context,'MANIFEST',first.id)).map(row=>row.action),['ASSIGNED','REMOVED','REACTIVATED']);});
+
+test('removed manifest identity cannot be reused under another booking',async()=>{const value=fixture('2');const run=await value.service.createRun(context,firstRun);const first=await value.service.assignTraveler(context,run.id,'b1','t1');await value.service.removeTraveler(context,first.id,run.id);await assert.rejects(()=>value.service.assignTraveler(context,run.id,'b2','t1'),/retained manifest identity belongs to another booking/);});
 
 test('dispatch and completion retain run history',async()=>{const value=fixture();const run=await value.service.createRun(context,firstRun);await value.service.assignTraveler(context,run.id,'b1','t1');await value.service.dispatch(context,run.id);const done=await value.service.complete(context,run.id);assert.equal(done.status,'COMPLETED');assert.deepEqual((await value.service.historyFor(context,'RUN',run.id)).map(value=>value.action),['CREATED','DISPATCHED','COMPLETED']);});
