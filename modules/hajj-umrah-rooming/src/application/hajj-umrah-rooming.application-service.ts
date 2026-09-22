@@ -86,13 +86,13 @@ export class HajjUmrahRoomingApplicationService{
       this.inventory.allocation(context.companyId,right.allocationId),
       this.inventory.allocation(context.companyId,left.allocationId),
     ]);
-    this.assertHotelEvidence(targetForLeft,left.programId,left.startDate,left.endDate);
-    this.assertHotelEvidence(targetForRight,right.programId,right.startDate,right.endDate);
+    const leftTarget=this.assertHotelEvidence(targetForLeft,left.programId,left.startDate,left.endDate);
+    const rightTarget=this.assertHotelEvidence(targetForRight,right.programId,right.startDate,right.endDate);
 
     const at=this.now().toISOString();
     const nextLeft:RoomAssignment={...left,allocationId:right.allocationId,roomKey:right.roomKey,...(right.roomLabel?{roomLabel:right.roomLabel}:{roomLabel:undefined}),updatedAt:at};
     const nextRight:RoomAssignment={...right,allocationId:left.allocationId,roomKey:left.roomKey,...(left.roomLabel?{roomLabel:left.roomLabel}:{roomLabel:undefined}),updatedAt:at};
-    await this.repo.swap(nextLeft,this.history(context,nextLeft,'SWAPPED'),nextRight,this.history(context,nextRight,'SWAPPED'));
+    await this.repo.swap(nextLeft,this.history(context,nextLeft,'SWAPPED'),this.hotelCapacity(leftTarget),nextRight,this.history(context,nextRight,'SWAPPED'),this.hotelCapacity(rightTarget));
     await this.access.audit(context,'hajj-umrah.rooming.swapped',left.id,{otherAssignmentId:right.id});
     return[nextLeft,nextRight] as const;
   }
