@@ -428,6 +428,7 @@ export class HajjUmrahReadinessApplicationService{
   await this.permission(c,READINESS_PERMISSIONS.close);
   let program=await this.sources.program(c,programId);
   let record:ClosureEvidenceRecord|null=null;
+  let completedDuringCall=false;
 
   if(program.status==='CLOSED'){
    record=await this.repo.latestForProgram(c.companyId,c.branchId,programId);
@@ -484,13 +485,14 @@ export class HajjUmrahReadinessApplicationService{
   if(record.status==='FINANCE_CONFIRMED'){
    const completedAt=this.now().toISOString();
    record=await this.repo.advance(record.id,'FINANCE_CONFIRMED',record.revision,{status:'COMPLETED',updatedAt:completedAt,completedAt});
+   completedDuringCall=true;
   }
 
   if(record.status!=='COMPLETED')throw new ContractValidationError('closure','closure saga did not reach COMPLETED');
   await this.access.auditOnce(c,record.commandKey,'hajj-umrah.program.closed-after-readiness',programId,{closureEvidenceId:record.id,financialEvidence:record.financialEvidence??null});
   program=await this.sources.program(c,programId);
   if(program.status!=='CLOSED')return{closed:false,program,blockers:[this.block('PROGRAM','PROGRAM_REOPENED_AFTER_COMPLETION','تمت دورة إغلاق سابقة ثم أعيد فتح البرنامج صراحةً.','hajj-umrah-programs','إدارة البرنامج',programId,{reference:this.programRef(programId)})],closureEvidenceId:record.id};
-  return{closed:true,idempotent:record.completedAt!==undefined,program,blockers:[],closureEvidenceId:record.id};
+  return{closed:true,idempotent:!completedDuringCall,program,blockers:[],closureEvidenceId:record.id};
  }
 
 }
