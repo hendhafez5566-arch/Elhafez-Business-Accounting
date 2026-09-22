@@ -315,6 +315,42 @@ export class HajjUmrahProgramsApplicationService {
     return this.required(context, id);
   }
 
+  async closeAfterReadinessForIntegration(
+    context: ExecutionContext,
+    id: string,
+    expectedUpdatedAt: string,
+  ) {
+    await this.access.requireBranch(context);
+    const old = await this.required(context, id);
+    if (old.status === 'CLOSED') return old;
+    if (old.status !== 'IN_TRIP' || !old.departureRecordedAt) {
+      throw new ContractValidationError('status', 'closure requires recorded departure');
+    }
+    if (old.updatedAt !== expectedUpdatedAt) {
+      throw new ContractValidationError('program', 'program changed during closure; readiness must be re-evaluated');
+    }
+    const at = this.now().toISOString();
+    const next: Program = {
+      ...old,
+      status: 'CLOSED',
+      bookingOpen: false,
+      returnRecordedAt: at,
+      updatedAt: at,
+    };
+    const saved = await this.repo.closeReturnedGuarded(
+      next,
+      this.history(context, id, 'RETURN_RECORDED'),
+      expectedUpdatedAt,
+    );
+    if (saved) return saved;
+    const current = await this.required(context, id);
+    if (current.status === 'CLOSED') return current;
+    throw new ContractValidationError(
+      'program',
+      'program changed during closure; readiness must be re-evaluated',
+    );
+  }
+
   async list(context: ExecutionContext) {
     await this.permission(context, PROGRAM_PERMISSIONS.view);
     return this.repo.list(context.companyId, context.branchId);
@@ -477,18 +513,7 @@ export class HajjUmrahProgramsApplicationService {
   async recordReturn(context: ExecutionContext, id: string) {
     await this.permission(context, PROGRAM_PERMISSIONS.lifecycle);
     const old = await this.required(context, id);
-    if (old.status !== 'IN_TRIP' || !old.departureRecordedAt) {
-      throw new ContractValidationError('status', 'return requires recorded departure');
-    }
-    return this.repo.save(
-      {
-        ...old,
-        status: 'CLOSED',
-        returnRecordedAt: this.now().toISOString(),
-        updatedAt: this.now().toISOString(),
-      },
-      this.history(context, id, 'RETURN_RECORDED'),
-    );
+    return this.closeAfterReadinessForIntegration(context, id, old.updatedAt);
   }
 
   async cancel(context: ExecutionContext, id: string, reason: string) {
