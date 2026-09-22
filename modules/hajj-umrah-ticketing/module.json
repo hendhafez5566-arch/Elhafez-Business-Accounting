@@ -1,0 +1,1 @@
+{"name":"hajj-umrah-ticketing","publicApi":["src/public/index.ts","src/public/nest.ts"],"ownedTables":["hut_ticket_records","hut_ticket_history"],"allowedDependencies":["@elhafez/contracts","@elhafez/platform-core","@elhafez/hajj-umrah-bookings","@elhafez/traveler-management","@elhafez/tourism-contract-inventory","@elhafez/tourism-finance-orchestration"]}
