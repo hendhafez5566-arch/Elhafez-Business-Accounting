@@ -58,6 +58,7 @@ CREATE TABLE "hur_room_assignments" (
   "start_date" DATE NOT NULL,
   "end_date" DATE NOT NULL,
   "status" TEXT NOT NULL,
+  "revision" INTEGER NOT NULL DEFAULT 1,
   "created_at" TIMESTAMP(3) NOT NULL,
   "updated_at" TIMESTAMP(3) NOT NULL,
   CONSTRAINT "hur_room_assignments_pkey" PRIMARY KEY ("id")
@@ -161,6 +162,7 @@ CREATE TABLE "hutr_runs" (
   "vehicle_reference" TEXT,
   "driver_reference" TEXT,
   "status" TEXT NOT NULL,
+  "revision" INTEGER NOT NULL DEFAULT 1,
   "created_at" TIMESTAMP(3) NOT NULL,
   "updated_at" TIMESTAMP(3) NOT NULL,
   CONSTRAINT "hutr_runs_pkey" PRIMARY KEY ("id")
@@ -178,6 +180,7 @@ CREATE TABLE "hutr_manifest_assignments" (
   "booking_id" TEXT NOT NULL,
   "traveler_id" TEXT NOT NULL,
   "status" TEXT NOT NULL,
+  "revision" INTEGER NOT NULL DEFAULT 1,
   "created_at" TIMESTAMP(3) NOT NULL,
   "updated_at" TIMESTAMP(3) NOT NULL,
   CONSTRAINT "hutr_manifest_assignments_pkey" PRIMARY KEY ("id")
