@@ -29,6 +29,8 @@ test('operations client maps Ticket, Transport, and Trip mutations to real HU-02
   };
   const api=createHajjUmrahOperationsApi(request);
 
+  await api.confirmBooking('booking 1',{commandKey:'confirm-k',category:'OTHER',costCenterId:'cc1',currency:'SAR',grossAmount:'100',discountAmount:'0',postingDate:'2026-09-22',dueDate:'2026-09-23',invoiceNumber:'INV-1',inventories:[]});
+  await api.cancelBooking('booking 1',{commandKey:'cancel-k',postingDate:'2026-09-22',reason:'requested'});
   await api.reserveTicket({bookingId:'b1',travelerId:'t1',allocationId:'a1',pnr:'PNR1'});
   await api.issueTicket('ticket 1',{commandKey:'k1',ticketNumber:'ET-1',amount:'100',postingDate:'2026-09-22'});
   await api.createRun({programId:'p1',allocationId:'ta1',code:'RUN-1',route:'A-B',startsAt:'2027-01-01T10:00:00Z',endsAt:'2027-01-01T12:00:00Z'});
@@ -39,6 +41,8 @@ test('operations client maps Ticket, Transport, and Trip mutations to real HU-02
   await api.recordService({programId:'p1',bookingId:'b1',allocationId:'s1',category:'MEAL',executedAt:'2027-01-01T18:00:00Z'});
 
   assert.deepEqual(calls.map(value=>[value.method,value.path]),[
+    ['POST','/hajj-umrah/operations/bookings/booking%201/confirm'],
+    ['POST','/hajj-umrah/operations/bookings/booking%201/cancel'],
     ['POST','/hajj-umrah/operations/tickets'],
     ['POST','/hajj-umrah/operations/tickets/ticket%201/issue'],
     ['POST','/hajj-umrah/operations/transport/runs'],
@@ -48,8 +52,8 @@ test('operations client maps Ticket, Transport, and Trip mutations to real HU-02
     ['POST','/hajj-umrah/operations/trip/incidents'],
     ['POST','/hajj-umrah/operations/trip/services'],
   ]);
-  assert.deepEqual(calls[3]?.body,{bookingId:'b1',travelerId:'t1'});
-  assert.deepEqual(calls[4]?.body,{});
+  assert.deepEqual(calls[5]?.body,{bookingId:'b1',travelerId:'t1'});
+  assert.deepEqual(calls[6]?.body,{});
 });
 
 test('booking lifecycle and financial state are rendered as separate operational states', () => {
