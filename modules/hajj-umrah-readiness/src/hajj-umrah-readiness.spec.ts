@@ -35,10 +35,10 @@ class MemoryRepo implements ReadinessRepository{
  }
 }
 class Access implements ReadinessAccess{
- readonly audits:string[]=[];auditAttempts=0;failAuditOnce=false;
+ readonly audits:string[]=[];auditAttempts=0;failAuditAfterWriteOnce=false;
  async requireBranch(c:ExecutionContext){if(c.companyId!=='c1'||c.branchId!=='b1')throw new Error('branch denied')}
  async requirePermission(c:ExecutionContext,_permission:string){if(c.actorId==='denied')throw new Error('permission denied')}
- async auditOnce(_c:ExecutionContext,key:string){this.auditAttempts++;if(this.failAuditOnce){this.failAuditOnce=false;throw new Error('injected audit failure')}if(!this.audits.includes(key))this.audits.push(key)}
+ async auditOnce(_c:ExecutionContext,key:string){this.auditAttempts++;if(!this.audits.includes(key))this.audits.push(key);if(this.failAuditAfterWriteOnce){this.failAuditAfterWriteOnce=false;throw new Error('injected audit acknowledgement failure')}}
 }
 interface MutableState{
  bookingStatus:BookingStatus;rooming:boolean;visa:VisaStatus;ticket:TicketStatus;transport:boolean;run:TransportRunStatus;finance:boolean;
@@ -192,9 +192,9 @@ test('failure after Program owner close but before evidence advance resumes safe
 });
 
 test('failure after COMPLETED but before audit is recoverable and auditOnce eventually records exactly once',async()=>{
- const f=fixture();f.setProgram({status:'IN_TRIP',departureRecordedAt:'2027-05-01T00:00:00.000Z'});f.state.bookingStatus='COMPLETED';f.state.run='COMPLETED';f.access.failAuditOnce=true;
+ const f=fixture();f.setProgram({status:'IN_TRIP',departureRecordedAt:'2027-05-01T00:00:00.000Z'});f.state.bookingStatus='COMPLETED';f.state.run='COMPLETED';f.access.failAuditAfterWriteOnce=true;
  await assert.rejects(()=>f.service.closeProgram(ctx,'p1'),/injected audit failure/);
- assert.equal(f.program.status,'CLOSED');assert.equal(f.repo.rows[0]?.status,'COMPLETED');assert.equal(f.access.audits.length,0);assert.equal(f.state.financeClose,1);
+ assert.equal(f.program.status,'CLOSED');assert.equal(f.repo.rows[0]?.status,'COMPLETED');assert.equal(f.access.audits.length,1);assert.equal(f.state.financeClose,1);
  const retry=await f.service.closeProgram(ctx,'p1');
  assert.equal(retry.closed,true);assert.equal(f.access.auditAttempts,2);assert.equal(f.access.audits.length,1);assert.equal(f.state.financeClose,1);assert.equal(f.state.financeCommandKeys.length,1);
 });
