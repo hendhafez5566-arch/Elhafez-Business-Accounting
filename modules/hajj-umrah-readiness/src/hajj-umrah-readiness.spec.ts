@@ -134,9 +134,13 @@ test('Booking 360 and Program 360 keep lifecycle financial and readiness states 
  assert.equal(program.bookingSummary.total,1);assert.equal(program.travelers.length,1);assert.equal(program.readiness.status,'READY');
 });
 
-test('work queue derives open work and resolved work disappears',async()=>{
- const f=fixture();f.state.task=true;assert.ok((await f.service.workQueue(ctx,'p1')).some(row=>row.reference?.sourceId==='task1'));
- f.state.task=false;assert.ok(!(await f.service.workQueue(ctx,'p1')).some(row=>row.reference?.sourceId==='task1'));
+test('work queue derives canonical work once and resolved work disappears',async()=>{
+ const f=fixture();f.state.task=true;
+ const open=await f.service.workQueue(ctx,'p1');
+ assert.equal(open.filter(row=>row.reference?.sourceId==='task1').length,1);
+ assert.equal(open.find(row=>row.reference?.sourceId==='task1')?.priority,'HIGH');
+ f.state.task=false;
+ assert.equal((await f.service.workQueue(ctx,'p1')).filter(row=>row.reference?.sourceId==='task1').length,0);
 });
 
 test('closure blockers and financial blockers leave program state unchanged',async()=>{
