@@ -3001,6 +3001,7 @@ model HurRoomAssignment {
  startDate DateTime @map("start_date") @db.Date
  endDate DateTime @map("end_date") @db.Date
  status String
+ revision Int @default(1)
  createdAt DateTime @map("created_at")
  updatedAt DateTime @map("updated_at")
  @@unique([id, companyId, branchId])
@@ -3123,6 +3124,7 @@ model HutrRun {
  vehicleReference String? @map("vehicle_reference")
  driverReference String? @map("driver_reference")
  status String
+ revision Int @default(1)
  createdAt DateTime @map("created_at")
  updatedAt DateTime @map("updated_at")
  assignments HutrManifestAssignment[]
@@ -3141,6 +3143,7 @@ model HutrManifestAssignment {
  bookingId String @map("booking_id")
  travelerId String @map("traveler_id")
  status String
+ revision Int @default(1)
  createdAt DateTime @map("created_at")
  updatedAt DateTime @map("updated_at")
  run HutrRun @relation(fields:[runId, companyId, branchId], references:[id, companyId, branchId], onDelete:Restrict)
