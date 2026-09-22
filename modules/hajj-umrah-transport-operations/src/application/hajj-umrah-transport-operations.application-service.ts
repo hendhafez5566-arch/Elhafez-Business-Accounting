@@ -63,7 +63,7 @@ export class HajjUmrahTransportOperationsApplicationService{
     if(!row)throw new ContractValidationError('assignmentId','manifest assignment not found');
     if(row.status==='REMOVED')return row;
     const next={...row,status:'REMOVED' as const,revision:row.revision+1,updatedAt:this.now().toISOString()};
-    return this.repo.saveAssignment(next,this.history(context,'MANIFEST',row.id,'REMOVED',{runId}),row.revision,run.revision);
+    return this.repo.saveAssignment(next,this.history(context,'MANIFEST',row.id,'REMOVED',{runId}),row.revision,run);
   }
 
   async dispatch(context:ExecutionContext,id:string){
