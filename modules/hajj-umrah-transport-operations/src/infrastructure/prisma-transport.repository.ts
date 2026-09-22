@@ -21,8 +21,15 @@ export class PrismaTransportRepository implements TransportRepository{
     return value;
   }
   async saveRun(value:TransportRun,history:TransportHistory){
-    await this.db.$transaction([this.db.hutrRun.update({where:{id_companyId_branchId:{id:value.id,companyId:value.companyId,branchId:value.branchId}},data:this.runData(value)}),this.db.hutrHistory.create({data:this.historyData(history)})]);
-    return value;
+    return this.db.$transaction(async tx=>{
+      const scope=this.scope(value.companyId,value.branchId);
+      await this.locks(tx,[`hutr:allocation:${scope}:${value.allocationId}`,`hutr:run:${scope}:${value.id}`]);
+      const current=await tx.hutrRun.findUnique({where:{id_companyId_branchId:{id:value.id,companyId:value.companyId,branchId:value.branchId}}});
+      if(!current)throw new ContractValidationError('runId','transport run not found');
+      const updated=await tx.hutrRun.update({where:{id_companyId_branchId:{id:value.id,companyId:value.companyId,branchId:value.branchId}},data:this.runData(value)});
+      await tx.hutrHistory.create({data:this.historyData(history)});
+      return runMap(updated);
+    },{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});
   }
   async getRun(companyId:string,branchId:string,id:string){const row=await this.db.hutrRun.findUnique({where:{id_companyId_branchId:{id,companyId,branchId}}});return row?runMap(row):null;}
   async listRuns(companyId:string,branchId:string,programId?:string){return(await this.db.hutrRun.findMany({where:{companyId,branchId,...(programId?{programId}:{})},orderBy:{startsAt:'asc'}})).map(runMap);}
