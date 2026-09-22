@@ -69,6 +69,7 @@ type AllocationRow = {
   quantity: Prisma.Decimal;
   status: string;
   releaseBlockerReason: string | null;
+  flightSegmentReference: Prisma.JsonValue | null;
   visaBatchReference: Prisma.JsonValue | null;
   createdAt: Date;
   sourceReference: Prisma.JsonValue | null;
@@ -142,6 +143,7 @@ function allocation(row: AllocationRow): Allocation {
     quantity: amount(row.quantity),
     status: row.status as Allocation['status'],
     releaseBlockerReason: row.releaseBlockerReason ?? undefined,
+    flightSegmentReference: source(row.flightSegmentReference),
     visaBatchReference: source(row.visaBatchReference),
     createdAt: iso(row.createdAt),
     sourceReference: source(row.sourceReference),
@@ -726,6 +728,9 @@ export class PrismaTourismInventoryRepository implements TourismInventoryReposit
         quantity: input.quantity,
         status: 'CONFIRMED',
         visaBatchKey,
+        flightSegmentReference: input.flightSegmentReference
+          ? json(input.flightSegmentReference)
+          : Prisma.JsonNull,
         visaBatchReference: input.visaBatchReference
           ? json(input.visaBatchReference)
           : Prisma.JsonNull,
