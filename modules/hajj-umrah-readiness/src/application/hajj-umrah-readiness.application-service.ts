@@ -426,39 +426,71 @@ export class HajjUmrahReadinessApplicationService{
  private hashEvidence(value:unknown){return createHash('sha256').update(JSON.stringify(value)).digest('hex')}
  async closeProgram(c:ExecutionContext,programId:string){
   await this.permission(c,READINESS_PERMISSIONS.close);
-  let preview=await this.closureInternal(c,await this.sources.program(c,programId));
-  if(!preview.canClose)return{closed:false,program:preview.program,blockers:preview.blockers};
-  if(preview.program.status==='CLOSED'){const record=await this.repo.latestForProgram(c.companyId,c.branchId,programId);return{closed:true,idempotent:true,program:preview.program,blockers:[],...(record?{closureEvidenceId:record.id}:{})}}
+  let program=await this.sources.program(c,programId);
+  let record:ClosureEvidenceRecord|null=null;
 
-  const snapshot={programId,programUpdatedAt:preview.program.updatedAt,evidenceReferences:[...preview.evidenceReferences].sort()};
-  const at=this.now().toISOString();
-  const candidate:ClosureEvidenceRecord={id:this.id(),companyId:c.companyId,branchId:c.branchId,programId,programUpdatedAt:preview.program.updatedAt,commandKey:`HU03:CLOSE:${programId}:${this.id()}`,evidenceHash:this.hashEvidence(snapshot),evidence:snapshot,status:'PREPARED',createdAt:at,updatedAt:at};
-  let record=await this.repo.reserve(candidate);
-  if(record.status==='COMPLETED'){const program=await this.sources.program(c,programId);return{closed:program.status==='CLOSED',idempotent:true,program,blockers:[],closureEvidenceId:record.id}}
-  if(record.evidenceHash!==candidate.evidenceHash){record=await this.repo.save({...record,evidenceHash:candidate.evidenceHash,evidence:snapshot,updatedAt:this.now().toISOString()})}
-
-  preview=await this.closureInternal(c,await this.sources.program(c,programId));
-  if(!preview.canClose||preview.program.updatedAt!==record.programUpdatedAt){
-   const blockers=preview.program.updatedAt!==record.programUpdatedAt?[...preview.blockers,this.block('PROGRAM','CONCURRENT_PROGRAM_CHANGE','تغير البرنامج أثناء فحص الإغلاق؛ يجب إعادة التقييم.','hajj-umrah-programs','إدارة البرنامج',programId,{reference:this.programRef(programId)})]:preview.blockers;
-   return{closed:false,program:preview.program,blockers:this.uniqueBlockers(blockers),closureEvidenceId:record.id};
+  if(program.status==='CLOSED'){
+   record=await this.repo.latestForProgram(c.companyId,c.branchId,programId);
+   if(!record)return{closed:true,idempotent:true,program,blockers:[]};
+  }else{
+   const preview=await this.closureInternal(c,program);
+   if(!preview.canClose)return{closed:false,program:preview.program,blockers:preview.blockers};
+   const snapshot={programId,programUpdatedAt:preview.program.updatedAt,evidenceReferences:[...preview.evidenceReferences].sort()};
+   const at=this.now().toISOString();
+   const commandKey=`HU03:CLOSE:${programId}:${this.hashEvidence({programId,programUpdatedAt:preview.program.updatedAt})}`;
+   record=await this.repo.reserve({
+    id:this.id(),companyId:c.companyId,branchId:c.branchId,programId,programUpdatedAt:preview.program.updatedAt,
+    commandKey,evidenceHash:this.hashEvidence(snapshot),evidence:snapshot,status:'PREPARED',revision:0,createdAt:at,updatedAt:at,
+   });
   }
 
   if(record.status==='PREPARED'){
-   const financial=await this.sources.closeFinancial({companyId:c.companyId,branchId:c.branchId,commandKey:record.commandKey,program:this.programRef(programId),operationalEvidence:`HU03_CLOSURE_EVIDENCE:${record.id}`});
-   if(!(financial as{closed?:boolean}|null)?.closed)throw new ContractValidationError('closure','financial orchestration did not confirm closure');
-   record=await this.repo.save({...record,status:'FINANCE_CONFIRMED',financialEvidence:financial,updatedAt:this.now().toISOString()});
+   program=await this.sources.program(c,programId);
+   if(program.status!=='CLOSED'){
+    if(program.updatedAt!==record.programUpdatedAt){
+     return{closed:false,program,blockers:[this.block('PROGRAM','CONCURRENT_PROGRAM_CHANGE','تغير البرنامج أثناء فحص الإغلاق؛ لم يبدأ الإغلاق المالي.','hajj-umrah-programs','إدارة البرنامج',programId,{reference:this.programRef(programId)})],closureEvidenceId:record.id};
+    }
+    const fresh=await this.closureInternal(c,program);
+    if(!fresh.canClose)return{closed:false,program:fresh.program,blockers:fresh.blockers,closureEvidenceId:record.id};
+    if(fresh.program.updatedAt!==record.programUpdatedAt){
+     return{closed:false,program:fresh.program,blockers:[this.block('PROGRAM','CONCURRENT_PROGRAM_CHANGE','تغير البرنامج أثناء فحص الإغلاق؛ لم يبدأ الإغلاق المالي.','hajj-umrah-programs','إدارة البرنامج',programId,{reference:this.programRef(programId)})],closureEvidenceId:record.id};
+    }
+    const finalSnapshot={programId,programUpdatedAt:record.programUpdatedAt,evidenceReferences:[...fresh.evidenceReferences].sort()};
+    try{program=await this.sources.closeProgramOwner(c,programId,record.programUpdatedAt)}
+    catch(error){
+     const current=await this.sources.program(c,programId);
+     if(current.status!=='CLOSED'){
+      return{closed:false,program:current,blockers:[this.block('PROGRAM','CONCURRENT_PROGRAM_CHANGE',`تغير البرنامج أثناء الإغلاق: ${messageOf(error)}`,'hajj-umrah-programs','إدارة البرنامج',programId,{reference:this.programRef(programId)})],closureEvidenceId:record.id};
+     }
+     program=current;
+    }
+    record=await this.repo.advance(record.id,'PREPARED',record.revision,{status:'OWNER_CLOSED',updatedAt:this.now().toISOString(),evidenceHash:this.hashEvidence(finalSnapshot),evidence:finalSnapshot});
+   }else{
+    record=await this.repo.advance(record.id,'PREPARED',record.revision,{status:'OWNER_CLOSED',updatedAt:this.now().toISOString()});
+   }
   }
 
-  preview=await this.closureInternal(c,await this.sources.program(c,programId));
-  if(!preview.canClose||preview.program.updatedAt!==record.programUpdatedAt){
-   const blockers=preview.program.updatedAt!==record.programUpdatedAt?[...preview.blockers,this.block('PROGRAM','CONCURRENT_PROGRAM_CHANGE','تغير البرنامج أثناء تنفيذ الإغلاق؛ لم يتم تغيير حالة البرنامج.','hajj-umrah-programs','إدارة البرنامج',programId,{reference:this.programRef(programId)})]:preview.blockers;
-   return{closed:false,program:preview.program,blockers:this.uniqueBlockers(blockers),closureEvidenceId:record.id};
+  program=await this.sources.program(c,programId);
+  if(program.status!=='CLOSED'){
+   return{closed:false,program,blockers:[this.block('PROGRAM','PROGRAM_REOPENED_AFTER_OWNER_CLOSE','البرنامج لم يعد مغلقًا؛ لن يتم تثبيت الإغلاق المالي لهذه المحاولة.','hajj-umrah-programs','إدارة البرنامج',programId,{reference:this.programRef(programId)})],closureEvidenceId:record.id};
   }
-  const finalSnapshot={programId,programUpdatedAt:record.programUpdatedAt,evidenceReferences:[...preview.evidenceReferences].sort()};
-  if(record.evidenceHash!==this.hashEvidence(finalSnapshot))record=await this.repo.save({...record,evidenceHash:this.hashEvidence(finalSnapshot),evidence:finalSnapshot,updatedAt:this.now().toISOString()});
-  const program=await this.sources.closeProgramOwner(c,programId,record.programUpdatedAt);
-  record=await this.repo.save({...record,status:'COMPLETED',updatedAt:this.now().toISOString(),completedAt:this.now().toISOString()});
+
+  if(record.status==='OWNER_CLOSED'){
+   const financial=await this.sources.closeFinancial({companyId:c.companyId,branchId:c.branchId,commandKey:record.commandKey,program:this.programRef(programId),operationalEvidence:`HU03_CLOSURE_EVIDENCE:${record.id}`});
+   if(!(financial as{closed?:boolean}|null)?.closed)throw new ContractValidationError('closure','financial orchestration did not confirm closure');
+   record=await this.repo.advance(record.id,'OWNER_CLOSED',record.revision,{status:'FINANCE_CONFIRMED',financialEvidence:financial,updatedAt:this.now().toISOString()});
+  }
+
+  if(record.status==='FINANCE_CONFIRMED'){
+   const completedAt=this.now().toISOString();
+   record=await this.repo.advance(record.id,'FINANCE_CONFIRMED',record.revision,{status:'COMPLETED',updatedAt:completedAt,completedAt});
+  }
+
+  if(record.status!=='COMPLETED')throw new ContractValidationError('closure','closure saga did not reach COMPLETED');
   await this.access.auditOnce(c,record.commandKey,'hajj-umrah.program.closed-after-readiness',programId,{closureEvidenceId:record.id,financialEvidence:record.financialEvidence??null});
-  return{closed:true,idempotent:false,program,blockers:[],closureEvidenceId:record.id};
+  program=await this.sources.program(c,programId);
+  if(program.status!=='CLOSED')return{closed:false,program,blockers:[this.block('PROGRAM','PROGRAM_REOPENED_AFTER_COMPLETION','تمت دورة إغلاق سابقة ثم أعيد فتح البرنامج صراحةً.','hajj-umrah-programs','إدارة البرنامج',programId,{reference:this.programRef(programId)})],closureEvidenceId:record.id};
+  return{closed:true,idempotent:record.completedAt!==undefined,program,blockers:[],closureEvidenceId:record.id};
  }
+
 }
