@@ -1,5 +1,5 @@
 import type{ExecutionContext,SourceReference}from'@elhafez/contracts';
-import type{Program,ProgramSupplyEvidenceInput as Never}from'@elhafez/hajj-umrah-programs';
+import type{Program}from'@elhafez/hajj-umrah-programs';
 import type{Booking}from'@elhafez/hajj-umrah-bookings';
 import type{Traveler,TravelDocument}from'@elhafez/traveler-management';
 import type{RoomAssignment}from'@elhafez/hajj-umrah-rooming';
@@ -43,4 +43,3 @@ export interface ReadinessSources{
  closeFinancial(input:{companyId:string;branchId:string;commandKey:string;program:SourceReference;operationalEvidence:string}):Promise<unknown>;
  programAccounting(input:{companyId:string;branchIds:readonly string[]},programId:string):Promise<unknown>;
 }
-void(0 as unknown as Never);
