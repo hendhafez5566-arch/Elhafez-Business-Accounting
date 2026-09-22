@@ -3242,3 +3242,26 @@ model HuoHistory {
  @@index([companyId, branchId, aggregateType, aggregateId, occurredAt])
  @@map("huo_history")
 }
+
+// HU-03 — readiness owns only durable closure orchestration evidence.
+// Program lifecycle remains hajj-umrah-programs owned; readiness itself is derived.
+model HureClosureEvidence {
+ id String @id
+ companyId String @map("company_id")
+ branchId String @map("branch_id")
+ programId String @map("program_id")
+ programUpdatedAt DateTime @map("program_updated_at")
+ commandKey String @map("command_key")
+ evidenceHash String @map("evidence_hash")
+ evidence Json
+ financialEvidence Json? @map("financial_evidence")
+ status String
+ revision Int @default(0)
+ createdAt DateTime @map("created_at")
+ updatedAt DateTime @map("updated_at")
+ completedAt DateTime? @map("completed_at")
+ @@unique([companyId, branchId, programId, programUpdatedAt], map: "hure_close_program_version_uq")
+ @@unique([companyId, commandKey], map: "hure_close_command_uq")
+ @@index([companyId, branchId, programId, status, updatedAt], map: "hure_close_program_status_idx")
+ @@map("hure_closure_evidence")
+}

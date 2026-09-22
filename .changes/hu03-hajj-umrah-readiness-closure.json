@@ -1,0 +1,41 @@
+{
+  "id": "hu03-hajj-umrah-readiness-closure",
+  "summary": "Implement HU-03 derived Hajj and Umrah readiness, operational 360 projections, work queue, reporting, and safe program closure orchestration without duplicating canonical owner truth.",
+  "type": "phase",
+  "allowedModules": [
+    "hajj-umrah-readiness",
+    "hajj-umrah-bookings",
+    "hajj-umrah-programs",
+    "hajj-umrah-rooming",
+    "hajj-umrah-visa-operations",
+    "hajj-umrah-ticketing",
+    "hajj-umrah-transport-operations",
+    "hajj-umrah-trip-operations",
+    "tourism-finance-orchestration"
+  ],
+  "allowedPaths": [
+    "apps/api/package.json",
+    "apps/api/src/app.module.ts",
+    "apps/api/src/hajj-umrah-readiness.controller.ts",
+    "apps/api/src/hajj-umrah-readiness.spec.ts",
+    "apps/api/src/hajj-umrah.controller.ts",
+    "apps/web/src/hajj-umrah-readiness-client.ts",
+    "apps/web/src/hajj-umrah-readiness-page.tsx",
+    "apps/web/src/routes.tsx",
+    "pnpm-lock.yaml",
+    "prisma/schema.prisma",
+    "prisma/migrations/20260922170000_hu03_hajj_umrah_readiness_closure/migration.sql",
+    "apps/web/src/hajj-umrah-client.ts",
+    "apps/web/src/hajj-umrah-pages.tsx",
+    "apps/web/src/hajj-umrah.spec.ts",
+    "apps/web/src/hajj-umrah-readiness.spec.ts",
+    "apps/api/src/hajj-umrah.spec.ts"
+  ],
+  "protectedPaths": [
+    "apps/web/src/routes.tsx",
+    "modules/hajj-umrah-readiness/module.json"
+  ],
+  "protectedReason": "HU-03 adds the owner-approved readiness module and one focused App Shell route while preserving all accepted HU-01/HU-02 module ownership and historical migrations.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": ""
+}

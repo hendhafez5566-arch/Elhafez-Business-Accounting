@@ -143,6 +143,7 @@ export interface HajjUmrahCapabilities {
   readonly programLifecycle: boolean;
   readonly programCancel: boolean;
   readonly programReopen: boolean;
+  readonly programClose: boolean;
 }
 
 export interface HajjUmrahApi {
@@ -206,4 +207,5 @@ export const emptyCapabilities: HajjUmrahCapabilities = {
   programLifecycle: false,
   programCancel: false,
   programReopen: false,
+  programClose: false,
 };

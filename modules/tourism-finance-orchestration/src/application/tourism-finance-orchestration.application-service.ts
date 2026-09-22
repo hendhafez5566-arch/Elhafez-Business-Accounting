@@ -126,11 +126,16 @@ export class TourismFinanceOrchestrationApplicationService {
   }
   async closeProgram(input: { companyId: CompanyId; branchId?: string; commandKey: string; program: SourceReference; operationalEvidence: string }) { const workflow = await this.workflow('PROGRAM_CLOSE', input, input.program, input); if (workflow.status === 'COMPLETED') return workflow.result; await this.repo.saveProgramHistory({ id: hash([workflow.id, 'CLOSED']).slice(0, 32), companyId: input.companyId, program: input.program, kind: 'CLOSED', workflowId: workflow.id, evidence: { operationalEvidence: input.operationalEvidence }, createdAt: new Date().toISOString() }); return (await this.complete(workflow, { workflowId: workflow.id, closed: true })).result; }
   async getProgramDeletionEligibility(companyId: CompanyId, program: SourceReference) { const history = await this.repo.programHistory(companyId, program); const bookings = await this.repo.bookingsForProgram(companyId, program); const cancelled = history.some((item) => item.kind === 'CANCELLED'); const active = bookings.filter((item) => item.status !== 'CANCELLED'); return { deletable: cancelled && active.length === 0, retainedEvidenceReferences: [...history.map((item) => item.id), ...bookings.flatMap((item) => [item.invoiceId, item.commissionClaimId, ...item.allocations.map((allocation) => allocation.id), ...bookingProcurementReferences(item).map((reference) => procurementKey(reference))].filter((value): value is string => Boolean(value)))], ...(cancelled && active.length === 0 ? {} : { reason: cancelled ? 'ACTIVE_BOOKING_FINANCIAL_STATE' : 'PROGRAM_CANCELLATION_NOT_COMPLETED' }) }; }
-  async evaluateFinancialReadiness(input: { companyId: CompanyId; program: SourceReference; requiredCategories: readonly ServiceCategory[]; approvalRequestIds?: readonly string[]; allocationIds?: readonly string[]; procurementReferences?: readonly ProcurementReference[] }) {
+  async evaluateFinancialReadiness(input: { companyId: CompanyId; branchId?: string; program: SourceReference; requiredCategories: readonly ServiceCategory[]; approvalRequestIds?: readonly string[]; allocationIds?: readonly string[]; procurementReferences?: readonly ProcurementReference[] }) {
     const blockers: string[] = []; const evidenceReferences: string[] = [refKey(input.program)];
     // BR-053: Derive authoritative financial scope from persisted program/booking/workflow state
-    const bookings = await this.repo.bookingsForProgram(input.companyId, input.program);
-    const programWorkflows = await this.repo.workflowsForProgram(input.companyId, input.program);
+    const allBookings = await this.repo.bookingsForProgram(input.companyId, input.program);
+    const allProgramWorkflows = await this.repo.workflowsForProgram(input.companyId, input.program);
+    if (input.branchId && (allBookings.some((item) => item.branchId !== input.branchId) || allProgramWorkflows.some((item) => item.branchId && item.branchId !== input.branchId))) {
+      blockers.push('BRANCH_SCOPE_MISMATCH');
+    }
+    const bookings = input.branchId ? allBookings.filter((item) => item.branchId === input.branchId) : allBookings;
+    const programWorkflows = input.branchId ? allProgramWorkflows.filter((item) => !item.branchId || item.branchId === input.branchId) : allProgramWorkflows;
     const bookingWorkflows = (await Promise.all(bookings.map((booking) => this.repo.workflowsForBooking(input.companyId, booking.booking)))).flat();
     const workflows = [...new Map([...programWorkflows, ...bookingWorkflows].map((item) => [item.id, item])).values()];
     
@@ -186,15 +191,22 @@ export class TourismFinanceOrchestrationApplicationService {
       evidenceReferences.push(workflow.id);
     }
     
-    // 7. Check booking financial/cancellation state (from bookings owned state)
+    // 7. A cancelled booking is financially settled only when its own cancellation workflow completed.
+    // Program cancellation history is not required for an individually cancelled booking.
     for (const booking of bookings) {
-      if (booking.status === 'CANCELLED') {
-        const history = await this.repo.programHistory(input.companyId, input.program);
-        if (history.some((h) => h.kind === 'CANCELLED')) continue;
-        // Booking cancelled but program not yet cancelled - this indicates partial state
-        blockers.push(`BOOKING_CANCELLATION_INCOMPLETE:${booking.id}`);
-        evidenceReferences.push(booking.id);
+      if (booking.status !== 'CANCELLED') continue;
+      const cancellationWorkflows = await this.repo.workflowsForBooking(input.companyId, booking.booking);
+      const completedCancellation = cancellationWorkflows.find((workflow) =>
+        workflow.kind === 'BOOKING_CANCELLATION' &&
+        workflow.status === 'COMPLETED' &&
+        Boolean((workflow.result as { cancelled?: boolean } | undefined)?.cancelled),
+      );
+      if (completedCancellation) {
+        evidenceReferences.push(booking.id, completedCancellation.id);
+        continue;
       }
+      blockers.push(`BOOKING_CANCELLATION_INCOMPLETE:${booking.id}`);
+      evidenceReferences.push(booking.id);
     }
     
     // 8. Check approval requestId from booking confirmation evidence (from Controls owned data)
@@ -207,6 +219,66 @@ export class TourismFinanceOrchestrationApplicationService {
     }
     
     return { ready: blockers.length === 0, blockers, warnings: [], evidenceReferences };
+  }
+
+  async evaluateBookingFinancialReadiness(input: { companyId: CompanyId; branchId?: string; booking: SourceReference; program: SourceReference; requiredCategories: readonly ServiceCategory[] }) {
+    const blockers: string[] = [];
+    const evidenceReferences: string[] = [refKey(input.program), refKey(input.booking)];
+    const booking = await this.repo.booking(input.companyId, input.booking);
+    if (!booking) return { ready: false, blockers: [`MISSING_BOOKING_FINANCIAL_REFERENCE:${input.booking.sourceId}`], warnings: [], evidenceReferences };
+    if (refKey(booking.program) !== refKey(input.program)) {
+      return { ready: false, blockers: [`BOOKING_PROGRAM_MISMATCH:${input.booking.sourceId}`], warnings: [], evidenceReferences };
+    }
+    if (input.branchId && booking.branchId !== input.branchId) {
+      return { ready: false, blockers: ['BRANCH_SCOPE_MISMATCH'], warnings: [], evidenceReferences };
+    }
+    evidenceReferences.push(booking.id, booking.workflowId);
+    if (booking.status !== 'ACTIVE') blockers.push(`BOOKING_FINANCIAL_STATE:${booking.status}`);
+
+    for (const category of input.requiredCategories) {
+      const setup = await this.repo.setup(input.companyId, category);
+      if (!setup?.active) blockers.push(`MISSING_SETUP:${category}`);
+      else evidenceReferences.push(setup.id);
+    }
+
+    try {
+      const center = await this.cost.resolveProgram(input.companyId, input.program);
+      evidenceReferences.push(center.costCenterId);
+    } catch {
+      blockers.push('MISSING_PROGRAM_COST_CENTER');
+    }
+
+    for (const allocation of booking.allocations) {
+      const ownerBlockers = await this.inventory.blockers(input.companyId, allocation.id);
+      blockers.push(...ownerBlockers.map((item) => `INVENTORY:${allocation.id}:${item.type}`));
+      evidenceReferences.push(allocation.id);
+    }
+
+    if (booking.commissionClaimId) {
+      const commissionEvidence = await this.commission.evidence(input.companyId, booking.commissionClaimId);
+      if (commissionEvidence.hasPostedPaymentHistory) blockers.push(`PAID_COMMISSION:${booking.commissionClaimId}`);
+      evidenceReferences.push(booking.commissionClaimId);
+    }
+
+    for (const reference of bookingProcurementReferences(booking)) {
+      const ownerBlockers = await this.procurement.blockers(input.companyId, reference);
+      blockers.push(...ownerBlockers.map((item) => `PROCUREMENT:${item.type}:${item.purchaseOrderId}`));
+      const referenceId = reference.purchaseOrderId ?? reference.commitmentId;
+      if (referenceId) evidenceReferences.push(referenceId);
+    }
+
+    const workflows = await this.repo.workflowsForBooking(input.companyId, input.booking);
+    for (const workflow of workflows.filter((item) => item.status === 'RUNNING' || item.status === 'BLOCKED' || item.status === 'SETTLEMENT_REQUIRED')) {
+      blockers.push(`UNRESOLVED_WORKFLOW:${workflow.kind}:${workflow.id}`);
+      evidenceReferences.push(workflow.id);
+    }
+
+    if (booking.approvalRequestId) {
+      if (!(await this.controls.approvalResolved(input.companyId, booking.approvalRequestId))) blockers.push(`APPROVAL_UNRESOLVED:${booking.approvalRequestId}`);
+      else evidenceReferences.push(booking.approvalRequestId);
+    }
+
+    return { ready: blockers.length === 0, blockers, warnings: [], evidenceReferences: [...new Set(evidenceReferences)] };
   }
 
   private snapshotCandidate(input: { id: string; companyId: CompanyId; service: SourceReference; category: ServiceCategory; currency: string; saleAmount: DecimalAmount; costAmount: DecimalAmount; evidence: unknown }, version: number, status: ServiceFinancialSnapshot['status'], supersedesId?: string): ServiceFinancialSnapshot { const normalized = { ...input, saleAmount: nonNegative(input.saleAmount, 'saleAmount'), costAmount: nonNegative(input.costAmount, 'costAmount') }; return { ...normalized, version, status, ...(supersedesId ? { supersedesId } : {}), requestHash: hash({ service: input.service, version, category: normalized.category, currency: normalized.currency, saleAmount: normalized.saleAmount, costAmount: normalized.costAmount, evidence: normalized.evidence, supersedesId: supersedesId ?? null }), createdAt: new Date().toISOString() }; }

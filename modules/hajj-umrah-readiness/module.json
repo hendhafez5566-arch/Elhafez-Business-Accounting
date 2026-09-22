@@ -1,0 +1,11 @@
+{
+  "name":"hajj-umrah-readiness",
+  "publicApi":["src/public/index.ts","src/public/nest.ts"],
+  "ownedTables":["hure_closure_evidence"],
+  "allowedDependencies":[
+    "@elhafez/contracts","@elhafez/platform-core","@elhafez/hajj-umrah-programs","@elhafez/hajj-umrah-bookings",
+    "@elhafez/traveler-management","@elhafez/hajj-umrah-rooming","@elhafez/hajj-umrah-visa-operations",
+    "@elhafez/hajj-umrah-ticketing","@elhafez/hajj-umrah-transport-operations","@elhafez/hajj-umrah-trip-operations",
+    "@elhafez/tourism-contract-inventory","@elhafez/tourism-finance-orchestration","@elhafez/financial-reporting"
+  ]
+}

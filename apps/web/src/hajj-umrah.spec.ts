@@ -74,6 +74,7 @@ const fullCapabilities: HajjUmrahCapabilities = {
   programLifecycle: true,
   programCancel: true,
   programReopen: true,
+  programClose: true,
 };
 
 class FakeApi implements HajjUmrahApi {

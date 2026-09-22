@@ -48,6 +48,7 @@
     "@elhafez/hajj-umrah-visa-operations": "workspace:*",
     "@elhafez/hajj-umrah-ticketing": "workspace:*",
     "@elhafez/hajj-umrah-transport-operations": "workspace:*",
-    "@elhafez/hajj-umrah-trip-operations": "workspace:*"
+    "@elhafez/hajj-umrah-trip-operations": "workspace:*",
+    "@elhafez/hajj-umrah-readiness": "workspace:*"
   }
 }

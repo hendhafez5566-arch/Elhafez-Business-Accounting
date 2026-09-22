@@ -33,6 +33,22 @@ test('GS-024 uses setup accounts, due-date confirmation, and deposit replay', as
 test('GS-025 paid cancellation settles through owner then resumes with retained history', async () => { const f = fixture(); await f.setup(); await f.confirm(); await f.service.recordBookingDeposit({ companyId: company, branchId: 'branch-1', commandKey: 'deposit', booking, treasuryId: 'cash', number: 'R', postingDate: '2026-09-19', amount: decimalAmount('25') }); const cancellation = { companyId: company, branchId: 'branch-1', commandKey: 'cancel', booking, travelStarted: false, travelEvidence: 'not-started', postingDate: '2026-09-20' }; const blocked = await f.service.cancelBooking(cancellation) as { blockers: { type: string }[] }; assert.equal(blocked.blockers[0]?.type, 'CUSTOMER_SETTLEMENT_REQUIRED'); await f.service.settleBookingCancellation({ companyId: company, branchId: 'branch-1', commandKey: 'settle', booking, postingDate: '2026-09-20', number: 'REF' }); const done = await f.service.cancelBooking(cancellation) as { cancelled: boolean }; assert.equal(done.cancelled, true); assert.equal(f.isHistorical(), true); assert.equal(f.calls.cancelInvoice, 1); });
 test('branch and company isolation protect deposit and cancellation', async () => { const f = fixture(); await f.setup(); await f.confirm(); await assert.rejects(() => f.service.recordBookingDeposit({ companyId: company, branchId: 'branch-2', commandKey: 'x', booking, treasuryId: 'cash', number: 'R', postingDate: '2026-09-19', amount: decimalAmount('1') }), /different branch/); await assert.rejects(() => f.service.cancelBooking({ companyId: company, branchId: 'branch-2', commandKey: 'y', booking, travelStarted: false, travelEvidence: 'none', postingDate: '2026-09-19' }), /different branch/); await assert.rejects(() => f.service.cancelBooking({ companyId: other, branchId: 'branch-1', commandKey: 'z', booking, travelStarted: false, travelEvidence: 'none', postingDate: '2026-09-19' }), /not found/); });
 test('GS-026 clean cancellation releases persisted full quantity exactly once', async () => { const f = fixture(); await f.setup(); await f.confirm(); const input = { companyId: company, branchId: 'branch-1', commandKey: 'cancel', booking, travelStarted: false, travelEvidence: 'none', postingDate: '2026-09-19' }; await f.service.cancelBooking(input); await f.service.cancelBooking(input); assert.equal(f.calls.release, 1); });
+test('HU-03 PROGRAM_CLOSE is one idempotent financial closure for one logical command key', async () => {
+  const f = fixture();
+  const input = { companyId: company, branchId: 'branch-1', commandKey: 'hu03-close-program-1', program, operationalEvidence: 'HU03_CLOSURE_EVIDENCE:e1' };
+  const [left, right] = await Promise.all([f.service.closeProgram(input), f.service.closeProgram(input)]);
+  assert.deepEqual(left, right);
+  const workflows = (await f.repo.workflowsForProgram(company, program)).filter((item) => item.kind === 'PROGRAM_CLOSE');
+  const history = (await f.repo.programHistory(company, program)).filter((item) => item.kind === 'CLOSED');
+  assert.equal(workflows.length, 1);
+  assert.equal(workflows[0]?.status, 'COMPLETED');
+  assert.equal(history.length, 1);
+  const replay = await f.service.closeProgram(input);
+  assert.deepEqual(replay, left);
+  assert.equal((await f.repo.workflowsForProgram(company, program)).filter((item) => item.kind === 'PROGRAM_CLOSE').length, 1);
+  assert.equal((await f.repo.programHistory(company, program)).filter((item) => item.kind === 'CLOSED').length, 1);
+});
+
 test('GS-028 program cancellation cleans Procurement, rechecks, cancels bookings, and enables deletion with history', async () => { const f = fixture(); await f.setup(); await f.confirm(); const input = { companyId: company, branchId: 'branch-1', commandKey: 'program-cancel', program, bookings: [{ booking, travelStarted: false, travelEvidence: 'none', procurement: { purchaseOrderId: 'po-1' } }], postingDate: '2026-09-19' }; await f.service.cancelProgram(input); assert.equal(f.calls.cleanup, 1); const eligible = await f.service.getProgramDeletionEligibility(company, program); assert.equal(eligible.deletable, true); assert.ok(eligible.retainedEvidenceReferences.length > 0); });
 test('GS-027 program cancellation recheck catches supplier execution race before compensation', async () => { const f = fixture(); await f.setup(); await f.confirm(); f.setProcurementSequence('NONE', 'SUPPLIER_EXECUTION'); const result = await f.service.cancelProgram({ companyId: company, branchId: 'branch-1', commandKey: 'program-race', program, bookings: [{ booking, travelStarted: false, travelEvidence: 'none', procurement: { purchaseOrderId: 'po-1' } }], postingDate: '2026-09-19' }) as { blockers: { type: string }[] }; assert.ok(result.blockers.some((item) => item.type === 'SUPPLIER_EXECUTION')); assert.equal(f.calls.cancelInvoice, 0); });
 test('blocked program is not deletion eligible and retained references remain', async () => { const f = fixture(); await f.setup(); await f.confirm({ commission: { agentPartyId: 'agent', amount: decimalAmount('5') } }); f.setCommissionPaid(true); await f.service.cancelProgram({ companyId: company, branchId: 'branch-1', commandKey: 'blocked-program', program, bookings: [{ booking, travelStarted: false, travelEvidence: 'none' }], postingDate: '2026-09-19' }); const result = await f.service.getProgramDeletionEligibility(company, program); assert.equal(result.deletable, false); assert.ok(result.retainedEvidenceReferences.length > 0); });
@@ -133,6 +149,72 @@ test('readiness discovers unresolved BOOKING_DEPOSIT and BOOKING_SETTLEMENT work
     assert.equal(readiness.ready, false, `${kind} must block readiness`);
     assert.ok(readiness.blockers.includes(`UNRESOLVED_WORKFLOW:${kind}:${workflow.id}`));
   }
+});
+
+test('completed individual booking cancellation does not falsely block program readiness', async () => {
+  const f = fixture(); await f.setup(); await f.confirm();
+  const result = await f.service.cancelBooking({
+    companyId: company,
+    branchId: 'branch-1',
+    commandKey: 'hu03-clean-cancel',
+    booking,
+    travelStarted: false,
+    travelEvidence: 'not-started',
+    postingDate: '2026-09-22',
+  }) as { cancelled?: boolean };
+  assert.equal(result.cancelled, true);
+  const readiness = await f.service.evaluateFinancialReadiness({
+    companyId: company,
+    branchId: 'branch-1',
+    program,
+    requiredCategories: ['HOTEL'],
+  });
+  assert.equal(readiness.ready, true);
+  assert.equal(readiness.blockers.some((item) => item.startsWith('BOOKING_CANCELLATION_INCOMPLETE:')), false);
+});
+
+test('booking financial readiness scopes unresolved booking workflows and branch identity', async () => {
+  const f = fixture(); await f.setup(); await f.confirm();
+  const ready = await f.service.evaluateBookingFinancialReadiness({
+    companyId: company,
+    branchId: 'branch-1',
+    booking,
+    program,
+    requiredCategories: ['HOTEL'],
+  });
+  assert.equal(ready.ready, true);
+  const workflow = await f.repo.reserveWorkflow({
+    id: 'hu03-booking-deposit-running',
+    companyId: company,
+    branchId: 'branch-1',
+    kind: 'BOOKING_DEPOSIT',
+    commandKey: 'hu03-booking-deposit-running',
+    payloadHash: 'hu03-deposit-hash',
+    sourceType: booking.sourceType,
+    sourceId: booking.sourceId,
+    status: 'RUNNING',
+    payload: { booking },
+    createdAt: '2026-09-22T00:00:00.000Z',
+    updatedAt: '2026-09-22T00:00:00.000Z',
+  });
+  const blocked = await f.service.evaluateBookingFinancialReadiness({
+    companyId: company,
+    branchId: 'branch-1',
+    booking,
+    program,
+    requiredCategories: ['HOTEL'],
+  });
+  assert.equal(blocked.ready, false);
+  assert.ok(blocked.blockers.includes(`UNRESOLVED_WORKFLOW:BOOKING_DEPOSIT:${workflow.id}`));
+  const wrongBranch = await f.service.evaluateBookingFinancialReadiness({
+    companyId: company,
+    branchId: 'branch-2',
+    booking,
+    program,
+    requiredCategories: ['HOTEL'],
+  });
+  assert.equal(wrongBranch.ready, false);
+  assert.ok(wrongBranch.blockers.includes('BRANCH_SCOPE_MISMATCH'));
 });
 
 test('readiness becomes true after booking workflows complete and owner blockers are clear', async () => {
