@@ -512,8 +512,11 @@ export class HajjUmrahProgramsApplicationService {
 
   async recordReturn(context: ExecutionContext, id: string) {
     await this.permission(context, PROGRAM_PERMISSIONS.lifecycle);
-    const old = await this.required(context, id);
-    return this.closeAfterReadinessForIntegration(context, id, old.updatedAt);
+    await this.required(context, id);
+    throw new ContractValidationError(
+      'closure',
+      'final program closure requires HU-03 readiness orchestration',
+    );
   }
 
   async cancel(context: ExecutionContext, id: string, reason: string) {
