@@ -21,14 +21,14 @@
     "apps/api/src/hajj-umrah.controller.ts",
     "apps/web/src/hajj-umrah-readiness-client.ts",
     "apps/web/src/hajj-umrah-readiness-page.tsx",
-    "apps/web/src/hajj-umrah-readiness.spec.tsx",
     "apps/web/src/routes.tsx",
     "pnpm-lock.yaml",
     "prisma/schema.prisma",
     "prisma/migrations/20260922170000_hu03_hajj_umrah_readiness_closure/migration.sql",
     "apps/web/src/hajj-umrah-client.ts",
     "apps/web/src/hajj-umrah-pages.tsx",
-    "apps/web/src/hajj-umrah.spec.ts"
+    "apps/web/src/hajj-umrah.spec.ts",
+    "apps/web/src/hajj-umrah-readiness.spec.ts"
   ],
   "protectedPaths": [
     "apps/web/src/routes.tsx",
