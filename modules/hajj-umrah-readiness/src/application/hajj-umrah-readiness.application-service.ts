@@ -352,7 +352,7 @@ export class HajjUmrahReadinessApplicationService{
   const program=await this.sources.program(c,programId),loaded=await this.loaded(c,program.id),readiness=await this.programInternal(c,program,loaded),travelers=await this.travelerRows(c,program,loaded.bookings);
   let financial:unknown;try{financial=await this.sources.programAccounting({companyId:c.companyId,branchIds:[c.branchId]},program.id)}catch(error){financial={available:false,reason:messageOf(error)}}
   const bookingStatus=Object.fromEntries(['PRELIMINARY','CONFIRMED','READY','TRAVELING','COMPLETED','CANCELLED'].map(status=>[status,loaded.bookings.filter(value=>value.status===status).length]));
-  return{generatedAt:this.now().toISOString(),program:{id:program.id,code:program.code,arabicName:program.arabicName,status:program.status},bookingStatus,travelers,rooming:loaded.rooming,visas:loaded.visas,tickets:loaded.tickets,transport:loaded.transport,tasks:loaded.tasks,incidents:loaded.incidents,readiness:{status:readiness.status,blockers:readiness.blockers},financial};
+  return{generatedAt:this.now().toISOString(),program:{id:program.id,code:program.code,arabicName:program.arabicName,status:program.status},bookingStatus,bookings:loaded.bookings.map(value=>({id:value.id,code:value.code,status:value.status})),travelers,rooming:loaded.rooming,visas:loaded.visas,tickets:loaded.tickets,transport:loaded.transport,tasks:loaded.tasks,incidents:loaded.incidents,readiness:{status:readiness.status,blockers:readiness.blockers},financial};
  }
 
  private async closureInternal(c:ExecutionContext,program:Program,loaded?:LoadedEvidence):Promise<ClosureEvaluation>{
