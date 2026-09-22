@@ -217,12 +217,13 @@ test('amend persists validated season and full definition while old versions rem
 test('departure and return evidence drive lifecycle and cancellation stops after travel', async () => {
   const { service } = fixture();
   const program = await service.create(ctx, base);
-  await assert.rejects(() => service.recordReturn(ctx, program.id), /departure/);
+  await assert.rejects(() => service.recordReturn(ctx, program.id), /HU-03 readiness/);
   await service.openForBooking(ctx, program.id);
   const trip = await service.recordDeparture(ctx, program.id);
   assert.ok(trip.departureRecordedAt);
   await assert.rejects(() => service.cancel(ctx, program.id, 'late'), /after travel/);
-  const done = await service.recordReturn(ctx, program.id);
+  await assert.rejects(() => service.recordReturn(ctx, program.id), /HU-03 readiness/);
+  const done = await service.closeAfterReadinessForIntegration(ctx, program.id, trip.updatedAt);
   assert.equal(done.status, 'CLOSED');
   assert.ok(done.returnRecordedAt);
 });
@@ -252,9 +253,9 @@ test('historical closed accounting period blocks reopen even when current period
   );
   const program = await service.create(ctx, base);
   await service.openForBooking(ctx, program.id);
-  await service.recordDeparture(ctx, program.id);
+  const trip = await service.recordDeparture(ctx, program.id);
   now = new Date('2027-06-01T12:00:00Z');
-  const closed = await service.recordReturn(ctx, program.id);
+  const closed = await service.closeAfterReadinessForIntegration(ctx, program.id, trip.updatedAt);
   assert.equal(closed.returnRecordedAt, '2027-06-01T12:00:00.000Z');
   now = new Date('2027-09-21T12:00:00Z');
   await assert.rejects(
@@ -286,9 +287,9 @@ test('historical open period allows reopen and preserves reason permission audit
   );
   const program = await service.create(ctx, base);
   await service.openForBooking(ctx, program.id);
-  await service.recordDeparture(ctx, program.id);
+  const trip = await service.recordDeparture(ctx, program.id);
   now = new Date('2027-06-01T12:00:00Z');
-  await service.recordReturn(ctx, program.id);
+  await service.closeAfterReadinessForIntegration(ctx, program.id, trip.updatedAt);
   now = new Date('2027-09-21T12:00:00Z');
   await assert.rejects(() => service.reopen(ctx, program.id, ''), /reason/);
   await assert.rejects(
