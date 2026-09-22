@@ -416,7 +416,7 @@ export function ProgramWorkspaceView({
     {capabilities.programAvailability && program.status === 'BOOKABLE' && onAction && <Button type="button" onClick={() => onAction(program.bookingOpen ? 'booking-close' : 'booking-open')}>{program.bookingOpen ? 'إغلاق الحجز' : 'فتح الحجز'}</Button>}
     {capabilities.programLifecycle && program.status === 'PREPARING' && onAction && <Button type="button" onClick={() => onAction('open')}>اعتماد الجاهزية وإتاحة البرنامج</Button>}
     {capabilities.programLifecycle && program.status === 'BOOKABLE' && onAction && <Button type="button" onClick={() => onAction('departure')}>تسجيل المغادرة</Button>}
-    {capabilities.programLifecycle && program.status === 'IN_TRIP' && onAction && <Button type="button" onClick={() => onAction('return')}>تسجيل العودة وإنهاء البرنامج</Button>}
+    {capabilities.programClose && program.status === 'IN_TRIP' && onAction && <Button type="button" onClick={() => onAction('return')}>تسجيل العودة وإنهاء البرنامج</Button>}
     {capabilities.programCancel && (program.status === 'PREPARING' || program.status === 'BOOKABLE') && onCancel && <Button type="button" onClick={onCancel}>إلغاء البرنامج</Button>}
     {capabilities.programReopen && program.status === 'CLOSED' && onReopen && <Button type="button" onClick={onReopen}>إعادة فتح استثنائية</Button>}
   </Card>;
