@@ -1,0 +1,1 @@
+{"name":"hajj-umrah-transport-operations","publicApi":["src/public/index.ts","src/public/nest.ts"],"ownedTables":["hutr_runs","hutr_manifest_assignments","hutr_history"],"allowedDependencies":["@elhafez/contracts","@elhafez/platform-core","@elhafez/hajj-umrah-bookings","@elhafez/traveler-management","@elhafez/tourism-contract-inventory"]}
