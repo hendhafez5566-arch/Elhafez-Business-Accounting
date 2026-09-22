@@ -1,4 +1,4 @@
-import{Prisma,type PrismaClient}from'@prisma/client';
+import type{Prisma,PrismaClient}from'@prisma/client';
 import{companyId}from'@elhafez/contracts';
 import type{ClosureEvidenceAdvance,ReadinessRepository}from'../application/readiness.repository.js';
 import type{ClosureEvidenceRecord,ClosureEvidenceStatus}from'../domain/readiness.js';

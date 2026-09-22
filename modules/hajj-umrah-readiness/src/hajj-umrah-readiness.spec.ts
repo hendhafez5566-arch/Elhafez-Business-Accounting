@@ -37,7 +37,7 @@ class MemoryRepo implements ReadinessRepository{
 class Access implements ReadinessAccess{
  readonly audits:string[]=[];auditAttempts=0;failAuditAfterWriteOnce=false;
  async requireBranch(c:ExecutionContext){if(c.companyId!=='c1'||c.branchId!=='b1')throw new Error('branch denied')}
- async requirePermission(c:ExecutionContext,_permission:string){if(c.actorId==='denied')throw new Error('permission denied')}
+ async requirePermission(c:ExecutionContext){if(c.actorId==='denied')throw new Error('permission denied')}
  async auditOnce(_c:ExecutionContext,key:string){this.auditAttempts++;if(!this.audits.includes(key))this.audits.push(key);if(this.failAuditAfterWriteOnce){this.failAuditAfterWriteOnce=false;throw new Error('injected audit acknowledgement failure')}}
 }
 interface MutableState{

@@ -336,7 +336,7 @@ export class HajjUmrahReadinessApplicationService{
   const travelers=await this.travelerRows(c,program,[booking]);
   const transport=loaded.transport.filter(row=>row.manifest.some(item=>item.bookingId===booking.id&&item.status==='ASSIGNED'));
   let financial:FinancialReadinessEvidence|undefined;
-  try{financial=await this.sources.bookingFinancial({companyId:c.companyId,branchId:c.branchId,booking:this.bookingRef(booking.id),program:this.programRef(program.id),requiredCategories:this.financialCategories(program)})}catch{}
+  try{financial=await this.sources.bookingFinancial({companyId:c.companyId,branchId:c.branchId,booking:this.bookingRef(booking.id),program:this.programRef(program.id),requiredCategories:this.financialCategories(program)})}catch{financial=undefined}
   return{booking,program,travelers,rooming:loaded.rooming.filter(value=>value.bookingId===booking.id),visas:loaded.visas.filter(value=>value.bookingId===booking.id),tickets:loaded.tickets.filter(value=>value.bookingId===booking.id),transport,tasks:loaded.tasks.filter(value=>value.bookingId===booking.id),incidents:loaded.incidents.filter(value=>value.bookingId===booking.id),services:loaded.services.filter(value=>value.bookingId===booking.id),readiness,...(financial?{financialReadiness:financial}:{})};
  }
 
