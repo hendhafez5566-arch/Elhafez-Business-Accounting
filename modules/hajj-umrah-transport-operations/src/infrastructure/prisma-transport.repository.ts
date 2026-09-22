@@ -1,12 +1,12 @@
-import { Prisma, type PrismaClient } from '@prisma/client';
+import { Prisma, type HutrHistory, type HutrManifestAssignment, type HutrRun, type PrismaClient } from '@prisma/client';
 import { ContractValidationError } from '@elhafez/contracts';
 import type { ManifestAssignment, TransportHistory, TransportRun } from '../domain/transport.js';
 import type { TransportRepository } from '../application/transport.repository.js';
 
 const json=(value:unknown)=>value as Prisma.InputJsonValue;
-const runMap=(row:any):TransportRun=>({id:row.id,companyId:row.companyId,branchId:row.branchId,programId:row.programId,allocationId:row.allocationId,code:row.code,route:row.route,startsAt:row.startsAt.toISOString(),endsAt:row.endsAt.toISOString(),...(row.vehicleReference?{vehicleReference:row.vehicleReference}:{}),...(row.driverReference?{driverReference:row.driverReference}:{}),status:row.status,createdAt:row.createdAt.toISOString(),updatedAt:row.updatedAt.toISOString()});
-const assignmentMap=(row:any):ManifestAssignment=>({id:row.id,companyId:row.companyId,branchId:row.branchId,runId:row.runId,bookingId:row.bookingId,travelerId:row.travelerId,status:row.status,createdAt:row.createdAt.toISOString(),updatedAt:row.updatedAt.toISOString()});
-const historyMap=(row:any):TransportHistory=>({id:row.id,companyId:row.companyId,branchId:row.branchId,aggregateType:row.aggregateType,aggregateId:row.aggregateId,action:row.action,...(row.evidence!==null?{evidence:row.evidence}:{}),actorId:row.actorId,occurredAt:row.occurredAt.toISOString()});
+const runMap=(row:HutrRun):TransportRun=>({id:row.id,companyId:row.companyId,branchId:row.branchId,programId:row.programId,allocationId:row.allocationId,code:row.code,route:row.route,startsAt:row.startsAt.toISOString(),endsAt:row.endsAt.toISOString(),...(row.vehicleReference?{vehicleReference:row.vehicleReference}:{}),...(row.driverReference?{driverReference:row.driverReference}:{}),status:row.status as TransportRun['status'],createdAt:row.createdAt.toISOString(),updatedAt:row.updatedAt.toISOString()});
+const assignmentMap=(row:HutrManifestAssignment):ManifestAssignment=>({id:row.id,companyId:row.companyId,branchId:row.branchId,runId:row.runId,bookingId:row.bookingId,travelerId:row.travelerId,status:row.status as ManifestAssignment['status'],createdAt:row.createdAt.toISOString(),updatedAt:row.updatedAt.toISOString()});
+const historyMap=(row:HutrHistory):TransportHistory=>({id:row.id,companyId:row.companyId,branchId:row.branchId,aggregateType:row.aggregateType as TransportHistory['aggregateType'],aggregateId:row.aggregateId,action:row.action,...(row.evidence!==null?{evidence:row.evidence}:{}),actorId:row.actorId,occurredAt:row.occurredAt.toISOString()});
 
 export class PrismaTransportRepository implements TransportRepository{
   constructor(private readonly db:PrismaClient){}
