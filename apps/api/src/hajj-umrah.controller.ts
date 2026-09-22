@@ -67,6 +67,7 @@ export class HajjUmrahController {
       programCancel: PROGRAM_PERMISSIONS.cancel,
       programReopen: PROGRAM_PERMISSIONS.reopen,
       programClose: READINESS_PERMISSIONS.close,
+      programClose: READINESS_PERMISSIONS.close,
     };
     return Object.fromEntries(
       await Promise.all(
