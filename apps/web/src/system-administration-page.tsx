@@ -35,8 +35,8 @@ export function SystemAdministrationPage({client=new HttpAdministrationClient(),
  const field=(name:string)=>form[name]??'';
  const setField=(name:string,value:string)=>setForm(current=>({...current,[name]:value}));
 
- async function load(path=selected){
-  setSelected(path);if(!ctx.token)return;setLoading(true);setMessage('');setSuccess('');
+ async function load(path=selected,clearFeedback=true){
+  if(!ctx.token)return;setLoading(true);if(clearFeedback){setMessage('');setSuccess('');}
   try{
    setRows(await client.list(path,ctx));
    if(path==='imports')setDatasets((await client.list('data-exchange/datasets',ctx)).filter(datasetOption));
@@ -44,19 +44,21 @@ export function SystemAdministrationPage({client=new HttpAdministrationClient(),
   finally{setLoading(false);}
  }
 
+ async function selectArea(path:string){setSelected(path);await load(path);}
+
  async function run(label:string,operation:()=>Promise<unknown>,refresh=true){
   setLoading(true);setMessage('');setSuccess('');
-  try{await operation();setSuccess(label);if(refresh)await load(selected);}
+  try{await operation();if(refresh)await load(selected,false);setSuccess(label);}
   catch(error){setMessage(error instanceof Error?error.message:'تعذر تنفيذ العملية');}
   finally{setLoading(false);}
  }
 
- async function importFile(file:File|undefined){if(!file)return;setField('importFileName',file.name);setField('format',file.name.toLowerCase().endsWith('.xlsx')?'XLSX':'CSV');setField('importContentBase64',await fileAsBase64(file));}
+ async function importFile(file:File|undefined){if(!file)return;setField('importFileName',file.name);setField('format',file.name.toLowerCase().endsWith('.xlsx')?'XLSX':'CSV');setField('importContentBase64',await fileAsBase64(file));setField('importIdempotencyKey',crypto.randomUUID());}
  async function attachmentFile(file:File|undefined){if(!file)return;setField('fileContentType',file.type||'application/octet-stream');setField('fileContentBase64',await fileAsBase64(file));}
  async function downloadExport(){const payload=await client.read(`exports/${field('exportJobId')}/download`,ctx);if(!downloadPayload(payload))throw new Error('ملف التصدير غير متاح');triggerDownload(payload);}
  async function downloadFile(){const payload=await client.read(`files/${field('fileId')}`,ctx);if(!filePayload(payload))throw new Error('الملف غير متاح');triggerDownload({fileName:`file-${payload.metadata.id}`,contentType:payload.metadata.contentType,contentBase64:payload.contentBase64});}
 
- useEffect(()=>{if(ctx.token)void load('users');},[ctx.token,ctx.companyId,ctx.branchId]);
+ useEffect(()=>{if(ctx.token){setSelected('users');void load('users');}},[ctx.token,ctx.companyId,ctx.branchId]);
  const records=rows.filter(objectRecord);
  const selectedDataset=datasets.find(value=>value.id===field('dataset'));
 
@@ -66,7 +68,7 @@ export function SystemAdministrationPage({client=new HttpAdministrationClient(),
  function actions(){
   if(selected==='users')return <div className="admin-actions">{input('userEmail','البريد','email')}{input('userName','الاسم')}{input('userPassword','كلمة مرور أولية','password')}{input('userRoleId','معرّف الدور (اختياري)')}{button('إنشاء مستخدم',()=>void run('تم إنشاء المستخدم.',()=>client.action('users',ctx,{email:field('userEmail'),displayName:field('userName'),password:field('userPassword'),roleId:field('userRoleId')||undefined})))}{input('userId','معرّف المستخدم')}{button('تعطيل المستخدم',()=>void run('تم تحديث المستخدم.',()=>client.patch(`users/${field('userId')}`,ctx,{active:false})))}{button('إعادة تفعيل المستخدم',()=>void run('تم تحديث المستخدم.',()=>client.patch(`users/${field('userId')}`,ctx,{active:true})))}</div>;
   if(selected==='roles')return <div className="admin-actions">{input('roleName','اسم الدور')}{button('إنشاء دور',()=>void run('تم إنشاء الدور.',()=>client.action('roles',ctx,{name:field('roleName')})))}{input('roleId','معرّف الدور')}{input('permissionId','معرّف الصلاحية')}{button('منح الصلاحية',()=>void run('تم منح الصلاحية.',()=>client.action(`roles/${field('roleId')}/permissions/${field('permissionId')}`,ctx)))}{button('سحب الصلاحية',()=>void run('تم سحب الصلاحية.',()=>client.remove(`roles/${field('roleId')}/permissions/${field('permissionId')}`,ctx)))}</div>;
-  if(selected==='companies')return <div className="admin-actions">{input('companyName','اسم الشركة')}{button('إنشاء شركة',()=>void run('تم إنشاء الشركة.',()=>client.action('companies',ctx,{name:field('companyName')})))}{button('تعطيل الشركة الحالية',()=>void run('تم تعطيل الشركة.',()=>client.patch(`companies/${ctx.companyId}`,ctx,{active:false})))}</div>;
+  if(selected==='companies')return <div className="admin-actions">{input('companyName','اسم الشركة')}{button('إنشاء شركة',()=>void run('تم إنشاء الشركة.',()=>client.action('companies',ctx,{name:field('companyName')})))}{button('تعطيل الشركة الحالية',()=>void run('تم تعطيل الشركة.',()=>client.patch(`companies/${ctx.companyId}`,ctx,{active:false}),false))}</div>;
   if(selected==='branches')return <div className="admin-actions">{input('branchName','اسم الفرع')}{button('إنشاء فرع',()=>void run('تم إنشاء الفرع.',()=>client.action('branches',ctx,{name:field('branchName')})))}{input('branchId','معرّف الفرع')}{input('accessUserId','معرّف المستخدم')}{button('منح وصول للفرع',()=>void run('تم منح الوصول.',()=>client.action(`branches/${field('branchId')}/access/${field('accessUserId')}`,ctx)))}{button('سحب وصول الفرع',()=>void run('تم سحب الوصول.',()=>client.remove(`branches/${field('branchId')}/access/${field('accessUserId')}`,ctx)))}{button('تعطيل الفرع',()=>void run('تم تحديث الفرع.',()=>client.patch(`branches/${field('branchId')}`,ctx,{active:false})))}</div>;
   if(selected==='sessions')return <div className="admin-actions">{input('sessionId','معرّف الجلسة')}{button('إنهاء الجلسة',()=>void run('تم إنهاء الجلسة.',()=>client.action(`sessions/${field('sessionId')}/revoke`,ctx)))}{input('sessionUserId','معرّف المستخدم')}{button('عرض جلسات المستخدم',()=>void load(`sessions/${field('sessionUserId')}`))}{button('إنهاء كل جلسات المستخدم',()=>void run('تم إنهاء جلسات المستخدم.',()=>client.action(`users/${field('sessionUserId')}/sessions/revoke`,ctx),false))}</div>;
   if(selected==='notifications')return <div className="admin-actions">{input('notificationId','معرّف الإشعار')}{button('تحديد كمقروء',()=>void run('تم تحديث الإشعار.',()=>client.action(`notifications/${field('notificationId')}/read`,ctx)))}</div>;
@@ -77,7 +79,7 @@ export function SystemAdministrationPage({client=new HttpAdministrationClient(),
    <p>الحقول المطلوبة: {selectedDataset?.requiredFields.join('، ')||'—'}</p>
    <label>ملف CSV أو XLSX<input type="file" accept=".csv,.xlsx" onChange={event=>void importFile(event.target.files?.[0])}/></label>
    <label>خريطة الأعمدة<textarea value={field('mapping')} onChange={event=>setField('mapping',event.target.value)} placeholder='{"اسم العميل":"displayName","النوع":"kind"}'/></label>
-   {button('رفع ملف الاستيراد',()=>void run('تم رفع ملف الاستيراد.',async()=>{const result=await client.action('imports',ctx,{dataset:field('dataset'),fileName:field('importFileName'),format:field('format'),contentBase64:field('importContentBase64'),mapping:mappingValue(field('mapping')),idempotencyKey:`import-${Date.now()}`});if(objectRecord(result)&&typeof result.id==='string')setField('importJobId',result.id);return result;}))}
+   {button('رفع ملف الاستيراد',()=>void run('تم رفع ملف الاستيراد.',async()=>{const result=await client.action('imports',ctx,{dataset:field('dataset'),fileName:field('importFileName'),format:field('format'),contentBase64:field('importContentBase64'),mapping:mappingValue(field('mapping')),idempotencyKey:field('importIdempotencyKey')||crypto.randomUUID()});if(objectRecord(result)&&typeof result.id==='string')setField('importJobId',result.id);return result;}))}
    {input('importJobId','معرّف مهمة الاستيراد')}{button('معاينة والتحقق',()=>void run('تم التحقق من الملف.',()=>client.action(`imports/${field('importJobId')}/preview`,ctx)))}{button('تنفيذ الاستيراد',()=>void run('تم تنفيذ الاستيراد.',()=>client.action(`imports/${field('importJobId')}/execute`,ctx)))}
    <hr/>{input('exportFileName','اسم ملف التصدير')}{button('إنشاء تصدير CSV',()=>void run('تم إنشاء ملف التصدير.',async()=>{const result=await client.action('exports',ctx,{dataset:field('dataset'),fileName:field('exportFileName')||'export.csv',format:'CSV',idempotencyKey:`export-${Date.now()}`});if(objectRecord(result)&&typeof result.id==='string')setField('exportJobId',result.id);return result;},false))}{button('إنشاء تصدير XLSX',()=>void run('تم إنشاء ملف التصدير.',async()=>{const result=await client.action('exports',ctx,{dataset:field('dataset'),fileName:field('exportFileName')||'export.xlsx',format:'XLSX',idempotencyKey:`export-${Date.now()}`});if(objectRecord(result)&&typeof result.id==='string')setField('exportJobId',result.id);return result;},false))}{input('exportJobId','معرّف مهمة التصدير')}{button('تنزيل التصدير',()=>void run('تم تجهيز ملف التصدير.',downloadExport,false))}
   </div>;
@@ -88,7 +90,7 @@ export function SystemAdministrationPage({client=new HttpAdministrationClient(),
  return <main dir="rtl" aria-labelledby="admin-title">
   <header><p>إدارة المنصة</p><h1 id="admin-title">إدارة النظام والعمليات</h1><p>لوحة عربية موحدة وآمنة لإدارة الوصول والبيانات واستمرارية التشغيل.</p></header>
   <nav aria-label="مجالات إدارة النظام" style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:'.5rem'}}>
-   {areas.map(([title,path])=><button key={path} type="button" aria-pressed={selected===path} disabled={!ctx.token} onClick={()=>void load(path)}>{title}</button>)}
+   {areas.map(([title,path])=><button key={path} type="button" aria-pressed={selected===path} disabled={!ctx.token} onClick={()=>void selectArea(path)}>{title}</button>)}
   </nav>
   <section aria-live="polite" style={{marginTop:'1rem'}}>
    {!ctx.token?<p>اختر الشركة والفرع وسجّل الدخول لعرض أدوات الإدارة.</p>:<>

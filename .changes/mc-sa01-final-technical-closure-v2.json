@@ -34,7 +34,8 @@
     "modules/platform-core/src/infrastructure/local-file.storage.ts",
     "modules/platform-core/src/platform-core.module.ts",
     "prisma/schema.prisma",
-    "prisma/migrations/20260923070000_mc_sa01_data_exchange_dataset/migration.sql"
+    "prisma/migrations/20260923070000_mc_sa01_data_exchange_dataset/migration.sql",
+    "apps/api/src/system-administration.controller.spec.ts"
   ],
   "protectedPaths": [
     "apps/api/src/app.module.ts",
