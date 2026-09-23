@@ -1,13 +1,103 @@
 import {useEffect,useState} from 'react';
 import {HttpAdministrationClient,type AdministrationClient,type AdministrationContext} from './system-administration-client.js';
-const areas=[['المستخدمون','users'],['الأدوار والصلاحيات','roles'],['الشركات','companies'],['الفروع والوصول','branches'],['الجلسات والأجهزة','sessions'],['سجل النشاط','audit'],['الملفات والمرفقات','files'],['الإشعارات','notifications'],['إعدادات الشركة','configuration/locale'],['استيراد وتصدير البيانات','imports'],['النسخ الاحتياطي والاستعادة','operations/backups'],['صحة النظام والتشخيص','operations/diagnostics']] as const;
-const labels:Record<string,string>={id:'المعرّف',name:'الاسم',displayName:'الاسم',email:'البريد',status:'الحالة',active:'نشط',type:'النوع',fileName:'الملف',format:'الصيغة',createdAt:'تاريخ الإنشاء',readAt:'تاريخ القراءة',action:'العملية',resource:'المورد',backupProvider:'موفر النسخ',database:'قاعدة البيانات',schemaCompatibility:'توافق المخطط',runtimeVersion:'إصدار التشغيل',value:'القيمة'};
-function valueOf(value:unknown){if(value===null||value===undefined)return'—';if(typeof value==='boolean')return value?'نعم':'لا';if(typeof value==='object')return 'بيانات محفوظة';return String(value)}
+
+const areas=[
+ ['المستخدمون','users'],['الأدوار والصلاحيات','roles'],['الشركات','companies'],['الفروع والوصول','branches'],
+ ['الجلسات والأجهزة','sessions'],['سجل النشاط','audit'],['الملفات والمرفقات','files'],['الإشعارات','notifications'],
+ ['إعدادات الشركة','configuration/locale'],['استيراد وتصدير البيانات','imports'],['النسخ الاحتياطي والاستعادة','operations/backups'],
+ ['صحة النظام والتشخيص','operations/diagnostics']
+] as const;
+const labels:Record<string,string>={id:'المعرّف',name:'الاسم',displayName:'الاسم',email:'البريد',status:'الحالة',active:'نشط',type:'النوع',fileName:'الملف',format:'الصيغة',dataset:'مجموعة البيانات',createdAt:'تاريخ الإنشاء',readAt:'تاريخ القراءة',action:'العملية',resource:'المورد',backupProvider:'موفر النسخ',database:'قاعدة البيانات',schemaCompatibility:'توافق المخطط',runtimeVersion:'إصدار التشغيل',value:'القيمة',resultKey:'ملف التصدير'};
+type DatasetOption={id:string;label:string;requiredFields:readonly string[];targetFields:readonly string[]};
+type DownloadPayload={fileName:string;contentType:string;contentBase64:string};
+type FilePayload={metadata:{id:string;contentType:string};contentBase64:string};
+
+function valueOf(value:unknown){if(value===null||value===undefined)return'—';if(typeof value==='boolean')return value?'نعم':'لا';if(typeof value==='object')return'بيانات محفوظة';return String(value);}
+function objectRecord(value:unknown):value is Record<string,unknown>{return Boolean(value)&&typeof value==='object'&&!Array.isArray(value);}
+function datasetOption(value:unknown):value is DatasetOption{return objectRecord(value)&&typeof value.id==='string'&&typeof value.label==='string'&&Array.isArray(value.requiredFields)&&Array.isArray(value.targetFields);}
+function downloadPayload(value:unknown):value is DownloadPayload{return objectRecord(value)&&typeof value.fileName==='string'&&typeof value.contentType==='string'&&typeof value.contentBase64==='string';}
+function filePayload(value:unknown):value is FilePayload{return objectRecord(value)&&typeof value.contentBase64==='string'&&objectRecord(value.metadata)&&typeof value.metadata.id==='string'&&typeof value.metadata.contentType==='string';}
+function fileAsBase64(file:File):Promise<string>{return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onerror=()=>reject(new Error('تعذر قراءة الملف'));reader.onload=()=>{const result=String(reader.result??'');resolve(result.includes(',')?result.slice(result.indexOf(',')+1):result);};reader.readAsDataURL(file);});}
+function mappingValue(text:string):Record<string,string>{const value:unknown=JSON.parse(text||'{}');if(!objectRecord(value))throw new Error('خريطة الأعمدة يجب أن تكون كائن JSON');const pairs=Object.entries(value);if(pairs.some(([,target])=>typeof target!=='string'))throw new Error('خريطة الأعمدة غير صحيحة');return Object.fromEntries(pairs) as Record<string,string>;}
+function configValue(text:string):unknown{try{return JSON.parse(text);}catch{return text;}}
+function triggerDownload(payload:DownloadPayload){const binary=atob(payload.contentBase64);const bytes=new Uint8Array(binary.length);for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);const url=URL.createObjectURL(new Blob([bytes],{type:payload.contentType}));const anchor=document.createElement('a');anchor.href=url;anchor.download=payload.fileName;anchor.click();URL.revokeObjectURL(url);}
+
 export function SystemAdministrationPage({client=new HttpAdministrationClient(),context}:{client?:AdministrationClient;context?:AdministrationContext}={}){
- const [selected,setSelected]=useState('users'),[rows,setRows]=useState<readonly unknown[]>([]),[loading,setLoading]=useState(false),[message,setMessage]=useState(''),[success,setSuccess]=useState('');const ctx=context??{token:'',companyId:'',branchId:''};
- async function load(path=selected){setSelected(path);if(!ctx.token)return;setLoading(true);setMessage('');setSuccess('');try{setRows(await client.list(path,ctx))}catch(error){setMessage(error instanceof Error?error.message:'تعذر التحميل')}finally{setLoading(false)}}
- async function createBackup(){setLoading(true);setMessage('');try{await client.action('operations/backups',ctx,{});setSuccess('تم إرسال طلب النسخ الاحتياطي.');await load('operations/backups')}catch(error){setMessage(error instanceof Error?error.message:'تعذر تنفيذ العملية')}finally{setLoading(false)}}
- useEffect(()=>{if(ctx.token)void load('users')},[ctx.token,ctx.companyId,ctx.branchId]);
- const records=rows.filter((row):row is Record<string,unknown>=>Boolean(row)&&typeof row==='object'&&!Array.isArray(row));
- return <main dir="rtl" aria-labelledby="admin-title"><header><p>إدارة المنصة</p><h1 id="admin-title">إدارة النظام والعمليات</h1><p>لوحة عربية موحدة وآمنة لإدارة الوصول والبيانات واستمرارية التشغيل.</p></header><nav aria-label="مجالات إدارة النظام" style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:'.5rem'}}>{areas.map(([title,path])=><button key={path} type="button" aria-pressed={selected===path} disabled={!ctx.token} onClick={()=>void load(path)}>{title}</button>)}</nav><section aria-live="polite" style={{marginTop:'1rem'}}>{!ctx.token?<p>اختر الشركة والفرع وسجّل الدخول لعرض أدوات الإدارة.</p>:<><div style={{display:'flex',gap:'.5rem',flexWrap:'wrap'}}><button type="button" disabled={loading} onClick={()=>void load()}>تحديث البيانات</button>{selected==='operations/backups'?<button type="button" disabled={loading} onClick={()=>void createBackup()}>إنشاء نسخة احتياطية</button>:null}</div>{loading?<p>جارٍ التحميل…</p>:message?<p role="alert">{message}</p>:success?<p role="status">{success}</p>:records.length===0?<p>لا توجد بيانات متاحة.</p>:<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(250px,1fr))',gap:'1rem',marginTop:'1rem'}}>{records.map((record,index)=><article key={String(record.id??index)} style={{border:'1px solid currentColor',borderRadius:'.5rem',padding:'1rem',overflowWrap:'anywhere'}}>{Object.entries(record).filter(([key,value])=>labels[key]&&typeof value!=='object').map(([key,value])=><p key={key}><strong>{labels[key]}: </strong>{valueOf(value)}</p>)}</article>)}</div>}</>}</section></main>
+ const [selected,setSelected]=useState('users');
+ const [rows,setRows]=useState<readonly unknown[]>([]);
+ const [datasets,setDatasets]=useState<readonly DatasetOption[]>([]);
+ const [loading,setLoading]=useState(false);
+ const [message,setMessage]=useState('');
+ const [success,setSuccess]=useState('');
+ const [form,setForm]=useState<Record<string,string>>({dataset:'CUSTOMERS',format:'CSV',mapping:'{}',configKey:'locale',configValue:'"ar"',retain:'7'});
+ const ctx=context??{token:'',companyId:'',branchId:''};
+
+ const field=(name:string)=>form[name]??'';
+ const setField=(name:string,value:string)=>setForm(current=>({...current,[name]:value}));
+
+ async function load(path=selected){
+  setSelected(path);if(!ctx.token)return;setLoading(true);setMessage('');setSuccess('');
+  try{
+   setRows(await client.list(path,ctx));
+   if(path==='imports')setDatasets((await client.list('data-exchange/datasets',ctx)).filter(datasetOption));
+  }catch(error){setMessage(error instanceof Error?error.message:'تعذر التحميل');}
+  finally{setLoading(false);}
+ }
+
+ async function run(label:string,operation:()=>Promise<unknown>,refresh=true){
+  setLoading(true);setMessage('');setSuccess('');
+  try{await operation();setSuccess(label);if(refresh)await load(selected);}
+  catch(error){setMessage(error instanceof Error?error.message:'تعذر تنفيذ العملية');}
+  finally{setLoading(false);}
+ }
+
+ async function importFile(file:File|undefined){if(!file)return;setField('importFileName',file.name);setField('format',file.name.toLowerCase().endsWith('.xlsx')?'XLSX':'CSV');setField('importContentBase64',await fileAsBase64(file));}
+ async function attachmentFile(file:File|undefined){if(!file)return;setField('fileContentType',file.type||'application/octet-stream');setField('fileContentBase64',await fileAsBase64(file));}
+ async function downloadExport(){const payload=await client.read(`exports/${field('exportJobId')}/download`,ctx);if(!downloadPayload(payload))throw new Error('ملف التصدير غير متاح');triggerDownload(payload);}
+ async function downloadFile(){const payload=await client.read(`files/${field('fileId')}`,ctx);if(!filePayload(payload))throw new Error('الملف غير متاح');triggerDownload({fileName:`file-${payload.metadata.id}`,contentType:payload.metadata.contentType,contentBase64:payload.contentBase64});}
+
+ useEffect(()=>{if(ctx.token)void load('users');},[ctx.token,ctx.companyId,ctx.branchId]);
+ const records=rows.filter(objectRecord);
+ const selectedDataset=datasets.find(value=>value.id===field('dataset'));
+
+ const input=(name:string,label:string,type='text')=><label style={{display:'grid',gap:'.25rem'}}>{label}<input type={type} value={field(name)} onChange={event=>setField(name,event.target.value)}/></label>;
+ const button=(label:string,onClick:()=>void)=><button type="button" disabled={loading} onClick={onClick}>{label}</button>;
+
+ function actions(){
+  if(selected==='users')return <div className="admin-actions">{input('userEmail','البريد','email')}{input('userName','الاسم')}{input('userPassword','كلمة مرور أولية','password')}{input('userRoleId','معرّف الدور (اختياري)')}{button('إنشاء مستخدم',()=>void run('تم إنشاء المستخدم.',()=>client.action('users',ctx,{email:field('userEmail'),displayName:field('userName'),password:field('userPassword'),roleId:field('userRoleId')||undefined})))}{input('userId','معرّف المستخدم')}{button('تعطيل المستخدم',()=>void run('تم تحديث المستخدم.',()=>client.patch(`users/${field('userId')}`,ctx,{active:false})))}{button('إعادة تفعيل المستخدم',()=>void run('تم تحديث المستخدم.',()=>client.patch(`users/${field('userId')}`,ctx,{active:true})))}</div>;
+  if(selected==='roles')return <div className="admin-actions">{input('roleName','اسم الدور')}{button('إنشاء دور',()=>void run('تم إنشاء الدور.',()=>client.action('roles',ctx,{name:field('roleName')})))}{input('roleId','معرّف الدور')}{input('permissionId','معرّف الصلاحية')}{button('منح الصلاحية',()=>void run('تم منح الصلاحية.',()=>client.action(`roles/${field('roleId')}/permissions/${field('permissionId')}`,ctx)))}{button('سحب الصلاحية',()=>void run('تم سحب الصلاحية.',()=>client.remove(`roles/${field('roleId')}/permissions/${field('permissionId')}`,ctx)))}</div>;
+  if(selected==='companies')return <div className="admin-actions">{input('companyName','اسم الشركة')}{button('إنشاء شركة',()=>void run('تم إنشاء الشركة.',()=>client.action('companies',ctx,{name:field('companyName')})))}{button('تعطيل الشركة الحالية',()=>void run('تم تعطيل الشركة.',()=>client.patch(`companies/${ctx.companyId}`,ctx,{active:false})))}</div>;
+  if(selected==='branches')return <div className="admin-actions">{input('branchName','اسم الفرع')}{button('إنشاء فرع',()=>void run('تم إنشاء الفرع.',()=>client.action('branches',ctx,{name:field('branchName')})))}{input('branchId','معرّف الفرع')}{input('accessUserId','معرّف المستخدم')}{button('منح وصول للفرع',()=>void run('تم منح الوصول.',()=>client.action(`branches/${field('branchId')}/access/${field('accessUserId')}`,ctx)))}{button('سحب وصول الفرع',()=>void run('تم سحب الوصول.',()=>client.remove(`branches/${field('branchId')}/access/${field('accessUserId')}`,ctx)))}{button('تعطيل الفرع',()=>void run('تم تحديث الفرع.',()=>client.patch(`branches/${field('branchId')}`,ctx,{active:false})))}</div>;
+  if(selected==='sessions')return <div className="admin-actions">{input('sessionId','معرّف الجلسة')}{button('إنهاء الجلسة',()=>void run('تم إنهاء الجلسة.',()=>client.action(`sessions/${field('sessionId')}/revoke`,ctx)))}{input('sessionUserId','معرّف المستخدم')}{button('عرض جلسات المستخدم',()=>void load(`sessions/${field('sessionUserId')}`))}{button('إنهاء كل جلسات المستخدم',()=>void run('تم إنهاء جلسات المستخدم.',()=>client.action(`users/${field('sessionUserId')}/sessions/revoke`,ctx),false))}</div>;
+  if(selected==='notifications')return <div className="admin-actions">{input('notificationId','معرّف الإشعار')}{button('تحديد كمقروء',()=>void run('تم تحديث الإشعار.',()=>client.action(`notifications/${field('notificationId')}/read`,ctx)))}</div>;
+  if(selected.startsWith('configuration/'))return <div className="admin-actions">{input('configKey','مفتاح الإعداد')}{input('configValue','القيمة (JSON أو نص)')}{button('حفظ الإعداد',()=>void run('تم حفظ الإعداد.',()=>client.action(`configuration/${field('configKey')}`,ctx,{value:configValue(field('configValue'))}),false))}</div>;
+  if(selected==='files')return <div className="admin-actions"><label>رفع ملف<input type="file" onChange={event=>void attachmentFile(event.target.files?.[0])}/></label>{button('حفظ الملف',()=>void run('تم حفظ الملف.',()=>client.action('files',ctx,{contentType:field('fileContentType')||'application/octet-stream',contentBase64:field('fileContentBase64')})))}{input('fileId','معرّف الملف')}{button('تنزيل الملف',()=>void run('تم تجهيز الملف.',downloadFile,false))}{button('إلغاء الملف',()=>void run('تم إلغاء الملف.',()=>client.remove(`files/${field('fileId')}`,ctx)))}</div>;
+  if(selected==='imports')return <div className="admin-actions">
+   <label>نوع البيانات<select value={field('dataset')} onChange={event=>setField('dataset',event.target.value)}>{datasets.map(item=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+   <p>الحقول المطلوبة: {selectedDataset?.requiredFields.join('، ')||'—'}</p>
+   <label>ملف CSV أو XLSX<input type="file" accept=".csv,.xlsx" onChange={event=>void importFile(event.target.files?.[0])}/></label>
+   <label>خريطة الأعمدة<textarea value={field('mapping')} onChange={event=>setField('mapping',event.target.value)} placeholder='{"اسم العميل":"displayName","النوع":"kind"}'/></label>
+   {button('رفع ملف الاستيراد',()=>void run('تم رفع ملف الاستيراد.',async()=>{const result=await client.action('imports',ctx,{dataset:field('dataset'),fileName:field('importFileName'),format:field('format'),contentBase64:field('importContentBase64'),mapping:mappingValue(field('mapping')),idempotencyKey:`import-${Date.now()}`});if(objectRecord(result)&&typeof result.id==='string')setField('importJobId',result.id);return result;}))}
+   {input('importJobId','معرّف مهمة الاستيراد')}{button('معاينة والتحقق',()=>void run('تم التحقق من الملف.',()=>client.action(`imports/${field('importJobId')}/preview`,ctx)))}{button('تنفيذ الاستيراد',()=>void run('تم تنفيذ الاستيراد.',()=>client.action(`imports/${field('importJobId')}/execute`,ctx)))}
+   <hr/>{input('exportFileName','اسم ملف التصدير')}{button('إنشاء تصدير CSV',()=>void run('تم إنشاء ملف التصدير.',async()=>{const result=await client.action('exports',ctx,{dataset:field('dataset'),fileName:field('exportFileName')||'export.csv',format:'CSV',idempotencyKey:`export-${Date.now()}`});if(objectRecord(result)&&typeof result.id==='string')setField('exportJobId',result.id);return result;},false))}{button('إنشاء تصدير XLSX',()=>void run('تم إنشاء ملف التصدير.',async()=>{const result=await client.action('exports',ctx,{dataset:field('dataset'),fileName:field('exportFileName')||'export.xlsx',format:'XLSX',idempotencyKey:`export-${Date.now()}`});if(objectRecord(result)&&typeof result.id==='string')setField('exportJobId',result.id);return result;},false))}{input('exportJobId','معرّف مهمة التصدير')}{button('تنزيل التصدير',()=>void run('تم تجهيز ملف التصدير.',downloadExport,false))}
+  </div>;
+  if(selected==='operations/backups')return <div className="admin-actions">{button('إنشاء نسخة احتياطية',()=>void run('تم إرسال طلب النسخ الاحتياطي.',()=>client.action('operations/backups',ctx,{})))}{input('backupId','معرّف النسخة')}{button('التحقق من النسخة',()=>void run('تم التحقق من النسخة.',()=>client.action(`operations/backups/${field('backupId')}/verify`,ctx)))}{button('تثبيت النسخة',()=>void run('تم تثبيت النسخة.',()=>client.action(`operations/backups/${field('backupId')}/pin`,ctx,{pinned:true})))}{button('فحص الاستعادة مسبقًا',()=>void run('نجح فحص الاستعادة.',()=>client.action(`operations/restores/${field('backupId')}/preflight`,ctx),false))}{button('بدء الاستعادة',()=>void run('تم تنفيذ طلب الاستعادة.',async()=>{const result=await client.action('operations/restores',ctx,{backupId:field('backupId')});if(objectRecord(result)&&typeof result.id==='string')setField('restoreId',result.id);return result;},false))}{input('restoreId','معرّف الاستعادة')}{button('عرض حالة الاستعادة',()=>void run('تم تحميل حالة الاستعادة.',async()=>{const result=await client.read(`operations/restores/${field('restoreId')}`,ctx);setRows([result]);return result;},false))}{input('retain','عدد النسخ المحتفظ بها','number')}{button('تطبيق سياسة الاحتفاظ',()=>void run('تم تطبيق سياسة الاحتفاظ.',()=>client.action('operations/backups/retention',ctx,{retain:Number(field('retain'))})))}</div>;
+  return null;
+ }
+
+ return <main dir="rtl" aria-labelledby="admin-title">
+  <header><p>إدارة المنصة</p><h1 id="admin-title">إدارة النظام والعمليات</h1><p>لوحة عربية موحدة وآمنة لإدارة الوصول والبيانات واستمرارية التشغيل.</p></header>
+  <nav aria-label="مجالات إدارة النظام" style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:'.5rem'}}>
+   {areas.map(([title,path])=><button key={path} type="button" aria-pressed={selected===path} disabled={!ctx.token} onClick={()=>void load(path)}>{title}</button>)}
+  </nav>
+  <section aria-live="polite" style={{marginTop:'1rem'}}>
+   {!ctx.token?<p>اختر الشركة والفرع وسجّل الدخول لعرض أدوات الإدارة.</p>:<>
+    <div style={{display:'flex',gap:'.5rem',flexWrap:'wrap'}}><button type="button" disabled={loading} onClick={()=>void load()}>تحديث البيانات</button></div>
+    {actions()}
+    {loading?<p>جارٍ التحميل…</p>:message?<p role="alert">{message}</p>:success?<p role="status">{success}</p>:records.length===0?<p>لا توجد بيانات متاحة.</p>:<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(250px,1fr))',gap:'1rem',marginTop:'1rem'}}>
+     {records.map((record,index)=><article key={String(record.id??index)} style={{border:'1px solid currentColor',borderRadius:'.5rem',padding:'1rem',overflowWrap:'anywhere'}}>{Object.entries(record).filter(([key,value])=>labels[key]&&typeof value!=='object').map(([key,value])=><p key={key}><strong>{labels[key]}: </strong>{valueOf(value)}</p>)}</article>)}
+    </div>}
+   </>}
+  </section>
+ </main>;
 }

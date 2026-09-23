@@ -3289,6 +3289,7 @@ model DexJob {
  id String @id @default(uuid())
  companyId String @map("company_id")
  branchId String? @map("branch_id")
+ dataset String?
  direction String
  status String
  fileName String @map("file_name")
@@ -3301,6 +3302,7 @@ model DexJob {
  rows DexRow[]
  @@unique([companyId,idempotencyKey])
  @@index([companyId,createdAt])
+ @@index([companyId,direction,dataset])
  @@map("dex_jobs")
 }
 model DexRow {

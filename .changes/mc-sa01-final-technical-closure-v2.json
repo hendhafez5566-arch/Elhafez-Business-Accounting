@@ -1,11 +1,13 @@
 {
   "id": "mc-sa01-final-technical-closure-v2",
-  "summary": "Complete MC-SA-01 production composition, company-scoped security, trusted file and recovery boundaries, safe administration invariants, actionable administration UI, and behavioral closure tests.",
+  "summary": "Complete MC-SA-01 production composition, dataset-bound import/export, company-scoped security, trusted file/recovery boundaries, actionable administration UI, and executable behavioral closure.",
   "type": "bugfix",
   "allowedModules": [
     "platform-core",
     "data-exchange",
-    "platform-operations"
+    "platform-operations",
+    "customer-management",
+    "supplier-management"
   ],
   "allowedPaths": [
     ".changes/mc-sa01-final-technical-closure-v2.json",
@@ -24,12 +26,21 @@
     "modules/platform-core/src/infrastructure/prisma-platform.repository.ts",
     "modules/platform-core/src/platform-core.spec.ts",
     "modules/platform-operations/src/application/platform-operations.application-service.ts",
-    "modules/platform-operations/src/platform-operations.spec.ts"
+    "modules/platform-operations/src/platform-operations.spec.ts",
+    "apps/api/src/system-administration-data-exchange.ts",
+    "apps/api/src/system-administration-data-exchange.spec.ts",
+    "modules/data-exchange/src/infrastructure/prisma-data-exchange.repository.ts",
+    "modules/data-exchange/src/public/index.ts",
+    "modules/platform-core/src/infrastructure/local-file.storage.ts",
+    "modules/platform-core/src/platform-core.module.ts",
+    "prisma/schema.prisma",
+    "prisma/migrations/20260923070000_mc_sa01_data_exchange_dataset/migration.sql"
   ],
   "protectedPaths": [
-    "apps/api/src/app.module.ts"
+    "apps/api/src/app.module.ts",
+    "prisma/schema.prisma"
   ],
-  "protectedReason": "The existing API composition root must wire the approved module-owned production ports and public application services; no ownership or shell architecture is changed.",
+  "protectedReason": "MC-SA-01 closes existing approved owners through public module APIs only. The additive dex_jobs.dataset column binds each durable exchange job to an explicit supported dataset; no historical migration, owner boundary, shell architecture, or business/financial truth is rewritten.",
   "allowBreakingPublicApi": false,
   "publicApiBreakingReason": ""
 }
