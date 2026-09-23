@@ -43,13 +43,14 @@
     "modules/platform-core/src/infrastructure/recovery.delivery.ts",
     "prisma/migrations/20260923113000_mc_sa01_file_integrity/migration.sql",
     "modules/platform-operations/src/infrastructure/prisma-operations.repository.ts",
-    "prisma/migrations/20260923120000_mc_sa01_company_role_scope/migration.sql"
+    "prisma/migrations/20260923120000_mc_sa01_company_role_scope/migration.sql",
+    "modules/platform-core/tsconfig.json"
   ],
   "protectedPaths": [
     "apps/api/src/app.module.ts",
     "prisma/schema.prisma"
   ],
-  "protectedReason": "MC-SA-01 closes existing approved owners through public module APIs only. Additive schema changes bind durable exchange jobs to explicit datasets, persist trusted file checksums, and move effective role-permission grants to company scope while preserving legacy grants. Company creation bootstraps initial access atomically; recovery delivery is environment-configured; branch deactivation remains concurrency-safe; diagnostics fail closed; and retention preserves restore evidence. No historical migration, owner boundary, shell architecture, or business/financial truth is rewritten.",
+  "protectedReason": "MC-SA-01 closes existing approved owners through public module APIs only. Additive schema changes bind durable exchange jobs to explicit datasets, persist trusted file checksums, and move effective role-permission grants to company scope while preserving legacy grants. Company creation bootstraps initial access atomically; recovery delivery is environment-configured; branch deactivation remains concurrency-safe; diagnostics fail closed; retention preserves restore evidence; and platform-core build output is isolated to dist per the module standard. No historical migration, owner boundary, shell architecture, or business/financial truth is rewritten.",
   "allowBreakingPublicApi": false,
   "publicApiBreakingReason": ""
 }
