@@ -102,8 +102,8 @@ import { ManagementControlService } from './management-control.service.js';
     },
     {
       provide: ManagementControlService,
-      useFactory: (workCenter:WorkCenterApplicationService,crm:CrmSalesReadModelService,suppliers:SupplierIntelligenceReadModelService,programs:HajjUmrahProgramsApplicationService,readiness:HajjUmrahReadinessApplicationService,reporting:FinancialReportingApplicationService,platform:PlatformCoreApplicationService) => new ManagementControlService(workCenter,crm,suppliers,programs,readiness,reporting,platform),
-      inject: [WorkCenterApplicationService,CrmSalesReadModelService,SupplierIntelligenceReadModelService,HajjUmrahProgramsApplicationService,HajjUmrahReadinessApplicationService,FinancialReportingApplicationService,PlatformCoreApplicationService],
+      useFactory: (workCenter:WorkCenterApplicationService,crm:CrmSalesReadModelService,suppliers:SupplierIntelligenceReadModelService,programs:HajjUmrahProgramsApplicationService,readiness:HajjUmrahReadinessApplicationService,reporting:FinancialReportingApplicationService) => new ManagementControlService(workCenter,crm,suppliers,programs,readiness,reporting),
+      inject: [WorkCenterApplicationService,CrmSalesReadModelService,SupplierIntelligenceReadModelService,HajjUmrahProgramsApplicationService,HajjUmrahReadinessApplicationService,FinancialReportingApplicationService],
     },
   ],
 })
