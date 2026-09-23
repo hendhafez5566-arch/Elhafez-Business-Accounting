@@ -7,7 +7,6 @@
   ],
   "allowedPaths": [
     ".changes/mc-sa02-management-control.json",
-    "apps/api/package.json",
     "apps/api/src/app.module.ts",
     "apps/api/src/management-control.controller.ts",
     "apps/api/src/management-control.service.ts",
@@ -17,8 +16,7 @@
     "apps/web/src/management-control.spec.ts",
     "apps/web/src/routes.tsx",
     "docs/BUSINESS-MODULE-ARCHITECTURE.md",
-    "prisma/migrations/20260923150000_mc_sa02_management_permission/migration.sql",
-    "pnpm-lock.yaml"
+    "prisma/migrations/20260923150000_mc_sa02_management_permission/migration.sql"
   ],
   "protectedPaths": [
     "apps/api/src/app.module.ts",
