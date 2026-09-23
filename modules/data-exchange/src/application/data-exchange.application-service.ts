@@ -27,7 +27,12 @@ export class XlsxParser implements TabularParser {
  readonly format='XLSX' as const;
  async parse(content:Uint8Array){
   const workbook=new ExcelJS.Workbook();
-  await workbook.xlsx.load(Buffer.from(content));
+  // ExcelJS 4.4 declares load() against ArrayBuffer while modern Node Buffers
+  // are typed over ArrayBufferLike. Copy into an owned ArrayBuffer at this
+  // vendor boundary so runtime bytes and static types agree without casts.
+  const workbookBuffer=new ArrayBuffer(content.byteLength);
+  new Uint8Array(workbookBuffer).set(content);
+  await workbook.xlsx.load(workbookBuffer);
   const worksheet=workbook.worksheets[0];
   if(!worksheet)throw new DataExchangeError('XLSX workbook has no worksheet');
   const values:string[][]=[];
