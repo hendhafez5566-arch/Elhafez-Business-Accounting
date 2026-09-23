@@ -65,6 +65,16 @@ model PcRolePermission {
   @@map("pc_role_permissions")
 }
 
+model PcCompanyRolePermission {
+  companyId    String @map("company_id")
+  roleId       String @map("role_id")
+  permissionId String @map("permission_id")
+
+  @@id([companyId, roleId, permissionId])
+  @@index([companyId, roleId])
+  @@map("pc_company_role_permissions")
+}
+
 model PcCompany {
   id        String     @id @default(uuid())
   name      String
@@ -146,6 +156,7 @@ model PcFile {
   storageKey  String   @unique @map("storage_key")
   contentType String   @map("content_type")
   size        Int
+  checksum    String?
   createdBy   String?  @map("created_by")
   createdAt   DateTime @default(now()) @map("created_at")
 
@@ -3289,6 +3300,7 @@ model DexJob {
  id String @id @default(uuid())
  companyId String @map("company_id")
  branchId String? @map("branch_id")
+ dataset String?
  direction String
  status String
  fileName String @map("file_name")
@@ -3301,6 +3313,7 @@ model DexJob {
  rows DexRow[]
  @@unique([companyId,idempotencyKey])
  @@index([companyId,createdAt])
+ @@index([companyId,direction,dataset])
  @@map("dex_jobs")
 }
 model DexRow {
