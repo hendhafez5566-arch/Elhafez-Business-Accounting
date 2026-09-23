@@ -130,7 +130,7 @@ export class DataExchangeApplicationService {
   if(job.direction!=='IMPORT')throw new DataExchangeError('only import jobs can be previewed');
   for(const row of job.rows){
    const mapped=mapRow(job.mapping,row.source);
-   const missing=required.find(field=>!mapped[field]?.trim());
+   const missing=required.find(field=>!(mapped[field]??row.source[field])?.trim());
    if(missing){row.outcome='FAILED';row.error=`Missing ${missing}`;}
    else if(row.outcome==='FAILED'&&row.error?.startsWith('Missing ')){row.outcome='PENDING';delete row.error;}
   }
@@ -163,12 +163,11 @@ export class DataExchangeApplicationService {
   return job;
  }
 
- async createExport(input:{companyId:string;branchId?:string;dataset:string;fileName:string;format:'CSV'|'XLSX';idempotencyKey:string},source:ExportSource,storage:ExportStorage){
-  if(!input.dataset.trim())throw new DataExchangeError('export dataset is required');
+ async createExport(input:{companyId:string;branchId?:string;dataset?:string;fileName:string;format:'CSV'|'XLSX';idempotencyKey:string},source:ExportSource,storage:ExportStorage){
   const prior=await this.repository.findByKey(input.companyId,input.idempotencyKey);
   if(prior)return prior;
   const now=new Date();
-  const job:ExchangeJob={id:randomUUID(),companyId:input.companyId,branchId:input.branchId??null,dataset:input.dataset.trim(),direction:'EXPORT',status:'PROCESSING',fileName:input.fileName,format:input.format,mapping:{},idempotencyKey:input.idempotencyKey,rows:[],createdAt:now,updatedAt:now};
+  const job:ExchangeJob={id:randomUUID(),companyId:input.companyId,branchId:input.branchId??null,dataset:input.dataset?.trim()||null,direction:'EXPORT',status:'PROCESSING',fileName:input.fileName,format:input.format,mapping:{},idempotencyKey:input.idempotencyKey,rows:[],createdAt:now,updatedAt:now};
   await this.repository.save(job);
   try{
    job.resultKey=await storage.write({jobId:job.id,format:input.format,rows:await source.read({companyId:job.companyId,branchId:job.branchId})});
