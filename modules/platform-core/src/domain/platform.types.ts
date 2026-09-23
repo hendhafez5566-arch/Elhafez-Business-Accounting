@@ -1,6 +1,7 @@
 export type Id = string;
 export type UserStatus = 'ACTIVE' | 'INACTIVE';
 export interface User { id: Id; email: string; passwordHash: string; status: UserStatus; displayName: string; createdAt: Date; updatedAt: Date }
+export type UserProjection = Omit<User, 'passwordHash'>;
 export interface Company { id: Id; name: string; active: boolean; createdAt: Date }
 export interface Branch { id: Id; companyId: Id; name: string; active: boolean; createdAt: Date }
 export interface AuditEntry { id: Id; actorId: Id | null; action: string; resource: string; entityId: Id | null; companyId: Id | null; branchId: Id | null; metadata: Record<string, unknown>; occurredAt: Date }
