@@ -11,8 +11,3 @@ export class LocalFileStorage implements FileStoragePort {
   async delete(key:string){await rm(this.path(key),{force:true})}
   private path(key:string){if(!/^[0-9a-f-]{36}$/.test(key))throw new Error('invalid storage key');return join(this.root,key)}
 }
-
-/** Fails closed until an infrastructure delivery provider is configured. */
-export class UnavailableRecoveryDelivery {
-  async deliver():Promise<never>{throw new Error('recovery delivery provider is unavailable')}
-}
