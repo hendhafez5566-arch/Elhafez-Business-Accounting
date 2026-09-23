@@ -1,6 +1,31 @@
 {
   "name": "platform-core",
-  "publicApi": ["src/public/index.ts"],
-  "ownedTables": ["pc_users", "pc_roles", "pc_permissions", "pc_user_roles", "pc_role_permissions", "pc_companies", "pc_branches", "pc_user_branch_access", "pc_sessions", "pc_audit_logs", "pc_files", "pc_notifications", "pc_configuration", "pc_migration_runs", "pc_migration_crosswalks", "pc_migration_checkpoints", "pc_migration_issues", "pc_migration_equivalence"],
-  "allowedDependencies": ["@elhafez/contracts", "@elhafez/core"]
+  "publicApi": [
+    "src/public/index.ts"
+  ],
+  "ownedTables": [
+    "pc_users",
+    "pc_roles",
+    "pc_permissions",
+    "pc_user_roles",
+    "pc_role_permissions",
+    "pc_companies",
+    "pc_branches",
+    "pc_user_branch_access",
+    "pc_sessions",
+    "pc_audit_logs",
+    "pc_files",
+    "pc_notifications",
+    "pc_configuration",
+    "pc_migration_runs",
+    "pc_migration_crosswalks",
+    "pc_migration_checkpoints",
+    "pc_migration_issues",
+    "pc_migration_equivalence",
+    "pc_password_recovery"
+  ],
+  "allowedDependencies": [
+    "@elhafez/contracts",
+    "@elhafez/core"
+  ]
 }

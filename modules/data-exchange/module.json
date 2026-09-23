@@ -1,0 +1,1 @@
+{"name":"data-exchange","publicApi":["src/public/index.ts","src/public/nest.ts"],"ownedTables":["dex_jobs","dex_rows"],"allowedDependencies":[]}

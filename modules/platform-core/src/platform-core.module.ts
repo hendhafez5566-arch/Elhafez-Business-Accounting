@@ -5,6 +5,8 @@ import { PLATFORM_CORE_REPOSITORY } from './application/platform-core.repository
 import { MigrationControlApplicationService } from './application/migration-control.application-service.js';
 import { MIGRATION_CONTROL_REPOSITORY } from './application/migration-control.repository.js';
 import { PrismaPlatformRepository } from './infrastructure/prisma-platform.repository.js';
+import { LocalFileStorage } from './infrastructure/local-file.storage.js';
+import { recoveryDeliveryFromEnvironment } from './infrastructure/recovery.delivery.js';
 import { PrismaMigrationControlRepository } from './infrastructure/prisma-migration-control.repository.js';
 
 /** Platform composition boundary. HTTP adapters may depend only on its public service. */
@@ -12,7 +14,7 @@ import { PrismaMigrationControlRepository } from './infrastructure/prisma-migrat
   providers: [
     PrismaClient,
     { provide: PLATFORM_CORE_REPOSITORY, useFactory: (prisma: PrismaClient) => new PrismaPlatformRepository(prisma), inject: [PrismaClient] },
-    { provide: PlatformCoreApplicationService, useFactory: (repository: PrismaPlatformRepository) => new PlatformCoreApplicationService(repository), inject: [PLATFORM_CORE_REPOSITORY] },
+    { provide: PlatformCoreApplicationService, useFactory: (repository: PrismaPlatformRepository) => new PlatformCoreApplicationService(repository,undefined,undefined,recoveryDeliveryFromEnvironment(),new LocalFileStorage()), inject: [PLATFORM_CORE_REPOSITORY] },
     { provide: MIGRATION_CONTROL_REPOSITORY, useFactory: (prisma: PrismaClient) => new PrismaMigrationControlRepository(prisma), inject: [PrismaClient] },
     { provide: MigrationControlApplicationService, useFactory: (repository: PrismaMigrationControlRepository) => new MigrationControlApplicationService(repository), inject: [MIGRATION_CONTROL_REPOSITORY] },
   ],

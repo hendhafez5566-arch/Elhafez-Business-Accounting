@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
-import { PlatformCoreModule } from '@elhafez/platform-core';
+import { DataExchangeModule } from '@elhafez/data-exchange/nest';
+import { PlatformOperationsModule } from '@elhafez/platform-operations/nest';
+import { PlatformCoreApplicationService, PlatformCoreModule } from '@elhafez/platform-core';
 import { PeriodControlModule } from '@elhafez/period-control';
 import { GeneralLedgerModule } from '@elhafez/general-ledger';
 import { FinancialControlsModule } from '@elhafez/financial-controls';
@@ -53,19 +55,26 @@ import { SupplierIntelligenceReadModelController } from './supplier-intelligence
 import { SupplierIntelligenceReadModelService } from './supplier-intelligence-read-model.service.js';
 import { HajjUmrahController } from './hajj-umrah.controller.js';
 import { HajjUmrahOperationsController } from './hajj-umrah-operations.controller.js';
+import { SystemAdministrationController } from './system-administration.controller.js';
+import { SystemAdministrationDataExchangeBoundary } from './system-administration-data-exchange.js';
 import { HajjUmrahReadinessController } from './hajj-umrah-readiness.controller.js';
 
 /** Composition root only. Business modules are registered here through public module APIs. */
 @Module({
   imports: [
-    PlatformCoreModule, PartyRegistryModule, AgentManagementModule, CustomerManagementModule, CrmLeadsModule, CrmFollowupsModule, QuotationsModule, SupplierManagementModule, SupplierEvaluationModule, SupplierDisputesModule, ProcurementFulfillmentModule, TravelerManagementModule,
+    PlatformCoreModule, DataExchangeModule, PlatformOperationsModule, PartyRegistryModule, AgentManagementModule, CustomerManagementModule, CrmLeadsModule, CrmFollowupsModule, QuotationsModule, SupplierManagementModule, SupplierEvaluationModule, SupplierDisputesModule, ProcurementFulfillmentModule, TravelerManagementModule,
     PeriodControlModule, GeneralLedgerModule, FinancialControlsModule, TaxModule, BillingSubledgersModule, TreasurySettlementModule, PartyAccountingModule,
     ExpenseCommissionRecognitionModule, CostBudgetAccountingModule, AssetsFinancingModule, ProcurementFinanceModule, TourismContractInventoryModule,
     TourismFinanceOrchestrationModule, HajjUmrahSeasonsModule, HajjUmrahProgramsModule, HajjUmrahBookingsModule, HajjUmrahRoomingModule, HajjUmrahVisaOperationsModule, HajjUmrahTicketingModule, HajjUmrahTransportOperationsModule, HajjUmrahTripOperationsModule, HajjUmrahReadinessModule, FinancialReportingModule, Ac14MigrationModule,
   ],
-  controllers: [CrmSalesReadModelController, SupplierIntelligenceReadModelController, HajjUmrahController, HajjUmrahOperationsController, HajjUmrahReadinessController],
+  controllers: [SystemAdministrationController, CrmSalesReadModelController, SupplierIntelligenceReadModelController, HajjUmrahController, HajjUmrahOperationsController, HajjUmrahReadinessController],
   providers: [
     FinancialReportingEvidenceAdapter,
+    {
+      provide: SystemAdministrationDataExchangeBoundary,
+      useFactory: (customers: CustomerManagementApplicationService, suppliers: SupplierManagementApplicationService, platform: PlatformCoreApplicationService) => new SystemAdministrationDataExchangeBoundary(customers, suppliers, platform),
+      inject: [CustomerManagementApplicationService, SupplierManagementApplicationService, PlatformCoreApplicationService],
+    },
     {
       provide: SupplierIntelligenceReadModelService,
       useFactory: (suppliers: SupplierManagementApplicationService, evaluations: SupplierEvaluationApplicationService, disputes: SupplierDisputesApplicationService, procurement: ProcurementFinanceApplicationService, fulfillment: ProcurementFulfillmentApplicationService) => new SupplierIntelligenceReadModelService(suppliers,evaluations,disputes,procurement,fulfillment),

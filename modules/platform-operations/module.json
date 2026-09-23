@@ -1,0 +1,1 @@
+{"name":"platform-operations","publicApi":["src/public/index.ts","src/public/nest.ts"],"ownedTables":["pops_backup_jobs","pops_restore_jobs"],"allowedDependencies":["@elhafez/platform-core"]}
