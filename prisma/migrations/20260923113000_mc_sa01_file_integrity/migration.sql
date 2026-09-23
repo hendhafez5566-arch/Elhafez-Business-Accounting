@@ -1,1 +1,1 @@
-ALTER TABLE "pc_files" ADD COLUMN "checksum" TEXT;\n
+ALTER TABLE "pc_files" ADD COLUMN "checksum" TEXT;
