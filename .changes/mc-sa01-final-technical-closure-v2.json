@@ -37,7 +37,9 @@
     "prisma/migrations/20260923070000_mc_sa01_data_exchange_dataset/migration.sql",
     "apps/api/src/system-administration.controller.spec.ts",
     "modules/data-exchange/package.json",
-    "pnpm-lock.yaml"
+    "pnpm-lock.yaml",
+    "modules/platform-core/src/domain/platform.types.ts",
+    "modules/platform-core/src/public/index.ts"
   ],
   "protectedPaths": [
     "apps/api/src/app.module.ts",
