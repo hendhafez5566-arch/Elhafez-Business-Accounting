@@ -65,6 +65,16 @@ model PcRolePermission {
   @@map("pc_role_permissions")
 }
 
+model PcCompanyRolePermission {
+  companyId    String @map("company_id")
+  roleId       String @map("role_id")
+  permissionId String @map("permission_id")
+
+  @@id([companyId, roleId, permissionId])
+  @@index([companyId, roleId])
+  @@map("pc_company_role_permissions")
+}
+
 model PcCompany {
   id        String     @id @default(uuid())
   name      String
