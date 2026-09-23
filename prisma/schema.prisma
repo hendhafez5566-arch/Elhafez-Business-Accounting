@@ -146,6 +146,7 @@ model PcFile {
   storageKey  String   @unique @map("storage_key")
   contentType String   @map("content_type")
   size        Int
+  checksum    String?
   createdBy   String?  @map("created_by")
   createdAt   DateTime @default(now()) @map("created_at")
 
