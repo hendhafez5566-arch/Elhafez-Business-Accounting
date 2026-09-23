@@ -9,9 +9,9 @@ import type {SystemAdministrationDataExchangeBoundary} from './system-administra
 
 test('system administration rejects missing authentication context before data access',async()=>{
  const controller=new SystemAdministrationController(
-  {} as PlatformCoreApplicationService,
-  {} as DataExchangeApplicationService,
-  {} as PlatformOperationsApplicationService,
+  {} as unknown as PlatformCoreApplicationService,
+  {} as unknown as DataExchangeApplicationService,
+  {} as unknown as PlatformOperationsApplicationService,
   {datasets:()=>[]} as unknown as SystemAdministrationDataExchangeBoundary
  );
  await assert.rejects(controller.datasets(undefined,'company-a','branch-a'),UnauthorizedException);
@@ -26,8 +26,8 @@ test('system administration authorizes company and branch before exposing datase
  } as unknown as PlatformCoreApplicationService;
  const controller=new SystemAdministrationController(
   platform,
-  {} as DataExchangeApplicationService,
-  {} as PlatformOperationsApplicationService,
+  {} as unknown as DataExchangeApplicationService,
+  {} as unknown as PlatformOperationsApplicationService,
   {datasets:()=>[{id:'CUSTOMERS',label:'العملاء',requiredFields:['kind','displayName'],targetFields:['kind','displayName']}]} as unknown as SystemAdministrationDataExchangeBoundary
  );
  const result=await controller.datasets('Bearer token','company-a','branch-a');
