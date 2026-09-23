@@ -1,0 +1,53 @@
+{
+  "id": "mc-sa01-final-technical-closure-v2",
+  "summary": "Complete MC-SA-01 production composition, dataset-bound import/export, company-scoped security, trusted file/recovery boundaries, actionable administration UI, and executable behavioral closure.",
+  "type": "bugfix",
+  "allowedModules": [
+    "platform-core",
+    "data-exchange",
+    "platform-operations",
+    "customer-management",
+    "supplier-management"
+  ],
+  "allowedPaths": [
+    ".changes/mc-sa01-final-technical-closure-v2.json",
+    "apps/api/src/app.module.ts",
+    "apps/api/src/system-administration.controller.ts",
+    "apps/api/src/mc-sa01-system-administration.spec.ts",
+    "apps/web/src/system-administration-client.ts",
+    "apps/web/src/system-administration-page.tsx",
+    "apps/web/src/system-administration.spec.ts",
+    "modules/data-exchange/src/application/data-exchange.application-service.ts",
+    "modules/data-exchange/src/data-exchange.module.ts",
+    "modules/data-exchange/src/data-exchange.spec.ts",
+    "modules/platform-core/src/application/platform-core.application-service.ts",
+    "modules/platform-core/src/application/platform-core.repository.ts",
+    "modules/platform-core/src/infrastructure/in-memory-platform.repository.ts",
+    "modules/platform-core/src/infrastructure/prisma-platform.repository.ts",
+    "modules/platform-core/src/platform-core.spec.ts",
+    "modules/platform-operations/src/application/platform-operations.application-service.ts",
+    "modules/platform-operations/src/platform-operations.spec.ts",
+    "apps/api/src/system-administration-data-exchange.ts",
+    "apps/api/src/system-administration-data-exchange.spec.ts",
+    "modules/data-exchange/src/infrastructure/prisma-data-exchange.repository.ts",
+    "modules/data-exchange/src/public/index.ts",
+    "modules/platform-core/src/infrastructure/local-file.storage.ts",
+    "modules/platform-core/src/platform-core.module.ts",
+    "prisma/schema.prisma",
+    "prisma/migrations/20260923070000_mc_sa01_data_exchange_dataset/migration.sql",
+    "apps/api/src/system-administration.controller.spec.ts",
+    "modules/data-exchange/package.json",
+    "pnpm-lock.yaml",
+    "modules/platform-core/src/domain/platform.types.ts",
+    "modules/platform-core/src/public/index.ts",
+    "modules/platform-core/src/infrastructure/recovery.delivery.ts",
+    "prisma/migrations/20260923113000_mc_sa01_file_integrity/migration.sql"
+  ],
+  "protectedPaths": [
+    "apps/api/src/app.module.ts",
+    "prisma/schema.prisma"
+  ],
+  "protectedReason": "MC-SA-01 closes existing approved owners through public module APIs only. Additive schema changes bind durable exchange jobs to explicit datasets and persist trusted file checksums; recovery delivery is environment-configured through a production HTTPS adapter, and branch deactivation preserves the last-active-branch invariant atomically. No historical migration, owner boundary, shell architecture, or business/financial truth is rewritten.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": ""
+}

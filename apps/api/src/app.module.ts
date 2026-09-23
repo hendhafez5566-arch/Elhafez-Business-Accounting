@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { DataExchangeModule } from '@elhafez/data-exchange/nest';
 import { PlatformOperationsModule } from '@elhafez/platform-operations/nest';
-import { PlatformCoreModule } from '@elhafez/platform-core';
+import { PlatformCoreApplicationService, PlatformCoreModule } from '@elhafez/platform-core';
 import { PeriodControlModule } from '@elhafez/period-control';
 import { GeneralLedgerModule } from '@elhafez/general-ledger';
 import { FinancialControlsModule } from '@elhafez/financial-controls';
@@ -56,6 +56,7 @@ import { SupplierIntelligenceReadModelService } from './supplier-intelligence-re
 import { HajjUmrahController } from './hajj-umrah.controller.js';
 import { HajjUmrahOperationsController } from './hajj-umrah-operations.controller.js';
 import { SystemAdministrationController } from './system-administration.controller.js';
+import { SystemAdministrationDataExchangeBoundary } from './system-administration-data-exchange.js';
 import { HajjUmrahReadinessController } from './hajj-umrah-readiness.controller.js';
 
 /** Composition root only. Business modules are registered here through public module APIs. */
@@ -69,6 +70,11 @@ import { HajjUmrahReadinessController } from './hajj-umrah-readiness.controller.
   controllers: [SystemAdministrationController, CrmSalesReadModelController, SupplierIntelligenceReadModelController, HajjUmrahController, HajjUmrahOperationsController, HajjUmrahReadinessController],
   providers: [
     FinancialReportingEvidenceAdapter,
+    {
+      provide: SystemAdministrationDataExchangeBoundary,
+      useFactory: (customers: CustomerManagementApplicationService, suppliers: SupplierManagementApplicationService, platform: PlatformCoreApplicationService) => new SystemAdministrationDataExchangeBoundary(customers, suppliers, platform),
+      inject: [CustomerManagementApplicationService, SupplierManagementApplicationService, PlatformCoreApplicationService],
+    },
     {
       provide: SupplierIntelligenceReadModelService,
       useFactory: (suppliers: SupplierManagementApplicationService, evaluations: SupplierEvaluationApplicationService, disputes: SupplierDisputesApplicationService, procurement: ProcurementFinanceApplicationService, fulfillment: ProcurementFulfillmentApplicationService) => new SupplierIntelligenceReadModelService(suppliers,evaluations,disputes,procurement,fulfillment),
