@@ -6,6 +6,7 @@ export interface Company { id: Id; name: string; active: boolean; createdAt: Dat
 export interface Branch { id: Id; companyId: Id; name: string; active: boolean; createdAt: Date }
 export interface AuditEntry { id: Id; actorId: Id | null; action: string; resource: string; entityId: Id | null; companyId: Id | null; branchId: Id | null; metadata: Record<string, unknown>; occurredAt: Date }
 export interface StoredFile { id: Id; companyId: Id | null; key: string; contentType: string; size: number; checksum: string | null; createdBy: Id | null; createdAt: Date }
+export interface StoredFileContent { metadata: StoredFile; content: Uint8Array }
 export interface Notification { id: Id; userId: Id; type: string; payload: Record<string, unknown>; readAt: Date | null; createdAt: Date }
 export interface Session { id: Id; userId: Id; tokenHash: string; expiresAt: Date; revokedAt: Date | null; createdAt: Date }
 export interface Role { id: Id; name: string }
