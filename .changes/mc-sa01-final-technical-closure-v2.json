@@ -1,0 +1,35 @@
+{
+  "id": "mc-sa01-final-technical-closure-v2",
+  "summary": "Complete MC-SA-01 production composition, company-scoped security, trusted file and recovery boundaries, safe administration invariants, actionable administration UI, and behavioral closure tests.",
+  "type": "bugfix",
+  "allowedModules": [
+    "platform-core",
+    "data-exchange",
+    "platform-operations"
+  ],
+  "allowedPaths": [
+    ".changes/mc-sa01-final-technical-closure-v2.json",
+    "apps/api/src/app.module.ts",
+    "apps/api/src/system-administration.controller.ts",
+    "apps/api/src/mc-sa01-system-administration.spec.ts",
+    "apps/web/src/system-administration-client.ts",
+    "apps/web/src/system-administration-page.tsx",
+    "apps/web/src/system-administration.spec.ts",
+    "modules/data-exchange/src/application/data-exchange.application-service.ts",
+    "modules/data-exchange/src/data-exchange.module.ts",
+    "modules/data-exchange/src/data-exchange.spec.ts",
+    "modules/platform-core/src/application/platform-core.application-service.ts",
+    "modules/platform-core/src/application/platform-core.repository.ts",
+    "modules/platform-core/src/infrastructure/in-memory-platform.repository.ts",
+    "modules/platform-core/src/infrastructure/prisma-platform.repository.ts",
+    "modules/platform-core/src/platform-core.spec.ts",
+    "modules/platform-operations/src/application/platform-operations.application-service.ts",
+    "modules/platform-operations/src/platform-operations.spec.ts"
+  ],
+  "protectedPaths": [
+    "apps/api/src/app.module.ts"
+  ],
+  "protectedReason": "The existing API composition root must wire the approved module-owned production ports and public application services; no ownership or shell architecture is changed.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": ""
+}
