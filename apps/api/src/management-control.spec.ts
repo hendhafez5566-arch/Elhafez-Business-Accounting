@@ -1,8 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { branchId, companyId, executionContext } from '@elhafez/contracts';
+import { Module } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
+import { PLATFORM_CORE_PERMISSIONS, PlatformCoreApplicationService } from '@elhafez/platform-core';
 import { ManagementControlController } from './management-control.controller.js';
-import { MANAGEMENT_CONTROL_PERMISSION, ManagementControlService, type ManagementSummary, WorkCenterApplicationService } from './management-control.service.js';
+import { ManagementControlService, type ManagementSummary, WorkCenterApplicationService } from './management-control.service.js';
 
 const context=executionContext(companyId('company-1'),branchId('branch-1'),'manager');
 const summary:ManagementSummary={crmSales:{customers:0,agents:0,travelers:0,overdueFollowups:0,leadStages:{},quotationStatuses:{},quotationValueByCurrency:[]},suppliers:{total:0,openDisputes:0,activeHolds:0},hajjUmrah:{activePrograms:0,readinessItems:0,criticalReadinessItems:0},finance:{overduePositions:0,overdueByCurrency:[]}};
@@ -30,4 +33,4 @@ test('unscoped platform notifications are never requested or surfaced in company
 
 test('owner failures reject the aggregate instead of becoming successful empty data',async()=>{await assert.rejects(service({crm:async()=>{throw new Error('crm unavailable');}}).overview(context),/crm unavailable/);});
 
-test('controller rejects missing authentication and enforces branch plus management permission',async()=>{const calls:string[]=[];const controller=new ManagementControlController({overview:async()=>new WorkCenterApplicationService().compose('company-1','branch-1',[],summary)},{currentUser:async()=>({id:'manager',email:'m@example.com',status:'ACTIVE',displayName:'Manager',createdAt:new Date(),updatedAt:new Date()}),requireBranchAccess:async()=>{calls.push('branch');},authorize:async(_user,_company,permission)=>{calls.push(permission);}});await assert.rejects(controller.overview(undefined,'company-1','branch-1',undefined,undefined,undefined,undefined,undefined,undefined),/authenticated company and branch context required/);await controller.overview('Bearer session','company-1','branch-1',undefined,undefined,undefined,undefined,undefined,undefined);assert.deepEqual(calls,['branch',MANAGEMENT_CONTROL_PERMISSION]);});
+test('Nest runtime DI resolves the controller and enforces branch plus canonical management permission',async()=>{const calls:string[]=[];const management={overview:async()=>new WorkCenterApplicationService().compose('company-1','branch-1',[],summary)};const platform={currentUser:async()=>({id:'manager',email:'m@example.com',status:'ACTIVE',displayName:'Manager',createdAt:new Date(),updatedAt:new Date()}),requireBranchAccess:async()=>{calls.push('branch');},authorize:async(_user:string,_company:string,permission:string)=>{calls.push(permission);}};@Module({controllers:[ManagementControlController],providers:[{provide:ManagementControlService,useValue:management},{provide:PlatformCoreApplicationService,useValue:platform}]})class ManagementControllerTestModule{}const app=await NestFactory.createApplicationContext(ManagementControllerTestModule,{logger:false});try{const controller=app.get(ManagementControlController);await assert.rejects(controller.overview(undefined,'company-1','branch-1',undefined,undefined,undefined,undefined,undefined,undefined),/authenticated company and branch context required/);await controller.overview('Bearer session','company-1','branch-1',undefined,undefined,undefined,undefined,undefined,undefined);assert.deepEqual(calls,['branch',PLATFORM_CORE_PERMISSIONS.managementControlRead]);}finally{await app.close();}});
