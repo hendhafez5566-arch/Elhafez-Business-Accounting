@@ -1,7 +1,7 @@
 {
   "id": "mc-sa01-system-admin-platform-ops",
-  "summary": "Complete company-scoped System Administration in platform-core and add the canonical data-exchange and platform-operations owners, API/web composition, persistence, and legacy administration migration coverage.",
-  "type": "phase",
+  "summary": "Final corrective closure of MC-SA-01: frozen legacy shape/classification and safe settings/file metadata migration, complete company-scoped Platform Core administration and authenticated API/web surfaces, recovery delivery port, durable CSV/XLSX/import/export boundaries, and evidence-based backup/restore operations with global session invalidation.",
+  "type": "bugfix",
   "allowedModules": [
     "platform-core",
     "data-exchange",
@@ -59,7 +59,11 @@
     "prisma/schema.prisma",
     "docs/BUSINESS-MODULE-ARCHITECTURE.md"
   ],
-  "protectedReason": "MC-SA-01 extends the accepted platform-core owner, creates the two owner-approved modules, registers their API/web composition, adds forward-only owned persistence, and records the finalized public ownership boundary.",
+  "protectedReason": "MC-SA-01 final closure completes the already-approved platform-core, data-exchange and platform-operations owners and their existing API/web composition. No new owner, global shell redesign, historical migration edit, or business/financial policy ownership is introduced.",
   "allowBreakingPublicApi": false,
-  "publicApiBreakingReason": ""
+  "publicApiBreakingReason": "",
+  "unacceptedMigrationRepairs": [
+    "prisma/migrations/20260922210000_mc_sa01_system_administration/migration.sql"
+  ],
+  "unacceptedMigrationRepairReason": "The MC-SA-01 migration exists only on the still-unaccepted phase/corrective branch; manager-reviewed pre-merge corrections at the required starting HEAD repaired its constraints before any acceptance into main. This final closure does not edit that migration further."
 }

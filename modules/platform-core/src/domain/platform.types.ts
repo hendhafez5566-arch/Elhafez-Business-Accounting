@@ -7,6 +7,9 @@ export interface AuditEntry { id: Id; actorId: Id | null; action: string; resour
 export interface StoredFile { id: Id; companyId: Id | null; key: string; contentType: string; size: number; createdBy: Id | null; createdAt: Date }
 export interface Notification { id: Id; userId: Id; type: string; payload: Record<string, unknown>; readAt: Date | null; createdAt: Date }
 export interface Session { id: Id; userId: Id; tokenHash: string; expiresAt: Date; revokedAt: Date | null; createdAt: Date }
+export interface Role { id: Id; name: string }
+export interface Permission { id: Id; name: string }
+export type SessionProjection = Omit<Session, 'tokenHash'> & { status: 'ACTIVE' | 'REVOKED' | 'EXPIRED' };
 export interface DomainErrorShape { code: string; message: string; details?: Record<string, unknown> }
 
 export class PlatformError extends Error {
