@@ -105,9 +105,9 @@ This suite is primarily composition/projection, not a second source of business 
 
 | Visible area | Canonical owner | Status | Rule |
 |---|---|---|---|
-| Work Center | `work-center` | PLANNED / PROJECTION | aggregates actionable items from owner APIs/events |
+| Work Center | API composition (`work-center` projection responsibility) | EXISTING / PROJECTION | rebuildable, non-persistent aggregation of actionable items from owner public APIs |
 | Operational reports | `operational-reporting` | PLANNED / PROJECTION | rebuildable read models, never owner truth |
-| Owner/management dashboard | web composition over reporting/work-center/financial-reporting | PLANNED UI | no direct table reads across modules |
+| Owner/management dashboard | web composition over reporting/work-center/financial-reporting | EXISTING UI | Arabic-first overview, filters and canonical-owner drill-down; no direct table reads across modules |
 | Alerts | `platform-core` notifications + owner events | EXISTING FOUNDATION | alert display does not own source state |
 | Approval Center | composition over approval owners | PLANNED UI | financial approvals remain `financial-controls`; generic approvals use platform capability when introduced |
 | Activity/Audit | `platform-core` | EXISTING | audit history remains platform-owned |
