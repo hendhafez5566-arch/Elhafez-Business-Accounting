@@ -23,3 +23,13 @@ test('tabular exporter emits real CSV and XLSX bytes',async()=>{
  const parsed=await new XlsxParser().parse(xlsx);
  assert.equal(parsed[0]?.email,'a@example.test');
 });
+
+test('column mapping can be changed before execution but not after imported rows exist',async()=>{
+ const service=new DataExchangeApplicationService(new InMemoryDataExchangeRepository());
+ const job=await service.upload({companyId:'c',dataset:'CUSTOMERS',fileName:'customers.csv',format:'CSV',mapping:{},idempotencyKey:'map-lifecycle',rows:[{'اسم':'Ahmed','نوع':'PERSON'}]});
+ const mapped=await service.setMapping('c',job.id,{'اسم':'displayName','نوع':'kind'});
+ assert.deepEqual(mapped.mapping,{'اسم':'displayName','نوع':'kind'});
+ await service.preview('c',job.id,['displayName','kind']);
+ await service.execute('c',job.id,{importRow:async()=> 'IMPORTED'});
+ await assert.rejects(service.setMapping('c',job.id,{'اسم':'displayName'}),/mapping cannot change/);
+});

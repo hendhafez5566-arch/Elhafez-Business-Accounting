@@ -125,6 +125,16 @@ export class DataExchangeApplicationService {
   return job;
  }
 
+ async setMapping(companyId:string,id:string,mapping:Readonly<Record<string,string>>){
+  const job=await this.require(companyId,id);
+  if(job.direction!=='IMPORT')throw new DataExchangeError('only import jobs can be mapped');
+  if(job.status==='PROCESSING'||job.status==='COMPLETED'||job.rows.some(row=>row.outcome==='IMPORTED'||row.outcome==='DUPLICATE'))throw new DataExchangeError('mapping cannot change after import execution has started');
+  const normalized=normalizeMapping(mapping,job.rows);
+  const updated:ExchangeJob={...job,mapping:normalized,status:'UPLOADED',updatedAt:new Date(),rows:job.rows.map(row=>({...row,outcome:'PENDING',error:undefined}))};
+  await this.repository.save(updated);
+  return updated;
+ }
+
  async preview(companyId:string,id:string,required:readonly string[]){
   const job=await this.require(companyId,id);
   if(job.direction!=='IMPORT')throw new DataExchangeError('only import jobs can be previewed');
@@ -196,6 +206,20 @@ export class DataExchangeApplicationService {
 
 function identityMapping(row:Readonly<Record<string,string>>|undefined):Record<string,string>{
  return Object.fromEntries(Object.keys(row??{}).map(key=>[key,key]));
+}
+function normalizeMapping(mapping:Readonly<Record<string,string>>,rows:readonly ExchangeRow[]):Record<string,string>{
+ const sourceFields=new Set(rows.flatMap(row=>Object.keys(row.source)));
+ const normalized:Record<string,string>={};
+ const targets=new Set<string>();
+ for(const [sourceValue,targetValue] of Object.entries(mapping)){
+  const source=sourceValue.trim(),target=targetValue.trim();
+  if(!source||!target)throw new DataExchangeError('mapping source and target are required');
+  if(sourceFields.size&& !sourceFields.has(source))throw new DataExchangeError(`mapping source ${source} does not exist in the import`);
+  if(targets.has(target))throw new DataExchangeError(`mapping target ${target} is duplicated`);
+  normalized[source]=target;targets.add(target);
+ }
+ if(!Object.keys(normalized).length)throw new DataExchangeError('at least one column mapping is required');
+ return normalized;
 }
 function mapRow(mapping:Readonly<Record<string,string>>,source:Readonly<Record<string,string>>):Record<string,string>{
  return Object.fromEntries(Object.entries(mapping).map(([sourceField,targetField])=>[targetField,source[sourceField]??'']));
