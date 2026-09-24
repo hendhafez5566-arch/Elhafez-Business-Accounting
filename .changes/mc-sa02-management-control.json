@@ -1,0 +1,29 @@
+{
+  "id": "mc-sa02-management-control",
+  "summary": "MC-SA-02 Management & Control composition, work center, exception filtering, and Arabic-first management navigation over canonical owner public read boundaries.",
+  "type": "feature",
+  "allowedModules": [
+    "platform-core"
+  ],
+  "allowedPaths": [
+    ".changes/mc-sa02-management-control.json",
+    "apps/api/src/app.module.ts",
+    "apps/api/src/management-control.controller.ts",
+    "apps/api/src/management-control.service.ts",
+    "apps/api/src/management-control.spec.ts",
+    "apps/web/src/management-control-client.ts",
+    "apps/web/src/management-control-page.tsx",
+    "apps/web/src/management-control.spec.ts",
+    "apps/web/src/routes.tsx",
+    "docs/BUSINESS-MODULE-ARCHITECTURE.md",
+    "prisma/migrations/20260923150000_mc_sa02_management_permission/migration.sql"
+  ],
+  "protectedPaths": [
+    "apps/api/src/app.module.ts",
+    "apps/web/src/routes.tsx",
+    "docs/BUSINESS-MODULE-ARCHITECTURE.md"
+  ],
+  "protectedReason": "MC-SA-02 requires registering the routed non-persistent work-center composition at the API root, replacing the generic home route and adding management navigation. The architecture status is updated only for implemented Management & Control surfaces. No module or persistence is introduced because the projection has no independent lifecycle.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": ""
+}
