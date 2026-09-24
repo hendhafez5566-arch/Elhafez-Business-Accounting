@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict'; import test from 'node:test';
+import { StandaloneServicesApplicationService, type ConfirmationPort } from './public/index.js';
+import { InMemoryStandaloneServicesRepository } from './infrastructure/in-memory-standalone-services.repository.js';
+
+const confirmation:ConfirmationPort={async prepare(){return {ready:true,blockers:[],planId:'plan-1',planVersion:1};},async commit(){return {operationId:'op-1'};},async cancel(){return {cancelled:true,blockers:[]};}};
+function app(){const repo=new InMemoryStandaloneServicesRepository();return {repo,service:new StandaloneServicesApplicationService(repo,confirmation)};}
+async function seeded(){const x=app();await x.service.manageServiceType({id:'hotel',companyId:'c1',code:'HOTEL',category:'HOTEL',nameAr:'فندق',active:true});return x;}
+const draft={companyId:'c1',branchId:'b1',commandKey:'cmd-1',actorId:'u1',id:'s1',number:'S-1',serviceTypeId:'hotel',serviceDate:'2026-10-01',quantity:'1',debtorKind:'CUSTOMER' as const,debtorPartyId:'p1',customerPartyId:'p1',details:{hotelId:'h1'},currency:'EGP',grossAmount:'1000',discountAmount:'100'};
+
+test('draft is idempotent and computes decimal net',async()=>{const {service}=await seeded();const a=await service.createDraft(draft);const b=await service.createDraft(draft);assert.equal(a.id,b.id);const view=await service.getService('c1','s1');assert.equal(view.revision.commercial.netAmount,'900');});
+test('conflicting command replay is rejected',async()=>{const {service}=await seeded();await service.createDraft(draft);await assert.rejects(()=>service.createDraft({...draft,id:'s2',number:'S-2'}));});
+test('CAS protects draft revision and confirmed service is immutable through draft update',async()=>{const {service}=await seeded();await service.createDraft(draft);await assert.rejects(()=>service.updateDraft({...draft,serviceId:'s1',expectedRevision:0,commandKey:'cmd-2'}));await service.confirm({companyId:'c1',branchId:'b1',serviceId:'s1',expectedRevision:1,commandKey:'cmd-3',actorId:'u1'});await assert.rejects(()=>service.updateDraft({...draft,serviceId:'s1',expectedRevision:1,commandKey:'cmd-4'}));});
+test('confirmation becomes visible only after external commit succeeds',async()=>{const {service}=await seeded();await service.createDraft(draft);const value=await service.confirm({companyId:'c1',branchId:'b1',serviceId:'s1',expectedRevision:1,commandKey:'cmd-3',actorId:'u1'});assert.equal(value.status,'CONFIRMED');assert.equal(value.externalOperationId,'op-1');});
+test('cancellation delegates to owner orchestration before local cancellation',async()=>{const {service}=await seeded();await service.createDraft(draft);await service.confirm({companyId:'c1',branchId:'b1',serviceId:'s1',expectedRevision:1,commandKey:'cmd-3',actorId:'u1'});const value=await service.requestCancellation({companyId:'c1',branchId:'b1',serviceId:'s1',commandKey:'cmd-4',actorId:'u1'});assert.equal(value.status,'CANCELLED');});

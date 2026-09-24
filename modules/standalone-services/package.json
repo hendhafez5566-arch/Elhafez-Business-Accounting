@@ -1,0 +1,12 @@
+{
+  "name": "@elhafez/standalone-services",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/public/index.ts" },
+  "dependencies": { "@elhafez/contracts": "workspace:*" },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "tsx --test src/**/*.spec.ts"
+  }
+}
