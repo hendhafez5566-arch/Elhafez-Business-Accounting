@@ -47,15 +47,18 @@ test('export uses owning source and trusted platform file storage without exposi
  assert.ok(storedBytes>0);
 });
 
-test('services CSV import creates only scoped drafts, retries safely, and quarantines confirmed history',async()=>{
- const authorized:string[]=[],created:{id:string;number:string;branchId:string}[]=[];
+test('services CSV import creates only scoped drafts, retries safely across jobs, and quarantines confirmed history',async()=>{
+ const authorized:string[]=[],created:{id:string;number:string;branchId:string;details:Record<string,unknown>}[]=[];
  const files={authorize:async(_actor:string,_company:string,permission:string)=>{authorized.push(permission)}} as unknown as Pick<PlatformCoreApplicationService,'uploadFile'|'getFile'|'authorize'>;
- const services={getService:async()=>{throw new ContractValidationError('serviceId','not found')},createDraft:async(input:{id:string;number:string;branchId:string})=>{created.push(input);return input},listServices:async()=>[]} as unknown as StandaloneServicesApplicationService;
+ const services={getService:async(_company:string,id:string)=>{const record=created.find(value=>value.id===id);if(!record)throw new ContractValidationError('serviceId','not found');return{service:record,revision:{details:record.details}}},createDraft:async(input:{id:string;number:string;branchId:string;details:Record<string,unknown>})=>{created.push(input);return input},listServices:async()=>[]} as unknown as StandaloneServicesApplicationService;
  const boundary=new SystemAdministrationDataExchangeBoundary({} as CustomerManagementApplicationService,{} as SupplierManagementApplicationService,files,services);
  const context=executionContext('company-a','branch-a','actor-a'),target=boundary.importTarget('SERVICES',context);
  const values={sourceId:'legacy-1',status:'DRAFT',number:'S-100',serviceTypeId:'hotel',serviceDate:'2026-10-01',quantity:'2',customerPartyId:'customer-1',currency:'EGP',grossAmount:'50'};
  assert.equal(await target.importRow({companyId:'company-a',branchId:'branch-a',values,idempotencyKey:'job-1:1'}),'IMPORTED');
  assert.equal(created[0]?.branchId,'branch-a');assert.ok(authorized.includes('tourism.services.manage'));
+ assert.equal(await target.importRow({companyId:'company-a',branchId:'branch-a',values,idempotencyKey:'job-2:7'}),'DUPLICATE');
+ assert.equal(created.length,1);
+ await assert.rejects(target.importRow({companyId:'company-a',branchId:'branch-a',values:{...values,grossAmount:'60'},idempotencyKey:'job-3:1'}),/import identity conflict/);
  await assert.rejects(target.importRow({companyId:'company-a',branchId:'branch-a',values:{...values,status:'CONFIRMED'},idempotencyKey:'job-1:2'}),/requires financial and supply reconciliation/);
  await assert.rejects(target.importRow({companyId:'company-a',branchId:'branch-b',values,idempotencyKey:'job-1:3'}),/scope mismatch/);
 });

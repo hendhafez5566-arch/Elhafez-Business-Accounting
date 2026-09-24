@@ -63,18 +63,19 @@ export class SystemAdministrationDataExchangeBoundary{
     const status=(optional(values,'status')??'DRAFT').toUpperCase();
     if(status!=='DRAFT')throw new SystemAdministrationExchangeError(`legacy ${status} requires financial and supply reconciliation; no automatic reposting`);
     const sourceId=optional(values,'sourceId')??input.idempotencyKey;
-    const id=createHash('sha256').update(JSON.stringify([context.companyId,context.branchId,input.idempotencyKey])).digest('hex').slice(0,32);
+    const sourcePayloadHash=createHash('sha256').update(JSON.stringify(DATASETS.SERVICES.targetFields.filter(field=>field!=='status').map(field=>[field,field==='sourceId'?sourceId:optional(values,field)??'']))).digest('hex');
+    const id=createHash('sha256').update(JSON.stringify([context.companyId,context.branchId,sourceId])).digest('hex').slice(0,32);
     const existing=await this.services.getService(context.companyId,id).catch(error=>{if(error instanceof ContractValidationError&&error.field==='serviceId')return null;throw error});
-    if(existing){if(existing.service.branchId!==context.branchId||existing.service.number!==required(values,'number'))throw new SystemAdministrationExchangeError('import identity conflict');return 'DUPLICATE';}
+    if(existing){if(existing.service.branchId!==context.branchId||existing.revision.details.legacyImportHash!==sourcePayloadHash)throw new SystemAdministrationExchangeError('import identity conflict');return 'DUPLICATE';}
     const debtorKind=(optional(values,'debtorKind')??'CUSTOMER').toUpperCase();
     if(debtorKind!=='CUSTOMER'&&debtorKind!=='AGENT')throw new SystemAdministrationExchangeError('debtorKind must be CUSTOMER or AGENT');
     const customerPartyId=required(values,'customerPartyId');
     const serviceDate=required(values,'serviceDate');
-    await this.services.createDraft({companyId:context.companyId,branchId:context.branchId,actorId:context.actorId,id,commandKey:`dex-service:${input.idempotencyKey}`,number:required(values,'number'),serviceTypeId:required(values,'serviceTypeId'),serviceDate,
+    await this.services.createDraft({companyId:context.companyId,branchId:context.branchId,actorId:context.actorId,id,commandKey:`dex-service:${id}`,number:required(values,'number'),serviceTypeId:required(values,'serviceTypeId'),serviceDate,
      ...(optional(values,'periodEnd')?{periodEnd:optional(values,'periodEnd')}:{}),quantity:decimalAmount(required(values,'quantity')),
      debtorKind,debtorPartyId:debtorKind==='CUSTOMER'?customerPartyId:required(values,'debtorPartyId'),customerPartyId,
      beneficiaryPartyIds:(optional(values,'beneficiaryPartyIds')??'').split(/[|,]/).map(value=>value.trim()).filter(Boolean),
-     details:{description:optional(values,'description')??'',legacySourceId:sourceId,importCommandKey:input.idempotencyKey},
+     details:{description:optional(values,'description')??'',legacySourceId:sourceId,legacyImportHash:sourcePayloadHash},
      currency:required(values,'currency'),grossAmount:decimalAmount(required(values,'grossAmount')),discountAmount:decimalAmount(optional(values,'discountAmount')??'0'),
      invoiceNumber:optional(values,'invoiceNumber')??required(values,'number'),postingDate:optional(values,'postingDate')??serviceDate,dueDate:optional(values,'dueDate')??serviceDate});
     return 'IMPORTED';
