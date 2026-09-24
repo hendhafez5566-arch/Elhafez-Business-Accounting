@@ -169,10 +169,10 @@ importers:
         version: link:../../modules/treasury-settlement
       '@nestjs/common':
         specifier: ^11.0.11
-        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@7.2.0)
+        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
       '@nestjs/core':
         specifier: ^11.0.11
-        version: 11.2.5(@nestjs/common@11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@7.2.0))(reflect-metadata@0.2.2)(rxjs@7.8.2)
+        version: 11.2.5(@nestjs/common@11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2)
       reflect-metadata:
         specifier: ^0.2.2
         version: 0.2.2
@@ -731,57 +731,6 @@ importers:
         specifier: 6.19.0
         version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
 
-  modules/service-fulfillment:
-    dependencies:
-      '@elhafez/contracts':
-        specifier: workspace:*
-        version: link:../../packages/contracts
-      '@elhafez/standalone-services':
-        specifier: workspace:*
-        version: link:../standalone-services
-      '@elhafez/tourism-contract-inventory':
-        specifier: workspace:*
-        version: link:../tourism-contract-inventory
-      '@nestjs/common':
-        specifier: ^11.0.11
-        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@7.2.0)
-      '@prisma/client':
-        specifier: 6.19.0
-        version: 6.19.0(prisma@6.19.0(typescript@5.9.3))(typescript@5.9.3)
-
-  modules/service-vouchers:
-    dependencies:
-      '@elhafez/contracts':
-        specifier: workspace:*
-        version: link:../../packages/contracts
-      '@elhafez/standalone-services':
-        specifier: workspace:*
-        version: link:../standalone-services
-      '@elhafez/service-fulfillment':
-        specifier: workspace:*
-        version: link:../service-fulfillment
-      '@nestjs/common':
-        specifier: ^11.0.11
-        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@7.2.0)
-      '@prisma/client':
-        specifier: 6.19.0
-        version: 6.19.0(prisma@6.19.0(typescript@5.9.3))(typescript@5.9.3)
-
-  modules/standalone-services:
-    dependencies:
-      '@elhafez/contracts':
-        specifier: workspace:*
-        version: link:../../packages/contracts
-      '@elhafez/tourism-finance-orchestration':
-        specifier: workspace:*
-        version: link:../tourism-finance-orchestration
-      '@nestjs/common':
-        specifier: ^11.0.11
-        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@7.2.0)
-      '@prisma/client':
-        specifier: 6.19.0
-        version: 6.19.0(prisma@6.19.0(typescript@5.9.3))(typescript@5.9.3)
-
   modules/tourism-contract-inventory:
     dependencies:
       '@elhafez/contracts':
@@ -1067,6 +1016,61 @@ importers:
       '@prisma/client':
         specifier: 6.19.0
         version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
+
+
+  modules/standalone-services:
+    dependencies:
+      '@elhafez/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@elhafez/tourism-finance-orchestration':
+        specifier: workspace:*
+        version: link:../tourism-finance-orchestration
+      '@nestjs/common':
+        specifier: ^11.0.11
+        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@prisma/client':
+        specifier: 6.19.0
+        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
+
+
+  modules/service-fulfillment:
+    dependencies:
+      '@elhafez/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@elhafez/standalone-services':
+        specifier: workspace:*
+        version: link:../standalone-services
+      '@elhafez/tourism-contract-inventory':
+        specifier: workspace:*
+        version: link:../tourism-contract-inventory
+      '@nestjs/common':
+        specifier: ^11.0.11
+        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@prisma/client':
+        specifier: 6.19.0
+        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
+
+
+  modules/service-vouchers:
+    dependencies:
+      '@elhafez/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@elhafez/standalone-services':
+        specifier: workspace:*
+        version: link:../standalone-services
+      '@elhafez/service-fulfillment':
+        specifier: workspace:*
+        version: link:../service-fulfillment
+      '@nestjs/common':
+        specifier: ^11.0.11
+        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@prisma/client':
+        specifier: 6.19.0
+        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
+
 
 packages:
 
@@ -8370,3 +8374,4 @@ snapshots:
   base64-js@1.5.1: {}
 
   crc-32@1.2.2: {}
+
