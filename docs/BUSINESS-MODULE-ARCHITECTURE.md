@@ -138,6 +138,20 @@ Future administration features should remain separate only when they acquire a d
 
 Do not split an already accepted `platform-core` capability merely to match a menu item.
 
+## 3.1 MC-SA completion record
+
+Status: **CLOSED / ACCEPTED / MERGED**.
+
+The Management & System Administration program is complete for the owner-approved scope:
+
+- **MC-SA-01 — System Administration & Platform Operations:** CLOSED / ACCEPTED / MERGED.
+- **MC-SA-02 — Management & Control + Final Integration:** CLOSED / ACCEPTED / MERGED.
+- **MC-SA-03:** not planned or required for the accepted scope.
+
+Final MC-SA-02 merge to `main`: PR #73, merge commit `70e5adf17471e64c3fc5ae65c304abfbd6809c2c`.
+
+Future work must treat these phases as an accepted baseline. Do not restart, duplicate, or redesign them merely to add a feature. Extend the canonical owners and public boundaries defined in this document. Any genuinely new capability must be scoped as new work and must preserve the ownership and dependency rules above.
+
 ## 4. Shared reusable owners
 
 ### `tourism-contract-inventory` — EXISTING
