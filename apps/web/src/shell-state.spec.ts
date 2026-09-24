@@ -1,12 +1,16 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { initialShellState, setMobileDrawer, toggleSidebar } from './shell-state.js';
+import {
+  initialShellState,
+  setAutoSidebarActive,
+  setMobileDrawer,
+} from './shell-state.js';
 
-test('sidebar can collapse and expand without changing other shell state', () => {
-  const collapsed = toggleSidebar(initialShellState);
-  assert.equal(collapsed.sidebarCollapsed, true);
-  assert.equal(collapsed.mobileDrawerOpen, false);
-  assert.equal(toggleSidebar(collapsed).sidebarCollapsed, false);
+test('automatic sidebar presence is explicit and reversible', () => {
+  const active = setAutoSidebarActive(initialShellState, true);
+  assert.equal(active.autoSidebarActive, true);
+  assert.equal(active.mobileDrawerOpen, false);
+  assert.equal(setAutoSidebarActive(active, false).autoSidebarActive, false);
 });
 
 test('mobile drawer state is explicit and reversible', () => {

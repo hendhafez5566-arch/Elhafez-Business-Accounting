@@ -12,6 +12,12 @@ test('future route registration is separated from shell presentation', () => {
   assert.equal(findRoute('/extension', routes).id, 'extension');
 });
 
+test('appearance and navigation preferences have one canonical settings route', () => {
+  const route = findRoute('/settings/appearance');
+  assert.equal(route.id, 'appearance-settings');
+  assert.equal(route.group, 'الإعدادات');
+  assert.equal(route.icon, 'appearance');
+});
 
 test('duplicate route ids and paths are rejected before they can corrupt navigation', () => {
   assert.throws(() =>

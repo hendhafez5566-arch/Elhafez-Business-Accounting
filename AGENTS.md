@@ -12,6 +12,8 @@ Before editing any code, every coding agent MUST read:
 
 For accounting/financial work also read the relevant `docs/accounting/*` architecture, ownership, dependency, contracts and coverage files.
 
+For global UI, App Shell, navigation, typography, responsive behavior, or shared presentation-component work also read `docs/UI-ARCHITECTURE.md`.
+
 Before editing, create exactly one change-scope manifest under `.changes/<change-id>.json` for the PR. Declare the owning modules, explicitly allowed non-module paths, and any protected paths that truly must change. The CI change-safety gate validates this manifest against the real diff.
 
 ## Mandatory rules
