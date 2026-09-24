@@ -1,0 +1,31 @@
+{
+  "id": "ui-02-apply-design-system",
+  "summary": "Apply the accepted UI design system consistently across application pages, standardize page headers, spacing, dashboards, filters and administration controls, and prevent future raw-control UI patches.",
+  "type": "phase",
+  "allowedModules": [],
+  "allowedPaths": [
+    "apps/web/src/app-shell.tsx",
+    "apps/web/src/app-shell-contract.spec.ts",
+    "apps/web/src/styles.css",
+    "apps/web/src/styles.spec.ts",
+    "apps/web/src/ui/primitives.tsx",
+    "apps/web/src/ui/appearance-settings-page.tsx",
+    "apps/web/src/management-control-page.tsx",
+    "apps/web/src/system-administration-page.tsx",
+    "apps/web/src/quotation-pages.tsx",
+    "apps/web/src/supplier-pages.tsx",
+    "apps/web/src/tourism-services-page.tsx",
+    "tools/architecture/check-architecture.ts",
+    "docs/UI-ARCHITECTURE.md"
+  ],
+  "protectedPaths": [
+    "apps/web/src/app-shell.tsx",
+    "apps/web/src/styles.css",
+    "apps/web/src/ui/**",
+    "tools/architecture/**",
+    "docs/UI-ARCHITECTURE.md"
+  ],
+  "protectedReason": "UI-02 is the owner-approved global application of the accepted UI foundation; these protected presentation and architecture paths must change centrally rather than through per-module patches.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": ""
+}

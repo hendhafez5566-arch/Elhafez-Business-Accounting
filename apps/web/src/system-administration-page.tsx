@@ -1,4 +1,5 @@
 import {useEffect,useState} from 'react';
+import {Button,Card,EmptyState,ErrorState,FormField,Input,LoadingState,Select,Tabs,Toast} from './ui.js';
 import {HttpAdministrationClient,type AdministrationClient,type AdministrationContext} from './system-administration-client.js';
 
 const areas=[
@@ -63,8 +64,8 @@ export function SystemAdministrationPage({client=new HttpAdministrationClient(),
  const records=rows.filter(objectRecord);
  const selectedDataset=datasets.find(value=>value.id===field('dataset'));
 
- const input=(name:string,label:string,type='text')=><label className="ui-flow">{label}<input type={type} value={field(name)} onChange={event=>setField(name,event.target.value)}/></label>;
- const button=(label:string,onClick:()=>void)=><button type="button" disabled={loading} onClick={onClick}>{label}</button>;
+ const input=(name:string,label:string,type='text')=><FormField label={label}><Input type={type} value={field(name)} onChange={event=>setField(name,event.target.value)}/></FormField>;
+ const button=(label:string,onClick:()=>void)=><Button type="button" disabled={loading} onClick={onClick}>{label}</Button>;
 
  function actions(){
   if(selected==='users')return <div className="admin-actions">{input('userEmail','البريد','email')}{input('userName','الاسم')}{input('userPassword','كلمة مرور أولية','password')}{input('userRoleId','معرّف الدور (اختياري)')}{button('إنشاء مستخدم',()=>void run('تم إنشاء المستخدم.',()=>client.action('users',ctx,{email:field('userEmail'),displayName:field('userName'),password:field('userPassword'),roleId:field('userRoleId')||undefined})))}{input('userId','معرّف المستخدم')}{input('userAssignRoleId','معرّف الدور')}{button('إسناد الدور',()=>void run('تم إسناد الدور.',()=>client.action(`users/${field('userId')}/roles/${field('userAssignRoleId')}`,ctx)))}{button('سحب الدور',()=>void run('تم سحب الدور.',()=>client.remove(`users/${field('userId')}/roles/${field('userAssignRoleId')}`,ctx)))}{button('تعطيل المستخدم',()=>void run('تم تحديث المستخدم.',()=>client.patch(`users/${field('userId')}`,ctx,{active:false})))}{button('إعادة تفعيل المستخدم',()=>void run('تم تحديث المستخدم.',()=>client.patch(`users/${field('userId')}`,ctx,{active:true})))}</div>;
@@ -74,12 +75,12 @@ export function SystemAdministrationPage({client=new HttpAdministrationClient(),
   if(selected==='sessions')return <div className="admin-actions">{input('sessionId','معرّف الجلسة')}{button('إنهاء الجلسة',()=>void run('تم إنهاء الجلسة.',()=>client.action(`sessions/${field('sessionId')}/revoke`,ctx)))}{input('sessionUserId','معرّف المستخدم')}{button('عرض جلسات المستخدم',()=>void load(`sessions/${field('sessionUserId')}`))}{button('إنهاء كل جلسات المستخدم',()=>void run('تم إنهاء جلسات المستخدم.',()=>client.action(`users/${field('sessionUserId')}/sessions/revoke`,ctx),false))}</div>;
   if(selected==='notifications')return <div className="admin-actions">{input('notificationId','معرّف الإشعار')}{button('تحديد كمقروء',()=>void run('تم تحديث الإشعار.',()=>client.action(`notifications/${field('notificationId')}/read`,ctx)))}</div>;
   if(selected.startsWith('configuration/'))return <div className="admin-actions">{input('configKey','مفتاح الإعداد')}{input('configValue','القيمة (JSON أو نص)')}{button('حفظ الإعداد',()=>void run('تم حفظ الإعداد.',()=>client.action(`configuration/${field('configKey')}`,ctx,{value:configValue(field('configValue'))}),false))}</div>;
-  if(selected==='files')return <div className="admin-actions"><label>رفع ملف<input type="file" onChange={event=>void attachmentFile(event.target.files?.[0])}/></label>{button('حفظ الملف',()=>void run('تم حفظ الملف.',()=>client.action('files',ctx,{contentType:field('fileContentType')||'application/octet-stream',contentBase64:field('fileContentBase64')})))}{input('fileId','معرّف الملف')}{button('تنزيل الملف',()=>void run('تم تجهيز الملف.',downloadFile,false))}{button('إلغاء الملف',()=>void run('تم إلغاء الملف.',()=>client.remove(`files/${field('fileId')}`,ctx)))}</div>;
+  if(selected==='files')return <div className="admin-actions"><FormField label="رفع ملف"><Input type="file" onChange={event=>void attachmentFile(event.target.files?.[0])}/></FormField>{button('حفظ الملف',()=>void run('تم حفظ الملف.',()=>client.action('files',ctx,{contentType:field('fileContentType')||'application/octet-stream',contentBase64:field('fileContentBase64')})))}{input('fileId','معرّف الملف')}{button('تنزيل الملف',()=>void run('تم تجهيز الملف.',downloadFile,false))}{button('إلغاء الملف',()=>void run('تم إلغاء الملف.',()=>client.remove(`files/${field('fileId')}`,ctx)))}</div>;
   if(selected==='imports')return <div className="admin-actions">
-   <label>نوع البيانات<select value={field('dataset')} onChange={event=>{setField('dataset',event.target.value);setColumnMapping({});}}>{datasets.map(item=><option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+   <FormField label="نوع البيانات"><Select value={field('dataset')} onChange={event=>{setField('dataset',event.target.value);setColumnMapping({});}}>{datasets.map(item=><option key={item.id} value={item.id}>{item.label}</option>)}</Select></FormField>
    <p>الحقول المطلوبة: {selectedDataset?.requiredFields.join('، ')||'—'}</p>
    <p>حقول النظام المتاحة: {selectedDataset?.targetFields.join('، ')||'—'}</p>
-   <label>ملف CSV أو XLSX<input type="file" accept=".csv,.xlsx" onChange={event=>void importFile(event.target.files?.[0])}/></label>
+   <FormField label="ملف CSV أو XLSX"><Input type="file" accept=".csv,.xlsx" onChange={event=>void importFile(event.target.files?.[0])}/></FormField>
    {button('رفع ملف الاستيراد',()=>void run('تم رفع ملف الاستيراد.',async()=>{
     const result=await client.action('imports',ctx,{dataset:field('dataset'),fileName:field('importFileName'),format:field('format'),contentBase64:field('importContentBase64'),mapping:{},idempotencyKey:field('importIdempotencyKey')||crypto.randomUUID()});
     if(objectRecord(result)&&typeof result.id==='string'){
@@ -93,7 +94,7 @@ export function SystemAdministrationPage({client=new HttpAdministrationClient(),
     }
     return result;
    },false))}
-   {sourceFields.length?<fieldset><legend>مطابقة أعمدة الملف مع حقول النظام</legend>{sourceFields.map(source=><label key={source} className="ui-flow">{source}<select value={columnMapping[source]??''} onChange={event=>setColumnMapping(current=>({...current,[source]:event.target.value}))}><option value="">تجاهل العمود</option>{selectedDataset?.targetFields.map(target=><option key={target} value={target}>{target}</option>)}</select></label>)}</fieldset>:null}
+   {sourceFields.length?<fieldset><legend>مطابقة أعمدة الملف مع حقول النظام</legend>{sourceFields.map(source=><FormField key={source} label={source}><Select value={columnMapping[source]??''} onChange={event=>setColumnMapping(current=>({...current,[source]:event.target.value}))}><option value="">تجاهل العمود</option>{selectedDataset?.targetFields.map(target=><option key={target} value={target}>{target}</option>)}</Select></FormField>)}</fieldset>:null}
    {input('importJobId','معرّف مهمة الاستيراد')}
    {button('حفظ خريطة الأعمدة',()=>void run('تم حفظ خريطة الأعمدة.',()=>client.patch(`imports/${field('importJobId')}/mapping`,ctx,{mapping:Object.fromEntries(Object.entries(columnMapping).filter(([,target])=>Boolean(target)))}),false))}
    {button('معاينة والتحقق',()=>void run('تم التحقق من الملف.',()=>client.action(`imports/${field('importJobId')}/preview`,ctx)))}
@@ -104,19 +105,16 @@ export function SystemAdministrationPage({client=new HttpAdministrationClient(),
   return null;
  }
 
- return <main dir="rtl" aria-labelledby="admin-title">
-  <header><p>إدارة المنصة</p><h1 id="admin-title">إدارة النظام والعمليات</h1><p>لوحة عربية موحدة وآمنة لإدارة الوصول والبيانات واستمرارية التشغيل.</p></header>
-  <nav aria-label="مجالات إدارة النظام" className="ui-grid-sm">
-   {areas.map(([title,path])=><button key={path} type="button" aria-pressed={selected===path} disabled={!ctx.token} onClick={()=>void selectArea(path)}>{title}</button>)}
-  </nav>
+ return <section dir="rtl" aria-label="إدارة النظام والعمليات" className="ui-admin-page">
+  <Card title="إدارة المنصة"><p>لوحة عربية موحدة وآمنة لإدارة الوصول والبيانات واستمرارية التشغيل.</p><Tabs tabs={areas.map(([label,id])=>({id,label}))} active={selected} onChange={id=>void selectArea(id)}/></Card>
   <section aria-live="polite" className="ui-section-space">
-   {!ctx.token?<p>اختر الشركة والفرع وسجّل الدخول لعرض أدوات الإدارة.</p>:<>
-    <div className="ui-inline"><button type="button" disabled={loading} onClick={()=>void load()}>تحديث البيانات</button></div>
+   {!ctx.token?<EmptyState title="يلزم تسجيل الدخول">اختر الشركة والفرع وسجّل الدخول لعرض أدوات الإدارة.</EmptyState>:<>
+    <div className="ui-inline"><Button type="button" variant="secondary" disabled={loading} onClick={()=>void load()}>تحديث البيانات</Button></div>
     {actions()}
-    {loading?<p>جارٍ التحميل…</p>:message?<p role="alert">{message}</p>:success?<p role="status">{success}</p>:records.length===0?<p>لا توجد بيانات متاحة.</p>:<div className="ui-grid-md ui-section-space">
-     {records.map((record,index)=><article key={String(record.id??index)} className="ui-record-card">{Object.entries(record).filter(([key,value])=>labels[key]&&typeof value!=='object').map(([key,value])=><p key={key}><strong>{labels[key]}: </strong>{valueOf(value)}</p>)}</article>)}
+    {loading?<LoadingState/>:message?<ErrorState message={message}/>:success?<Toast tone="success">{success}</Toast>:records.length===0?<EmptyState title="لا توجد بيانات متاحة"/>:<div className="ui-grid-md ui-section-space">
+     {records.map((record,index)=><Card key={String(record.id??index)} className="ui-record-card">{Object.entries(record).filter(([key,value])=>labels[key]&&typeof value!=='object').map(([key,value])=><p key={key}><strong>{labels[key]}: </strong>{valueOf(value)}</p>)}</Card>)}
     </div>}
    </>}
   </section>
- </main>;
+ </section>;
 }
