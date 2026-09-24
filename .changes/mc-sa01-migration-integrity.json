@@ -1,0 +1,17 @@
+{
+  "id": "mc-sa01-migration-integrity",
+  "summary": "Repair the MC-SA-01 migration foreign-key column types proven non-executable on a fresh PostgreSQL database before migration acceptance.",
+  "type": "bugfix",
+  "allowedModules": [],
+  "allowedPaths": [
+    "prisma/migrations/20260922210000_mc_sa01_system_administration/migration.sql"
+  ],
+  "protectedPaths": [],
+  "protectedReason": "",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": "",
+  "unacceptedMigrationRepairs": [
+    "prisma/migrations/20260922210000_mc_sa01_system_administration/migration.sql"
+  ],
+  "unacceptedMigrationRepairReason": "Fresh PostgreSQL execution failed before MC-SA-01 could be accepted as an executable migration because company_id and password-recovery user_id were declared TEXT while their referenced Platform Core keys are UUID. The repair changes only those two foreign-key column types and does not alter business behavior."
+}
