@@ -125,6 +125,9 @@ importers:
       '@elhafez/platform-operations':
         specifier: workspace:*
         version: link:../../modules/platform-operations
+      '@elhafez/saas-control-plane':
+        specifier: workspace:*
+        version: link:../../modules/saas-control-plane
       '@elhafez/procurement-finance':
         specifier: workspace:*
         version: link:../../modules/procurement-finance
@@ -180,6 +183,25 @@ importers:
         specifier: ^7.8.1
         version: 7.8.2
 
+  apps/owner:
+    dependencies:
+      react:
+        specifier: ^19.0.0
+        version: 19.3.0
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.3.0(react@19.3.0)
+    devDependencies:
+      '@types/react':
+        specifier: ^19.0.8
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19.0.3
+        version: 19.3.0(@types/react@19.3.0)
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+
   apps/web:
     dependencies:
       react:
@@ -198,6 +220,15 @@ importers:
       typescript:
         specifier: ^5.7.3
         version: 5.9.3
+
+  modules/saas-control-plane:
+    dependencies:
+      '@nestjs/common':
+        specifier: ^11.0.11
+        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@prisma/client':
+        specifier: 6.19.0
+        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
 
   modules/_template:
     dependencies:
