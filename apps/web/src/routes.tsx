@@ -10,6 +10,7 @@ import { BookingsPage, RoomingPage, VisasPage } from './hajj-umrah-operations-pr
 import { TicketingPage, TransportPage, TripOperationsPage } from './hajj-umrah-operations-secondary-pages.js';
 import { HajjUmrahReadinessPage } from './hajj-umrah-readiness-page.js';
 import { SystemAdministrationPage } from './system-administration-page.js';
+import { TourismServicesPage } from './tourism-services-page.js';
 import { UmrahBarcodePage } from './hajj-umrah-barcode-page.js';
 
 export interface AppRoute { readonly id:string; readonly path:string; readonly label:string; readonly group?:string; readonly element:ReactNode; }
@@ -29,6 +30,7 @@ export const foundationRoutes=defineRoutes(
   {id:'supplier-management',path:'/procurement/suppliers',label:'الموردون',group:'المشتريات والموردون',element:<SuppliersPage/>},
   {id:'supplier-intelligence',path:'/procurement/supplier-intelligence',label:'تقييم ومتابعة الموردين',group:'المشتريات والموردون',element:<SupplierIntelligencePage/>},
   {id:'procurement-operations',path:'/procurement/purchase-orders',label:'أوامر الشراء',group:'المشتريات والموردون',element:<ProcurementOperationsPage/>},
+  {id:'tourism-services',path:'/tourism/services',label:'السياحة والخدمات',group:'السياحة والخدمات',element:<TourismServicesPage/>},
   {id:'hajj-umrah-seasons',path:'/hajj-umrah/seasons',label:'المواسم',group:'الحج والعمرة',element:<SeasonsPage/>},
   {id:'hajj-umrah-programs',path:'/hajj-umrah/programs',label:'برامج الحج والعمرة',group:'الحج والعمرة',element:<ProgramsPage/>},
   {id:'hajj-umrah-program-workspace',path:'/hajj-umrah/program-workspace',label:'مساحة عمل البرنامج',group:'الحج والعمرة',element:<ProgramWorkspacePage/>},

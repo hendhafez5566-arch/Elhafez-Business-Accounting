@@ -57,6 +57,10 @@ import { HajjUmrahController } from './hajj-umrah.controller.js';
 import { HajjUmrahOperationsController } from './hajj-umrah-operations.controller.js';
 import { SystemAdministrationController } from './system-administration.controller.js';
 import { SystemAdministrationDataExchangeBoundary } from './system-administration-data-exchange.js';
+import { StandaloneServicesModule } from '@elhafez/standalone-services/nest';
+import { ServiceFulfillmentModule } from '@elhafez/service-fulfillment/nest';
+import { ServiceVouchersModule } from '@elhafez/service-vouchers/nest';
+import { TourismServicesController } from './tourism-services.controller.js';
 import { HajjUmrahReadinessController } from './hajj-umrah-readiness.controller.js';
 
 /** Composition root only. Business modules are registered here through public module APIs. */
@@ -65,9 +69,9 @@ import { HajjUmrahReadinessController } from './hajj-umrah-readiness.controller.
     PlatformCoreModule, DataExchangeModule, PlatformOperationsModule, PartyRegistryModule, AgentManagementModule, CustomerManagementModule, CrmLeadsModule, CrmFollowupsModule, QuotationsModule, SupplierManagementModule, SupplierEvaluationModule, SupplierDisputesModule, ProcurementFulfillmentModule, TravelerManagementModule,
     PeriodControlModule, GeneralLedgerModule, FinancialControlsModule, TaxModule, BillingSubledgersModule, TreasurySettlementModule, PartyAccountingModule,
     ExpenseCommissionRecognitionModule, CostBudgetAccountingModule, AssetsFinancingModule, ProcurementFinanceModule, TourismContractInventoryModule,
-    TourismFinanceOrchestrationModule, HajjUmrahSeasonsModule, HajjUmrahProgramsModule, HajjUmrahBookingsModule, HajjUmrahRoomingModule, HajjUmrahVisaOperationsModule, HajjUmrahTicketingModule, HajjUmrahTransportOperationsModule, HajjUmrahTripOperationsModule, HajjUmrahReadinessModule, FinancialReportingModule, Ac14MigrationModule,
+    TourismFinanceOrchestrationModule, StandaloneServicesModule, ServiceFulfillmentModule, ServiceVouchersModule, HajjUmrahSeasonsModule, HajjUmrahProgramsModule, HajjUmrahBookingsModule, HajjUmrahRoomingModule, HajjUmrahVisaOperationsModule, HajjUmrahTicketingModule, HajjUmrahTransportOperationsModule, HajjUmrahTripOperationsModule, HajjUmrahReadinessModule, FinancialReportingModule, Ac14MigrationModule,
   ],
-  controllers: [SystemAdministrationController, CrmSalesReadModelController, SupplierIntelligenceReadModelController, HajjUmrahController, HajjUmrahOperationsController, HajjUmrahReadinessController],
+  controllers: [SystemAdministrationController, CrmSalesReadModelController, SupplierIntelligenceReadModelController, HajjUmrahController, HajjUmrahOperationsController, HajjUmrahReadinessController, TourismServicesController],
   providers: [
     FinancialReportingEvidenceAdapter,
     {

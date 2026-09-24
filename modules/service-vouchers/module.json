@@ -1,0 +1,1 @@
+{"name":"service-vouchers","publicApi":["src/public/index.ts"],"ownedTables":["sv_vouchers","sv_voucher_versions","sv_command_receipts"],"allowedDependencies":["@elhafez/contracts","@elhafez/standalone-services","@elhafez/service-fulfillment"]}

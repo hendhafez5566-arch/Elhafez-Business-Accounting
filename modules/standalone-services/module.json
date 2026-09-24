@@ -1,6 +1,17 @@
 {
   "name": "standalone-services",
-  "publicApi": ["src/public/index.ts"],
-  "ownedTables": ["ss_service_types", "ss_services", "ss_service_revisions", "ss_service_history", "ss_service_travelers", "ss_command_receipts"],
-  "allowedDependencies": ["@elhafez/contracts"]
+  "publicApi": [
+    "src/public/index.ts"
+  ],
+  "ownedTables": [
+    "ss_service_types",
+    "ss_services",
+    "ss_service_revisions",
+    "ss_service_history",
+    "ss_command_receipts"
+  ],
+  "allowedDependencies": [
+    "@elhafez/contracts",
+    "@elhafez/tourism-finance-orchestration"
+  ]
 }

@@ -5,6 +5,7 @@
     "src/public/nest.ts"
   ],
   "ownedTables": [
+    "tfo_standalone_service_references",
     "tfo_financial_setups",
     "tfo_workflows",
     "tfo_workflow_steps",

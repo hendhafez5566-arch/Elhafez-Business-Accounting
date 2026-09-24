@@ -1,0 +1,16 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { companyId, decimalAmount } from '@elhafez/contracts';
+import type { StandaloneServicesApplicationService } from '@elhafez/standalone-services';
+import type { ServiceFulfillmentApplicationService } from '@elhafez/service-fulfillment';
+import { ServiceVouchersApplicationService, type PrintableVoucher, type Voucher, type VoucherRepository } from './application/service-vouchers.application-service.js';
+const company=companyId('company-1');
+test('voucher preserves original customer-only snapshot, supersedes, and voids without changing financial state',async()=>{let value:Voucher|null=null;const versions=new Map<number,PrintableVoucher>();const receipts=new Map<string,{payloadHash:string;voucherId:string}>();let description='Hotel stay';
+ const repo:VoucherRepository={get:async()=>value,forService:async()=>value?[value]:[],snapshot:async(_,v)=>versions.get(v)??null,receipt:async(_,key)=>receipts.get(key)??null,issue:async(v,s,key,h)=>{value=v;versions.set(1,s);receipts.set(key,{payloadHash:h,voucherId:v.id})},supersede:async(v,old,s,key,h)=>{assert.equal(value?.version,old);value=v;versions.set(v.version,s);receipts.set(key,{payloadHash:h,voucherId:v.id})},void:async(v,old,key,h)=>{assert.equal(value?.version,old);value=v;receipts.set(key,{payloadHash:h,voucherId:v.id})}};
+ const services={getService:async()=>({service:{id:'S',number:'S-1',branchId:'B',status:'CONFIRMED'},revision:{serviceDate:'2026-10-01',category:'HOTEL',customerPartyId:'C',beneficiaryPartyIds:['P'],quantity:decimalAmount('2'),details:{description},commercial:{grossAmount:decimalAmount('900'),netAmount:decimalAmount('800')}}})} as unknown as StandaloneServicesApplicationService;
+ const fulfillment={get:async()=>({confirmations:[{referenceType:'BOOKING',reference:'ABC',supplierId:'H'}]})} as unknown as ServiceFulfillmentApplicationService;
+ const app=new ServiceVouchersApplicationService(repo,services,fulfillment),base={companyId:company,branchId:'B',serviceId:'S',commandKey:'issue',number:'V-1',instructions:'Check-in at 2 PM'};
+ const issued=await app.issue(base);assert.ok(issued);assert.equal((await app.issue(base))?.id,issued.id);const first=await app.printable(company,'B',issued.id);assert.equal(first.description,'Hotel stay');assert.ok(!JSON.stringify(first).includes('900'));assert.ok(!JSON.stringify(first).includes('800'));
+ description='Updated stay';await app.supersede({companyId:company,branchId:'B',id:issued.id,commandKey:'revise',instructions:'Check-in at 3 PM'});assert.equal((await repo.snapshot(issued.id,1))?.description,'Hotel stay');assert.equal((await app.printable(company,'B',issued.id)).description,'Updated stay');assert.deepEqual(await app.cancellationBlockers(company,'B','S'),[`ACTIVE_VOUCHER:${issued.id}`]);
+ await app.void({companyId:company,branchId:'B',id:issued.id,commandKey:'void'});assert.deepEqual(await app.cancellationBlockers(company,'B','S'),[]);await assert.rejects(app.printable(company,'B',issued.id),/active voucher/);
+});

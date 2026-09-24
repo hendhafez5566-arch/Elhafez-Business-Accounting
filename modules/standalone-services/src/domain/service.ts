@@ -19,6 +19,13 @@ export interface CommercialSnapshot {
   readonly discountAmount: DecimalAmount;
   readonly netAmount: DecimalAmount;
 }
+export interface ServiceFinancialTerms {
+  readonly invoiceNumber: string;
+  readonly postingDate: string;
+  readonly dueDate: string;
+  readonly approvalRequestId?: string;
+  readonly commission?: { readonly agentPartyId: string; readonly amount: DecimalAmount };
+}
 
 export interface ServiceRevision {
   readonly serviceId: string;
@@ -34,6 +41,7 @@ export interface ServiceRevision {
   readonly beneficiaryPartyIds: readonly string[];
   readonly details: Readonly<Record<string, unknown>>;
   readonly commercial: CommercialSnapshot;
+  readonly financialTerms: ServiceFinancialTerms;
   readonly createdAt: string;
 }
 
@@ -46,6 +54,10 @@ export interface StandaloneService {
   readonly revision: number;
   readonly confirmedRevision?: number;
   readonly externalOperationId?: string;
+  readonly pendingCommandKey?: string;
+  readonly cancellationPostingDate?: string;
+  readonly supplyPlanId?: string;
+  readonly supplyPlanVersion?: number;
   readonly createdAt: string;
   readonly updatedAt: string;
 }
@@ -54,7 +66,7 @@ export interface ServiceHistoryEntry {
   readonly id: string;
   readonly serviceId: string;
   readonly revision: number;
-  readonly kind: 'DRAFTED' | 'AMENDED' | 'CONFIRMATION_STARTED' | 'CONFIRMED' | 'CANCELLATION_REQUESTED' | 'CANCELLED' | 'REOPENED';
+  readonly kind: 'DRAFTED' | 'AMENDED' | 'CONFIRMATION_STARTED' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLATION_REQUESTED' | 'CANCELLED' | 'REOPENED';
   readonly actorId: string;
   readonly evidence?: Readonly<Record<string, unknown>>;
   readonly createdAt: string;
@@ -64,5 +76,5 @@ export interface CommandReceipt {
   readonly companyId: CompanyId;
   readonly commandKey: string;
   readonly payloadHash: string;
-  readonly result: Readonly<Record<string, unknown>>;
+  readonly result: StandaloneService;
 }

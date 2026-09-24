@@ -1,0 +1,35 @@
+{
+  "id": "ts01-tourism-services",
+  "summary": "Build standalone tourism services with reviewed supply, durable finance, supplier fulfillment, immutable vouchers, scoped Arabic API and workspace.",
+  "type": "phase",
+  "allowedModules": [
+    "standalone-services",
+    "service-fulfillment",
+    "service-vouchers",
+    "tourism-contract-inventory",
+    "tourism-finance-orchestration",
+    "financial-controls"
+  ],
+  "allowedPaths": [
+    "apps/api/package.json",
+    "apps/api/src/app.module.ts",
+    "apps/api/src/tourism-services.controller.ts",
+    "apps/web/src/routes.tsx",
+    "apps/web/src/tourism-services-client.ts",
+    "apps/web/src/tourism-services-page.tsx",
+    "pnpm-lock.yaml",
+    "prisma/schema.prisma",
+    "prisma/migrations/20260924120000_ts01_tourism_services/migration.sql"
+  ],
+  "protectedPaths": [
+    "apps/web/src/routes.tsx",
+    "modules/standalone-services/module.json",
+    "modules/tourism-contract-inventory/module.json",
+    "modules/tourism-finance-orchestration/module.json",
+    "modules/service-fulfillment/module.json",
+    "modules/service-vouchers/module.json"
+  ],
+  "protectedReason": "Register the routed tourism services workspace and explicit ownership/dependency metadata for three new business modules and their owner integrations.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": ""
+}

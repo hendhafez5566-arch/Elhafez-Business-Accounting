@@ -1,7 +1,7 @@
 import { Prisma, type PrismaClient } from '@prisma/client';
 import { companyId, decimalAmount, sourceReference, type CompanyId, type SourceReference } from '@elhafez/contracts';
 import type { TourismFinanceRepository } from '../application/orchestration.repository.js';
-import type { BookingReference, FinancialSetup, ProgramHistory, ServiceFinancialSnapshot, Workflow, WorkflowStep } from '../domain/orchestration.js';
+import type { BookingReference, FinancialSetup, ProgramHistory, ServiceFinancialSnapshot, StandaloneFinancialReference, Workflow, WorkflowStep } from '../domain/orchestration.js';
 const json = (value: unknown) => value as Prisma.InputJsonValue; const out = <T>(value: Prisma.JsonValue) => value as unknown as T;
 type ProcurementReference = { purchaseOrderId?: string; commitmentId?: string };
 function procurementReferences(value: BookingReference): ProcurementReference[] {
@@ -29,6 +29,19 @@ function mappedProcurement(value: Prisma.JsonValue | null): Pick<BookingReferenc
 }
 export class PrismaTourismFinanceRepository implements TourismFinanceRepository {
   constructor(private readonly db: PrismaClient) {}
+  async reserveStandalone(value: StandaloneFinancialReference) {
+    try {
+      await this.db.tfoStandaloneServiceReference.create({data:{id:value.id,companyId:value.companyId,branchId:value.branchId,serviceType:value.service.sourceType,serviceId:value.service.sourceId,revision:value.revision,confirmationPayloadHash:value.confirmationPayloadHash,confirmationWorkflowId:value.confirmationWorkflowId,status:value.status,debtorPartyId:value.debtorPartyId,invoiceId:value.invoiceId,allocationIds:json(value.allocationIds),purchaseOrderIds:json(value.purchaseOrderIds),commissionClaimId:value.commissionClaimId,financialSetup:json(value.financialSetup)}});
+      return value;
+    } catch(error) { const prior=await this.standalone(value.companyId,value.service); if(prior)return prior; throw error; }
+  }
+  async standalone(company:CompanyId,reference:SourceReference):Promise<StandaloneFinancialReference|undefined> {
+    const row=await this.db.tfoStandaloneServiceReference.findUnique({where:{companyId_serviceType_serviceId:{companyId:company,serviceType:reference.sourceType,serviceId:reference.sourceId}}});
+    return row?{id:row.id,companyId:companyId(row.companyId),branchId:row.branchId,service:sourceReference(row.serviceType,row.serviceId),revision:row.revision,confirmationPayloadHash:row.confirmationPayloadHash,confirmationWorkflowId:row.confirmationWorkflowId,status:row.status as StandaloneFinancialReference['status'],debtorPartyId:row.debtorPartyId,...(row.invoiceId?{invoiceId:row.invoiceId}:{}),allocationIds:out(row.allocationIds),purchaseOrderIds:out(row.purchaseOrderIds),...(row.commissionClaimId?{commissionClaimId:row.commissionClaimId}:{}),financialSetup:out(row.financialSetup)}:undefined;
+  }
+  async saveStandalone(value:StandaloneFinancialReference) {
+    await this.db.tfoStandaloneServiceReference.update({where:{companyId_serviceType_serviceId:{companyId:value.companyId,serviceType:value.service.sourceType,serviceId:value.service.sourceId}},data:{status:value.status,invoiceId:value.invoiceId,allocationIds:json(value.allocationIds),purchaseOrderIds:json(value.purchaseOrderIds),commissionClaimId:value.commissionClaimId}});
+  }
   async reserveWorkflow(value: Workflow) { try { return this.mapWorkflow(await this.db.tfoWorkflow.create({ data: { id: value.id, companyId: value.companyId, branchId: value.branchId, kind: value.kind, commandKey: value.commandKey, payloadHash: value.payloadHash, sourceType: value.sourceType, sourceId: value.sourceId, status: value.status, payload: json(value.payload) } })); } catch (error) { const old = await this.workflow(value.companyId, value.commandKey); if (old) return old; throw error; } }
   async workflow(company: CompanyId, commandKey: string) { const row = await this.db.tfoWorkflow.findUnique({ where: { companyId_commandKey: { companyId: company, commandKey } } }); return row ? this.mapWorkflow(row) : undefined; }
   async workflowById(company: CompanyId, id: string) { const row = await this.db.tfoWorkflow.findUnique({ where: { companyId_id: { companyId: company, id } } }); return row ? this.mapWorkflow(row) : undefined; }

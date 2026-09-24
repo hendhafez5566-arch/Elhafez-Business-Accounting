@@ -41,111 +41,63 @@ importers:
 
   apps/api:
     dependencies:
-      '@elhafez/data-exchange':
-        specifier: workspace:*
-        version: link:../../modules/data-exchange
-      '@elhafez/platform-operations':
-        specifier: workspace:*
-        version: link:../../modules/platform-operations
-      '@elhafez/hajj-umrah-programs':
-        specifier: workspace:*
-        version: link:../../modules/hajj-umrah-programs
-      '@elhafez/hajj-umrah-seasons':
-        specifier: workspace:*
-        version: link:../../modules/hajj-umrah-seasons
-      '@elhafez/supplier-management':
-        specifier: workspace:*
-        version: link:../../modules/supplier-management
-      '@elhafez/supplier-evaluation':
-        specifier: workspace:*
-        version: link:../../modules/supplier-evaluation
-      '@elhafez/supplier-disputes':
-        specifier: workspace:*
-        version: link:../../modules/supplier-disputes
-      '@elhafez/procurement-fulfillment':
-        specifier: workspace:*
-        version: link:../../modules/procurement-fulfillment
-      '@elhafez/traveler-management':
-        specifier: workspace:*
-        version: link:../../modules/traveler-management
-      '@elhafez/quotations':
-        specifier: workspace:*
-        version: link:../../modules/quotations
       '@elhafez/agent-management':
         specifier: workspace:*
         version: link:../../modules/agent-management
+      '@elhafez/assets-financing':
+        specifier: workspace:*
+        version: link:../../modules/assets-financing
+      '@elhafez/billing-subledgers':
+        specifier: workspace:*
+        version: link:../../modules/billing-subledgers
+      '@elhafez/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@elhafez/cost-budget-accounting':
+        specifier: workspace:*
+        version: link:../../modules/cost-budget-accounting
       '@elhafez/crm-followups':
         specifier: workspace:*
         version: link:../../modules/crm-followups
       '@elhafez/crm-leads':
         specifier: workspace:*
         version: link:../../modules/crm-leads
-      '@elhafez/customer-management':
-        specifier: workspace:*
-        version: link:../../modules/customer-management
-      '@elhafez/party-registry':
-        specifier: workspace:*
-        version: link:../../modules/party-registry
       '@elhafez/currency-fx':
         specifier: workspace:*
         version: link:../../modules/currency-fx
-      '@elhafez/contracts':
+      '@elhafez/customer-management':
         specifier: workspace:*
-        version: link:../../packages/contracts
-      '@elhafez/financial-reporting':
+        version: link:../../modules/customer-management
+      '@elhafez/data-exchange':
         specifier: workspace:*
-        version: link:../../modules/financial-reporting
-      '@elhafez/assets-financing':
-        specifier: workspace:*
-        version: link:../../modules/assets-financing
-      '@elhafez/cost-budget-accounting':
-        specifier: workspace:*
-        version: link:../../modules/cost-budget-accounting
-      '@elhafez/procurement-finance':
-        specifier: workspace:*
-        version: link:../../modules/procurement-finance
-      '@elhafez/tourism-contract-inventory':
-        specifier: workspace:*
-        version: link:../../modules/tourism-contract-inventory
-      '@elhafez/tourism-finance-orchestration':
-        specifier: workspace:*
-        version: link:../../modules/tourism-finance-orchestration
-      '@elhafez/treasury-settlement':
-        specifier: workspace:*
-        version: link:../../modules/treasury-settlement
-      '@elhafez/billing-subledgers':
-        specifier: workspace:*
-        version: link:../../modules/billing-subledgers
-      '@elhafez/party-accounting':
-        specifier: workspace:*
-        version: link:../../modules/party-accounting
+        version: link:../../modules/data-exchange
       '@elhafez/expense-commission-recognition':
         specifier: workspace:*
         version: link:../../modules/expense-commission-recognition
-      '@elhafez/tax':
-        specifier: workspace:*
-        version: link:../../modules/tax
       '@elhafez/financial-controls':
         specifier: workspace:*
         version: link:../../modules/financial-controls
+      '@elhafez/financial-reporting':
+        specifier: workspace:*
+        version: link:../../modules/financial-reporting
       '@elhafez/general-ledger':
         specifier: workspace:*
         version: link:../../modules/general-ledger
-      '@elhafez/period-control':
-        specifier: workspace:*
-        version: link:../../modules/period-control
-      '@elhafez/platform-core':
-        specifier: workspace:*
-        version: link:../../modules/platform-core
       '@elhafez/hajj-umrah-bookings':
         specifier: workspace:*
         version: link:../../modules/hajj-umrah-bookings
+      '@elhafez/hajj-umrah-programs':
+        specifier: workspace:*
+        version: link:../../modules/hajj-umrah-programs
+      '@elhafez/hajj-umrah-readiness':
+        specifier: workspace:*
+        version: link:../../modules/hajj-umrah-readiness
       '@elhafez/hajj-umrah-rooming':
         specifier: workspace:*
         version: link:../../modules/hajj-umrah-rooming
-      '@elhafez/hajj-umrah-visa-operations':
+      '@elhafez/hajj-umrah-seasons':
         specifier: workspace:*
-        version: link:../../modules/hajj-umrah-visa-operations
+        version: link:../../modules/hajj-umrah-seasons
       '@elhafez/hajj-umrah-ticketing':
         specifier: workspace:*
         version: link:../../modules/hajj-umrah-ticketing
@@ -155,15 +107,72 @@ importers:
       '@elhafez/hajj-umrah-trip-operations':
         specifier: workspace:*
         version: link:../../modules/hajj-umrah-trip-operations
-      '@elhafez/hajj-umrah-readiness':
+      '@elhafez/hajj-umrah-visa-operations':
         specifier: workspace:*
-        version: link:../../modules/hajj-umrah-readiness
+        version: link:../../modules/hajj-umrah-visa-operations
+      '@elhafez/party-accounting':
+        specifier: workspace:*
+        version: link:../../modules/party-accounting
+      '@elhafez/party-registry':
+        specifier: workspace:*
+        version: link:../../modules/party-registry
+      '@elhafez/period-control':
+        specifier: workspace:*
+        version: link:../../modules/period-control
+      '@elhafez/platform-core':
+        specifier: workspace:*
+        version: link:../../modules/platform-core
+      '@elhafez/platform-operations':
+        specifier: workspace:*
+        version: link:../../modules/platform-operations
+      '@elhafez/procurement-finance':
+        specifier: workspace:*
+        version: link:../../modules/procurement-finance
+      '@elhafez/procurement-fulfillment':
+        specifier: workspace:*
+        version: link:../../modules/procurement-fulfillment
+      '@elhafez/quotations':
+        specifier: workspace:*
+        version: link:../../modules/quotations
+      '@elhafez/service-fulfillment':
+        specifier: workspace:*
+        version: link:../../modules/service-fulfillment
+      '@elhafez/service-vouchers':
+        specifier: workspace:*
+        version: link:../../modules/service-vouchers
+      '@elhafez/standalone-services':
+        specifier: workspace:*
+        version: link:../../modules/standalone-services
+      '@elhafez/supplier-disputes':
+        specifier: workspace:*
+        version: link:../../modules/supplier-disputes
+      '@elhafez/supplier-evaluation':
+        specifier: workspace:*
+        version: link:../../modules/supplier-evaluation
+      '@elhafez/supplier-management':
+        specifier: workspace:*
+        version: link:../../modules/supplier-management
+      '@elhafez/tax':
+        specifier: workspace:*
+        version: link:../../modules/tax
+      '@elhafez/tourism-contract-inventory':
+        specifier: workspace:*
+        version: link:../../modules/tourism-contract-inventory
+      '@elhafez/tourism-finance-orchestration':
+        specifier: workspace:*
+        version: link:../../modules/tourism-finance-orchestration
+      '@elhafez/traveler-management':
+        specifier: workspace:*
+        version: link:../../modules/traveler-management
+      '@elhafez/treasury-settlement':
+        specifier: workspace:*
+        version: link:../../modules/treasury-settlement
       '@nestjs/common':
         specifier: ^11.0.11
-        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
+        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@7.2.0)
       '@nestjs/core':
         specifier: ^11.0.11
-        version: 11.2.5(@nestjs/common@11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2)
+        version: 11.2.5(@nestjs/common@11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@7.2.0))(reflect-metadata@0.2.2)(rxjs@7.8.2)
       reflect-metadata:
         specifier: ^0.2.2
         version: 0.2.2
@@ -721,6 +730,57 @@ importers:
       '@prisma/client':
         specifier: 6.19.0
         version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
+
+  modules/service-fulfillment:
+    dependencies:
+      '@elhafez/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@elhafez/standalone-services':
+        specifier: workspace:*
+        version: link:../standalone-services
+      '@elhafez/tourism-contract-inventory':
+        specifier: workspace:*
+        version: link:../tourism-contract-inventory
+      '@nestjs/common':
+        specifier: ^11.0.11
+        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@7.2.0)
+      '@prisma/client':
+        specifier: 6.19.0
+        version: 6.19.0(prisma@6.19.0(typescript@5.9.3))(typescript@5.9.3)
+
+  modules/service-vouchers:
+    dependencies:
+      '@elhafez/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@elhafez/standalone-services':
+        specifier: workspace:*
+        version: link:../standalone-services
+      '@elhafez/service-fulfillment':
+        specifier: workspace:*
+        version: link:../service-fulfillment
+      '@nestjs/common':
+        specifier: ^11.0.11
+        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@7.2.0)
+      '@prisma/client':
+        specifier: 6.19.0
+        version: 6.19.0(prisma@6.19.0(typescript@5.9.3))(typescript@5.9.3)
+
+  modules/standalone-services:
+    dependencies:
+      '@elhafez/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@elhafez/tourism-finance-orchestration':
+        specifier: workspace:*
+        version: link:../tourism-finance-orchestration
+      '@nestjs/common':
+        specifier: ^11.0.11
+        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@7.2.0)
+      '@prisma/client':
+        specifier: 6.19.0
+        version: 6.19.0(prisma@6.19.0(typescript@5.9.3))(typescript@5.9.3)
 
   modules/tourism-contract-inventory:
     dependencies:
@@ -8310,4 +8370,3 @@ snapshots:
   base64-js@1.5.1: {}
 
   crc-32@1.2.2: {}
-

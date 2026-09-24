@@ -3352,3 +3352,206 @@ model PopsRestoreJob {
  backup PopsBackupJob @relation(fields:[backupId],references:[id],onDelete:Restrict)
  @@map("pops_restore_jobs")
 }
+
+/// TS-01: immutable customer-reviewed supply plan; commit is idempotent and all allocations are atomic.
+model TciStandaloneSupplyPlan {
+  id             String   @id @default(uuid())
+  companyId      String   @map("company_id")
+  branchId       String   @map("branch_id")
+  serviceType    String   @map("service_type")
+  serviceId      String   @map("service_id")
+  inputHash      String   @map("input_hash")
+  version        Int      @default(1)
+  snapshot       Json
+  requests       Json
+  status         String   @default("PROPOSED")
+  committed      Json?
+  expiresAt      DateTime @map("expires_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([companyId, branchId, serviceType, serviceId, status])
+  @@map("tci_standalone_supply_plans")
+}
+
+model SsServiceType {
+  id        String  @id
+  companyId String  @map("company_id")
+  code      String
+  category  String
+  nameAr    String  @map("name_ar")
+  active    Boolean @default(true)
+
+  @@unique([companyId, id], name: "companyId_id")
+  @@unique([companyId, code])
+  @@map("ss_service_types")
+}
+
+model SsService {
+  id                   String   @id
+  companyId            String   @map("company_id")
+  branchId             String   @map("branch_id")
+  number               String
+  status               String   @default("DRAFT")
+  revision             Int      @default(1)
+  confirmedRevision    Int?     @map("confirmed_revision")
+  externalOperationId  String?  @map("external_operation_id")
+  pendingCommandKey    String?  @map("pending_command_key")
+  cancellationPostingDate String? @map("cancellation_posting_date")
+  supplyPlanId         String?  @map("supply_plan_id")
+  supplyPlanVersion    Int?     @map("supply_plan_version")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  @@unique([companyId, id], name: "companyId_id")
+  @@unique([companyId, branchId, number])
+  @@index([companyId, branchId, status, updatedAt])
+  @@map("ss_services")
+}
+
+model SsServiceRevision {
+  serviceId           String   @map("service_id")
+  revision            Int
+  serviceTypeId       String   @map("service_type_id")
+  category            String
+  serviceDate         String   @map("service_date")
+  periodEnd           String?  @map("period_end")
+  quantity            Decimal  @db.Decimal(38, 18)
+  debtorKind          String   @map("debtor_kind")
+  debtorPartyId       String   @map("debtor_party_id")
+  customerPartyId     String   @map("customer_party_id")
+  beneficiaryPartyIds Json     @map("beneficiary_party_ids")
+  details             Json
+  commercial         Json
+  financialTerms     Json     @map("financial_terms")
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  @@id([serviceId, revision])
+  @@map("ss_service_revisions")
+}
+
+model SsServiceHistory {
+  id        String   @id
+  serviceId String   @map("service_id")
+  revision  Int
+  kind      String
+  actorId   String   @map("actor_id")
+  evidence  Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([serviceId, createdAt])
+  @@map("ss_service_history")
+}
+
+model SsCommandReceipt {
+  companyId   String @map("company_id")
+  commandKey  String @map("command_key")
+  payloadHash String @map("payload_hash")
+  result      Json
+
+  @@id([companyId, commandKey])
+  @@map("ss_command_receipts")
+}
+
+model TfoStandaloneServiceReference {
+  id                      String @id
+  companyId               String @map("company_id")
+  branchId                String @map("branch_id")
+  serviceType             String @map("service_type")
+  serviceId               String @map("service_id")
+  revision                Int
+  confirmationPayloadHash String @map("confirmation_payload_hash")
+  confirmationWorkflowId  String @map("confirmation_workflow_id")
+  status                  String
+  debtorPartyId           String @map("debtor_party_id")
+  invoiceId               String? @map("invoice_id")
+  allocationIds           Json @map("allocation_ids")
+  purchaseOrderIds        Json @map("purchase_order_ids")
+  commissionClaimId       String? @map("commission_claim_id")
+  financialSetup          Json @map("financial_setup")
+
+  @@unique([companyId, serviceType, serviceId])
+  @@map("tfo_standalone_service_references")
+}
+
+/// TS-02: independent delivery evidence; supplier confirmation is not procurement receipt.
+model SfCase {
+ id String @id
+ companyId String @map("company_id")
+ branchId String @map("branch_id")
+ serviceId String @map("service_id")
+ revision Int
+ quantity Decimal @db.Decimal(38,18)
+ status String
+ supplierId String? @map("supplier_id")
+ internalCoverage Boolean @default(false) @map("internal_coverage")
+ confirmedQuantity Decimal @default(0) @map("confirmed_quantity") @db.Decimal(38,18)
+ deliveredQuantity Decimal @default(0) @map("delivered_quantity") @db.Decimal(38,18)
+ version Int @default(1)
+ @@unique([companyId,branchId,serviceId])
+ @@map("sf_cases")
+}
+model SfConfirmation {
+ id String @id
+ caseId String @map("case_id")
+ actorId String @map("actor_id")
+ at DateTime
+ quantity Decimal @db.Decimal(38,18)
+ supplierId String? @map("supplier_id")
+ referenceType String @map("reference_type")
+ reference String
+ fileId String? @map("file_id")
+ internalCoverage Boolean @default(false) @map("internal_coverage")
+ @@index([caseId,at])
+ @@map("sf_confirmations")
+}
+model SfDeliveryEvidence {
+ id String @id
+ caseId String @map("case_id")
+ actorId String @map("actor_id")
+ at DateTime
+ quantity Decimal @db.Decimal(38,18)
+ unit String
+ note String
+ fileId String? @map("file_id")
+ correctsId String? @map("corrects_id")
+ @@index([caseId,at])
+ @@map("sf_delivery_evidence")
+}
+model SfCommandReceipt {
+ companyId String @map("company_id")
+ commandKey String @map("command_key")
+ payloadHash String @map("payload_hash")
+ caseId String @map("case_id")
+ @@id([companyId,commandKey])
+ @@map("sf_command_receipts")
+}
+
+/// TS-02: immutable customer-facing snapshots with operational validity.
+model SvVoucher {
+ id String @id
+ companyId String @map("company_id")
+ branchId String @map("branch_id")
+ serviceId String @map("service_id")
+ number String
+ status String
+ version Int @default(1)
+ @@unique([companyId,branchId,number])
+ @@index([companyId,branchId,serviceId])
+ @@map("sv_vouchers")
+}
+model SvVoucherVersion {
+ voucherId String @map("voucher_id")
+ version Int
+ snapshot Json
+ status String
+ @@id([voucherId,version])
+ @@map("sv_voucher_versions")
+}
+model SvCommandReceipt {
+ companyId String @map("company_id")
+ commandKey String @map("command_key")
+ payloadHash String @map("payload_hash")
+ voucherId String @map("voucher_id")
+ @@id([companyId,commandKey])
+ @@map("sv_command_receipts")
+}
