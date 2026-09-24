@@ -37,6 +37,8 @@ import type {
   ReleaseAllocationInput,
   ReleaseResult,
   TourismContractInventoryApplicationService,
+  PlanStandaloneSupplyInput,
+  CommitStandaloneSupplyPlanInput,
 } from './inventory.application-service.js';
 import { idempotencyHash } from './idempotency-hash.js';
 
@@ -54,6 +56,18 @@ export class TourismContractInventoryApplicationServiceImpl
     private readonly cost: CostEffectPort,
     private readonly procurement: ProcurementPort,
   ) {}
+
+  planStandaloneSupply(input: PlanStandaloneSupplyInput) {
+    return this.repo.planStandaloneSupply(input);
+  }
+
+  getStandaloneSupplyPlan(companyId: CompanyId, planId: string) {
+    return this.repo.getStandaloneSupplyPlan(companyId, planId);
+  }
+
+  commitStandaloneSupplyPlan(input: CommitStandaloneSupplyPlanInput, key?: string) {
+    return this.repo.commitStandaloneSupplyPlan(input, key, idempotencyHash(input));
+  }
 
   createContract(input: CreateTourismContractInput, key?: string): Promise<TourismContract> {
     return this.repo.createContract(input, key, idempotencyHash(input));

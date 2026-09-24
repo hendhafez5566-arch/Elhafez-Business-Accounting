@@ -1,6 +1,6 @@
 import { ContractValidationError, decimalAmount, type DecimalAmount } from '@elhafez/contracts';
 
-export type FinancialAction = 'PAYMENT' | 'PAID_EXPENSE' | 'PARTY_NETTING' | 'COMMISSION_APPROVAL' | 'BOOKING_DISCOUNT';
+export type FinancialAction = 'PAYMENT' | 'PAID_EXPENSE' | 'PARTY_NETTING' | 'COMMISSION_APPROVAL' | 'BOOKING_DISCOUNT' | 'SERVICE_DISCOUNT';
 export type ApprovalOutcome = 'APPROVAL_NOT_REQUIRED' | 'APPROVAL_REQUIRED';
 export type ApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 export type MutationKind = 'CREATE' | 'UPDATE' | 'DELETE' | 'REVERSE';

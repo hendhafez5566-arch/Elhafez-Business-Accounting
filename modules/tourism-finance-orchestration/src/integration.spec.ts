@@ -1157,7 +1157,7 @@ test('AC-12 -> Cost executes real program association and idempotent Tourism act
 test('AC-12 -> Inventory exercises the legitimate public service boundary for allocation/release', async () => {
   type InventoryPort = Pick<
     TourismContractInventoryApplicationService,
-    'allocateCapacity' | 'getReleaseBlockers' | 'releaseAllocation'
+    'allocateCapacity' | 'getReleaseBlockers' | 'releaseAllocation' | 'getStandaloneSupplyPlan' | 'commitStandaloneSupplyPlan' | 'getAllocation'
   >;
 
   const allocations = new Map<
@@ -1175,6 +1175,9 @@ test('AC-12 -> Inventory exercises the legitimate public service boundary for al
   >();
 
   const service: InventoryPort = {
+    async getStandaloneSupplyPlan() { return null; },
+    async commitStandaloneSupplyPlan() { throw new Error('standalone planning is outside this booking adapter scenario'); },
+    async getAllocation(_company, id) { return allocations.get(id) ?? null; },
     async allocateCapacity(value, idempotencyKey) {
       const id = idempotencyKey ?? 'no-key';
       const prior = allocationByKey.get(id);

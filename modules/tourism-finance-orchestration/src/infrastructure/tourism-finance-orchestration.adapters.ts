@@ -43,6 +43,18 @@ export class BillingAdapter implements BillingPort {
     return this.billing.postInvoice(input.companyId, draft.id);
   }
 
+  async createServiceInvoice(input: Parameters<BillingPort['createServiceInvoice']>[0]) {
+    const draft = await this.billing.createDraft({
+      id: input.id, companyId: input.companyId, branchId: input.branchId,
+      type: 'CUSTOMER', partyId: input.partyId, number: input.number,
+      postingDate: input.postingDate, dueDate: input.dueDate, currency: input.currency,
+      sourceType: 'TOURISM_SERVICE', sourceId: input.sourceId,
+      controlAccountId: input.receivableAccountId,
+      lines: [{ id: `${input.id}:1`, accountId: input.revenueAccountId, amount: input.amount }],
+    });
+    return this.billing.postInvoice(input.companyId, draft.id);
+  }
+
   cancellationEvidence(companyId: Parameters<BillingPort['cancellationEvidence']>[0], id: string) {
     return this.billing.getCancellationEvidence(companyId, id);
   }
@@ -99,6 +111,15 @@ export class CommissionAdapter implements CommissionPort {
     });
   }
 
+  createServiceCommission(input: Parameters<CommissionPort['createServiceCommission']>[0]) {
+    return this.expense.createCommissionClaim({
+      id: input.id, companyId: input.companyId, branchId: input.branchId,
+      agentPartyId: input.agentPartyId, sourceType: 'TOURISM_SERVICE', sourceId: input.sourceId,
+      currency: input.currency, amount: input.amount, baseCarryingAmount: input.amount,
+      expenseAccountId: input.expenseAccountId, liabilityAccountId: input.liabilityAccountId,
+    });
+  }
+
   evidence(companyId: Parameters<CommissionPort['evidence']>[0], id: string) {
     return this.expense.getCommissionCancellationEvidence(companyId, id);
   }
@@ -137,9 +158,13 @@ export class InventoryAdapter implements InventoryPort {
   constructor(
     private readonly inventory: Pick<
       TourismContractInventoryApplicationService,
-      'allocateCapacity' | 'getReleaseBlockers' | 'releaseAllocation'
+      'allocateCapacity' | 'getReleaseBlockers' | 'releaseAllocation' | 'getStandaloneSupplyPlan' | 'commitStandaloneSupplyPlan' | 'getAllocation'
     >,
   ) {}
+
+  standalonePlan(companyId: Parameters<InventoryPort['standalonePlan']>[0], id: string) { return this.inventory.getStandaloneSupplyPlan(companyId, id); }
+  commitStandalone(input: Parameters<InventoryPort['commitStandalone']>[0], key: string) { return this.inventory.commitStandaloneSupplyPlan(input, key); }
+  async allocation(companyId: Parameters<InventoryPort['allocation']>[0], id: string) { const found=await this.inventory.getAllocation(companyId,id); return found?{quantity:found.quantity}:null; }
 
   async allocate(input: Parameters<InventoryPort['allocate']>[0], key: string) {
     const result = await this.inventory.allocateCapacity({
@@ -184,6 +209,22 @@ export class InventoryAdapter implements InventoryPort {
 export class ProcurementAdapter implements ProcurementPort {
   constructor(private readonly procurement: ProcurementFinanceApplicationService) {}
 
+  async createServicePurchaseOrder(input: Parameters<ProcurementPort['createServicePurchaseOrder']>[0]) {
+    const result = await this.procurement.createPurchaseOrder({
+      id: input.id, companyId: input.companyId, branchId: input.branchId,
+      supplierId: input.supplierId, number: input.number, origin: 'AUTO',
+      orderDate: input.postingDate, currency: input.currency,
+      externalReference: input.quoteReference,
+      notes: `TOURISM_SERVICE:${input.service.sourceId} — ${input.quoteReference}`,
+      lines: [{ id: `${input.id}:${input.requestId}`, itemReference: `${input.service.sourceId}:${input.requestId}`,
+        orderedQuantity: input.quantity, unitPrice: input.unitCost }],
+    });
+    return { id: result.id };
+  }
+  async cancelServicePurchaseOrder(companyId: Parameters<ProcurementPort['cancelServicePurchaseOrder']>[0], id: string, reason: string) {
+    return this.procurement.cancelPurchaseOrderWithReason(companyId, id, reason);
+  }
+
   blockers(
     companyId: Parameters<ProcurementPort['blockers']>[0],
     query: Parameters<ProcurementPort['blockers']>[1],
@@ -224,6 +265,15 @@ export class ControlsAdapter implements ControlsPort {
     ) {
       throw new Error('approval does not authorize exact booking discount');
     }
+  }
+
+  async authorizeServiceDiscount(input: Parameters<ControlsPort['authorizeServiceDiscount']>[0]) {
+    const requirement=await this.controls.evaluateApprovalRequirement({companyId:input.companyId,action:'SERVICE_DISCOUNT',amount:input.amount});
+    if(requirement.decision!=='APPROVAL_REQUIRED')return;
+    if(!input.approvalRequestId)throw new Error('service discount approval required');
+    const request=await this.controls.getApprovalRequest(input.companyId,input.approvalRequestId);
+    const decision=await this.controls.getApprovalDecision(input.companyId,input.approvalRequestId);
+    if(!request||request.action!=='SERVICE_DISCOUNT'||request.sourceType!==input.service.sourceType||request.sourceId!==input.service.sourceId||request.amount!==input.amount||request.branchId!==input.branchId||decision?.outcome!=='APPROVED')throw new Error('approval does not authorize exact service discount');
   }
 
   async approvalResolved(companyId: string, id: string) {

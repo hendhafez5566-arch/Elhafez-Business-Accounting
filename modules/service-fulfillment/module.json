@@ -1,0 +1,1 @@
+{"name":"service-fulfillment","publicApi":["src/public/index.ts"],"ownedTables":["sf_cases","sf_confirmations","sf_delivery_evidence","sf_command_receipts"],"allowedDependencies":["@elhafez/contracts","@elhafez/standalone-services","@elhafez/tourism-contract-inventory"]}

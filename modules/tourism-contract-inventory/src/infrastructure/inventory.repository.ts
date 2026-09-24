@@ -38,6 +38,10 @@ import type {
   ReleaseAllocationCoverageInput,
   ReleaseAllocationInput,
   ReleaseResult,
+  PlanStandaloneSupplyInput,
+  StandaloneSupplyPlan,
+  CommitStandaloneSupplyPlanInput,
+  StandaloneSupplyCommit,
 } from '../application/inventory.application-service.js';
 
 export interface AdjustmentResult {
@@ -47,6 +51,9 @@ export interface AdjustmentResult {
 }
 
 export interface TourismInventoryRepository {
+  planStandaloneSupply(input: PlanStandaloneSupplyInput): Promise<StandaloneSupplyPlan>;
+  getStandaloneSupplyPlan(companyId: CompanyId, planId: string): Promise<StandaloneSupplyPlan | null>;
+  commitStandaloneSupplyPlan(input: CommitStandaloneSupplyPlanInput, key: string | undefined, hash: string): Promise<StandaloneSupplyCommit>;
   createContract(
     input: CreateTourismContractInput,
     key: string | undefined,

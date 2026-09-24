@@ -4,8 +4,11 @@ import type {SupplierManagementApplicationService} from '@elhafez/supplier-manag
 import type {PartyDraft} from '@elhafez/party-registry';
 import type {PlatformCoreApplicationService} from '@elhafez/platform-core';
 import {TabularExporter,type ExchangeJob,type ExportSource,type ExportStorage,type ImportTarget} from '@elhafez/data-exchange';
+import { createHash } from 'node:crypto';
+import { ContractValidationError, decimalAmount } from '@elhafez/contracts';
+import type { StandaloneServicesApplicationService } from '@elhafez/standalone-services';
 
-export type SystemAdministrationDataset='CUSTOMERS'|'SUPPLIERS';
+export type SystemAdministrationDataset='CUSTOMERS'|'SUPPLIERS'|'SERVICES';
 export interface SystemAdministrationDatasetSpec{
  readonly id:SystemAdministrationDataset;
  readonly label:string;
@@ -23,23 +26,29 @@ const DATASETS:Readonly<Record<SystemAdministrationDataset,SystemAdministrationD
   id:'SUPPLIERS',label:'الموردون',
   requiredFields:Object.freeze(['supplierCode','kind','displayName','defaultCurrency']),
   targetFields:Object.freeze(['supplierCode','kind','displayName','legalName','phone','whatsappNumber','email','address','nationalIdentity','taxIdentity','defaultCurrency','creditDays','contactPerson','notes','categories'])
+ }),
+ SERVICES:Object.freeze({
+  id:'SERVICES',label:'مسودات الخدمات السياحية',
+  requiredFields:Object.freeze(['number','serviceTypeId','serviceDate','quantity','customerPartyId','currency','grossAmount']),
+  targetFields:Object.freeze(['sourceId','status','number','serviceTypeId','serviceDate','periodEnd','quantity','customerPartyId','debtorKind','debtorPartyId','beneficiaryPartyIds','description','currency','grossAmount','discountAmount','invoiceNumber','postingDate','dueDate'])
  })
 });
 
 type CustomerPort=Pick<CustomerManagementApplicationService,'create'|'list'>;
 type SupplierPort=Pick<SupplierManagementApplicationService,'create'|'list'>;
-type PlatformFilePort=Pick<PlatformCoreApplicationService,'uploadFile'|'getFile'>;
+type PlatformFilePort=Pick<PlatformCoreApplicationService,'uploadFile'|'getFile'|'authorize'>;
+type ServicesPort=Pick<StandaloneServicesApplicationService,'createDraft'|'getService'|'listServices'>;
 
 export class SystemAdministrationExchangeError extends Error{}
 
 export class SystemAdministrationDataExchangeBoundary{
  private readonly exporter=new TabularExporter();
- constructor(private readonly customers:CustomerPort,private readonly suppliers:SupplierPort,private readonly files:PlatformFilePort){}
+ constructor(private readonly customers:CustomerPort,private readonly suppliers:SupplierPort,private readonly files:PlatformFilePort,private readonly services?:ServicesPort){}
 
  datasets():readonly SystemAdministrationDatasetSpec[]{return Object.values(DATASETS);}
  requireDataset(value:string):SystemAdministrationDataset{
   const normalized=value.trim().toUpperCase();
-  if(normalized==='CUSTOMERS'||normalized==='SUPPLIERS')return normalized;
+  if(normalized==='CUSTOMERS'||normalized==='SUPPLIERS'||normalized==='SERVICES')return normalized;
   throw new SystemAdministrationExchangeError('unsupported data-exchange dataset');
  }
  requiredFields(dataset:SystemAdministrationDataset){return DATASETS[dataset].requiredFields;}
@@ -47,6 +56,30 @@ export class SystemAdministrationDataExchangeBoundary{
  importTarget(dataset:SystemAdministrationDataset,context:ExecutionContext):ImportTarget{
   return {importRow:async input=>{
    this.assertScope(context,input.companyId,input.branchId);
+   if(dataset==='SERVICES'){
+    await this.files.authorize(context.actorId,context.companyId,'tourism.services.manage');
+    if(!this.services)throw new SystemAdministrationExchangeError('service import owner is unavailable');
+    const values=input.values;
+    const status=(optional(values,'status')??'DRAFT').toUpperCase();
+    if(status!=='DRAFT')throw new SystemAdministrationExchangeError(`legacy ${status} requires financial and supply reconciliation; no automatic reposting`);
+    const sourceId=optional(values,'sourceId')??input.idempotencyKey;
+    const sourcePayloadHash=createHash('sha256').update(JSON.stringify(DATASETS.SERVICES.targetFields.filter(field=>field!=='status').map(field=>[field,field==='sourceId'?sourceId:optional(values,field)??'']))).digest('hex');
+    const id=createHash('sha256').update(JSON.stringify([context.companyId,context.branchId,sourceId])).digest('hex').slice(0,32);
+    const existing=await this.services.getService(context.companyId,id).catch(error=>{if(error instanceof ContractValidationError&&error.field==='serviceId')return null;throw error});
+    if(existing){if(existing.service.branchId!==context.branchId||existing.revision.details.legacyImportHash!==sourcePayloadHash)throw new SystemAdministrationExchangeError('import identity conflict');return 'DUPLICATE';}
+    const debtorKind=(optional(values,'debtorKind')??'CUSTOMER').toUpperCase();
+    if(debtorKind!=='CUSTOMER'&&debtorKind!=='AGENT')throw new SystemAdministrationExchangeError('debtorKind must be CUSTOMER or AGENT');
+    const customerPartyId=required(values,'customerPartyId');
+    const serviceDate=required(values,'serviceDate');
+    await this.services.createDraft({companyId:context.companyId,branchId:context.branchId,actorId:context.actorId,id,commandKey:`dex-service:${id}`,number:required(values,'number'),serviceTypeId:required(values,'serviceTypeId'),serviceDate,
+     ...(optional(values,'periodEnd')?{periodEnd:optional(values,'periodEnd')}:{}),quantity:decimalAmount(required(values,'quantity')),
+     debtorKind,debtorPartyId:debtorKind==='CUSTOMER'?customerPartyId:required(values,'debtorPartyId'),customerPartyId,
+     beneficiaryPartyIds:(optional(values,'beneficiaryPartyIds')??'').split(/[|,]/).map(value=>value.trim()).filter(Boolean),
+     details:{description:optional(values,'description')??'',legacySourceId:sourceId,legacyImportHash:sourcePayloadHash},
+     currency:required(values,'currency'),grossAmount:decimalAmount(required(values,'grossAmount')),discountAmount:decimalAmount(optional(values,'discountAmount')??'0'),
+     invoiceNumber:optional(values,'invoiceNumber')??required(values,'number'),postingDate:optional(values,'postingDate')??serviceDate,dueDate:optional(values,'dueDate')??serviceDate});
+    return 'IMPORTED';
+   }
    if(dataset==='CUSTOMERS'){
     const result=await this.customers.create(context,{
      party:partyDraft(input.values),
@@ -76,6 +109,12 @@ export class SystemAdministrationDataExchangeBoundary{
  exportSource(dataset:SystemAdministrationDataset,context:ExecutionContext):ExportSource{
   return {read:async input=>{
    this.assertScope(context,input.companyId,input.branchId);
+   if(dataset==='SERVICES'){
+    await this.files.authorize(context.actorId,context.companyId,'tourism.services.view');
+    if(!this.services)throw new SystemAdministrationExchangeError('service export owner is unavailable');
+    const rows=await this.services.listServices(context.companyId,context.branchId);
+    return Promise.all(rows.map(async row=>{const record=await this.services!.getService(context.companyId,row.id);return {number:row.number,status:row.status,serviceTypeId:record.revision.serviceTypeId,serviceDate:record.revision.serviceDate,quantity:record.revision.quantity,customerPartyId:record.revision.customerPartyId,description:typeof record.revision.details.description==='string'?record.revision.details.description:''}}));
+   }
    if(dataset==='CUSTOMERS'){
     const rows=await this.customers.list(context);
     return rows.map(view=>({

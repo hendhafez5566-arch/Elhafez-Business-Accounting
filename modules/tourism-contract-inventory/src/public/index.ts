@@ -21,6 +21,13 @@ export type {
   ReleaseAllocationCoverageInput,
   AvailabilityResult,
   AllocationResult,
+  StandaloneSupplyRequest,
+  StandaloneSupplyPlanLine,
+  StandaloneSupplyResidual,
+  StandaloneSupplyPlan,
+  PlanStandaloneSupplyInput,
+  CommitStandaloneSupplyPlanInput,
+  StandaloneSupplyCommit,
   ReleaseResult,
 } from '../application/inventory.application-service.js';
 export type {

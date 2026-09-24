@@ -47,6 +47,13 @@ import type {
   ReleaseAllocationCoverageInput,
   ReleaseAllocationInput,
   ReleaseResult,
+  PlanStandaloneSupplyInput,
+  CommitStandaloneSupplyPlanInput,
+  StandaloneSupplyPlan,
+  StandaloneSupplyCommit,
+  StandaloneSupplyRequest,
+  StandaloneSupplyPlanLine,
+  StandaloneSupplyResidual,
 } from '../application/inventory.application-service.js';
 import { idempotencyHash } from '../application/idempotency-hash.js';
 import type {
@@ -156,6 +163,110 @@ function sameSource(left: SourceReference, right: SourceReference): boolean {
 
 export class PrismaTourismInventoryRepository implements TourismInventoryRepository {
   constructor(private readonly db: PrismaClient) {}
+
+  async planStandaloneSupply(input: PlanStandaloneSupplyInput): Promise<StandaloneSupplyPlan> {
+    if (!input.branchId.trim() || !input.service.sourceId.trim() || !Number.isInteger(input.serviceRevision) || input.serviceRevision < 1 || input.requests.length === 0) {
+      throw new Error('branch, real service source and supply requests are required');
+    }
+    const groups = new Map<string, StandaloneSupplyRequest[]>();
+    const seen = new Set<string>();
+    for (const request of input.requests) {
+      const quantity = new Prisma.Decimal(request.quantity);
+      const cost = new Prisma.Decimal(request.unitCost);
+      if (!request.requestId.trim() || !request.currency.trim() || !request.unit.trim() || quantity.lte(0) || cost.lt(0)) {
+        throw new Error('valid quantity, currency, unit and nonnegative cost are required');
+      }
+      const candidate = `${request.requestId}:${request.contractId}:${request.resourceId}:${request.serviceDate}`;
+      if (seen.has(candidate)) throw new Error('duplicate supply candidate');
+      seen.add(candidate);
+      const group = groups.get(request.requestId) ?? [];
+      if (group.length && (group[0]!.quantity !== request.quantity || group[0]!.unit !== request.unit || group[0]!.currency !== request.currency || group[0]!.resourceType !== request.resourceType)) {
+        throw new Error('candidate group must have one demand, unit, currency and resource type');
+      }
+      group.push(request);
+      groups.set(request.requestId, group);
+    }
+    const lines: StandaloneSupplyPlanLine[] = [];
+    const residuals: StandaloneSupplyResidual[] = [];
+    const totals = new Map<string, Prisma.Decimal>();
+    for (const candidates of groups.values()) {
+      const first = candidates[0]!;
+      let remaining = new Prisma.Decimal(first.quantity);
+      for (const request of candidates) {
+        const start = new Date(request.serviceDate);
+        const end = new Date(request.periodEnd ?? request.serviceDate);
+        if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) || end < start) throw new Error('invalid service window');
+        const owner = await this.db.tciContract.findUnique({where:{companyId_id:{companyId:input.companyId,id:request.contractId}}});
+        if (!owner || owner.type !== request.resourceType || !['ACTIVE','AMENDED'].includes(owner.status) || owner.effectiveFrom > start || owner.effectiveTo < end || (request.supplierId && owner.supplierId !== request.supplierId)) {
+          throw new Error('candidate contract is not active, scoped or supplier-matched');
+        }
+        const version = await this.db.tciContractVersion.findFirst({where:{companyId:input.companyId,contractId:request.contractId,isCurrent:true}});
+        const terms = version?.terms;
+        const pricing = terms && typeof terms === 'object' && !Array.isArray(terms) ? terms.standalonePricing : null;
+        if (!version || !pricing || typeof pricing !== 'object' || Array.isArray(pricing) ||
+            pricing.currency !== request.currency || pricing.unit !== request.unit ||
+            typeof pricing.unitCost !== 'string' || !new Prisma.Decimal(pricing.unitCost).eq(request.unitCost)) {
+          throw new Error('contract version lacks matching standalone pricing evidence');
+        }
+        const stopped = await this.db.tciStopSale.findFirst({where:{companyId:input.companyId,contractId:request.contractId,isActive:true,effectiveFrom:{lte:end},effectiveTo:{gte:start}}});
+        const available = stopped ? new Prisma.Decimal(0) : new Prisma.Decimal(await this.resourceAvailable(this.db, {companyId:input.companyId,contractId:request.contractId,resourceType:request.resourceType,resourceId:request.resourceId,serviceDate:request.serviceDate,...(request.periodEnd?{periodEnd:request.periodEnd}:{})}));
+        const allocated = Prisma.Decimal.min(remaining, available);
+        const costAmount = allocated.mul(request.unitCost);
+        lines.push({requestId:request.requestId,contractId:request.contractId,pricingVersionId:version.id,resourceType:request.resourceType,resourceId:request.resourceId,...(owner.supplierId?{supplierId:owner.supplierId}:{}),serviceDate:request.serviceDate,...(request.periodEnd?{periodEnd:request.periodEnd}:{}),requestedQuantity:first.quantity,allocationQuantity:amount(allocated),unit:request.unit,currency:request.currency,unitCost:request.unitCost,costAmount:amount(costAmount)});
+        totals.set(request.currency,(totals.get(request.currency)??new Prisma.Decimal(0)).add(costAmount));
+        remaining = remaining.sub(allocated);
+      }
+      if (remaining.gt(0)) {
+        const quote=input.externalQuotes?.find(value=>value.requestId===first.requestId);
+        if ((input.externalQuotes?.filter(value=>value.requestId===first.requestId).length ?? 0) > 1) throw new Error('multiple external quotes require staff selection before preview');
+        if (quote) {
+          if(!quote.supplierId.trim()||!quote.quoteReference.trim()||quote.currency!==first.currency||new Prisma.Decimal(quote.unitCost).lt(0))throw new Error('invalid external supplier quote');
+          const externalCost=remaining.mul(quote.unitCost);
+          totals.set(quote.currency,(totals.get(quote.currency)??new Prisma.Decimal(0)).add(externalCost));
+          residuals.push({requestId:first.requestId,resourceType:first.resourceType,quantity:amount(remaining),unit:first.unit,currency:quote.currency,supplierId:quote.supplierId,unitCost:quote.unitCost,costAmount:amount(externalCost),quoteReference:quote.quoteReference});
+        } else residuals.push({requestId:first.requestId,resourceType:first.resourceType,quantity:amount(remaining),unit:first.unit,currency:first.currency});
+      }
+    }
+    const plan: StandaloneSupplyPlan = {planId:randomUUID(),version:1,inputHash:idempotencyHash(input),companyId:input.companyId,branchId:input.branchId,expiresAt:new Date(Date.now()+15*60_000).toISOString(),service:input.service,serviceRevision:input.serviceRevision,lines,residuals,totalsByCurrency:Object.fromEntries([...totals].map(([currency,value])=>[currency,amount(value)]))};
+    await this.db.tciStandaloneSupplyPlan.create({data:{id:plan.planId,companyId:input.companyId,branchId:input.branchId,serviceType:input.service.sourceType,serviceId:input.service.sourceId,inputHash:plan.inputHash,version:plan.version,expiresAt:new Date(plan.expiresAt),snapshot:json(plan),requests:json(input.requests),status:'PROPOSED'}});
+    return plan;
+  }
+
+  async getStandaloneSupplyPlan(companyId: CompanyId, planId: string): Promise<StandaloneSupplyPlan | null> {
+    const row = await this.db.tciStandaloneSupplyPlan.findUnique({where:{id:planId}});
+    return row?.companyId===companyId ? row.snapshot as unknown as StandaloneSupplyPlan : null;
+  }
+
+  async commitStandaloneSupplyPlan(input: CommitStandaloneSupplyPlanInput, key: string | undefined, hash: string): Promise<StandaloneSupplyCommit> {
+    if (!key?.trim()) throw new Error('supply plan commit requires an idempotency key');
+    return this.command(input.companyId,key,hash,async tx=>{
+      const row=await tx.tciStandaloneSupplyPlan.findUnique({where:{id:input.planId}});
+      if (!row || row.companyId!==input.companyId || row.branchId!==input.branchId || row.serviceType!==input.service.sourceType || row.serviceId!==input.service.sourceId || row.inputHash!==input.inputHash || row.version!==input.planVersion) throw new Error('supply plan scope or version mismatch');
+      if (row.status==='COMMITTED') return row.committed as unknown as StandaloneSupplyCommit;
+      if (row.status!=='PROPOSED' || row.expiresAt<=new Date()) throw new Error('supply plan expired; preview again');
+      const plan=row.snapshot as unknown as StandaloneSupplyPlan;
+      const requests=row.requests as unknown as StandaloneSupplyRequest[];
+      const ids:string[]=[];
+      for (const line of plan.lines) {
+        if (new Prisma.Decimal(line.allocationQuantity).isZero()) continue;
+        const request=requests.find(v=>v.requestId===line.requestId&&v.contractId===line.contractId&&v.resourceId===line.resourceId&&v.serviceDate===line.serviceDate);
+        if (!request) throw new Error('supply plan candidate is missing');
+        const start=new Date(line.serviceDate);const end=new Date(line.periodEnd??line.serviceDate);
+        const owner=await tx.tciContract.findUnique({where:{companyId_id:{companyId:input.companyId,id:line.contractId}}});
+        if(!owner||!['ACTIVE','AMENDED'].includes(owner.status)||owner.effectiveFrom>start||owner.effectiveTo<end)throw new Error('PLAN_CHANGED: contract unavailable');
+        const version=await tx.tciContractVersion.findFirst({where:{companyId:input.companyId,contractId:line.contractId,isCurrent:true}});
+        if(!version||version.id!==line.pricingVersionId)throw new Error('PLAN_CHANGED: contract pricing changed');
+        const stopped=await tx.tciStopSale.findFirst({where:{companyId:input.companyId,contractId:line.contractId,isActive:true,effectiveFrom:{lte:end},effectiveTo:{gte:start}}});
+        if(stopped)throw new Error('PLAN_CHANGED: stop sale');
+        const result=await this.allocateTx(tx,{companyId:input.companyId,contractId:line.contractId,resourceType:line.resourceType,resourceId:line.resourceId,program:input.service,serviceDate:line.serviceDate,...(line.periodEnd?{periodEnd:line.periodEnd}:{}),quantity:line.allocationQuantity,...(request.flightSegmentReference?{flightSegmentReference:request.flightSegmentReference}:{}),...(request.visaBatchReference?{visaBatchReference:request.visaBatchReference}:{})});
+        if(!result.allocation)throw new Error('PLAN_CHANGED: allocation evidence missing');
+        ids.push(result.allocation.id);
+      }
+      const committed:StandaloneSupplyCommit={planId:row.id,version:row.version,allocationIds:ids,residuals:plan.residuals};
+      await tx.tciStandaloneSupplyPlan.update({where:{id:row.id},data:{status:'COMMITTED',committed:json(committed)}});
+      return committed;
+    });
+  }
 
   private async command<T>(
     companyId: CompanyId,

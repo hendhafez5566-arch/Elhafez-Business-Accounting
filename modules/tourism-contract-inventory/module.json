@@ -5,6 +5,7 @@
     "src/public/nest.ts"
   ],
   "ownedTables": [
+    "tci_standalone_supply_plans",
     "tci_contracts",
     "tci_contract_versions",
     "tci_hotel_inventory",

@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { ContractValidationError, decimalAmount, type CompanyId, type DecimalAmount, type SourceReference } from '@elhafez/contracts';
 import type { TourismFinanceRepository } from './orchestration.repository.js';
 import type { BillingPort, CommissionPort, ControlsPort, CostPort, InventoryPort, ProcurementPort, TreasuryPort } from './ports.js';
-import type { BookingReference, CancellationBlocker, FinancialSetup, ServiceCategory, ServiceFinancialSnapshot, Workflow, WorkflowKind } from '../domain/orchestration.js';
+import type { BookingReference, CancellationBlocker, FinancialSetup, ServiceCategory, ServiceFinancialSnapshot, StandaloneFinancialReference, Workflow, WorkflowKind } from '../domain/orchestration.js';
 
 function stable(value: unknown): string { if (value === null || typeof value !== 'object') return JSON.stringify(value); if (Array.isArray(value)) return `[${value.map(stable).join(',')}]`; return `{${Object.entries(value as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => `${JSON.stringify(key)}:${stable(item)}`).join(',')}}`; }
 function hash(value: unknown) { return createHash('sha256').update(stable(value)).digest('hex'); }
@@ -15,6 +15,7 @@ function fromUnits(value: bigint) { const negative = value < 0n; const absolute 
 export interface BookingInventoryRequest { allocationId: string; contractId: string; resourceType: string; resourceId: string; serviceDate: string; quantity: DecimalAmount; periodEnd?: string; flightSegmentReference?: SourceReference; visaBatchReference?: SourceReference }
 export interface ConfirmBookingInput { companyId: CompanyId; branchId?: string; commandKey: string; booking: SourceReference; program: SourceReference; programState: 'OPEN' | 'CLOSED' | 'CANCELLED'; programStateEvidence: string; category: ServiceCategory; costCenterId: string; customerPartyId: string; currency: string; grossAmount: DecimalAmount; discountAmount: DecimalAmount; approvalRequestId?: string; postingDate: string; dueDate: string; invoiceNumber: string; inventory?: BookingInventoryRequest; inventories?: readonly BookingInventoryRequest[]; commission?: { agentPartyId: string; amount: DecimalAmount }; }
 export interface CancelBookingInput { companyId: CompanyId; branchId?: string; commandKey: string; booking: SourceReference; travelStarted: boolean; travelEvidence: string; postingDate: string; }
+export interface ConfirmStandaloneServiceInput { companyId:CompanyId;branchId:string;commandKey:string;service:SourceReference;revision:number;category:ServiceCategory;debtorPartyId:string;currency:string;grossAmount:DecimalAmount;discountAmount:DecimalAmount;postingDate:string;dueDate:string;invoiceNumber:string;planId:string;planVersion:number;approvalRequestId?:string;commission?:{agentPartyId:string;amount:DecimalAmount} }
 export interface ProcurementReference { purchaseOrderId?: string; commitmentId?: string; }
 function procurementKey(reference: ProcurementReference): string | undefined { return reference.purchaseOrderId ?? reference.commitmentId; }
 function bookingProcurementReferences(booking: BookingReference, extra?: ProcurementReference): ProcurementReference[] {
@@ -26,6 +27,74 @@ function bookingProcurementReferences(booking: BookingReference, extra?: Procure
 
 export class TourismFinanceOrchestrationApplicationService {
   constructor(private readonly repo: TourismFinanceRepository, private readonly billing: BillingPort, private readonly treasury: TreasuryPort, private readonly commission: CommissionPort, private readonly cost: CostPort, private readonly inventory: InventoryPort, private readonly procurement: ProcurementPort, private readonly controls: ControlsPort) {}
+
+  async prepareStandaloneService(input:{companyId:CompanyId;branchId:string;service:SourceReference;revision:number;planId:string;planVersion:number}) {
+    const plan=await this.inventory.standalonePlan(input.companyId,input.planId);
+    const blockers:string[]=[];
+    if(!plan||plan.branchId!==input.branchId||refKey(plan.service)!==refKey(input.service)||plan.serviceRevision!==input.revision||plan.version!==input.planVersion)blockers.push('SUPPLY_PLAN_MISMATCH');
+    else {
+      if(new Date(plan.expiresAt)<=new Date())blockers.push('SUPPLY_PLAN_EXPIRED');
+      if(plan.residuals.some(item=>!item.supplierId||item.unitCost===undefined||!item.quoteReference))blockers.push('EXTERNAL_PROCUREMENT_DETAILS_REQUIRED');
+    }
+    return {ready:blockers.length===0,blockers,planId:input.planId,planVersion:input.planVersion};
+  }
+
+  async confirmStandaloneService(input:ConfirmStandaloneServiceInput):Promise<StandaloneFinancialReference> {
+    required(input.branchId,'branchId');required(input.service.sourceId,'service.sourceId');required(input.debtorPartyId,'debtorPartyId');required(input.invoiceNumber,'invoiceNumber');
+    const gross=nonNegative(input.grossAmount,'grossAmount');const discount=nonNegative(input.discountAmount,'discountAmount');
+    if(units(discount)>units(gross))throw new ContractValidationError('discountAmount','exceeds gross');
+    const net=fromUnits(units(gross)-units(discount));
+    const plan=await this.inventory.standalonePlan(input.companyId,input.planId);
+    if(!plan||plan.branchId!==input.branchId||refKey(plan.service)!==refKey(input.service)||plan.serviceRevision!==input.revision||plan.version!==input.planVersion)throw new ContractValidationError('planId','reviewed plan does not match service revision');
+    if(plan.residuals.some(item=>!item.supplierId||item.unitCost===undefined||!item.quoteReference))throw new ContractValidationError('planId','external procurement requires supplier and quote evidence');
+    if(Object.keys(plan.totalsByCurrency).some(currency=>currency!==input.currency))throw new ContractValidationError('currency','stock cost has another currency; FX evidence required');
+    const payload={branchId:input.branchId,service:input.service,revision:input.revision,category:input.category,debtorPartyId:input.debtorPartyId,currency:input.currency,grossAmount:gross,discountAmount:discount,postingDate:input.postingDate,dueDate:input.dueDate,invoiceNumber:input.invoiceNumber,planId:input.planId,planVersion:input.planVersion,inputHash:plan.inputHash,approvalRequestId:input.approvalRequestId??null,commission:input.commission??null};
+    let workflow=await this.workflow('STANDALONE_CONFIRMATION',input,input.service,payload);
+    const existing=await this.repo.standalone(input.companyId,input.service);
+    const setup=existing?undefined:await this.repo.setup(input.companyId,input.category);
+    if(!existing&&!setup?.active)throw new ContractValidationError('financialSetup',`missing ${input.category} setup`);
+    const financialSetup=existing?.financialSetup??{receivableAccountId:setup!.receivableAccountId,revenueAccountId:setup!.revenueAccountId,...(setup!.commissionExpenseAccountId?{commissionExpenseAccountId:setup!.commissionExpenseAccountId}:{}),...(setup!.commissionLiabilityAccountId?{commissionLiabilityAccountId:setup!.commissionLiabilityAccountId}:{})};
+    const candidate:StandaloneFinancialReference={id:hash([input.companyId,refKey(input.service)]).slice(0,32),companyId:input.companyId,branchId:input.branchId,service:input.service,revision:input.revision,confirmationPayloadHash:hash(payload),confirmationWorkflowId:workflow.id,status:'CONFIRMING',debtorPartyId:input.debtorPartyId,allocationIds:[],purchaseOrderIds:[],financialSetup};
+    const claimed=await this.repo.reserveStandalone(candidate);
+    if(claimed.confirmationPayloadHash!==candidate.confirmationPayloadHash||claimed.branchId!==input.branchId)throw new ContractValidationError('service','conflicting financial confirmation');
+    if(claimed.confirmationWorkflowId!==workflow.id){const canonical=await this.repo.workflowById(input.companyId,claimed.confirmationWorkflowId);if(!canonical)throw new ContractValidationError('service','canonical workflow missing');workflow=canonical;}
+    if(workflow.status==='COMPLETED')return workflow.result as StandaloneFinancialReference;
+    if(discount!=='0')await this.controls.authorizeServiceDiscount({companyId:input.companyId,branchId:input.branchId,service:input.service,amount:discount,...(input.approvalRequestId?{approvalRequestId:input.approvalRequestId}:{})});
+    const stock=await this.effect(workflow,'STANDALONE_SUPPLY',key=>this.inventory.commitStandalone({companyId:input.companyId,branchId:input.branchId,service:input.service,planId:plan.planId,planVersion:plan.version,inputHash:plan.inputHash},key),value=>value.planId);
+    const purchaseOrderIds:string[]=[];
+    for(const residual of stock.residuals){
+      if(!residual.supplierId||residual.unitCost===undefined||!residual.quoteReference)throw new ContractValidationError('supply','supplier quote evidence is missing');
+      const po=await this.effect(workflow,`SERVICE_PO:${residual.requestId}`,()=>this.procurement.createServicePurchaseOrder({id:`tfo-service-po:${workflow.id}:${residual.requestId}`,companyId:input.companyId,branchId:input.branchId,number:`SV-PO-${workflow.id.slice(0,12)}-${residual.requestId}`,supplierId:residual.supplierId!,postingDate:input.postingDate,currency:residual.currency,quoteReference:residual.quoteReference!,requestId:residual.requestId,quantity:residual.quantity,unitCost:residual.unitCost!,service:input.service}),value=>value.id);
+      purchaseOrderIds.push(po.id);
+    }
+    const invoice=net==='0'?undefined:await this.effect(workflow,'SERVICE_BILLING',()=>this.billing.createServiceInvoice({id:`tfo-service-invoice:${workflow.id}`,companyId:input.companyId,branchId:input.branchId,partyId:input.debtorPartyId,number:input.invoiceNumber,postingDate:input.postingDate,dueDate:input.dueDate,currency:input.currency,sourceId:input.service.sourceId,receivableAccountId:financialSetup.receivableAccountId,revenueAccountId:financialSetup.revenueAccountId,amount:net}),value=>value.id);
+    let commissionClaimId=claimed.commissionClaimId;
+    if(input.commission){const expenseAccountId=financialSetup.commissionExpenseAccountId;const liabilityAccountId=financialSetup.commissionLiabilityAccountId;if(!expenseAccountId||!liabilityAccountId)throw new ContractValidationError('financialSetup','commission accounts required');const claim=await this.effect(workflow,'SERVICE_COMMISSION',()=>this.commission.createServiceCommission({id:`tfo-service-commission:${workflow.id}`,companyId:input.companyId,branchId:input.branchId,agentPartyId:input.commission!.agentPartyId,sourceId:input.service.sourceId,currency:input.currency,amount:input.commission!.amount,expenseAccountId,liabilityAccountId}),value=>value.id);commissionClaimId=claim.id;}
+    await this.effect(workflow,'SERVICE_FINANCIAL_SNAPSHOT',()=>this.confirmServiceFinancials({id:`tfo-service-snapshot:${workflow.id}`,companyId:input.companyId,service:input.service,category:input.category,currency:input.currency,saleAmount:net,costAmount:plan.totalsByCurrency[input.currency]??decimalAmount('0'),evidence:{planId:plan.planId,allocationIds:stock.allocationIds,invoiceId:invoice?.id??null}}),value=>value.id);
+    const result:StandaloneFinancialReference={...claimed,status:'ACTIVE',allocationIds:stock.allocationIds,purchaseOrderIds,...(invoice?{invoiceId:invoice.id}:{}),...(commissionClaimId?{commissionClaimId}:{})};
+    await this.repo.saveStandalone(result);
+    return (await this.complete(workflow,result)).result as StandaloneFinancialReference;
+  }
+
+  async cancelStandaloneService(input:{companyId:CompanyId;branchId:string;commandKey:string;service:SourceReference;postingDate:string;executionCleared:boolean}):Promise<{cancelled:boolean;blockers:readonly string[];operationId:string}> {
+    const reference=await this.repo.standalone(input.companyId,input.service);
+    if(!reference||reference.branchId!==input.branchId||reference.status==='CONFIRMING')throw new ContractValidationError('service','active same-branch financial reference required');
+    const workflow=await this.workflow('STANDALONE_CANCELLATION',input,input.service,input);
+    if(workflow.status==='COMPLETED')return workflow.result as {cancelled:boolean;blockers:readonly string[];operationId:string};
+    const blockers:string[]=[];
+    if(!input.executionCleared)blockers.push('SERVICE_EXECUTION_EVIDENCE_REQUIRED');
+    if(reference.invoiceId){const evidence=await this.billing.cancellationEvidence(input.companyId,reference.invoiceId);if(evidence.settlementRequired||!evidence.cancellationSafe)blockers.push(`CUSTOMER_SETTLEMENT:${reference.invoiceId}`);}
+    if(reference.commissionClaimId){const evidence=await this.commission.evidence(input.companyId,reference.commissionClaimId);if(evidence.hasPostedPaymentHistory||!evidence.reversible)blockers.push(`COMMISSION:${reference.commissionClaimId}`);}
+    for(const id of reference.allocationIds)for(const item of await this.inventory.blockers(input.companyId,id))blockers.push(`INVENTORY:${id}:${item.type}`);
+    for(const id of reference.purchaseOrderIds)for(const item of await this.procurement.blockers(input.companyId,{purchaseOrderId:id}))blockers.push(`PROCUREMENT:${id}:${item.type}`);
+    if(blockers.length)return {cancelled:false,blockers,operationId:workflow.id};
+    for(const id of reference.purchaseOrderIds)await this.effect(workflow,`CANCEL_SERVICE_PO:${id}`,()=>this.procurement.cancelServicePurchaseOrder(input.companyId,id,`Cancel service ${input.service.sourceId}`),value=>value.id);
+    if(reference.commissionClaimId)await this.effect(workflow,'REVERSE_SERVICE_COMMISSION',()=>this.commission.reverse(input.companyId,reference.commissionClaimId!,input.postingDate,`SV-C-${workflow.id}`),value=>value.id);
+    if(reference.invoiceId)await this.effect(workflow,'CANCEL_SERVICE_INVOICE',()=>this.billing.cancelInvoice(input.companyId,reference.invoiceId!,input.postingDate,`SV-C-${workflow.id}`),value=>value.id);
+    for(const id of reference.allocationIds){const allocation=await this.inventory.allocation(input.companyId,id);if(!allocation)throw new ContractValidationError('inventory','canonical allocation missing');await this.effect(workflow,`RELEASE_SERVICE:${id}`,async key=>{const result=await this.inventory.release(input.companyId,id,allocation.quantity,key);if(!result.success)throw new ContractValidationError('inventory','release blocked');return result;},()=>id);}
+    await this.repo.saveStandalone({...reference,status:'CANCELLED'});
+    return (await this.complete(workflow,{cancelled:true,blockers:[],operationId:workflow.id})).result as {cancelled:boolean;blockers:readonly string[];operationId:string};
+  }
 
   async configureFinancialSetup(input: FinancialSetup) { required(input.id, 'id'); const value = { ...input, active: true }; await this.repo.saveSetup(value); return value; }
   private async workflow(kind: WorkflowKind, input: { companyId: CompanyId; branchId?: string; commandKey: string }, source: SourceReference, payload: unknown) { required(input.commandKey, 'commandKey'); const payloadHash = hash(payload); const old = await this.repo.workflow(input.companyId, input.commandKey); if (old) { if (old.payloadHash !== payloadHash || old.kind !== kind) throw new ContractValidationError('commandKey', 'conflicting replay'); return old; } const now = new Date().toISOString(); const value: Workflow = { id: hash([input.companyId, input.commandKey]).slice(0, 32), companyId: input.companyId, ...(input.branchId ? { branchId: input.branchId } : {}), kind, commandKey: input.commandKey, payloadHash, sourceType: source.sourceType, sourceId: source.sourceId, status: 'RUNNING', payload, createdAt: now, updatedAt: now }; const reserved = await this.repo.reserveWorkflow(value); if (reserved.payloadHash !== payloadHash) throw new ContractValidationError('commandKey', 'conflicting replay'); return reserved; }
