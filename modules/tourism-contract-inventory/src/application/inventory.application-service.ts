@@ -216,6 +216,70 @@ export interface ProcurementPort {
   }): Promise<string>;
 }
 
+export interface StandaloneSupplyRequest {
+  readonly requestId: string;
+  readonly contractId: string;
+  readonly resourceType: ContractType;
+  readonly resourceId: string;
+  readonly serviceDate: string;
+  readonly periodEnd?: string;
+  readonly quantity: DecimalAmount;
+  readonly unit: string;
+  readonly supplierId?: string;
+  readonly currency: string;
+  readonly unitCost: DecimalAmount;
+  readonly capacityPerUnit?: DecimalAmount;
+}
+export interface StandaloneSupplyPlanLine {
+  readonly requestId: string;
+  readonly contractId: string;
+  readonly resourceType: ContractType;
+  readonly resourceId: string;
+  readonly supplierId?: string;
+  readonly serviceDate: string;
+  readonly periodEnd?: string;
+  readonly requestedQuantity: DecimalAmount;
+  readonly allocationQuantity: DecimalAmount;
+  readonly unit: string;
+  readonly currency: string;
+  readonly unitCost: DecimalAmount;
+  readonly costAmount: DecimalAmount;
+}
+export interface StandaloneSupplyResidual {
+  readonly requestId: string;
+  readonly resourceType: ContractType;
+  readonly quantity: DecimalAmount;
+  readonly unit: string;
+  readonly currency: string;
+}
+export interface StandaloneSupplyPlan {
+  readonly planId: string;
+  readonly version: number;
+  readonly inputHash: string;
+  readonly service: SourceReference;
+  readonly lines: readonly StandaloneSupplyPlanLine[];
+  readonly residuals: readonly StandaloneSupplyResidual[];
+  readonly totalsByCurrency: Readonly<Record<string, DecimalAmount>>;
+}
+export interface PlanStandaloneSupplyInput extends BaseInput {
+  readonly branchId: string;
+  readonly service: SourceReference;
+  readonly requests: readonly StandaloneSupplyRequest[];
+}
+export interface CommitStandaloneSupplyPlanInput extends BaseInput {
+  readonly branchId: string;
+  readonly service: SourceReference;
+  readonly planId: string;
+  readonly planVersion: number;
+  readonly inputHash: string;
+}
+export interface StandaloneSupplyCommit {
+  readonly planId: string;
+  readonly version: number;
+  readonly allocationIds: readonly string[];
+  readonly residuals: readonly StandaloneSupplyResidual[];
+}
+
 export interface TourismContractInventoryApplicationService {
   createContract(input: CreateTourismContractInput, key?: string): Promise<TourismContract>;
   amendContract(input: AmendContractInput, key?: string): Promise<ContractVersion>;
@@ -249,4 +313,6 @@ export interface TourismContractInventoryApplicationService {
   ): Promise<AllocationCoverageRequirement>;
   getReleaseBlockers(companyId: CompanyId, allocationId: string): Promise<ReleaseBlocker[]>;
   checkIdempotency(companyId: CompanyId, key: string): Promise<IdempotencyCheckResult>;
+  planStandaloneSupply(input: PlanStandaloneSupplyInput): Promise<StandaloneSupplyPlan>;
+  commitStandaloneSupplyPlan(input: CommitStandaloneSupplyPlanInput, key?: string): Promise<StandaloneSupplyCommit>;
 }
