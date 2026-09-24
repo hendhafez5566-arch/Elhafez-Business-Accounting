@@ -19,7 +19,9 @@
     "apps/web/src/tourism-services-page.tsx",
     "pnpm-lock.yaml",
     "prisma/schema.prisma",
-    "prisma/migrations/20260924120000_ts01_tourism_services/migration.sql"
+    "prisma/migrations/20260924120000_ts01_tourism_services/migration.sql",
+    "apps/api/src/system-administration-data-exchange.ts",
+    "apps/api/src/system-administration-data-exchange.spec.ts"
   ],
   "protectedPaths": [
     "apps/web/src/routes.tsx",

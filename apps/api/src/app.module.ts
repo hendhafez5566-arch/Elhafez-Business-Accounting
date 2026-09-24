@@ -59,6 +59,7 @@ import { SystemAdministrationController } from './system-administration.controll
 import { SystemAdministrationDataExchangeBoundary } from './system-administration-data-exchange.js';
 import { HajjUmrahReadinessController } from './hajj-umrah-readiness.controller.js';
 import { StandaloneServicesModule } from '@elhafez/standalone-services/nest';
+import { StandaloneServicesApplicationService } from '@elhafez/standalone-services';
 import { ServiceFulfillmentModule } from '@elhafez/service-fulfillment/nest';
 import { ServiceVouchersModule } from '@elhafez/service-vouchers/nest';
 import { TourismServicesController } from './tourism-services.controller.js';
@@ -83,8 +84,8 @@ import { ManagementControlService } from './management-control.service.js';
     WorkCenterApplicationService,
     {
       provide: SystemAdministrationDataExchangeBoundary,
-      useFactory: (customers: CustomerManagementApplicationService, suppliers: SupplierManagementApplicationService, platform: PlatformCoreApplicationService) => new SystemAdministrationDataExchangeBoundary(customers, suppliers, platform),
-      inject: [CustomerManagementApplicationService, SupplierManagementApplicationService, PlatformCoreApplicationService],
+      useFactory: (customers: CustomerManagementApplicationService, suppliers: SupplierManagementApplicationService, platform: PlatformCoreApplicationService, services:StandaloneServicesApplicationService) => new SystemAdministrationDataExchangeBoundary(customers, suppliers, platform, services),
+      inject: [CustomerManagementApplicationService, SupplierManagementApplicationService, PlatformCoreApplicationService, StandaloneServicesApplicationService],
     },
     {
       provide: SupplierIntelligenceReadModelService,
