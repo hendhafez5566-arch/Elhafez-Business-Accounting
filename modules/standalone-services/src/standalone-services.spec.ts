@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict'; import test from 'node:test';
 import { companyId, decimalAmount } from '@elhafez/contracts';
 import { StandaloneServicesApplicationService, type ConfirmationPort } from './public/index.js';
+import { PrismaClient } from '@prisma/client';
 import { InMemoryStandaloneServicesRepository } from './infrastructure/in-memory-standalone-services.repository.js';
+import { PrismaStandaloneServicesRepository } from './infrastructure/prisma-standalone-services.repository.js';
 
 const confirmation:ConfirmationPort={async prepare(){return {ready:true,blockers:[],planId:'plan-1',planVersion:1};},async commit(){return {operationId:'op-1'};},async cancel(){return {cancelled:true,blockers:[]};}};
 function app(){const repo=new InMemoryStandaloneServicesRepository();return {repo,service:new StandaloneServicesApplicationService(repo,confirmation)};}
@@ -49,3 +51,43 @@ test('blocked cancellation retains posting date and resumes with the same comman
  assert.equal((await service.requestCancellation(command,async()=>({cancelled:true,blockers:[]}))).status,'CANCELLED');
 });
 test('a service type cannot silently change its category',async()=>{const {service}=await seeded();await assert.rejects(service.manageServiceType({id:'hotel',companyId:companyId('c1'),code:'HOTEL',category:'VISA',nameAr:'تأشيرة',active:true}),/immutable/)});
+
+
+test('postgres repository resumes confirmation and cancellation after process restart', { skip: !process.env.DATABASE_URL }, async () => {
+  const db=new PrismaClient(),company=companyId('ts01-db-company'),branch='ts01-db-branch',serviceId='ts01-db-service',typeId='ts01-db-hotel';
+  let commitAttempts=0,cancelAttempts=0;
+  const owner:ConfirmationPort={
+    async prepare(input){return{ready:true,blockers:[],planId:input.planId,planVersion:input.planVersion}},
+    async commit(){commitAttempts+=1;if(commitAttempts===1)throw new Error('simulated-confirm-interruption');return{operationId:'ts01-db-operation'}},
+    async cancel(){cancelAttempts+=1;return cancelAttempts===1?{cancelled:false,blockers:['SIMULATED_SETTLEMENT']}:{cancelled:true,blockers:[]}},
+  };
+  const make=()=>new StandaloneServicesApplicationService(new PrismaStandaloneServicesRepository(db),owner);
+  try{
+    await db.ssCommandReceipt.deleteMany({where:{companyId:company}});
+    await db.ssServiceHistory.deleteMany({where:{serviceId}});
+    await db.ssServiceRevision.deleteMany({where:{serviceId}});
+    await db.ssService.deleteMany({where:{id:serviceId}});
+    await db.ssServiceType.deleteMany({where:{companyId:company,id:typeId}});
+    const first=make();
+    await first.manageServiceType({id:typeId,companyId:company,code:'DBHOTEL',category:'HOTEL',nameAr:'اختبار PostgreSQL',active:true});
+    await first.createDraft({companyId:company,branchId:branch,commandKey:'db-create',actorId:'db-actor',id:serviceId,number:'DB-S-1',serviceTypeId:typeId,serviceDate:'2026-10-01',quantity:decimalAmount('2'),debtorKind:'CUSTOMER',debtorPartyId:'customer-1',customerPartyId:'customer-1',beneficiaryPartyIds:['traveler-1'],details:{source:'postgres'},currency:'EGP',grossAmount:decimalAmount('1000'),discountAmount:decimalAmount('100'),invoiceNumber:'DB-S-1',postingDate:'2026-09-24',dueDate:'2026-10-01'});
+    const confirm={companyId:company,branchId:branch,serviceId,expectedRevision:1,commandKey:'db-confirm',actorId:'db-actor',planId:'db-plan',planVersion:1};
+    await assert.rejects(make().confirm(confirm),/simulated-confirm-interruption/);
+    assert.equal((await db.ssService.findUnique({where:{companyId_id:{companyId:company,id:serviceId}}}))?.status,'CONFIRMING');
+    assert.equal((await make().confirm(confirm)).status,'CONFIRMED');
+    const cancel={companyId:company,branchId:branch,serviceId,commandKey:'db-cancel',actorId:'db-actor',postingDate:'2026-09-24'};
+    await assert.rejects(make().requestCancellation(cancel),/SIMULATED_SETTLEMENT/);
+    const pending=await db.ssService.findUnique({where:{companyId_id:{companyId:company,id:serviceId}}});
+    assert.equal(pending?.status,'CANCELLATION_REQUESTED');assert.equal(pending?.cancellationPostingDate,'2026-09-24');
+    assert.equal((await make().requestCancellation(cancel)).status,'CANCELLED');
+    const history=await db.ssServiceHistory.findMany({where:{serviceId},orderBy:{createdAt:'asc'}});
+    assert.deepEqual(history.map(x=>x.kind),['DRAFTED','CONFIRMATION_STARTED','CONFIRMED','CANCELLATION_REQUESTED','CANCELLED']);
+  }finally{
+    await db.ssCommandReceipt.deleteMany({where:{companyId:company}});
+    await db.ssServiceHistory.deleteMany({where:{serviceId}});
+    await db.ssServiceRevision.deleteMany({where:{serviceId}});
+    await db.ssService.deleteMany({where:{id:serviceId}});
+    await db.ssServiceType.deleteMany({where:{companyId:company,id:typeId}});
+    await db.$disconnect();
+  }
+});
