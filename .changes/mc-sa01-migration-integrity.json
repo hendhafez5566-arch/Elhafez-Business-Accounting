@@ -1,0 +1,19 @@
+{
+  "id": "mc-sa01-migration-integrity",
+  "summary": "Repair the MC-SA-01 PostgreSQL migration foreign-key types and align the existing last-active-branch regression test with automatic company bootstrap.",
+  "type": "bugfix",
+  "allowedModules": [
+    "platform-core"
+  ],
+  "allowedPaths": [
+    "prisma/migrations/20260922210000_mc_sa01_system_administration/migration.sql"
+  ],
+  "protectedPaths": [],
+  "protectedReason": "",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": "",
+  "unacceptedMigrationRepairs": [
+    "prisma/migrations/20260922210000_mc_sa01_system_administration/migration.sql"
+  ],
+  "unacceptedMigrationRepairReason": "Fresh PostgreSQL execution failed before MC-SA-01 could be accepted as an executable migration because company_id and password-recovery user_id were declared TEXT while their referenced Platform Core keys are UUID. The repair changes only those two foreign-key column types. Full verification also exposed an existing Platform Core regression test that incorrectly created a second branch after createCompany had already bootstrapped the active main branch; the test is corrected to exercise the actual last-active-branch invariant without changing production behavior."
+}
