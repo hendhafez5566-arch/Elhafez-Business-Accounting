@@ -2,10 +2,11 @@
   "id": "mc-sa02-management-control",
   "summary": "MC-SA-02 Management & Control composition, work center, exception filtering, and Arabic-first management navigation over canonical owner public read boundaries.",
   "type": "feature",
-  "allowedModules": [],
+  "allowedModules": [
+    "platform-core"
+  ],
   "allowedPaths": [
     ".changes/mc-sa02-management-control.json",
-    "apps/api/package.json",
     "apps/api/src/app.module.ts",
     "apps/api/src/management-control.controller.ts",
     "apps/api/src/management-control.service.ts",
@@ -15,7 +16,7 @@
     "apps/web/src/management-control.spec.ts",
     "apps/web/src/routes.tsx",
     "docs/BUSINESS-MODULE-ARCHITECTURE.md",
-    "pnpm-lock.yaml"
+    "prisma/migrations/20260923150000_mc_sa02_management_permission/migration.sql"
   ],
   "protectedPaths": [
     "apps/api/src/app.module.ts",

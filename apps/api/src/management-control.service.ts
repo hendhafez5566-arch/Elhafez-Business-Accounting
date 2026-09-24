@@ -44,7 +44,6 @@ export class WorkCenterApplicationService {
   }
 }
 
-export const MANAGEMENT_CONTROL_PERMISSION = 'management.control.read';
 interface CrmRead { dashboard(context:ExecutionContext):Promise<{ counts:{customers:number;agents:number;travelers:number;overdueFollowups:number}; leadStages:Record<string,number>; quotationStatuses:Record<string,number>; quotationValueByCurrency:readonly {currency:string;total:string}[]; attention:{ overdueFollowups:readonly {id:string;leadId:string;nextAction:string|null;scheduledAt:string}[]; awaitingApproval:readonly {id:string;number:string;updatedAt:string}[]; awaitingConversion:readonly {id:string;number:string;updatedAt:string}[] } }> }
 interface SupplierRead { searchSuppliers(context:ExecutionContext):Promise<readonly {party:{id:string}}[]>; overview(context:ExecutionContext,id:string):Promise<{supplier:{party:{displayName:string}};disputes:{open:readonly {id:string;title:string;severity:string;status:string;openedAt:string}[]};holds:{active:readonly {id:string;reason:string;createdAt:string}[]}}> }
 interface ProgramRead { list(context:ExecutionContext):Promise<readonly {id:string;code:string;status:string}[]> }
