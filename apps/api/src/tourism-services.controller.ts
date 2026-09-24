@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Body, Controller, Get, Headers, Inject, Param, Patch, Post, UnauthorizedException } from '@nestjs/common';
 import { decimalAmount, executionContext, sourceReference, type ExecutionContext } from '@elhafez/contracts';
-import { PlatformCoreApplicationService } from '@elhafez/platform-core';
+import { PlatformCoreApplicationService, PlatformError } from '@elhafez/platform-core';
 import { StandaloneServicesApplicationService, type CreateServiceDraftInput, type ServiceType, type UpdateServiceDraftInput } from '@elhafez/standalone-services';
 import { TOURISM_CONTRACT_INVENTORY_SERVICE } from '@elhafez/tourism-contract-inventory/nest';
 import type { PlanStandaloneSupplyInput, TourismContractInventoryApplicationService } from '@elhafez/tourism-contract-inventory';
@@ -29,6 +29,15 @@ export class TourismServicesController {
     return context;
   }
   private headers(authorization?: string, companyId?: string, branchId?: string): HeadersContext { return { authorization, companyId, branchId }; }
+  @Get('capabilities')
+  async capabilities(@Headers('authorization') auth?:string,@Headers('x-company-id') company?:string,@Headers('x-branch-id') branch?:string){
+    const c=await this.context(this.headers(auth,company,branch),TOURISM_SERVICE_PERMISSIONS.view);
+    const entries=await Promise.all(Object.entries(TOURISM_SERVICE_PERMISSIONS).map(async([name,permission])=>{
+      try{await this.platform.authorize(c.actorId,c.companyId,permission);return [name,true] as const}
+      catch(error){if(error instanceof PlatformError&&error.code==='FORBIDDEN')return [name,false] as const;throw error}
+    }));
+    return Object.fromEntries(entries);
+  }
   @Get('types')
   async types(@Headers('authorization') auth?: string, @Headers('x-company-id') company?: string, @Headers('x-branch-id') branch?: string) {
     const c = await this.context(this.headers(auth, company, branch), TOURISM_SERVICE_PERMISSIONS.view);

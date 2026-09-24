@@ -2,7 +2,7 @@ import { crmGet, crmPatch, crmPost } from './crm-core-client.js';
 export type ServiceCategory = 'HOTEL'|'FLIGHT'|'VISA'|'TRANSPORT'|'OTHER';
 export type ServiceStatus = 'DRAFT'|'CONFIRMING'|'CONFIRMED'|'CANCELLATION_REQUESTED'|'CANCELLED'|'COMPLETED';
 export interface ServiceType { id:string; code:string; category:ServiceCategory; nameAr:string; active:boolean }
-export interface ServiceRow { id:string; number:string; status:ServiceStatus; revision:number; supplyPlanId?:string; supplyPlanVersion?:number }
+export interface ServiceRow { id:string; number:string; status:ServiceStatus; revision:number; supplyPlanId?:string; supplyPlanVersion?:number; pendingCommandKey?:string; cancellationPostingDate?:string }
 export interface ServiceRevision { revision:number; serviceTypeId:string; category:ServiceCategory; serviceDate:string; periodEnd?:string; quantity:string; customerPartyId:string; beneficiaryPartyIds:string[]; details:Record<string,unknown>; commercial:{currency:string;grossAmount:string;discountAmount:string;netAmount:string}; }
 export interface ServiceRecord { service:ServiceRow; revision:ServiceRevision; history:{kind:string;createdAt:string;actorId:string}[] }
 export interface SupplyRequest { requestId:string; contractId:string; resourceType:string; resourceId:string; serviceDate:string; quantity:string; unit:string; currency:string; unitCost:string; periodEnd?:string }
@@ -12,7 +12,9 @@ export interface Voucher { id:string;number:string;status:'ISSUED'|'VOID';versio
 export interface PrintableVoucher { number:string;version:number;serviceNumber:string;serviceType:string;serviceDate:string;periodEnd?:string;customerPartyId:string;beneficiaryPartyIds:string[];quantity:string;description:string;supplierId?:string;externalReference?:string;instructions:string;issuedAt:string }
 export interface DraftInput { commandKey:string; number:string;serviceTypeId:string;serviceDate:string;periodEnd?:string;quantity:string;debtorKind:'CUSTOMER'|'AGENT';debtorPartyId:string;customerPartyId:string;beneficiaryPartyIds:string[];details:Record<string,unknown>;currency:string;grossAmount:string;discountAmount:string;invoiceNumber:string;postingDate:string;dueDate:string;approvalRequestId?:string }
 const base='/tourism/services';
+export interface TourismCapabilities {view:boolean;manage:boolean;confirm:boolean;cancel:boolean;fulfill:boolean;voucher:boolean}
 export const tourismServicesApi={
+ capabilities:()=>crmGet<TourismCapabilities>(`${base}/capabilities`),
  types:()=>crmGet<ServiceType[]>(`${base}/types`),
  saveType:(input:Omit<ServiceType,'companyId'>)=>crmPost<ServiceType>(`${base}/types`,input),
  list:()=>crmGet<ServiceRow[]>(base),

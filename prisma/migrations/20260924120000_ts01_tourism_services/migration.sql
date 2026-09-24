@@ -90,3 +90,24 @@ CREATE UNIQUE INDEX "sv_vouchers_company_id_branch_id_number_key" ON "sv_voucher
 CREATE INDEX "sv_vouchers_company_id_branch_id_service_id_idx" ON "sv_vouchers"("company_id","branch_id","service_id");
 CREATE TABLE "sv_voucher_versions" ("voucher_id" TEXT NOT NULL,"version" INTEGER NOT NULL,"snapshot" JSONB NOT NULL,"status" TEXT NOT NULL,PRIMARY KEY ("voucher_id","version"));
 CREATE TABLE "sv_command_receipts" ("company_id" TEXT NOT NULL,"command_key" TEXT NOT NULL,"payload_hash" TEXT NOT NULL,"voucher_id" TEXT NOT NULL,PRIMARY KEY ("company_id","command_key"));
+
+-- Provision the service workspace capabilities only for existing company administrators.
+-- Other roles receive them through the standard company-scoped permission workflow.
+WITH "service_permissions" AS (
+  INSERT INTO "pc_permissions" ("id", "name") VALUES
+    ('ea1d3a80-c4ab-4e6a-8295-000000000001', 'tourism.services.view'),
+    ('ea1d3a80-c4ab-4e6a-8295-000000000002', 'tourism.services.manage'),
+    ('ea1d3a80-c4ab-4e6a-8295-000000000003', 'tourism.services.confirm'),
+    ('ea1d3a80-c4ab-4e6a-8295-000000000004', 'tourism.services.cancel'),
+    ('ea1d3a80-c4ab-4e6a-8295-000000000005', 'tourism.services.fulfill'),
+    ('ea1d3a80-c4ab-4e6a-8295-000000000006', 'tourism.services.voucher')
+  ON CONFLICT ("name") DO UPDATE SET "name" = EXCLUDED."name"
+  RETURNING "id"
+)
+INSERT INTO "pc_company_role_permissions" ("company_id", "role_id", "permission_id")
+SELECT DISTINCT ur."company_id", role."id", permission."id"
+FROM "pc_user_roles" ur
+JOIN "pc_roles" role ON role."id" = ur."role_id"
+CROSS JOIN "service_permissions" permission
+WHERE role."name" = 'company-administrator'
+ON CONFLICT ("company_id", "role_id", "permission_id") DO NOTHING;
