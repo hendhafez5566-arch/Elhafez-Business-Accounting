@@ -266,6 +266,12 @@ for (const file of filesIn(webSourceRoot)) {
   if (/style\s*=\s*\{\{/.test(content)) {
     errors.push(from + ': inline style objects are forbidden; use the central UI foundation and design tokens.');
   }
+
+  const isUiFoundation = from === 'apps/web/src/ui.tsx' || from.startsWith('apps/web/src/ui/');
+  const isTestFile = /\.spec\.tsx?$/.test(from);
+  if (!isUiFoundation && !isTestFile && from.endsWith('.tsx') && /<(?:button|input|select|textarea)\b/.test(content)) {
+    errors.push(from + ': raw form controls are forbidden in application pages; consume shared UI primitives from apps/web/src/ui.tsx.');
+  }
 }
 
 function cssFilesIn(directory: string): string[] {

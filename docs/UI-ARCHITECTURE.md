@@ -1,6 +1,6 @@
 # ELHAFEZ UI ARCHITECTURE
 
-Status: **UI-01 — canonical web presentation foundation**
+Status: **UI-02 — canonical foundation applied across application pages**
 
 ## Purpose
 
@@ -77,3 +77,18 @@ When adding a new UI requirement:
 6. Do not create parallel styling paths.
 
 This keeps future additions additive, discoverable and replaceable without patch-on-patch work.
+
+
+## UI-02 application contract
+
+UI-02 applies the foundation to the existing application without changing business ownership or business behavior.
+
+- The App Shell renders the canonical page header for every registered route.
+- Business pages render content inside the shared page stack; they do not create competing top-level page titles.
+- Existing forms, cards, filters, tables, metrics and administration tools use the shared primitives and central CSS patterns.
+- Application pages may use semantic `form`, `label`, `section` and `fieldset` elements, but interactive form controls must come from the shared UI facade.
+- Raw `button`, `input`, `select` and `textarea` elements in application pages are rejected by the architecture gate.
+- Dashboard metrics use the reusable `MetricCard` pattern; action rows use `ActionBar`; filters use the canonical grid pattern.
+- Print-only document styling remains isolated to the printable document flow and is not an application-page styling escape hatch.
+
+A future business module should therefore add business content only. It inherits the shell, page header, typography, density, responsive behavior and control styling without creating another visual foundation.

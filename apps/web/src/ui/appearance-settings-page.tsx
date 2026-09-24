@@ -1,4 +1,4 @@
-import { Button, Card, FormField, PageHeader, Select } from './primitives.js';
+import { ActionBar, Button, Card, FormField, Select } from './primitives.js';
 import { useUiPreferences } from './preferences.js';
 
 const sidebarLabels = {
@@ -30,14 +30,8 @@ export function AppearanceSettingsPage() {
   const { preferences, updatePreferences, resetPreferences } = useUiPreferences();
 
   return (
-    <main className="ui-settings-page" aria-labelledby="appearance-title">
-      <PageHeader
-        id="appearance-title"
-        eyebrow="الإعدادات الشخصية"
-        title="المظهر والتنقل"
-        description="اضبط طريقة عرض النظام بما يناسبك. التغييرات تُطبّق على الواجهة كلها من مصدر مركزي واحد."
-        actions={<Button variant="secondary" onClick={resetPreferences}>استعادة الافتراضي</Button>}
-      />
+    <section className="ui-settings-page" aria-label="إعدادات المظهر والتنقل">
+      <ActionBar><Button variant="secondary" onClick={resetPreferences}>استعادة الافتراضي</Button></ActionBar>
 
       <div className="ui-settings-grid">
         <Card title="القائمة الجانبية">
@@ -106,6 +100,6 @@ export function AppearanceSettingsPage() {
           </dl>
         </Card>
       </div>
-    </main>
+    </section>
   );
 }

@@ -198,9 +198,23 @@ a { color: var(--color-primary); }
   padding: var(--space-3);
 }
 
-.app-content > h1:first-child {
-  margin-block: 0 var(--space-3);
-  font-size: var(--font-size-xl);
+.ui-page-stack {
+  min-width: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.ui-page-stack > section,
+.ui-page-stack > main,
+.ui-page-stack > div[dir='rtl'] {
+  min-width: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.ui-page-intro {
+  margin: 0;
+  color: var(--color-text-muted);
 }
 
 .mobile-trigger { display: none; }
@@ -527,4 +541,137 @@ dialog {
   .app-content { padding: var(--space-2); }
   .app-topbar__identity span { display: none; }
   .ui-settings-grid { grid-template-columns: 1fr; }
+}
+
+
+/* UI-02 application patterns */
+.ui-card form,
+dialog form,
+.ui-form-section form,
+.admin-actions {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.ui-card form + form {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.ui-card form > .ui-button,
+.admin-actions > .ui-button {
+  justify-self: start;
+}
+
+.ui-checkbox-field {
+  display: inline-flex;
+  align-items: center;
+  gap: .55rem;
+  min-height: 2.35rem;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.ui-checkbox-field .ui-checkbox {
+  flex: 0 0 auto;
+}
+
+.ui-action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+}
+
+.ui-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--space-2);
+}
+
+.ui-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--space-2);
+}
+
+.ui-metric-card {
+  min-width: 0;
+  display: grid;
+  gap: .35rem;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-inline-start: 4px solid var(--color-primary);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.ui-metric-card[data-tone='error'] { border-inline-start-color: var(--color-danger); }
+.ui-metric-card[data-tone='warning'] { border-inline-start-color: var(--color-warning); }
+.ui-metric-card[data-tone='success'] { border-inline-start-color: var(--color-success); }
+.ui-metric-card[data-tone='info'] { border-inline-start-color: var(--color-info); }
+
+.ui-metric-card__label {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+
+.ui-metric-card__value {
+  font-size: clamp(1.5rem, 2vw, 2rem);
+  line-height: 1.15;
+}
+
+.ui-metric-card__detail { color: var(--color-text-muted); }
+
+.ui-dashboard,
+.ui-work-center,
+.ui-admin-page {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.ui-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: var(--space-3);
+}
+
+.ui-results-count {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-weight: 700;
+}
+
+.admin-actions {
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.ui-tabs {
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+@media (max-width: 700px) {
+  .ui-filter-grid,
+  .ui-dashboard-grid,
+  .admin-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .ui-action-bar {
+    justify-content: stretch;
+  }
+
+  .ui-action-bar .ui-button {
+    width: 100%;
+  }
 }

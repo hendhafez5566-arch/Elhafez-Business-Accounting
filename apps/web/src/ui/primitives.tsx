@@ -163,6 +163,30 @@ export function Badge({
 
 export const StatusBadge = Badge;
 
+export function MetricCard({
+  label,
+  value,
+  detail,
+  tone = 'neutral',
+}: {
+  readonly label: string;
+  readonly value: ReactNode;
+  readonly detail?: ReactNode;
+  readonly tone?: Tone;
+}) {
+  return (
+    <section className="ui-metric-card" data-tone={tone}>
+      <span className="ui-metric-card__label">{label}</span>
+      <strong className="ui-metric-card__value">{value}</strong>
+      {detail && <small className="ui-metric-card__detail">{detail}</small>}
+    </section>
+  );
+}
+
+export function ActionBar({ children }: { readonly children: ReactNode }) {
+  return <div className="ui-action-bar">{children}</div>;
+}
+
 export function DataGrid({
   columns,
   children,

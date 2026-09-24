@@ -7,6 +7,7 @@ import {
 } from './shell-state.js';
 import {
   Drawer,
+  PageHeader,
   type UiPreferences,
   UiPreferencesProvider,
   useUiPreferences,
@@ -92,8 +93,8 @@ function AppShellFrame({
 
       <main className="app-main">
         <div className="app-content" tabIndex={-1}>
-          <h1>{active.label}</h1>
-          {children ?? active.element}
+          <PageHeader eyebrow={active.group} title={active.label} />
+          <div className="ui-page-stack">{children ?? active.element}</div>
         </div>
       </main>
     </div>

@@ -13,6 +13,8 @@ test('global shell contract preserves RTL, right sidebar, topbar, navigation and
   assert.match(html, /class="app-main"/);
   assert.match(html, /aria-current="page"/);
   assert.match(html, /data-sidebar-mode="fixed"/);
+  assert.match(html, /class="ui-page-header"/);
+  assert.match(html, /class="ui-page-stack"/);
 });
 
 test('sidebar supports fixed, compact and auto preference modes through one canonical shell', () => {
@@ -44,5 +46,5 @@ test('appearance settings are reachable from canonical navigation', () => {
     createElement(AppShell, { pathname: '/settings/appearance' }),
   );
   assert.match(html, /المظهر والتنقل/);
-  assert.match(html, /الإعدادات الشخصية/);
+  assert.match(html, /استعادة الافتراضي/);
 });
