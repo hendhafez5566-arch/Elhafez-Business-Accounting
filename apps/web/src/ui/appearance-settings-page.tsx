@@ -32,6 +32,7 @@ export function AppearanceSettingsPage() {
   return (
     <main className="ui-settings-page" aria-labelledby="appearance-title">
       <PageHeader
+        id="appearance-title"
         eyebrow="الإعدادات الشخصية"
         title="المظهر والتنقل"
         description="اضبط طريقة عرض النظام بما يناسبك. التغييرات تُطبّق على الواجهة كلها من مصدر مركزي واحد."

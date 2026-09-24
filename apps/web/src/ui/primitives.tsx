@@ -30,8 +30,11 @@ export function Button({
   );
 }
 
-export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
-  return <input className={['ui-input', props.className].filter(Boolean).join(' ')} {...props} />;
+export function Input({
+  className = '',
+  ...props
+}: InputHTMLAttributes<HTMLInputElement>) {
+  return <input className={['ui-input', className].filter(Boolean).join(' ')} {...props} />;
 }
 
 export function Select({
@@ -87,11 +90,13 @@ export function FormField({
 }
 
 export function PageHeader({
+  id,
   eyebrow,
   title,
   description,
   actions,
 }: {
+  readonly id?: string;
   readonly eyebrow?: string;
   readonly title: string;
   readonly description?: string;
@@ -101,7 +106,7 @@ export function PageHeader({
     <header className="ui-page-header">
       <div>
         {eyebrow && <p className="ui-page-header__eyebrow">{eyebrow}</p>}
-        <h1>{title}</h1>
+        <h1 id={id}>{title}</h1>
         {description && <p className="ui-page-header__description">{description}</p>}
       </div>
       {actions && <div className="ui-page-header__actions">{actions}</div>}

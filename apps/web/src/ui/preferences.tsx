@@ -65,7 +65,11 @@ export function preferenceStorageKey(scope: string): string {
 
 function browserStorage(): PreferenceStorage | undefined {
   if (typeof window === 'undefined') return undefined;
-  return window.localStorage;
+  try {
+    return window.localStorage;
+  } catch {
+    return undefined;
+  }
 }
 
 export function loadUiPreferences(
@@ -87,7 +91,11 @@ export function saveUiPreferences(
   storage: PreferenceStorage | undefined = browserStorage(),
 ): void {
   if (!storage) return;
-  storage.setItem(preferenceStorageKey(scope), JSON.stringify(normalizeUiPreferences(preferences)));
+  try {
+    storage.setItem(preferenceStorageKey(scope), JSON.stringify(normalizeUiPreferences(preferences)));
+  } catch {
+    // Presentation preferences must never prevent the business application from running.
+  }
 }
 
 export function applyUiPreferences(preferences: UiPreferences): void {
