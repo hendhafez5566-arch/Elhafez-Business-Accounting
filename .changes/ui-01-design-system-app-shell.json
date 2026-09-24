@@ -1,0 +1,41 @@
+{
+  "id": "ui-01-design-system-app-shell",
+  "summary": "Create the canonical ELHAFEZ web design-system foundation, typed user presentation preferences, three-mode right sidebar, centralized tokens, reusable primitives and architecture guards.",
+  "type": "architecture",
+  "allowedModules": [],
+  "allowedPaths": [
+    "AGENTS.md",
+    ".github/CODEOWNERS",
+    ".governance/change-safety.json",
+    "tools/architecture/check-architecture.ts",
+    "docs/UI-ARCHITECTURE.md",
+    "apps/web/src/ui.tsx",
+    "apps/web/src/ui/**",
+    "apps/web/src/styles.css",
+    "apps/web/src/app-shell.tsx",
+    "apps/web/src/app-shell-contract.spec.ts",
+    "apps/web/src/shell-state.ts",
+    "apps/web/src/shell-state.spec.ts",
+    "apps/web/src/routes.tsx",
+    "apps/web/src/routes.spec.ts",
+    "apps/web/src/system-administration-page.tsx",
+    "apps/web/src/management-control-page.tsx",
+    "apps/web/src/hajj-umrah-readiness-page.tsx"
+  ],
+  "protectedPaths": [
+    "AGENTS.md",
+    ".github/CODEOWNERS",
+    ".governance/change-safety.json",
+    "tools/architecture/**",
+    "apps/web/src/app-shell.tsx",
+    "apps/web/src/shell-state.ts",
+    "apps/web/src/routes.tsx",
+    "apps/web/src/ui.tsx",
+    "apps/web/src/ui/**",
+    "apps/web/src/styles.css",
+    "docs/UI-ARCHITECTURE.md"
+  ],
+  "protectedReason": "The owner explicitly approved UI-01 as a global long-lived design-system and App Shell architecture change so future UI changes remain centralized rather than patched per module.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": ""
+}

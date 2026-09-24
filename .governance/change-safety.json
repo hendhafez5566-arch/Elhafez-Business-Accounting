@@ -17,7 +17,9 @@
     "apps/web/src/routes.tsx",
     "apps/web/src/ui.tsx",
     "apps/web/src/styles.css",
-    "modules/*/module.json"
+    "modules/*/module.json",
+    "apps/web/src/ui/**",
+    "docs/UI-ARCHITECTURE.md"
   ],
   "generatedOrForbiddenPaths": [
     "**/*.tsbuildinfo",

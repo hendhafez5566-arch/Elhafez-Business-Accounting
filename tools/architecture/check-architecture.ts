@@ -13,6 +13,7 @@ const modulesDir = join(root, 'modules');
 const schemaPath = join(root, 'prisma', 'schema.prisma');
 const errors: string[] = [];
 const sourceExtensions = new Set(['.ts', '.tsx']);
+const canonicalWebCss = new Set(['apps/web/src/styles.css', 'apps/web/src/ui/design-tokens.css']);
 const kernelPackages = new Set(['core', 'contracts']);
 
 function filesIn(directory: string): string[] {
@@ -243,6 +244,61 @@ function visit(name: string): void {
 }
 
 for (const name of moduleNames) visit(name);
+
+const webSourceRoot = join(root, 'apps', 'web', 'src');
+const requiredUiFoundation = [
+  'apps/web/src/ui.tsx',
+  'apps/web/src/ui/primitives.tsx',
+  'apps/web/src/ui/icons.tsx',
+  'apps/web/src/ui/navigation.tsx',
+  'apps/web/src/ui/preferences.tsx',
+  'apps/web/src/ui/design-tokens.css',
+  'apps/web/src/app-shell.tsx',
+  'apps/web/src/styles.css',
+];
+for (const required of requiredUiFoundation) {
+  if (!existsSync(join(root, required))) errors.push(required + ': canonical UI foundation file is required.');
+}
+
+for (const file of filesIn(webSourceRoot)) {
+  const from = relative(root, file).split(sep).join('/');
+  const content = readFileSync(file, 'utf8');
+  if (/style\s*=\s*\{\{/.test(content)) {
+    errors.push(from + ': inline style objects are forbidden; use the central UI foundation and design tokens.');
+  }
+}
+
+function cssFilesIn(directory: string): string[] {
+  if (!existsSync(directory)) return [];
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) return cssFilesIn(path);
+    return path.endsWith('.css') ? [path] : [];
+  });
+}
+
+for (const file of cssFilesIn(webSourceRoot)) {
+  const from = relative(root, file).split(sep).join('/');
+  if (!canonicalWebCss.has(from)) {
+    errors.push(from + ': page/module CSS is forbidden; reusable styling belongs in the canonical UI foundation.');
+  }
+}
+
+const uiFacadePath = join(root, 'apps', 'web', 'src', 'ui.tsx');
+if (existsSync(uiFacadePath)) {
+  const facade = readFileSync(uiFacadePath, 'utf8');
+  if (!facade.includes("export * from './ui/primitives.js';")) {
+    errors.push('apps/web/src/ui.tsx: must remain the stable facade over the canonical UI foundation.');
+  }
+}
+
+const globalStylesPath = join(root, 'apps', 'web', 'src', 'styles.css');
+if (existsSync(globalStylesPath)) {
+  const styles = readFileSync(globalStylesPath, 'utf8');
+  if (!styles.includes("@import './ui/design-tokens.css';")) {
+    errors.push('apps/web/src/styles.css: must consume the canonical design tokens.');
+  }
+}
 
 if (errors.length) {
   console.error(

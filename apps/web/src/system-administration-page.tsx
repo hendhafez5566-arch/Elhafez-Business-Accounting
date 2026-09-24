@@ -63,7 +63,7 @@ export function SystemAdministrationPage({client=new HttpAdministrationClient(),
  const records=rows.filter(objectRecord);
  const selectedDataset=datasets.find(value=>value.id===field('dataset'));
 
- const input=(name:string,label:string,type='text')=><label style={{display:'grid',gap:'.25rem'}}>{label}<input type={type} value={field(name)} onChange={event=>setField(name,event.target.value)}/></label>;
+ const input=(name:string,label:string,type='text')=><label className="ui-flow">{label}<input type={type} value={field(name)} onChange={event=>setField(name,event.target.value)}/></label>;
  const button=(label:string,onClick:()=>void)=><button type="button" disabled={loading} onClick={onClick}>{label}</button>;
 
  function actions(){
@@ -93,7 +93,7 @@ export function SystemAdministrationPage({client=new HttpAdministrationClient(),
     }
     return result;
    },false))}
-   {sourceFields.length?<fieldset><legend>مطابقة أعمدة الملف مع حقول النظام</legend>{sourceFields.map(source=><label key={source} style={{display:'grid',gap:'.25rem'}}>{source}<select value={columnMapping[source]??''} onChange={event=>setColumnMapping(current=>({...current,[source]:event.target.value}))}><option value="">تجاهل العمود</option>{selectedDataset?.targetFields.map(target=><option key={target} value={target}>{target}</option>)}</select></label>)}</fieldset>:null}
+   {sourceFields.length?<fieldset><legend>مطابقة أعمدة الملف مع حقول النظام</legend>{sourceFields.map(source=><label key={source} className="ui-flow">{source}<select value={columnMapping[source]??''} onChange={event=>setColumnMapping(current=>({...current,[source]:event.target.value}))}><option value="">تجاهل العمود</option>{selectedDataset?.targetFields.map(target=><option key={target} value={target}>{target}</option>)}</select></label>)}</fieldset>:null}
    {input('importJobId','معرّف مهمة الاستيراد')}
    {button('حفظ خريطة الأعمدة',()=>void run('تم حفظ خريطة الأعمدة.',()=>client.patch(`imports/${field('importJobId')}/mapping`,ctx,{mapping:Object.fromEntries(Object.entries(columnMapping).filter(([,target])=>Boolean(target)))}),false))}
    {button('معاينة والتحقق',()=>void run('تم التحقق من الملف.',()=>client.action(`imports/${field('importJobId')}/preview`,ctx)))}
@@ -106,15 +106,15 @@ export function SystemAdministrationPage({client=new HttpAdministrationClient(),
 
  return <main dir="rtl" aria-labelledby="admin-title">
   <header><p>إدارة المنصة</p><h1 id="admin-title">إدارة النظام والعمليات</h1><p>لوحة عربية موحدة وآمنة لإدارة الوصول والبيانات واستمرارية التشغيل.</p></header>
-  <nav aria-label="مجالات إدارة النظام" style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:'.5rem'}}>
+  <nav aria-label="مجالات إدارة النظام" className="ui-grid-sm">
    {areas.map(([title,path])=><button key={path} type="button" aria-pressed={selected===path} disabled={!ctx.token} onClick={()=>void selectArea(path)}>{title}</button>)}
   </nav>
-  <section aria-live="polite" style={{marginTop:'1rem'}}>
+  <section aria-live="polite" className="ui-section-space">
    {!ctx.token?<p>اختر الشركة والفرع وسجّل الدخول لعرض أدوات الإدارة.</p>:<>
-    <div style={{display:'flex',gap:'.5rem',flexWrap:'wrap'}}><button type="button" disabled={loading} onClick={()=>void load()}>تحديث البيانات</button></div>
+    <div className="ui-inline"><button type="button" disabled={loading} onClick={()=>void load()}>تحديث البيانات</button></div>
     {actions()}
-    {loading?<p>جارٍ التحميل…</p>:message?<p role="alert">{message}</p>:success?<p role="status">{success}</p>:records.length===0?<p>لا توجد بيانات متاحة.</p>:<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(250px,1fr))',gap:'1rem',marginTop:'1rem'}}>
-     {records.map((record,index)=><article key={String(record.id??index)} style={{border:'1px solid currentColor',borderRadius:'.5rem',padding:'1rem',overflowWrap:'anywhere'}}>{Object.entries(record).filter(([key,value])=>labels[key]&&typeof value!=='object').map(([key,value])=><p key={key}><strong>{labels[key]}: </strong>{valueOf(value)}</p>)}</article>)}
+    {loading?<p>جارٍ التحميل…</p>:message?<p role="alert">{message}</p>:success?<p role="status">{success}</p>:records.length===0?<p>لا توجد بيانات متاحة.</p>:<div className="ui-grid-md ui-section-space">
+     {records.map((record,index)=><article key={String(record.id??index)} className="ui-record-card">{Object.entries(record).filter(([key,value])=>labels[key]&&typeof value!=='object').map(([key,value])=><p key={key}><strong>{labels[key]}: </strong>{valueOf(value)}</p>)}</article>)}
     </div>}
    </>}
   </section>
