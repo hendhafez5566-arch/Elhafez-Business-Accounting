@@ -1,5 +1,5 @@
 -- Company-scoped authorization is the sole runtime role assignment truth.
-ALTER TABLE "pc_user_roles" ADD COLUMN "company_id" TEXT;
+ALTER TABLE "pc_user_roles" ADD COLUMN "company_id" UUID;
 -- Expand every legacy global assignment across all companies in which the user
 -- has explicit branch access. The original row is retained until expansion is
 -- proven complete; ambiguity aborts rather than deleting authorization data.
@@ -20,7 +20,7 @@ ALTER TABLE "pc_user_roles" DROP CONSTRAINT "pc_user_roles_pkey";
 ALTER TABLE "pc_user_roles" ADD CONSTRAINT "pc_user_roles_pkey" PRIMARY KEY ("user_id","company_id","role_id");
 ALTER TABLE "pc_user_roles" ADD CONSTRAINT "pc_user_roles_company_id_fkey" FOREIGN KEY ("company_id") REFERENCES "pc_companies"("id") ON DELETE CASCADE;
 CREATE INDEX "pc_user_roles_company_user_idx" ON "pc_user_roles"("company_id","user_id");
-CREATE TABLE "pc_password_recovery" ("id" TEXT PRIMARY KEY,"user_id" TEXT NOT NULL,"token_hash" TEXT NOT NULL UNIQUE,"expires_at" TIMESTAMP(3) NOT NULL,"used_at" TIMESTAMP(3),"created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,CONSTRAINT "pc_password_recovery_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "pc_users"("id") ON DELETE CASCADE);
+CREATE TABLE "pc_password_recovery" ("id" TEXT PRIMARY KEY,"user_id" UUID NOT NULL,"token_hash" TEXT NOT NULL UNIQUE,"expires_at" TIMESTAMP(3) NOT NULL,"used_at" TIMESTAMP(3),"created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,CONSTRAINT "pc_password_recovery_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "pc_users"("id") ON DELETE CASCADE);
 CREATE INDEX "pc_password_recovery_user_expiry_idx" ON "pc_password_recovery"("user_id","expires_at");
 CREATE TABLE "dex_jobs" ("id" TEXT PRIMARY KEY,"company_id" TEXT NOT NULL,"branch_id" TEXT,"direction" TEXT NOT NULL,"status" TEXT NOT NULL,"file_name" TEXT NOT NULL,"format" TEXT NOT NULL,"mapping" JSONB NOT NULL,"idempotency_key" TEXT NOT NULL,"result_key" TEXT,"created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,"updated_at" TIMESTAMP(3) NOT NULL,CONSTRAINT "dex_jobs_company_key" UNIQUE("company_id","idempotency_key"));
 CREATE INDEX "dex_jobs_company_created_idx" ON "dex_jobs"("company_id","created_at");
