@@ -545,20 +545,21 @@ dialog {
 
 
 /* UI-02 application patterns */
-.ui-card > form,
-.ui-dialog__body form,
+.ui-card form,
+dialog form,
+.ui-form-section form,
 .admin-actions {
   display: grid;
   gap: var(--space-2);
 }
 
-.ui-card > form + form {
+.ui-card form + form {
   margin-top: var(--space-3);
   padding-top: var(--space-3);
   border-top: 1px solid var(--color-border);
 }
 
-.ui-card > form > .ui-button,
+.ui-card form > .ui-button,
 .admin-actions > .ui-button {
   justify-self: start;
 }

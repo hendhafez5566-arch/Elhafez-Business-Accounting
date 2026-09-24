@@ -106,7 +106,7 @@ export function SystemAdministrationPage({client=new HttpAdministrationClient(),
  }
 
  return <section dir="rtl" aria-label="إدارة النظام والعمليات" className="ui-admin-page">
-  <Card title="إدارة المنصة"><p>لوحة عربية موحدة وآمنة لإدارة الوصول والبيانات واستمرارية التشغيل.</p><Tabs tabs={areas.map(([label,id])=>({id,label}))} active={selected} onChange={id=>void selectArea(id)}/></Card>
+  <Card title="إدارة المنصة"><p>لوحة عربية موحدة وآمنة لإدارة الوصول والبيانات واستمرارية التشغيل.</p><Tabs tabs={areas.map(([label,id])=>({id,label}))} active={selected} onChange={id=>{if(ctx.token)void selectArea(id)}}/></Card>
   <section aria-live="polite" className="ui-section-space">
    {!ctx.token?<EmptyState title="يلزم تسجيل الدخول">اختر الشركة والفرع وسجّل الدخول لعرض أدوات الإدارة.</EmptyState>:<>
     <div className="ui-inline"><Button type="button" variant="secondary" disabled={loading} onClick={()=>void load()}>تحديث البيانات</Button></div>
