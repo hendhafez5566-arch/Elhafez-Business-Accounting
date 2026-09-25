@@ -271,7 +271,7 @@ Governance record: PR #55.
 
 The approved accounting build sequence AC-00 through AC-14 is **CLOSED / ACCEPTED / MERGED**.
 
-Current live platform state on 2026-09-22 also includes merged CRM & Sales CS-01..CS-03, Suppliers & Procurement SP-01..SP-03, and Hajj & Umrah HU-01..HU-03. PR #68 adds only the Umrah Barcode coming-soon UI shell; functional barcode behavior remains future work.
+Current live platform state audited on 2026-09-25 includes merged CRM & Sales CS-01..CS-03, Suppliers & Procurement SP-01..SP-03, Hajj & Umrah HU-01..HU-03, MC-SA-01/02, TS-01 standalone tourism services, UI-01/UI-02, and SAAS-01. PR #68 remains only the Umrah Barcode coming-soon UI shell; functional barcode behavior remains future work. System-level closure is still BLOCKED by `docs/FINAL-SYSTEM-CLOSURE-AUDIT.md`.
 
 There is currently **no approved AC-15**.
 
