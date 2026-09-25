@@ -1,0 +1,1 @@
+{"name":"tourism-bookings","publicApi":["src/public/index.ts","src/public/nest.ts"],"ownedTables":["tbk_bookings","tbk_booking_history"],"allowedDependencies":["@elhafez/contracts","@elhafez/core","@elhafez/platform-core","@elhafez/tourism-programs","@elhafez/traveler-management","@elhafez/customer-management","@elhafez/tourism-finance-orchestration"]}
