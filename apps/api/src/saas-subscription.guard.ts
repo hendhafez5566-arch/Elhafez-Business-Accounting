@@ -14,7 +14,7 @@ export class SaasSubscriptionGuard implements CanActivate{
    if(ownerRecoveryPath)return true;
    throw new ServiceUnavailableException({code:'PLATFORM_MAINTENANCE',message:'المنصة في وضع الصيانة والاستعادة حالياً'});
   }
-  const publicPath=ownerPath||path==='/saas/login'||path==='/saas/logout'||path==='/saas/subscription-status'||path==='/system-administration/recovery/request'||path==='/system-administration/recovery/reset';
+  const publicPath=path==='/health'||ownerPath||path==='/saas/login'||path==='/saas/logout'||path==='/saas/subscription-status'||path==='/system-administration/recovery/request'||path==='/system-administration/recovery/reset';
   if(publicPath)return true;
   if((request.method??'GET').toUpperCase()==='POST'&&path==='/system-administration/companies')throw new ForbiddenException({code:'OWNER_CONTROL_REQUIRED',message:'new companies are provisioned only from Owner Control Center'});
   const companyId=header(request.headers['x-company-id']),branchId=header(request.headers['x-branch-id']),authorization=header(request.headers.authorization);
