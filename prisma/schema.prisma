@@ -3696,3 +3696,115 @@ model SaasControlEvent {
   @@index([ownerId, occurredAt])
   @@map("saas_control_events")
 }
+
+
+/// FC-02 — general tourism program lifecycle. Operational truth only; financial truth remains in accepted accounting owners.
+model TprProgram {
+  id            String   @id
+  companyId     String   @map("company_id")
+  branchId      String   @map("branch_id")
+  code          String
+  nameAr        String   @map("name_ar")
+  nameEn        String?  @map("name_en")
+  departureDate DateTime @map("departure_date")
+  returnDate    DateTime @map("return_date")
+  salesOpen     DateTime @map("sales_open")
+  salesClose    DateTime @map("sales_close")
+  currency      String
+  notes         String?
+  status        String
+  revision      Int      @default(1)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@unique([id, companyId, branchId])
+  @@unique([companyId, branchId, code])
+  @@index([companyId, branchId, status, departureDate])
+  @@map("tpr_programs")
+}
+
+model TprProgramHistory {
+  id         String   @id
+  companyId  String   @map("company_id")
+  branchId   String   @map("branch_id")
+  programId  String   @map("program_id")
+  action     String
+  actorId    String   @map("actor_id")
+  reason     String?
+  occurredAt DateTime @map("occurred_at")
+
+  @@index([companyId, branchId, programId, occurredAt])
+  @@map("tpr_program_history")
+}
+
+/// FC-02 — program-owned daily itinerary. No copied supply or financial state.
+model TitItineraryDay {
+  id          String   @id
+  companyId   String   @map("company_id")
+  branchId    String   @map("branch_id")
+  programId   String   @map("program_id")
+  dayNumber   Int      @map("day_number")
+  serviceDate DateTime @map("service_date")
+  title       String
+  description String?
+  location    String?
+  revision    Int      @default(1)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@unique([id, companyId, branchId])
+  @@unique([companyId, branchId, programId, dayNumber])
+  @@index([companyId, branchId, programId, serviceDate])
+  @@map("tit_itinerary_days")
+}
+
+model TitItineraryHistory {
+  id             String   @id
+  companyId      String   @map("company_id")
+  branchId       String   @map("branch_id")
+  programId      String   @map("program_id")
+  itineraryDayId String   @map("itinerary_day_id")
+  action         String
+  actorId        String   @map("actor_id")
+  occurredAt     DateTime @map("occurred_at")
+
+  @@index([companyId, branchId, programId, itineraryDayId, occurredAt])
+  @@map("tit_itinerary_history")
+}
+
+/// FC-02 — general tourism operational booking. Stores only references to Finance-owned economic truth.
+model TbkBooking {
+  id                String   @id
+  companyId         String   @map("company_id")
+  branchId          String   @map("branch_id")
+  code              String
+  programId         String   @map("program_id")
+  customerId        String   @map("customer_id")
+  customerPartyId   String   @map("customer_party_id")
+  travelerIds       Json     @map("traveler_ids")
+  status            String
+  pendingCommandKey String?  @map("pending_command_key")
+  financialEvidence Json?    @map("financial_evidence")
+  revision          Int      @default(1)
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@unique([id, companyId, branchId])
+  @@unique([companyId, branchId, code])
+  @@index([companyId, branchId, programId, status])
+  @@index([companyId, branchId, customerId, status])
+  @@map("tbk_bookings")
+}
+
+model TbkBookingHistory {
+  id         String   @id
+  companyId  String   @map("company_id")
+  branchId   String   @map("branch_id")
+  bookingId  String   @map("booking_id")
+  action     String
+  actorId    String   @map("actor_id")
+  occurredAt DateTime @map("occurred_at")
+
+  @@index([companyId, branchId, bookingId, occurredAt])
+  @@map("tbk_booking_history")
+}
