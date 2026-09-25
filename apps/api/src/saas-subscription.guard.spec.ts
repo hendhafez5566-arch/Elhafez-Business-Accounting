@@ -49,7 +49,7 @@ test('owner control, company-code resolution, subscription status and password r
  const saas={assertTenantAccess:async()=>{throw new Error('must not be called')}} as unknown as SaasControlPlaneApplicationService;
  const core=platform({currentUser:async()=>{throw new Error('must not be called')}});
  const guard=new SaasSubscriptionGuard(saas,core);
- for(const path of['/saas-owner/login','/saas/login','/saas/subscription-status','/system-administration/recovery/request','/system-administration/recovery/reset'])assert.equal(await guard.canActivate(context(path)),true);
+ for(const path of['/saas-owner/login','/saas/login','/saas/logout','/saas/subscription-status','/system-administration/recovery/request','/system-administration/recovery/reset'])assert.equal(await guard.canActivate(context(path)),true);
 });
 function authorizationHeaders(){return{authorization:'Bearer tenant-session'};}
 
