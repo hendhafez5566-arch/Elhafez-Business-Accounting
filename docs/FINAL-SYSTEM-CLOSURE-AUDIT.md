@@ -2,7 +2,7 @@
 
 Date: **2026-09-25**
 
-Audit-start baseline: `main@eeb5220e5641b44aeb055a700091bb39be2921cd`  
+Audit-start baseline: `main@eeb5220e5641b44aeb055a700091bb39be2921cd`
 Closure implementation: **PR #82 / `chatgpt/final-system-closure-audit`**
 
 ## Current verdict
