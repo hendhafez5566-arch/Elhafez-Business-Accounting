@@ -65,6 +65,10 @@ export class GeneralLedgerApplicationService {
     private readonly fx?: Pick<CurrencyFxApplicationService, 'resolveRate' | 'getBaseCurrency'>,
   ) {}
 
+  async listAccounts(companyId:CompanyId):Promise<Account[]>{
+    return this.repo.accounts(companyId);
+  }
+
   async createAccount(account: Account): Promise<Account> {
     if (await this.repo.accountByCode(account.companyId, account.code)) {
       throw new ContractValidationError('code', 'already used');
