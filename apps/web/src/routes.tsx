@@ -14,6 +14,7 @@ import { TourismServicesPage } from './tourism-services-page.js';
 import { UmrahBarcodePage } from './hajj-umrah-barcode-page.js';
 import { ExecutiveDashboardPage, ManagementWorkCenterPage } from './management-control-page.js';
 import { AppearanceSettingsPage } from './ui/appearance-settings-page.js';
+import { AccountingWorkspacePage } from './accounting-workspace-page.js';
 import type { IconName } from './ui/icons.js';
 
 export interface AppRoute {
@@ -57,6 +58,8 @@ export const foundationRoutes = defineRoutes(
   { id: 'procurement-operations', path: '/procurement/purchase-orders', label: 'أوامر الشراء', group: 'المشتريات والموردون', icon: 'purchase', element: <ProcurementOperationsPage /> },
 
   { id: 'tourism-services', path: '/tourism/services', label: 'السياحة والخدمات', group: 'السياحة والخدمات', icon: 'tourism', element: <TourismServicesPage /> },
+
+  { id: 'accounting-workspace', path: '/accounting', label: 'المحاسبة والمالية', group: 'المحاسبة والمالية', icon: 'analytics', element: <AccountingWorkspacePage /> },
 
   { id: 'hajj-umrah-seasons', path: '/hajj-umrah/seasons', label: 'المواسم', group: 'الحج والعمرة', icon: 'calendar', element: <SeasonsPage /> },
   { id: 'hajj-umrah-programs', path: '/hajj-umrah/programs', label: 'برامج الحج والعمرة', group: 'الحج والعمرة', icon: 'program', element: <ProgramsPage /> },
