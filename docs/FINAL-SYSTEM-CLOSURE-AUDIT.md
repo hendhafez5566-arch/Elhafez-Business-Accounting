@@ -2,7 +2,7 @@
 
 Date: **2026-09-25**
 
-Audited baseline: `main@eeb5220e5641b44aeb055a700091bb39be2921cd`  
+Audited baseline: `main@eeb5220e5641b44aeb055a700091bb39be2921cd`
 Latest merged phase at audit start: **SAAS-01 — PR #81**
 
 ## Verdict
@@ -102,13 +102,13 @@ Automated and AI-assisted verification cannot prove the complete real-office wor
 
 To minimize churn, use three closure packages only:
 
-1. **FC-01 — Product Entry & Production Delivery**  
+1. **FC-01 — Product Entry & Production Delivery**
    Tenant Company Code login/branch entry, secure session lifecycle, real browser builds for Web/Owner, API/edge production-hardening contract and deployment packaging.
 
-2. **FC-02 — Missing Business Surfaces**  
+2. **FC-02 — Missing Business Surfaces**
    Complete the user-operable Accounting & Finance workspace and resolve the Tourism programs/bookings/itinerary scope (implement or explicitly de-scope by owner decision).
 
-3. **FC-03 — Recovery, CI, UAT & Go-Live**  
+3. **FC-03 — Recovery, CI, UAT & Go-Live**
    Real backup provider + recovery drill, stable CI green on final candidate, final regression, focused human UAT, then freeze one `main` SHA as **SYSTEM CLOSED / GO-LIVE BASELINE**.
 
 ## Closure rule
