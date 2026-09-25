@@ -28,7 +28,9 @@
     "apps/api/src/saas.controller.spec.ts",
     "apps/web/src/system-administration-page.tsx",
     "apps/api/src/system-administration.controller.ts",
-    "apps/api/src/system-administration.controller.spec.ts"
+    "apps/api/src/system-administration.controller.spec.ts",
+    "apps/owner/src/preview-data.ts",
+    "apps/owner/src/preview-server.tsx"
   ],
   "protectedPaths": [
     "modules/saas-control-plane/module.json",
