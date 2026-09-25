@@ -34,6 +34,7 @@ export class SaasTenantController{
    mapError(error);
   }
  }
+ @Post('logout')@Header('Cache-Control','no-store')async logout(@Headers('authorization')auth:string|undefined){if(!auth?.startsWith('Bearer '))return{loggedOut:true};await this.platform.logout(auth.slice(7));return{loggedOut:true};}
  @Get('subscription-status')@Header('Cache-Control','no-store')async status(@Headers('authorization')auth:string|undefined,@Headers('x-company-id')companyId:string|undefined){if(!companyId)throw new BadRequestException('x-company-id is required');if(!auth?.startsWith('Bearer '))throw new UnauthorizedException('tenant bearer session required');try{const user=await this.platform.currentUser(auth.slice(7));await this.platform.requireUserCompanyAccess(user.id,companyId);return await this.saas.subscriptionStatus(companyId);}catch(error){mapError(error);}}
 }
 
