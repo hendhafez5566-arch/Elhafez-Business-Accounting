@@ -23,7 +23,7 @@ The accepted domain implementation is substantial and the major completed phases
 - SAAS-01 subscription / Company Code / Owner Control Plane: accepted and merged.
 - Architecture remains a modular-monolith / public-boundary DAG.
 - Repository code search found no active `TODO`, `FIXME`, or generic `NOT_IMPLEMENTED` markers in production code.
-- Historical open PRs #33, #47–#51 and #65 were closed during this audit as stale/superseded; there are no remaining open PRs at this audit checkpoint.
+- Historical open PRs #33, #47–#51 and #65 were closed during this audit as stale/superseded. No legacy implementation PR remains active; the audit record itself may be carried by a governance PR.
 - SAAS-01 was manager-verified in Codespaces before merge: frozen install, Change Safety, Prisma generate, typecheck, lint, architecture, tests, verify, diff check, clean worktree and Owner Control Center HTTP smoke test passed.
 
 ## Blocking findings
