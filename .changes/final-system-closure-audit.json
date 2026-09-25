@@ -28,7 +28,8 @@
     "deploy/**",
     "docs/**",
     "PROJECT_STATE.md",
-    ".github/workflows/**"
+    ".github/workflows/**",
+    "prisma/migrations/20260925200000_saas01_control_plane/migration.sql"
   ],
   "protectedPaths": [
     "PROJECT_STATE.md",
@@ -42,7 +43,7 @@
     "modules/*/module.json",
     "apps/web/src/ui/**"
   ],
-  "protectedReason": "Owner-authorized final system closure crosses canonical product entry, approved planned Tourism owners, accepted Accounting public services, platform recovery, deployment, and protected navigation/governance surfaces. Changes must preserve source-of-truth ownership and close verified go-live blockers without patching.",
+  "protectedReason": "Owner-authorized final system closure crosses canonical product entry, approved planned Tourism owners, accepted Accounting public services, platform recovery, deployment, and protected navigation/governance surfaces. Changes must preserve source-of-truth ownership and close verified go-live blockers without patching. The fresh-database Railway drill proved the merged SAAS-01 migration was syntactically non-executable; this pre-Go-Live correction is limited to the two corrupted currency CHECK expressions and preserves their intended rule.",
   "allowBreakingPublicApi": false,
   "publicApiBreakingReason": ""
 }
