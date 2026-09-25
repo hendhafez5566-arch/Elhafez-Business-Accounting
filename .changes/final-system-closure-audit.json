@@ -1,19 +1,42 @@
 {
   "id": "final-system-closure-audit",
-  "summary": "Record the 2026-09-25 final system closure audit, refresh canonical implementation statuses, and prevent premature SYSTEM CLOSED / Go-Live declaration.",
-  "type": "governance",
-  "allowedModules": [],
+  "summary": "Execute final system closure in one owner-authorized phase: tenant entry, accounting workspace, complete general-tourism lifecycle, production frontend builds, secure platform backup/recovery, API hardening, deployment evidence, regression and UAT readiness.",
+  "type": "phase",
+  "allowedModules": [
+    "general-ledger",
+    "period-control",
+    "billing-subledgers",
+    "treasury-settlement",
+    "platform-operations",
+    "tourism-programs",
+    "tourism-bookings",
+    "tourism-itineraries"
+  ],
   "allowedPaths": [
-    ".changes/final-system-closure-audit.json",
+    "apps/api/**",
+    "apps/web/**",
+    "apps/owner/**",
+    "package.json",
+    "pnpm-lock.yaml",
+    "prisma/schema.prisma",
+    "prisma/migrations/20260925230000_final_system_closure/**",
+    "deploy/**",
+    "docs/**",
     "PROJECT_STATE.md",
-    "docs/BUSINESS-MODULE-ARCHITECTURE.md",
-    "docs/FINAL-SYSTEM-CLOSURE-AUDIT.md"
+    ".github/workflows/**"
   ],
   "protectedPaths": [
     "PROJECT_STATE.md",
-    "docs/BUSINESS-MODULE-ARCHITECTURE.md"
+    "docs/BUSINESS-MODULE-ARCHITECTURE.md",
+    "docs/BUSINESS-MODULE-ROUTING.md",
+    "docs/UI-ARCHITECTURE.md",
+    ".github/workflows/**",
+    "apps/web/src/app-shell.tsx",
+    "apps/web/src/routes.tsx",
+    "apps/web/src/styles.css",
+    "modules/*/module.json"
   ],
-  "protectedReason": "Owner-authorized final system closure audit; governance truth is refreshed from live main and accepted merge history without changing business behavior.",
+  "protectedReason": "Owner-authorized final system closure crosses canonical product entry, approved planned Tourism owners, accepted Accounting public services, platform recovery, deployment, and protected navigation/governance surfaces. Changes must preserve source-of-truth ownership and close verified go-live blockers without patching.",
   "allowBreakingPublicApi": false,
   "publicApiBreakingReason": ""
 }
