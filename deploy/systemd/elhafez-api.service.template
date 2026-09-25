@@ -1,0 +1,23 @@
+[Unit]
+Description=ELHAFEZ Business Platform API
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=elhafez
+Group=elhafez
+WorkingDirectory=/opt/elhafez
+EnvironmentFile=/etc/elhafez/production.env
+ExecStart=/usr/bin/pnpm --filter @elhafez/api start:prod
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/elhafez/backups
+
+[Install]
+WantedBy=multi-user.target
