@@ -5,6 +5,9 @@ export interface OwnerCompany {
  gracePeriodEnd:string|null;entitlements:readonly string[];reason:string|null;
  subscriptionId:string|null;subscriptionVersion:number|null;
 }
+export interface OwnerBackup{id:string;status:'CREATING'|'CREATED'|'VERIFIED'|'FAILED';createdAt:string;manifest:Record<string,unknown>;checksum:string|null;providerRef:string|null;pinned:boolean;error?:string}
+export interface OwnerRestore{id:string;backupId:string;status:'PREFLIGHT'|'RESTORING'|'COMPLETED'|'FAILED';createdAt:string;error?:string}
+export interface OwnerOperationsDiagnostics{database:'AVAILABLE'|'UNAVAILABLE';backupProvider:'AVAILABLE'|'UNAVAILABLE';schemaCompatibility:'UNKNOWN'|'UNAVAILABLE';runtimeVersion:string}
 export interface OwnerPlan {id:string;code:string;name:string;intervalMonths:number;priceMinor:number;currency:string;entitlements:readonly string[];active:boolean;createdAt:string}
 type Fetcher=typeof fetch;
 type RequestInput={method?:string;body?:unknown;mfaCode?:string;owner?:boolean;bootstrapToken?:string};
@@ -36,6 +39,14 @@ export class OwnerApiClient {
  cancel(mfaCode:string,companyId:string){return this.request('/saas-owner/companies/'+encodeURIComponent(companyId)+'/cancel',{method:'POST',owner:true,mfaCode});}
  platformSuspend(mfaCode:string,companyId:string){return this.request('/saas-owner/companies/'+encodeURIComponent(companyId)+'/platform-suspend',{method:'POST',owner:true,mfaCode});}
  platformResume(mfaCode:string,companyId:string){return this.request('/saas-owner/companies/'+encodeURIComponent(companyId)+'/platform-resume',{method:'POST',owner:true,mfaCode});}
+ operationsDiagnostics(){return this.request<OwnerOperationsDiagnostics>('/saas-owner/operations/diagnostics',{owner:true});}
+ backups(){return this.request<OwnerBackup[]>('/saas-owner/operations/backups',{owner:true});}
+ createBackup(mfaCode:string,pin=false){return this.request<OwnerBackup>('/saas-owner/operations/backups',{method:'POST',owner:true,mfaCode,body:{pin}});}
+ verifyBackup(mfaCode:string,id:string){return this.request<OwnerBackup>('/saas-owner/operations/backups/'+encodeURIComponent(id)+'/verify',{method:'POST',owner:true,mfaCode});}
+ pinBackup(mfaCode:string,id:string,pinned:boolean){return this.request<OwnerBackup>('/saas-owner/operations/backups/'+encodeURIComponent(id)+'/pin',{method:'POST',owner:true,mfaCode,body:{pinned}});}
+ preflightBackup(mfaCode:string,id:string){return this.request<OwnerBackup>('/saas-owner/operations/backups/'+encodeURIComponent(id)+'/preflight',{method:'POST',owner:true,mfaCode});}
+ restoreBackup(mfaCode:string,backupId:string){return this.request<OwnerRestore>('/saas-owner/operations/restores',{method:'POST',owner:true,mfaCode,body:{backupId}});}
+ restoreStatus(id:string){return this.request<OwnerRestore>('/saas-owner/operations/restores/'+encodeURIComponent(id),{owner:true});}
 }
 export function amountToMinor(value:string){
  const match=value.trim().match(/^(\d+)(?:\.(\d{1,2}))?$/);if(!match)throw new Error('invalid amount');
