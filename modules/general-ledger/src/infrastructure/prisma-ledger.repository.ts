@@ -23,6 +23,10 @@ export class PrismaLedgerRepository implements LedgerRepository {
     });
   }
 
+  async accounts(companyId:CompanyId):Promise<Account[]>{
+    return (await this.db.glAccount.findMany({where:{companyId},orderBy:{code:'asc'}})) as Account[];
+  }
+
   async account(companyId: CompanyId, id: string): Promise<Account | undefined> {
     return (await this.db.glAccount.findUnique({
       where: { companyId_id: { companyId, id } },
