@@ -115,6 +115,16 @@ export class TreasurySettlementApplicationService {
     const journal=await this.gl.post({id:`treasury-accounting:${input.id}`,companyId:input.companyId,number:input.number,postingDate:input.postingDate,sourceType:'TREASURY_ACCOUNTING_MOVEMENT',sourceId:`${input.sourceType}:${input.sourceId}`,lines:[...offset,treasuryLine]});
     voucher={...voucher,status:'POSTED',journalId:journal.id};await this.repo.saveVoucher(voucher);return voucher;
   }
+  async listTreasuries(companyId:CompanyId):Promise<Treasury[]>{
+    return this.repo.treasuries(companyId);
+  }
+  async listVouchers(companyId:CompanyId,treasuryId?:string):Promise<Voucher[]>{
+    return this.repo.vouchers(companyId,treasuryId);
+  }
+  async listBankLines(companyId:CompanyId,treasuryId:string):Promise<BankLine[]>{
+    return this.repo.bankLines(companyId,treasuryId);
+  }
+
   async createTreasury(input: {
     id: string;
     companyId: CompanyId;
