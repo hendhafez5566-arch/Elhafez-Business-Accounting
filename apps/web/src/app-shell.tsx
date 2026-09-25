@@ -20,6 +20,9 @@ export interface AppShellProps {
   readonly children?: ReactNode;
   readonly preferenceScope?: string;
   readonly initialPreferences?: Partial<UiPreferences>;
+  readonly companyLabel?: string;
+  readonly branchLabel?: string;
+  readonly onLogout?: () => void;
 }
 
 export function AppShell({
@@ -28,10 +31,13 @@ export function AppShell({
   children,
   preferenceScope = 'local-user',
   initialPreferences,
+  companyLabel,
+  branchLabel,
+  onLogout,
 }: AppShellProps) {
   return (
     <UiPreferencesProvider scope={preferenceScope} initialPreferences={initialPreferences}>
-      <AppShellFrame routes={routes} pathname={pathname}>{children}</AppShellFrame>
+      <AppShellFrame routes={routes} pathname={pathname} companyLabel={companyLabel} branchLabel={branchLabel} onLogout={onLogout}>{children}</AppShellFrame>
     </UiPreferencesProvider>
   );
 }
@@ -40,10 +46,16 @@ function AppShellFrame({
   routes,
   pathname,
   children,
+  companyLabel,
+  branchLabel,
+  onLogout,
 }: {
   readonly routes: readonly AppRoute[];
   readonly pathname: string;
   readonly children?: ReactNode;
+  readonly companyLabel?: string;
+  readonly branchLabel?: string;
+  readonly onLogout?: () => void;
 }) {
   const [state, setState] = useState(initialShellState);
   const active = findRoute(pathname, routes);
@@ -89,7 +101,7 @@ function AppShellFrame({
         />
       </Drawer>
 
-      <Topbar onOpenMobile={() => setState((current) => setMobileDrawer(current, true))} />
+      <Topbar companyLabel={companyLabel} branchLabel={branchLabel} onLogout={onLogout} onOpenMobile={() => setState((current) => setMobileDrawer(current, true))} />
 
       <main className="app-main">
         <div className="app-content" tabIndex={-1}>
