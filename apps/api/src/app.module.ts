@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { DataExchangeModule } from '@elhafez/data-exchange/nest';
 import { PlatformOperationsModule } from '@elhafez/platform-operations/nest';
+import { PlatformOperationsApplicationService } from '@elhafez/platform-operations';
 import { PlatformCoreApplicationService, PlatformCoreModule } from '@elhafez/platform-core';
 import { PeriodControlApplicationService, PeriodControlModule } from '@elhafez/period-control';
 import { GeneralLedgerApplicationService, GeneralLedgerModule } from '@elhafez/general-ledger';
@@ -92,7 +93,7 @@ import { PlatformOwnerOperationsController } from './platform-owner-operations.c
   controllers: [SaasOwnerController, PlatformOwnerOperationsController, SaasTenantController, AccountingWorkspaceController, SystemAdministrationController, CrmSalesReadModelController, SupplierIntelligenceReadModelController, HajjUmrahController, HajjUmrahOperationsController, HajjUmrahReadinessController, ManagementControlController, TourismServicesController, TourismOperationsController],
   providers: [
     FinancialReportingEvidenceAdapter,
-    { provide: APP_GUARD, useFactory: (saas:SaasControlPlaneApplicationService,platform:PlatformCoreApplicationService) => new SaasSubscriptionGuard(saas,platform), inject: [SaasControlPlaneApplicationService,PlatformCoreApplicationService] },
+    { provide: APP_GUARD, useFactory: (saas:SaasControlPlaneApplicationService,platform:PlatformCoreApplicationService,operations:PlatformOperationsApplicationService) => new SaasSubscriptionGuard(saas,platform,operations), inject: [SaasControlPlaneApplicationService,PlatformCoreApplicationService,PlatformOperationsApplicationService] },
     WorkCenterApplicationService,
     {
       provide: SystemAdministrationDataExchangeBoundary,
