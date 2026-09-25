@@ -167,6 +167,15 @@ importers:
       '@elhafez/tourism-finance-orchestration':
         specifier: workspace:*
         version: link:../../modules/tourism-finance-orchestration
+      '@elhafez/tourism-bookings':
+        specifier: workspace:*
+        version: link:../../modules/tourism-bookings
+      '@elhafez/tourism-itineraries':
+        specifier: workspace:*
+        version: link:../../modules/tourism-itineraries
+      '@elhafez/tourism-programs':
+        specifier: workspace:*
+        version: link:../../modules/tourism-programs
       '@elhafez/traveler-management':
         specifier: workspace:*
         version: link:../../modules/traveler-management
@@ -1105,6 +1114,67 @@ importers:
         specifier: 6.19.0
         version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
 
+
+
+  modules/tourism-programs:
+    dependencies:
+      '@elhafez/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@elhafez/platform-core':
+        specifier: workspace:*
+        version: link:../platform-core
+      '@nestjs/common':
+        specifier: ^11.0.11
+        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@prisma/client':
+        specifier: 6.19.0
+        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
+
+  modules/tourism-itineraries:
+    dependencies:
+      '@elhafez/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@elhafez/platform-core':
+        specifier: workspace:*
+        version: link:../platform-core
+      '@elhafez/tourism-programs':
+        specifier: workspace:*
+        version: link:../tourism-programs
+      '@nestjs/common':
+        specifier: ^11.0.11
+        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@prisma/client':
+        specifier: 6.19.0
+        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
+
+  modules/tourism-bookings:
+    dependencies:
+      '@elhafez/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@elhafez/platform-core':
+        specifier: workspace:*
+        version: link:../platform-core
+      '@elhafez/tourism-programs':
+        specifier: workspace:*
+        version: link:../tourism-programs
+      '@elhafez/traveler-management':
+        specifier: workspace:*
+        version: link:../traveler-management
+      '@elhafez/customer-management':
+        specifier: workspace:*
+        version: link:../customer-management
+      '@elhafez/tourism-finance-orchestration':
+        specifier: workspace:*
+        version: link:../tourism-finance-orchestration
+      '@nestjs/common':
+        specifier: ^11.0.11
+        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@prisma/client':
+        specifier: 6.19.0
+        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
 
 packages:
 
