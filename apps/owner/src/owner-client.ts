@@ -7,7 +7,7 @@ export interface OwnerCompany {
 }
 export interface OwnerBackup{id:string;status:'CREATING'|'CREATED'|'VERIFIED'|'FAILED';createdAt:string;manifest:Record<string,unknown>;checksum:string|null;providerRef:string|null;pinned:boolean;error?:string}
 export interface OwnerRestore{id:string;backupId:string;status:'PREFLIGHT'|'RESTORING'|'COMPLETED'|'FAILED';createdAt:string;error?:string}
-export interface OwnerOperationsDiagnostics{database:'AVAILABLE'|'UNAVAILABLE';backupProvider:'AVAILABLE'|'UNAVAILABLE';schemaCompatibility:'UNKNOWN'|'UNAVAILABLE';runtimeVersion:string}
+export interface OwnerOperationsDiagnostics{database:'AVAILABLE'|'UNAVAILABLE';backupProvider:'AVAILABLE'|'UNAVAILABLE';restoreReady:boolean;maintenance:boolean;schemaCompatibility:'UNKNOWN'|'UNAVAILABLE';runtimeVersion:string}
 export interface OwnerPlan {id:string;code:string;name:string;intervalMonths:number;priceMinor:number;currency:string;entitlements:readonly string[];active:boolean;createdAt:string}
 type Fetcher=typeof fetch;
 type RequestInput={method?:string;body?:unknown;mfaCode?:string;owner?:boolean;bootstrapToken?:string};
@@ -15,6 +15,7 @@ export class OwnerApiClient {
  #ownerToken:string|null=null;
  constructor(private readonly baseUrl:string,private readonly fetcher:Fetcher=fetch){}
  hasSession(){return this.#ownerToken!==null}
+ clearSession(){this.#ownerToken=null}
  private async request<T>(path:string,input:RequestInput={}):Promise<T>{
   const headers:Record<string,string>={'content-type':'application/json'};
   if(input.owner){if(!this.#ownerToken)throw new Error('owner session required');headers.authorization='Bearer '+this.#ownerToken;}
@@ -40,12 +41,15 @@ export class OwnerApiClient {
  platformSuspend(mfaCode:string,companyId:string){return this.request('/saas-owner/companies/'+encodeURIComponent(companyId)+'/platform-suspend',{method:'POST',owner:true,mfaCode});}
  platformResume(mfaCode:string,companyId:string){return this.request('/saas-owner/companies/'+encodeURIComponent(companyId)+'/platform-resume',{method:'POST',owner:true,mfaCode});}
  operationsDiagnostics(){return this.request<OwnerOperationsDiagnostics>('/saas-owner/operations/diagnostics',{owner:true});}
+ maintenance(){return this.request<{active:boolean}>('/saas-owner/operations/maintenance',{owner:true});}
+ enterMaintenance(mfaCode:string){return this.request<{active:true}>('/saas-owner/operations/maintenance/enter',{method:'POST',owner:true,mfaCode});}
+ exitMaintenance(mfaCode:string){return this.request<{active:false}>('/saas-owner/operations/maintenance/exit',{method:'POST',owner:true,mfaCode});}
  backups(){return this.request<OwnerBackup[]>('/saas-owner/operations/backups',{owner:true});}
  createBackup(mfaCode:string,pin=false){return this.request<OwnerBackup>('/saas-owner/operations/backups',{method:'POST',owner:true,mfaCode,body:{pin}});}
  verifyBackup(mfaCode:string,id:string){return this.request<OwnerBackup>('/saas-owner/operations/backups/'+encodeURIComponent(id)+'/verify',{method:'POST',owner:true,mfaCode});}
  pinBackup(mfaCode:string,id:string,pinned:boolean){return this.request<OwnerBackup>('/saas-owner/operations/backups/'+encodeURIComponent(id)+'/pin',{method:'POST',owner:true,mfaCode,body:{pinned}});}
  preflightBackup(mfaCode:string,id:string){return this.request<OwnerBackup>('/saas-owner/operations/backups/'+encodeURIComponent(id)+'/preflight',{method:'POST',owner:true,mfaCode});}
- restoreBackup(mfaCode:string,backupId:string){return this.request<OwnerRestore>('/saas-owner/operations/restores',{method:'POST',owner:true,mfaCode,body:{backupId}});}
+ restoreBackup(mfaCode:string,backupId:string){return this.request<OwnerRestore&{ownerSessionsRevoked?:number;maintenance?:boolean}>('/saas-owner/operations/restores',{method:'POST',owner:true,mfaCode,body:{backupId}});}
  restoreStatus(id:string){return this.request<OwnerRestore>('/saas-owner/operations/restores/'+encodeURIComponent(id),{owner:true});}
 }
 export function amountToMinor(value:string){
