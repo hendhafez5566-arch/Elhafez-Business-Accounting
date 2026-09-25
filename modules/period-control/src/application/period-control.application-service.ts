@@ -25,6 +25,14 @@ export interface FiscalCloseInstruction {
 export class PeriodControlApplicationService {
   constructor(private readonly repo: PeriodRepository) {}
 
+  async listFiscalYears(companyId:CompanyId):Promise<FiscalYear[]>{
+    return this.repo.years(companyId);
+  }
+
+  async listPeriods(companyId:CompanyId,fiscalYearId?:string):Promise<AccountingPeriod[]>{
+    return this.repo.periods(companyId,fiscalYearId);
+  }
+
   async createFiscalYear(input: FiscalYear): Promise<FiscalYear> {
     dateOnly(input.startDate);
     dateOnly(input.endDate);
