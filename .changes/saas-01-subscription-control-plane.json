@@ -1,0 +1,44 @@
+{
+  "id": "saas-01-subscription-control-plane",
+  "summary": "Add server-authoritative SaaS subscriptions with separate platform-owner MFA authentication, paid renewal, a central tenant access gate, Company Codes, and durable audit/payment history.",
+  "type": "phase",
+  "allowedModules": [
+    "saas-control-plane",
+    "platform-core"
+  ],
+  "allowedPaths": [
+    "apps/api/package.json",
+    "apps/api/src/app.module.ts",
+    "apps/api/src/saas.controller.ts",
+    "apps/api/src/saas-subscription.guard.ts",
+    "pnpm-lock.yaml",
+    "prisma/schema.prisma",
+    "prisma/migrations/20260925200000_saas01_control_plane/migration.sql",
+    "docs/BUSINESS-MODULE-ARCHITECTURE.md",
+    "docs/BUSINESS-MODULE-ROUTING.md",
+    "docs/SAAS-CONTROL-PLANE.md",
+    "apps/api/src/saas-subscription.guard.spec.ts",
+    "apps/owner/package.json",
+    "apps/owner/tsconfig.json",
+    "apps/owner/src/index.ts",
+    "apps/owner/src/owner-client.ts",
+    "apps/owner/src/owner-client.spec.ts",
+    "apps/owner/src/owner-control-app.tsx",
+    "apps/owner/src/styles.css",
+    "apps/api/src/saas.controller.spec.ts",
+    "apps/web/src/system-administration-page.tsx",
+    "apps/api/src/system-administration.controller.ts",
+    "apps/api/src/system-administration.controller.spec.ts",
+    "apps/owner/src/preview-data.ts",
+    "apps/owner/src/preview-server.tsx"
+  ],
+  "protectedPaths": [
+    "modules/saas-control-plane/module.json",
+    "modules/platform-core/module.json",
+    "docs/BUSINESS-MODULE-ARCHITECTURE.md",
+    "docs/BUSINESS-MODULE-ROUTING.md"
+  ],
+  "protectedReason": "Owner-approved platform architecture expansion introducing a canonical commercial control-plane owner and one central licensing boundary instead of subscription patches in business modules.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": ""
+}

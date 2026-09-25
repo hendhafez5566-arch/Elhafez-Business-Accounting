@@ -1,0 +1,17 @@
+{
+  "name": "saas-control-plane",
+  "publicApi": [
+    "src/public/index.ts"
+  ],
+  "ownedTables": [
+    "saas_tenants",
+    "saas_plans",
+    "saas_subscriptions",
+    "saas_payments",
+    "saas_subscription_events",
+    "saas_owner_accounts",
+    "saas_owner_sessions",
+    "saas_control_events"
+  ],
+  "allowedDependencies": []
+}

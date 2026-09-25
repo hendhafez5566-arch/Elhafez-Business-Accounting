@@ -64,6 +64,7 @@ Before editing:
 | work center / actionable cross-module queue | `work-center` projection |
 | operational reports | `operational-reporting` projection |
 | users/roles/company/branch/session/audit/files/notifications/config | **existing** `platform-core` |
+| SaaS plan/subscription/payment/company-code/tenant commercial access, platform-owner control plane | **existing** `saas-control-plane` |
 | custom fields | `custom-fields` |
 | numbering | `document-numbering` |
 | import/export | `data-exchange` |

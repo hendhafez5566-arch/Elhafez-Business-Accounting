@@ -240,3 +240,16 @@ This separation is deliberate and is the basis for safe future modifications.
 ## MC-SA-01 finalized administration boundaries
 
 `data-exchange` is the canonical owner of scoped import/export job metadata, mappings, validation and row outcomes; imported business records remain owned and written through target-owner public APIs. `platform-operations` is the canonical owner of backup/restore/verification and diagnostic evidence and uses infrastructure provider ports rather than business-table access. Commercial licensing, custom fields and global numbering are not part of either owner.
+
+
+## SaaS commercial control plane — SAAS-01
+
+Owner decision: the commercial SaaS lifecycle is a distinct platform truth owned by `saas-control-plane`.
+
+- `platform-core` continues to own users, company/branch lifecycle, tenant sessions, company-scoped roles/permissions and the platform audit foundation.
+- `saas-control-plane` owns Company Codes, plans, paid subscriptions, renewal/payment evidence, subscription events, platform-owner identities/sessions and entitlement decisions.
+- A Company Administrator is never a Platform Owner and cannot grant itself control-plane authority.
+- Tenant business modules do not import `saas-control-plane`; the API composition root applies one central subscription gate before tenant controllers.
+- `pc_companies.active` remains an administrative/emergency kill switch and is not commercial subscription state.
+- Subscription expiry never deletes tenant data and is evaluated from server time.
+- Existing business and accounting owners are not modified to implement local licensing checks.

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { DataExchangeModule } from '@elhafez/data-exchange/nest';
 import { PlatformOperationsModule } from '@elhafez/platform-operations/nest';
 import { PlatformCoreApplicationService, PlatformCoreModule } from '@elhafez/platform-core';
@@ -69,6 +70,10 @@ import { FinancialReportingApplicationService } from '@elhafez/financial-reporti
 import { WorkCenterApplicationService } from './management-control.service.js';
 import { ManagementControlController } from './management-control.controller.js';
 import { ManagementControlService } from './management-control.service.js';
+import { SaasControlPlaneApplicationService } from '@elhafez/saas-control-plane';
+import { SaasControlPlaneModule } from '@elhafez/saas-control-plane/nest';
+import { SaasOwnerController, SaasTenantController } from './saas.controller.js';
+import { SaasSubscriptionGuard } from './saas-subscription.guard.js';
 
 /** Composition root only. Business modules are registered here through public module APIs. */
 @Module({
@@ -76,11 +81,12 @@ import { ManagementControlService } from './management-control.service.js';
     PlatformCoreModule, DataExchangeModule, PlatformOperationsModule, PartyRegistryModule, AgentManagementModule, CustomerManagementModule, CrmLeadsModule, CrmFollowupsModule, QuotationsModule, SupplierManagementModule, SupplierEvaluationModule, SupplierDisputesModule, ProcurementFulfillmentModule, TravelerManagementModule,
     PeriodControlModule, GeneralLedgerModule, FinancialControlsModule, TaxModule, BillingSubledgersModule, TreasurySettlementModule, PartyAccountingModule,
     ExpenseCommissionRecognitionModule, CostBudgetAccountingModule, AssetsFinancingModule, ProcurementFinanceModule, TourismContractInventoryModule,
-    TourismFinanceOrchestrationModule, StandaloneServicesModule, ServiceFulfillmentModule, ServiceVouchersModule, HajjUmrahSeasonsModule, HajjUmrahProgramsModule, HajjUmrahBookingsModule, HajjUmrahRoomingModule, HajjUmrahVisaOperationsModule, HajjUmrahTicketingModule, HajjUmrahTransportOperationsModule, HajjUmrahTripOperationsModule, HajjUmrahReadinessModule, FinancialReportingModule, Ac14MigrationModule,
+    TourismFinanceOrchestrationModule, StandaloneServicesModule, ServiceFulfillmentModule, ServiceVouchersModule, HajjUmrahSeasonsModule, HajjUmrahProgramsModule, HajjUmrahBookingsModule, HajjUmrahRoomingModule, HajjUmrahVisaOperationsModule, HajjUmrahTicketingModule, HajjUmrahTransportOperationsModule, HajjUmrahTripOperationsModule, HajjUmrahReadinessModule, FinancialReportingModule, SaasControlPlaneModule, Ac14MigrationModule,
   ],
-  controllers: [SystemAdministrationController, CrmSalesReadModelController, SupplierIntelligenceReadModelController, HajjUmrahController, HajjUmrahOperationsController, HajjUmrahReadinessController, ManagementControlController, TourismServicesController],
+  controllers: [SaasOwnerController, SaasTenantController, SystemAdministrationController, CrmSalesReadModelController, SupplierIntelligenceReadModelController, HajjUmrahController, HajjUmrahOperationsController, HajjUmrahReadinessController, ManagementControlController, TourismServicesController],
   providers: [
     FinancialReportingEvidenceAdapter,
+    { provide: APP_GUARD, useFactory: (saas:SaasControlPlaneApplicationService,platform:PlatformCoreApplicationService) => new SaasSubscriptionGuard(saas,platform), inject: [SaasControlPlaneApplicationService,PlatformCoreApplicationService] },
     WorkCenterApplicationService,
     {
       provide: SystemAdministrationDataExchangeBoundary,
