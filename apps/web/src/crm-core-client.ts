@@ -1,25 +1,18 @@
+import {apiUrl} from './api-url.js';
+import {clearTenantSession,tenantRequestContext} from './auth-session.js';
 export interface CrmApiContext {
   readonly token: string;
   readonly companyId: string;
   readonly branchId: string;
 }
 
-function browserContext(): CrmApiContext {
-  if (typeof window === 'undefined') return { token: '', companyId: '', branchId: '' };
-  return {
-    token: window.localStorage.getItem('elhafez.sessionToken') ?? '',
-    companyId: window.localStorage.getItem('elhafez.companyId') ?? '',
-    branchId: window.localStorage.getItem('elhafez.branchId') ?? '',
-  };
-}
-
 export class CrmApiError extends Error {
   constructor(readonly status: number, message: string) { super(message); this.name = 'CrmApiError'; }
 }
 
-export async function crmRequest<T>(path: string, init: RequestInit = {}, context: CrmApiContext = browserContext()): Promise<T> {
+export async function crmRequest<T>(path: string, init: RequestInit = {}, context: CrmApiContext = tenantRequestContext()): Promise<T> {
   if (!context.token || !context.companyId || !context.branchId) throw new CrmApiError(401, 'يلزم تسجيل الدخول واختيار الشركة والفرع.');
-  const response = await fetch(path, {
+  const response = await fetch(apiUrl(path), {
     ...init,
     headers: {
       'content-type': 'application/json',
@@ -30,6 +23,7 @@ export async function crmRequest<T>(path: string, init: RequestInit = {}, contex
     },
   });
   if (!response.ok) {
+    if(response.status===401)clearTenantSession();
     const body = await response.json().catch(() => ({ message: 'تعذر تنفيذ الطلب.' })) as { message?: string; error?: string };
     throw new CrmApiError(response.status, body.message ?? body.error ?? 'تعذر تنفيذ الطلب.');
   }
