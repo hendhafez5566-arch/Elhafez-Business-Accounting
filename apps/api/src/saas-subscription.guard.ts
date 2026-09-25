@@ -1,11 +1,11 @@
 import{ForbiddenException,ServiceUnavailableException,UnauthorizedException,type CanActivate,type ExecutionContext}from'@nestjs/common';
 import{SaasError,type SaasControlPlaneApplicationService}from'@elhafez/saas-control-plane';
 import{PlatformError,type PlatformCoreApplicationService}from'@elhafez/platform-core';
-import type{PlatformOperationsApplicationService}from'@elhafez/platform-operations';
 type HttpRequest={headers:Record<string,string|string[]|undefined>;method?:string;url?:string;originalUrl?:string};
+export interface MaintenanceStatusPort{maintenanceStatus():Promise<boolean>}
 const header=(value:string|string[]|undefined)=>Array.isArray(value)?value[0]:value;
 export class SaasSubscriptionGuard implements CanActivate{
- constructor(private readonly saas:SaasControlPlaneApplicationService,private readonly platform:PlatformCoreApplicationService,private readonly operations:PlatformOperationsApplicationService){}
+ constructor(private readonly saas:SaasControlPlaneApplicationService,private readonly platform:PlatformCoreApplicationService,private readonly operations:MaintenanceStatusPort){}
  async canActivate(context:ExecutionContext){
   const request=context.switchToHttp().getRequest<HttpRequest>(),rawPath=request.originalUrl??request.url??'',path=rawPath.split('?')[0]??rawPath;
   const ownerPath=path==='/saas-owner'||path.startsWith('/saas-owner/');
