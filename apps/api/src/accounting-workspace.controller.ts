@@ -142,7 +142,7 @@ export class AccountingWorkspaceController{
   return this.treasury.postVoucher({id,companyId:c.companyId,branchId:c.branchId,treasuryId:text(input.treasuryId,'treasuryId'),
    kind:position.partyKind==='CUSTOMER'?'RECEIPT':'PAYMENT',partyKind:position.partyKind,partyId:position.partyId,number:text(input.number,'number'),postingDate:input.postingDate,
    amount:decimalAmount(input.amount),sourceType:'MANUAL_ACCOUNTING_SETTLEMENT',sourceId:commandKey,controlAccountId:position.controlAccountId,actorId:c.actorId,
-   ...(input.advanceAccountId?.trim()?{advanceAccountId:input.advanceAccountId.trim()}:{}),...(input.realizedFxGainAccountId?.trim()?{realizedFxGainAccountId:input.realizedFxGainAccountId.trim()}:{spacer:undefined}),
+   ...(input.advanceAccountId?.trim()?{advanceAccountId:input.advanceAccountId.trim()}:{}),...(input.realizedFxGainAccountId?.trim()?{realizedFxGainAccountId:input.realizedFxGainAccountId.trim()}:{}),
    ...(input.realizedFxLossAccountId?.trim()?{realizedFxLossAccountId:input.realizedFxLossAccountId.trim()}:{}),...(input.approvalRequestId?.trim()?{approvalRequestId:input.approvalRequestId.trim()}:{})});
  }
 
