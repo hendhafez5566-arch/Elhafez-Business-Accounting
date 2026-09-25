@@ -1,3 +1,5 @@
+import {apiUrl} from './api-url.js';
+import {clearTenantSession} from './auth-session.js';
 export interface AdministrationContext{token:string;companyId:string;branchId:string}
 export interface AdministrationClient{
  list(path:string,context:AdministrationContext):Promise<readonly unknown[]>;
@@ -8,11 +10,11 @@ export interface AdministrationClient{
 }
 
 export class HttpAdministrationClient implements AdministrationClient{
- constructor(private readonly base='/api/system-administration'){}
+ constructor(private readonly base=apiUrl('/system-administration')){}
  private headers(context:AdministrationContext){return{'authorization':`Bearer ${context.token}`,'x-company-id':context.companyId,'x-branch-id':context.branchId,'content-type':'application/json'};}
  private async request(method:'GET'|'POST'|'PATCH'|'DELETE',path:string,context:AdministrationContext,body?:unknown){
   const response=await fetch(`${this.base}/${path}`,{method,headers:this.headers(context),body:body===undefined?undefined:JSON.stringify(body)});
-  if(!response.ok)throw new Error(method==='GET'?'تعذر تحميل بيانات إدارة النظام':'تعذر تنفيذ العملية');
+  if(!response.ok){if(response.status===401)clearTenantSession();throw new Error(method==='GET'?'تعذر تحميل بيانات إدارة النظام':'تعذر تنفيذ العملية');}
   if(response.status===204)return null;
   return response.json() as Promise<unknown>;
  }
