@@ -110,3 +110,15 @@ Recommended public separation:
 Application controls do not replace infrastructure security. Production still requires TLS, restrictive CORS, WAF/rate limiting, secret injection from a protected secret store, least-privilege database credentials, encrypted backups, dependency/security patching, centralized logs/alerts and infrastructure monitoring.
 
 Never place `SAAS_OWNER_BOOTSTRAP_TOKEN`, `SAAS_OWNER_MFA_KEY`, database credentials, payment-provider signing secrets or raw owner session tokens in source control, frontend code, Android packages, logs, screenshots or customer configuration.
+
+## Owner preview
+
+The Owner Control Center has a source-driven, read-only preview server for visual review. It renders the real `OwnerControlApp` with explicitly labelled non-production demo data and does not call the API or require secrets.
+
+Run:
+
+```bash
+pnpm --filter @elhafez/owner-control preview
+```
+
+Default address: `http://localhost:4177`. The preview is not an authentication bypass and must never be used as a production data source.
