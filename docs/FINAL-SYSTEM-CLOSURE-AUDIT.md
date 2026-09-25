@@ -2,122 +2,147 @@
 
 Date: **2026-09-25**
 
-Audited baseline: `main@eeb5220e5641b44aeb055a700091bb39be2921cd`
-Latest merged phase at audit start: **SAAS-01 — PR #81**
+Audit-start baseline: `main@eeb5220e5641b44aeb055a700091bb39be2921cd`  
+Closure implementation: **PR #82 / `chatgpt/final-system-closure-audit`**
 
-## Verdict
+## Current verdict
 
-**BLOCKED — DO NOT DECLARE SYSTEM CLOSED OR PRODUCTION GO-LIVE YET.**
+**FINAL CLOSURE CANDIDATE IMPLEMENTED — GO-LIVE IS STILL BLOCKED UNTIL EXECUTABLE VERIFICATION, RECOVERY DRILL, STABLE CI, AND HUMAN UAT PASS.**
 
-The accepted domain implementation is substantial and the major completed phases remain valid. The blockers below are product-entry, missing-suite-surface, deployment, resilience, and final-UAT blockers. They do not invalidate the accepted Accounting, CRM, Procurement, Hajj & Umrah, Management/System Administration, UI foundation, Tourism standalone services, or SaaS control-plane baselines.
+The audit started with eight blockers. PR #82 now contains the architectural implementation required to resolve FSC-01 through FSC-06 without moving or duplicating accepted business truth. FSC-07 and FSC-08 remain external acceptance gates. None of the merged AC/CS/SP/HU/MC-SA/TS/UI/SAAS baselines are invalidated.
 
-## Confirmed PASS / accepted baselines
+## Accepted baseline before this closure candidate
 
-- Accounting AC-00 through AC-14: accepted and merged.
-- CRM & Sales CS-01 through CS-03: accepted and merged.
-- Suppliers & Procurement SP-01 through SP-03: accepted and merged.
-- Hajj & Umrah HU-01 through HU-03: accepted and merged.
-- Management & System Administration MC-SA-01 and MC-SA-02: accepted and merged.
-- Tourism standalone services TS-01: accepted and merged.
-- UI-01 and UI-02 design-system/application foundation: accepted and merged.
-- SAAS-01 subscription / Company Code / Owner Control Plane: accepted and merged.
-- Architecture remains a modular-monolith / public-boundary DAG.
-- Repository code search found no active `TODO`, `FIXME`, or generic `NOT_IMPLEMENTED` markers in production code.
-- Historical open PRs #33, #47–#51 and #65 were closed during this audit as stale/superseded. No legacy implementation PR remains active; the audit record itself may be carried by a governance PR.
-- SAAS-01 was manager-verified in Codespaces before merge: frozen install, Change Safety, Prisma generate, typecheck, lint, architecture, tests, verify, diff check, clean worktree and Owner Control Center HTTP smoke test passed.
+- Accounting AC-00 through AC-14.
+- CRM & Sales CS-01 through CS-03.
+- Suppliers & Procurement SP-01 through SP-03.
+- Hajj & Umrah HU-01 through HU-03.
+- Management & System Administration MC-SA-01 and MC-SA-02.
+- Tourism standalone services TS-01.
+- UI-01 and UI-02.
+- SAAS-01.
+- Modular-monolith ownership, public APIs/contracts and compile-time DAG remain mandatory.
 
-## Blocking findings
+## Blocker disposition in PR #82
 
-### FSC-01 — Tenant web application has no complete login / Company Code entry flow
+### FSC-01 — Tenant Company Code entry and session lifecycle
 
-The public web application has no registered login route or login page. The SaaS API exposes Company Code login, but `apps/web` has no UI that obtains the tenant session, chooses the returned branch, and establishes the application context.
+**IMPLEMENTED IN CANDIDATE.**
 
-Current CRM browser context reads `elhafez.sessionToken`, `elhafez.companyId`, and `elhafez.branchId` from browser local storage, but the application has no canonical entry workflow that writes/rotates/clears those values.
+The tenant web application now has one canonical entry flow:
+Company Code + credentials → server-authenticated SaaS tenant → accessible branch context → session-scoped browser state → branch switching → logout.
 
-**Closure requirement:** one canonical tenant entry flow: Company Code → credentials → server-authenticated tenant → branch selection/default → in-app session context → logout/session revocation handling. Security review must decide the final browser-token storage strategy.
+The canonical browser context is `tenant-session.ts`; application API clients consume `tenantApiContext()`. The old parallel local-storage Company/Branch/Session keys are not used by the candidate implementation. Browser routing is passed through the tenant application into the existing AppShell instead of creating a second router.
 
-### FSC-02 — Accounting & Finance is backend-complete but not an end-user accounting workspace
+### FSC-02 — User-operable Accounting & Finance workspace
 
-The Accounting domain is accepted through AC-14, but the current web route registry contains no dedicated Accounting & Finance workspace for core user operations such as periods, chart of accounts/journals, billing, treasury, tax, controls and financial reporting.
+**IMPLEMENTED IN CANDIDATE.**
 
-The API composition root registers Accounting modules for internal/cross-module use, but there is no complete HTTP/UI surface exposing the accepted Accounting subsystem as a user-operable section.
+A dedicated Accounting workspace and HTTP composition controller expose accepted owner services without creating an accounting mega-module or duplicated balances. The surface composes:
+periods/fiscal years, chart of accounts, manual journals, invoices/cancellation, treasury and settlements, tax policy, financial controls/approval decisions, and financial reports.
 
-**Closure requirement:** implement the approved Accounting user/API surface without moving or duplicating accounting truth.
+Accounting truth remains owned by the accepted Period Control, General Ledger, Billing/Subledgers, Treasury, Tax, Financial Controls and Financial Reporting modules.
 
-### FSC-03 — Tourism & Services suite is only partially complete
+### FSC-03 — General Tourism programs/bookings/itinerary
 
-TS-01 delivers standalone services, vouchers, supplier fulfillment and finance integration. The canonical architecture still has no implementation directories for:
+**IMPLEMENTED IN CANDIDATE.**
 
+Canonical modules now exist for:
 - `tourism-programs`
-- `tourism-bookings`
 - `tourism-itineraries`
+- `tourism-bookings`
 
-The current visible Tourism route is the standalone-services workflow, not a complete general-tourism program/booking/itinerary suite.
+They own only their operational truth. Existing `tourism-contract-inventory`, `tourism-finance-orchestration`, Customer Management and Traveler Management remain the owners of inventory, finance, customer and traveler truth. Booking confirmation/cancellation delegates through public ports and stores financial evidence references rather than duplicated financial state.
 
-**Closure requirement:** either implement these canonical owners and their UI/API flows, or explicitly remove them from the product's accepted closure scope by owner decision. They must not be silently treated as complete.
+The visible suite now includes Programs, Bookings and daily Itinerary routes in addition to standalone Tourism Services.
 
-### FSC-04 — Web and Owner applications are not packaged as production browser deliverables
+### FSC-04 — Production browser delivery
 
-`apps/web` and `apps/owner` currently use `tsc` as their build command. The repository contains no browser bundler/static application build, production `index.html`, container/static-server packaging, or production deployment definition for either frontend.
+**IMPLEMENTED IN CANDIDATE.**
 
-The Owner application has a source-driven preview server for visual review; that preview is intentionally not a production host.
+`apps/web` and `apps/owner` now produce browser bundles/static artifacts. The repository includes production delivery documentation, Nginx reverse-proxy/TLS templates, API service template and environment example. The supported browser contract is same-origin `/api` behind the reverse proxy unless an explicit CORS allowlist is configured.
 
-**Closure requirement:** produce reproducible production artifacts for both frontends and a documented deployment path with API base URL/configuration handling.
+### FSC-05 — Real backup / restore provider
 
-### FSC-05 — Backup / restore is intentionally unavailable in the wired production module
+**IMPLEMENTED IN CANDIDATE; RECOVERY DRILL STILL REQUIRED.**
 
-`PlatformOperationsModule` currently binds `UnavailableBackupProvider`. Its documented behavior is to fail closed until deployment supplies a PostgreSQL physical-backup provider.
+Platform Operations now wires a PostgreSQL physical backup provider instead of `UnavailableBackupProvider`. The provider:
+- creates custom-format platform backups through `pg_dump`;
+- calculates SHA-256 integrity evidence;
+- verifies archives with `pg_restore --list`;
+- refuses to misrepresent a physical database backup as tenant-scoped;
+- requires explicit restore enablement, same-environment identity and active maintenance mode;
+- performs clean single-transaction restore;
+- keeps maintenance active after restore;
+- revokes tenant sessions and then platform-owner sessions after successful recovery.
 
-The System Administration UI exposes backup/verify/restore controls, but those controls cannot provide real continuity while the unavailable provider remains wired.
+Maintenance is enforced at both the production edge and the API guard. Owner login/logout and recovery operations remain reachable so recovery can be completed safely.
 
-**Closure requirement:** supply and exercise a real production backup provider; prove create → verify → restore preflight → restore in a non-production recovery drill, including tenant scope and session invalidation.
+The first executable restore exercise must be performed on a non-production deployment before Go-Live.
 
-### FSC-06 — Internet-facing production hardening is not evidenced in the repository
+### FSC-06 — Internet-facing production hardening
 
-`apps/api/src/main.ts` currently creates the Nest application and listens on the port. The repository does not configure or provide deployment evidence for restrictive CORS, security headers, request-rate protection/WAF, production TLS termination, or a global request-validation boundary.
+**IMPLEMENTED IN CANDIDATE; DEPLOYMENT SMOKE VERIFICATION STILL REQUIRED.**
 
-Some of these controls may legitimately live at the deployment edge rather than in Nest. They are still required closure evidence before public Internet exposure.
+The candidate defines:
+- loopback API bind by default;
+- restrictive optional CORS allowlist;
+- API security headers;
+- global request-safety limits and blocked prototype-style properties;
+- TLS/HSTS/CSP and other browser headers at Nginx;
+- request-size caps;
+- API rate limiting;
+- host separation between tenant and Owner APIs;
+- maintenance-mode traffic blocking.
 
-**Closure requirement:** document and verify where each control lives; do not duplicate edge controls unnecessarily, but do not declare Go-Live without evidence.
+The implementation intentionally separates API and edge responsibilities rather than duplicating business security logic.
 
-### FSC-07 — CI availability is not currently reliable
+### FSC-07 — Reliable CI
 
-The canonical workflow correctly targets `self-hosted`, but the main push run for the audited SAAS-01 merge was queued at audit time and several recent main runs were cancelled. Codespaces provided executable acceptance for SAAS-01, but unattended CI availability is not yet proven reliable.
+**PENDING.**
 
-**Closure requirement:** restore stable runner availability and obtain a green CI run for the final closure candidate.
+The canonical workflow still targets the self-hosted runner and does not weaken any gate. At the latest audit point, the PR workflow is queued before executing any step. A final green CI run on the immutable release candidate remains required.
 
-### FSC-08 — Human UAT has not been completed
+### FSC-08 — Human UAT
 
-Automated and AI-assisted verification cannot prove the complete real-office workflow and usability of every critical business path.
+**PENDING.**
 
-**Closure requirement:** product-owner UAT of the final candidate using a small scenario pack after FSC-01 through FSC-07 are resolved.
+AI-assisted and automated verification can close technical behavior and architecture, but focused product-owner UAT is still required for real-office usability and end-to-end workflows.
 
-## Explicitly deferred / not blocking this audit by themselves
+## Static closure hygiene completed on PR #82
 
-- Egyptian Umrah Barcode remains an intentionally visible **coming-soon UI shell**. It is not silently counted as implemented.
-- Online payment-provider integration is not part of SAAS-01; current owner-controlled/manual payment activation is the accepted baseline. A future gateway must use verified server-to-server provider callbacks.
-- Custom fields, document numbering and other future architecture candidates are not counted as missing unless separately approved into closure scope.
+At the latest reviewed candidate state:
+- change-safety scope includes every changed business module;
+- changed package manifests and the pnpm lockfile are aligned;
+- no added production `@ts-ignore`, `@ts-expect-error`, `as any` or `as never` workaround was accepted;
+- no merge-conflict markers remain;
+- no trailing whitespace remains in the PR diff;
+- the prior General Ledger backing-property/member collision was removed at the source;
+- canonical tenant routing/session context is preserved;
+- recovery maintenance is enforced inside the API as well as at the edge.
 
-## Recommended closure sequence
+These checks are static review evidence only; they do not replace executable typecheck/tests/verification.
 
-To minimize churn, use three closure packages only:
+## Explicitly deferred / not closure blockers by themselves
 
-1. **FC-01 — Product Entry & Production Delivery**
-   Tenant Company Code login/branch entry, secure session lifecycle, real browser builds for Web/Owner, API/edge production-hardening contract and deployment packaging.
+- Egyptian Umrah Barcode remains an intentionally visible **coming-soon** shell with no invented backend behavior.
+- Online payment-provider integration remains future scope; current owner-controlled/manual subscription payment activation is the accepted SAAS-01 baseline.
+- Custom fields, document numbering and other future candidates are not treated as unfinished work unless separately approved.
 
-2. **FC-02 — Missing Business Surfaces**
-   Complete the user-operable Accounting & Finance workspace and resolve the Tourism programs/bookings/itinerary scope (implement or explicitly de-scope by owner decision).
+## Required final acceptance sequence
 
-3. **FC-03 — Recovery, CI, UAT & Go-Live**
-   Real backup provider + recovery drill, stable CI green on final candidate, final regression, focused human UAT, then freeze one `main` SHA as **SYSTEM CLOSED / GO-LIVE BASELINE**.
+Use the exact final PR #82 commit for every gate:
 
-## Closure rule
+1. frozen install and Change Safety;
+2. Prisma generate and fresh migration-chain validation;
+3. typecheck, lint, architecture check and full tests;
+4. `pnpm verify` and production build;
+5. tenant + Owner browser smoke through the production reverse-proxy contract;
+6. non-production backup create → verify → preflight → restore drill;
+7. stable green self-hosted CI on the same immutable candidate;
+8. focused human UAT;
+9. merge only after acceptance, then record the resulting `main` SHA as **SYSTEM CLOSED / GO-LIVE BASELINE**.
 
-No single blocker above may be renamed “deferred” merely to obtain a green closure label. A blocker can leave the list only by:
+Until all acceptance gates pass, the truthful state is:
 
-- executable implementation and verification; or
-- explicit product-owner de-scope that updates the canonical architecture/product scope.
-
-Until then, the correct system-level state is:
-
-**CORE IMPLEMENTATION ADVANCED / FINAL SYSTEM CLOSURE BLOCKED.**
+**IMPLEMENTATION CANDIDATE COMPLETE / GO-LIVE VERIFICATION PENDING.**
