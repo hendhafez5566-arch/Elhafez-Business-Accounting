@@ -26,3 +26,19 @@ test('maintenance operations carry fresh MFA and recovery can clear the in-memor
  const call=calls.at(-1)!;assert.equal(call.url,'https://owner.example.test/api/saas-owner/operations/maintenance/enter');assert.equal(call.method,'POST');assert.equal(call.headers.authorization,'Bearer owner-session');assert.equal(call.headers['x-owner-totp'],'654321');
  client.clearSession();assert.equal(client.hasSession(),false);
 });
+
+test('default owner transport calls global fetch with its native receiver',async()=>{
+ const originalFetch=globalThis.fetch;
+ const calls:string[]=[];
+ globalThis.fetch=async(input:RequestInfo|URL)=>{
+  calls.push(String(input));
+  return new Response(JSON.stringify({ownerId:'owner-1',email:'owner@example.test',mfaSecret:'test',otpauthUri:'test'}),{status:200,headers:{'content-type':'application/json'}});
+ };
+ try{
+  const client=new OwnerApiClient('/api');
+  await client.bootstrapOwner('test-token','owner@example.test','test-password');
+  assert.deepEqual(calls,['/api/saas-owner/bootstrap']);
+ }finally{
+  globalThis.fetch=originalFetch;
+ }
+});
