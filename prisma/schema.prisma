@@ -9,7 +9,7 @@ datasource db {
 
 model PcUser {
   id           String               @id @default(uuid()) @map("id")
-  email        String               @unique
+  email        String?              @unique
   passwordHash String               @map("password_hash")
   displayName  String               @map("display_name")
   status       String               @default("ACTIVE")
@@ -19,6 +19,7 @@ model PcUser {
   userRoles    PcUserRole[]
   recoveryTokens PcPasswordRecovery[]
   branchAccess PcUserBranchAccess[]
+  companyLoginIdentities PcCompanyLoginIdentity[]
 
   @@map("pc_users")
 }
@@ -82,6 +83,8 @@ model PcCompany {
   createdAt DateTime   @default(now()) @map("created_at")
   branches  PcBranch[]
   userRoles PcUserRole[]
+  loginIdentities PcCompanyLoginIdentity[]
+  sessions PcSession[]
 
   @@map("pc_companies")
 }
@@ -112,13 +115,16 @@ model PcUserBranchAccess {
 model PcSession {
   id        String    @id @default(uuid())
   userId    String    @map("user_id")
+  companyId String?   @map("company_id")
   tokenHash String    @unique @map("token_hash")
   expiresAt DateTime  @map("expires_at")
   revokedAt DateTime? @map("revoked_at")
   createdAt DateTime  @default(now()) @map("created_at")
   user      PcUser    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company   PcCompany? @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([companyId])
   @@map("pc_sessions")
 }
 
@@ -133,6 +139,23 @@ model PcPasswordRecovery {
   user PcUser @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([userId, expiresAt])
   @@map("pc_password_recovery")
+}
+
+model PcCompanyLoginIdentity {
+  companyId          String   @map("company_id")
+  userId             String   @map("user_id")
+  username           String
+  passwordHash       String   @map("password_hash")
+  mustChangePassword Boolean  @default(true) @map("must_change_password")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+  company            PcCompany @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user               PcUser    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([companyId, userId])
+  @@unique([companyId, username])
+  @@index([userId])
+  @@map("pc_company_login_identities")
 }
 
 model PcAuditLog {

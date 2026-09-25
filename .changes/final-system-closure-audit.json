@@ -29,7 +29,8 @@
     "docs/**",
     "PROJECT_STATE.md",
     ".github/workflows/**",
-    "prisma/migrations/20260925200000_saas01_control_plane/migration.sql"
+    "prisma/migrations/20260925200000_saas01_control_plane/migration.sql",
+    "prisma/migrations/20260926020000_company_username_identity/**"
   ],
   "protectedPaths": [
     "PROJECT_STATE.md",
@@ -43,7 +44,7 @@
     "modules/*/module.json",
     "apps/web/src/ui/**"
   ],
-  "protectedReason": "Owner-authorized final system closure crosses canonical product entry, approved planned Tourism owners, accepted Accounting public services, platform recovery, deployment, and protected navigation/governance surfaces. Changes must preserve source-of-truth ownership and close verified go-live blockers without patching. The fresh-database Railway drill proved the merged SAAS-01 migration was syntactically non-executable; this pre-Go-Live correction is limited to the two corrupted currency CHECK expressions and preserves their intended rule.",
-  "allowBreakingPublicApi": false,
-  "publicApiBreakingReason": ""
+  "protectedReason": "Owner-authorized final system closure includes the canonical tenant-entry redesign from email credentials to company-scoped Username + temporary password, enforced first-login password rotation, self-service credential maintenance, and additive migration/backfill. Platform Core remains the sole identity owner; SaaS only resolves Company Code. Protected navigation changes expose the approved account-credentials page without duplicating identity truth.",
+  "allowBreakingPublicApi": true,
+  "publicApiBreakingReason": "Owner-authorized pre-Go-Live tenant authentication contract change: /saas/login moves from Company Code + email + password to Company Code + company-scoped username + password. The staging system is not yet closed/merged for production, and existing database users receive additive backfilled company login identities."
 }

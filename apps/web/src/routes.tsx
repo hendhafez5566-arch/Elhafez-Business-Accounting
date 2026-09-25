@@ -16,6 +16,7 @@ import { UmrahBarcodePage } from './hajj-umrah-barcode-page.js';
 import { ExecutiveDashboardPage, ManagementWorkCenterPage } from './management-control-page.js';
 import { AppearanceSettingsPage } from './ui/appearance-settings-page.js';
 import { AccountingWorkspacePage } from './accounting-workspace-page.js';
+import { AccountSettingsPage } from './account-settings-page.js';
 import type { IconName } from './ui/icons.js';
 
 export interface AppRoute {
@@ -78,6 +79,7 @@ export const foundationRoutes = defineRoutes(
   { id: 'hajj-umrah-barcode', path: '/hajj-umrah/barcode', label: 'باركود العمرة', group: 'الحج والعمرة', icon: 'barcode', element: <UmrahBarcodePage /> },
 
   { id: 'appearance-settings', path: '/settings/appearance', label: 'المظهر والتنقل', group: 'الإعدادات', icon: 'appearance', element: <AppearanceSettingsPage /> },
+  { id: 'account-settings', path: '/settings/account', label: 'بيانات الدخول', group: 'الإعدادات', icon: 'profile', element: <AccountSettingsPage /> },
 );
 
 export function findRoute(pathname: string, routes: readonly AppRoute[] = foundationRoutes): AppRoute {

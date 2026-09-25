@@ -33,3 +33,6 @@ test('duplicate route ids and paths are rejected before they can corrupt navigat
     ),
   );
 });
+
+
+test('account credentials have one canonical self-service route',()=>{const route=findRoute('/settings/account');assert.equal(route.id,'account-settings');assert.equal(route.group,'الإعدادات');assert.equal(route.icon,'profile');});

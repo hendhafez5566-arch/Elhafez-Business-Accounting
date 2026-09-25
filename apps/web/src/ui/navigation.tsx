@@ -139,7 +139,7 @@ export function Topbar({
         </Button>
         <Dropdown label="الحساب">
           <a href="/settings/appearance">المظهر والتنقل</a>
-          <a href="#account">إعدادات الحساب</a>
+          <a href="/settings/account">بيانات الدخول</a>
           {onLogout?<Button variant="ghost" type="button" onClick={onLogout}>تسجيل الخروج</Button>:null}
         </Dropdown>
       </div>

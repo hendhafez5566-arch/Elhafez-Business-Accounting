@@ -14,21 +14,23 @@ export class SaasSubscriptionGuard implements CanActivate{
    if(path==='/health'||ownerRecoveryPath)return true;
    throw new ServiceUnavailableException({code:'PLATFORM_MAINTENANCE',message:'المنصة في وضع الصيانة والاستعادة حالياً'});
   }
-  const publicPath=path==='/health'||ownerPath||path==='/saas/login'||path==='/saas/logout'||path==='/saas/subscription-status'||path==='/system-administration/recovery/request'||path==='/system-administration/recovery/reset';
+  const publicPath=path==='/health'||ownerPath||path==='/saas/login'||path==='/saas/logout'||path==='/saas/subscription-status'||path==='/saas/credentials'||path==='/saas/credentials/initial-password'||path==='/system-administration/recovery/request'||path==='/system-administration/recovery/reset';
   if(publicPath)return true;
   if((request.method??'GET').toUpperCase()==='POST'&&path==='/system-administration/companies')throw new ForbiddenException({code:'OWNER_CONTROL_REQUIRED',message:'new companies are provisioned only from Owner Control Center'});
   const companyId=header(request.headers['x-company-id']),branchId=header(request.headers['x-branch-id']),authorization=header(request.headers.authorization);
   if(!companyId)throw new ForbiddenException({code:'TENANT_CONTEXT_REQUIRED',message:'company context is required'});
   if(!authorization?.startsWith('Bearer '))throw new UnauthorizedException({code:'UNAUTHENTICATED',message:'valid tenant session required'});
   try{
-   const user=await this.platform.currentUser(authorization.slice(7));
+   const user=await this.platform.currentCompanyUser(authorization.slice(7),companyId);
    if(branchId)await this.platform.requireBranchAccess(user.id,companyId,branchId);
    else{const company=await this.platform.getCompany(user.id,companyId);if(!company.active)throw new PlatformError('FORBIDDEN','company is inactive');}
+   await this.platform.requireCompanyCredentialReady(user.id,companyId);
    await this.saas.assertTenantAccess(companyId);
    return true;
   }catch(error){
    if(error instanceof PlatformError){
     if(error.code==='UNAUTHENTICATED')throw new UnauthorizedException({code:'UNAUTHENTICATED',message:'valid tenant session required'});
+    if(error.code==='CREDENTIAL_CHANGE_REQUIRED')throw new ForbiddenException({code:'CREDENTIAL_CHANGE_REQUIRED',message:'يجب تغيير كلمة المرور المؤقتة قبل استخدام النظام'});
     throw new ForbiddenException({code:'TENANT_ACCESS_DENIED',message:'tenant access denied'});
    }
    if(error instanceof SaasError)throw new ForbiddenException({code:error.code,message:'اشتراك الشركة لا يسمح باستخدام النظام حالياً'});

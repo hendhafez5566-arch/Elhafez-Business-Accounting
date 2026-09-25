@@ -1,13 +1,15 @@
 import type{TenantSession,TenantSubscription,TenantBranch}from'./tenant-session.js';
-type LoginResponse={token:string;userId:string;expiresAt:string|Date;companyId:string;companyCode:string;branches:TenantBranch[];defaultBranchId:string;subscription:TenantSubscription};
+type LoginResponse={token:string;userId:string;username:string;mustChangePassword:boolean;expiresAt:string|Date;companyId:string;companyCode:string;branches:TenantBranch[];defaultBranchId:string;subscription:TenantSubscription};
 export class TenantAuthClient{
  constructor(private readonly base='/api'){}
- async login(input:{companyCode:string;email:string;password:string}):Promise<TenantSession>{
+ async login(input:{companyCode:string;username:string;password:string}):Promise<TenantSession>{
   const response=await fetch(this.base+'/saas/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(input)});
   const body=await response.json().catch(()=>({})) as Partial<LoginResponse>&{message?:string};
   if(!response.ok)throw new Error(body.message??'تعذر تسجيل الدخول. تحقق من كود الشركة وبيانات الدخول.');
-  if(!body.token||!body.companyId||!body.companyCode||!body.userId||!body.expiresAt||!body.defaultBranchId||!body.branches||!body.subscription)throw new Error('استجابة تسجيل الدخول غير مكتملة.');
-  return{token:body.token,userId:body.userId,expiresAt:new Date(body.expiresAt).toISOString(),companyId:body.companyId,companyCode:body.companyCode,branches:body.branches,branchId:body.defaultBranchId,subscription:body.subscription};
+  if(!body.token||!body.companyId||!body.companyCode||!body.userId||!body.username||typeof body.mustChangePassword!=='boolean'||!body.expiresAt||!body.defaultBranchId||!body.branches||!body.subscription)throw new Error('استجابة تسجيل الدخول غير مكتملة.');
+  return{token:body.token,userId:body.userId,username:body.username,mustChangePassword:body.mustChangePassword,expiresAt:new Date(body.expiresAt).toISOString(),companyId:body.companyId,companyCode:body.companyCode,branches:body.branches,branchId:body.defaultBranchId,subscription:body.subscription};
  }
+ async initialPassword(token:string,companyId:string,newPassword:string,newUsername?:string){const response=await fetch(this.base+'/saas/credentials/initial-password',{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer '+token,'x-company-id':companyId},body:JSON.stringify({newPassword,newUsername})});const body=await response.json().catch(()=>({})) as {username?:string;mustChangePassword?:boolean;message?:string};if(!response.ok)throw new Error(body.message??'تعذر تغيير كلمة المرور.');if(!body.username)throw new Error('استجابة تغيير كلمة المرور غير مكتملة.');return{username:body.username,mustChangePassword:false as const};}
+ async updateCredentials(token:string,companyId:string,input:{currentPassword:string;newUsername?:string;newPassword?:string}){const response=await fetch(this.base+'/saas/credentials',{method:'PATCH',headers:{'content-type':'application/json',authorization:'Bearer '+token,'x-company-id':companyId},body:JSON.stringify(input)});const body=await response.json().catch(()=>({})) as {username?:string;mustChangePassword?:boolean;message?:string};if(!response.ok)throw new Error(body.message??'تعذر تحديث بيانات الدخول.');if(!body.username)throw new Error('استجابة تحديث بيانات الدخول غير مكتملة.');return{username:body.username,mustChangePassword:false as const};}
  async logout(token:string){await fetch(this.base+'/saas/logout',{method:'POST',headers:{authorization:'Bearer '+token}}).catch(()=>undefined);}
 }
