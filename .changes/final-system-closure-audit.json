@@ -34,7 +34,8 @@
     "apps/web/src/app-shell.tsx",
     "apps/web/src/routes.tsx",
     "apps/web/src/styles.css",
-    "modules/*/module.json"
+    "modules/*/module.json",
+    "apps/web/src/ui/**"
   ],
   "protectedReason": "Owner-authorized final system closure crosses canonical product entry, approved planned Tourism owners, accepted Accounting public services, platform recovery, deployment, and protected navigation/governance surfaces. Changes must preserve source-of-truth ownership and close verified go-live blockers without patching.",
   "allowBreakingPublicApi": false,
