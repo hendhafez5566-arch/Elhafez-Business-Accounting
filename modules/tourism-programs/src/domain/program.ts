@@ -1,0 +1,4 @@
+import type{CompanyId}from'@elhafez/contracts';
+export type TourismProgramStatus='PREPARING'|'OPEN'|'OPERATING'|'CLOSED'|'CANCELLED';
+export interface TourismProgram{readonly id:string;readonly companyId:CompanyId;readonly branchId:string;readonly code:string;readonly nameAr:string;readonly nameEn?:string;readonly departureDate:string;readonly returnDate:string;readonly salesOpen:string;readonly salesClose:string;readonly currency:string;readonly notes?:string;readonly status:TourismProgramStatus;readonly revision:number;readonly createdAt:string;readonly updatedAt:string}
+export interface TourismProgramHistory{readonly id:string;readonly companyId:CompanyId;readonly branchId:string;readonly programId:string;readonly action:'CREATED'|'UPDATED'|'OPENED'|'STARTED'|'CLOSED'|'CANCELLED';readonly actorId:string;readonly reason?:string;readonly occurredAt:string}
