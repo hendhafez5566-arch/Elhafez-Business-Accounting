@@ -11,7 +11,7 @@ export class SaasSubscriptionGuard implements CanActivate{
   const ownerPath=path==='/saas-owner'||path.startsWith('/saas-owner/');
   const ownerRecoveryPath=path==='/saas-owner/login'||path==='/saas-owner/logout'||path==='/saas-owner/operations'||path.startsWith('/saas-owner/operations/');
   if(await this.operations.maintenanceStatus()){
-   if(ownerRecoveryPath)return true;
+   if(path==='/health'||ownerRecoveryPath)return true;
    throw new ServiceUnavailableException({code:'PLATFORM_MAINTENANCE',message:'المنصة في وضع الصيانة والاستعادة حالياً'});
   }
   const publicPath=path==='/health'||ownerPath||path==='/saas/login'||path==='/saas/logout'||path==='/saas/subscription-status'||path==='/system-administration/recovery/request'||path==='/system-administration/recovery/reset';
