@@ -9,6 +9,7 @@ export interface TrustedAuthorizationPort {
   canResolveControlIssue(actorId: string, companyId: string): Promise<boolean>;
 }
 export const TRUSTED_AUTHORIZATION_PORT = Symbol('TRUSTED_AUTHORIZATION_PORT');
+export const FINANCIAL_CONTROL_PERMISSIONS=Object.freeze({resolve:'financial.controls.resolve'} as const);
 export class DenyByDefaultAuthorization implements TrustedAuthorizationPort {
   async canApprove(): Promise<boolean> { return false; }
   async canAccessBranch(): Promise<boolean> { return false; }
