@@ -1,0 +1,27 @@
+import{Body,Controller,Get,Headers,Param,Patch,Post,Query,UnauthorizedException}from'@nestjs/common';
+import{executionContext,type ExecutionContext}from'@elhafez/contracts';
+import{PlatformCoreApplicationService}from'@elhafez/platform-core';
+import{TourismProgramsApplicationService,type TourismProgramInput,type TourismProgramStatus}from'@elhafez/tourism-programs';
+import{TourismItinerariesApplicationService,type ItineraryDayInput}from'@elhafez/tourism-itineraries';
+import{TourismBookingsApplicationService,type BookingFinanceConfirmInput,type CreateTourismBookingInput,type TourismBookingStatus}from'@elhafez/tourism-bookings';
+
+@Controller('tourism')
+export class TourismOperationsController{
+ constructor(private readonly platform:PlatformCoreApplicationService,private readonly programs:TourismProgramsApplicationService,private readonly itineraries:TourismItinerariesApplicationService,private readonly bookings:TourismBookingsApplicationService){}
+ private async context(auth?:string,companyId?:string,branchId?:string):Promise<ExecutionContext>{if(!auth?.startsWith('Bearer ')||!companyId||!branchId)throw new UnauthorizedException('authenticated company and branch context required');const user=await this.platform.currentUser(auth.slice(7));return executionContext(companyId,branchId,user.id)}
+ @Get('programs')async listPrograms(@Headers('authorization')a?:string,@Headers('x-company-id')c?:string,@Headers('x-branch-id')b?:string,@Query('status')status?:TourismProgramStatus){return this.programs.list(await this.context(a,c,b),status)}
+ @Post('programs')async createProgram(@Headers('authorization')a:string,@Headers('x-company-id')c:string,@Headers('x-branch-id')b:string,@Body()input:TourismProgramInput){return this.programs.create(await this.context(a,c,b),input)}
+ @Patch('programs/:id')async updateProgram(@Headers('authorization')a:string,@Headers('x-company-id')c:string,@Headers('x-branch-id')b:string,@Param('id')id:string,@Body()input:TourismProgramInput){return this.programs.update(await this.context(a,c,b),id,input)}
+ @Post('programs/:id/open')async openProgram(@Headers('authorization')a:string,@Headers('x-company-id')c:string,@Headers('x-branch-id')b:string,@Param('id')id:string){return this.programs.open(await this.context(a,c,b),id)}
+ @Post('programs/:id/start')async startProgram(@Headers('authorization')a:string,@Headers('x-company-id')c:string,@Headers('x-branch-id')b:string,@Param('id')id:string){return this.programs.start(await this.context(a,c,b),id)}
+ @Post('programs/:id/close')async closeProgram(@Headers('authorization')a:string,@Headers('x-company-id')c:string,@Headers('x-branch-id')b:string,@Param('id')id:string){return this.programs.close(await this.context(a,c,b),id)}
+ @Post('programs/:id/cancel')async cancelProgram(@Headers('authorization')a:string,@Headers('x-company-id')c:string,@Headers('x-branch-id')b:string,@Param('id')id:string,@Body()input:{reason:string}){return this.programs.cancel(await this.context(a,c,b),id,input.reason)}
+ @Get('programs/:id/itinerary')async itinerary(@Headers('authorization')a:string,@Headers('x-company-id')c:string,@Headers('x-branch-id')b:string,@Param('id')id:string){return this.itineraries.list(await this.context(a,c,b),id)}
+ @Post('programs/:id/itinerary')async createItinerary(@Headers('authorization')a:string,@Headers('x-company-id')c:string,@Headers('x-branch-id')b:string,@Param('id')programId:string,@Body()input:Omit<ItineraryDayInput,'programId'>){return this.itineraries.create(await this.context(a,c,b),{...input,programId})}
+ @Patch('programs/:programId/itinerary/:id')async updateItinerary(@Headers('authorization')a:string,@Headers('x-company-id')c:string,@Headers('x-branch-id')b:string,@Param('programId')programId:string,@Param('id')id:string,@Body()input:Omit<ItineraryDayInput,'programId'>&{expectedRevision:number}){return this.itineraries.update(await this.context(a,c,b),id,{...input,programId},input.expectedRevision)}
+ @Get('bookings')async listBookings(@Headers('authorization')a?:string,@Headers('x-company-id')c?:string,@Headers('x-branch-id')b?:string,@Query('status')status?:TourismBookingStatus){return this.bookings.list(await this.context(a,c,b),status)}
+ @Post('bookings')async createBooking(@Headers('authorization')a:string,@Headers('x-company-id')c:string,@Headers('x-branch-id')b:string,@Body()input:CreateTourismBookingInput){return this.bookings.create(await this.context(a,c,b),input)}
+ @Post('bookings/:id/confirm')async confirmBooking(@Headers('authorization')a:string,@Headers('x-company-id')c:string,@Headers('x-branch-id')b:string,@Param('id')id:string,@Body()input:Omit<BookingFinanceConfirmInput,'companyId'|'branchId'|'bookingId'|'programId'|'programEvidence'|'customerPartyId'>){return this.bookings.confirm(await this.context(a,c,b),id,input)}
+ @Post('bookings/:id/cancel')async cancelBooking(@Headers('authorization')a:string,@Headers('x-company-id')c:string,@Headers('x-branch-id')b:string,@Param('id')id:string,@Body()input:{commandKey:string;postingDate:string;travelStarted?:boolean;travelEvidence?:string}){return this.bookings.cancel(await this.context(a,c,b),id,input)}
+ @Post('bookings/:id/complete')async completeBooking(@Headers('authorization')a:string,@Headers('x-company-id')c:string,@Headers('x-branch-id')b:string,@Param('id')id:string){return this.bookings.complete(await this.context(a,c,b),id)}
+}
