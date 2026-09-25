@@ -1,0 +1,42 @@
+{
+  "id": "fc-01-product-entry-production-delivery",
+  "summary": "Close the tenant product-entry and browser-delivery blockers with Company Code authentication, shared session/branch context, logout/recovery UX, reproducible Web/Owner production bundles, and explicit production delivery security controls.",
+  "type": "phase",
+  "allowedModules": [],
+  "allowedPaths": [
+    ".changes/fc-01-product-entry-production-delivery.json",
+    "apps/api/src/main.ts",
+    "apps/api/src/saas.controller.ts",
+    "apps/api/src/saas.controller.spec.ts",
+    "apps/api/src/saas-subscription.guard.ts",
+    "apps/api/src/saas-subscription.guard.spec.ts",
+    "apps/web/package.json",
+    "apps/web/src/index.tsx",
+    "apps/web/src/api-url.ts",
+    "apps/web/src/auth-session.ts",
+    "apps/web/src/auth-session.spec.ts",
+    "apps/web/src/tenant-entry.tsx",
+    "apps/web/src/tenant-entry.spec.tsx",
+    "apps/web/src/crm-core-client.ts",
+    "apps/web/src/system-administration-client.ts",
+    "apps/web/src/system-administration-page.tsx",
+    "apps/web/src/app-shell.tsx",
+    "apps/web/src/app-shell-contract.spec.ts",
+    "apps/web/src/ui/navigation.tsx",
+    "apps/web/src/styles.css",
+    "apps/owner/package.json",
+    "apps/owner/src/index.ts",
+    "package.json",
+    "pnpm-lock.yaml",
+    "tools/build-browser-app.mjs",
+    "docs/PRODUCTION-DELIVERY.md"
+  ],
+  "protectedPaths": [
+    "apps/web/src/app-shell.tsx",
+    "apps/web/src/ui/navigation.tsx",
+    "apps/web/src/styles.css"
+  ],
+  "protectedReason": "Owner-authorized final closure package for the canonical application entry/session flow and production browser delivery; global shell edits are limited to authenticated company/branch identity and logout.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": ""
+}
