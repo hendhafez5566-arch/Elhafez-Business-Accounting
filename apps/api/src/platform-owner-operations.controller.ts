@@ -11,6 +11,12 @@ export class PlatformOwnerOperationsController{
  constructor(private readonly saas:SaasControlPlaneApplicationService,private readonly operations:PlatformOperationsApplicationService){}
  @Get('diagnostics')
  async diagnostics(@Headers('authorization')auth:string|undefined){await this.saas.requireOwner(bearer(auth));return this.operations.diagnostics();}
+ @Get('maintenance')
+ async maintenance(@Headers('authorization')auth:string|undefined){await this.saas.requireOwner(bearer(auth));return{active:await this.operations.maintenanceStatus()};}
+ @Post('maintenance/enter')
+ async enterMaintenance(@Headers('authorization')auth:string|undefined,@Headers('x-owner-totp')otp:string|undefined){await this.saas.requireSensitiveOwner(bearer(auth),mfa(otp));try{return await this.operations.enterMaintenance();}catch(error){mapOperations(error);}}
+ @Post('maintenance/exit')
+ async exitMaintenance(@Headers('authorization')auth:string|undefined,@Headers('x-owner-totp')otp:string|undefined){await this.saas.requireSensitiveOwner(bearer(auth),mfa(otp));try{return await this.operations.exitMaintenance();}catch(error){mapOperations(error);}}
  @Get('backups')
  async backups(@Headers('authorization')auth:string|undefined){await this.saas.requireOwner(bearer(auth));return this.operations.listBackups(null);}
  @Post('backups')
@@ -35,7 +41,7 @@ export class PlatformOwnerOperationsController{
  }
  @Post('restores')
  async restore(@Headers('authorization')auth:string|undefined,@Headers('x-owner-totp')otp:string|undefined,@Body()body:{backupId:string}){
-  const owner=await this.saas.requireSensitiveOwner(bearer(auth),mfa(otp));try{return await this.operations.restore({backupId:body.backupId,actorId:owner.id});}catch(error){mapOperations(error);}
+  const owner=await this.saas.requireSensitiveOwner(bearer(auth),mfa(otp));try{const result=await this.operations.restore({backupId:body.backupId,actorId:owner.id});if(result.status!=='COMPLETED')return result;const ownerSessionsRevoked=await this.saas.revokeAllOwnerSessionsForRecovery();return{...result,ownerSessionsRevoked,maintenance:await this.operations.maintenanceStatus()};}catch(error){mapOperations(error);}
  }
  @Get('restores/:id')
  async restoreStatus(@Headers('authorization')auth:string|undefined,@Param('id')id:string){
