@@ -1,0 +1,1 @@
+{"name":"tourism-programs","publicApi":["src/public/index.ts","src/public/nest.ts"],"ownedTables":["tpr_programs","tpr_program_history"],"allowedDependencies":["@elhafez/contracts","@elhafez/core","@elhafez/platform-core"]}
