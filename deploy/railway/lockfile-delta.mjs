@@ -21,18 +21,18 @@ function section(text,name){
  }
  return map;
 }
-function delta(oldMap,newMap){
- const added=[],changed=[],removed=[];
- for(const[key,block]of newMap){if(!oldMap.has(key))added.push({key,block});else if(oldMap.get(key)!==block)changed.push({key,block});}
- for(const key of oldMap.keys())if(!newMap.has(key))removed.push(key);
- return{added,changed,removed};
-}
-const importers=section(after,'importers');
+function added(oldMap,newMap){return[...newMap].filter(([key])=>!oldMap.has(key)).map(([key,block])=>({key,block}));}
+function changed(oldMap,newMap){return[...newMap].filter(([key,block])=>oldMap.has(key)&&oldMap.get(key)!==block).map(([key,block])=>({key,block}));}
+
+const oldImporters=section(before,'importers'),newImporters=section(after,'importers');
 const oldPackages=section(before,'packages'),newPackages=section(after,'packages');
 const oldSnapshots=section(before,'snapshots'),newSnapshots=section(after,'snapshots');
 const result={
- importer:importers.get('apps/api')??null,
- packages:delta(oldPackages,newPackages),
- snapshots:delta(oldSnapshots,newSnapshots),
+ importerBefore:oldImporters.get('apps/api')??null,
+ importerAfter:newImporters.get('apps/api')??null,
+ addedPackages:added(oldPackages,newPackages),
+ addedSnapshots:added(oldSnapshots,newSnapshots),
+ changedNestPackages:changed(oldPackages,newPackages).filter(x=>x.key.includes('@nestjs/')),
+ changedNestSnapshots:changed(oldSnapshots,newSnapshots).filter(x=>x.key.includes('@nestjs/')),
 };
-process.stdout.write('\n=== LOCKFILE_DELTA_JSON_BEGIN ===\n'+JSON.stringify(result,null,2)+'\n=== LOCKFILE_DELTA_JSON_END ===\n');
+process.stdout.write('\nLOCK_DELTA_BEGIN\n'+JSON.stringify(result,null,2)+'\nLOCK_DELTA_END\n');
