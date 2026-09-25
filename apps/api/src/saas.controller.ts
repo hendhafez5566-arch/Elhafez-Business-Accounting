@@ -41,6 +41,8 @@ export class SaasTenantController{
 @Controller('saas-owner')
 export class SaasOwnerController{
  constructor(@Inject(SaasControlPlaneApplicationService) private readonly saas:SaasControlPlaneApplicationService,@Inject(PlatformCoreApplicationService) private readonly platform:PlatformCoreApplicationService){}
+ @Get('bootstrap-status')@Header('Cache-Control','no-store')async bootstrapStatus(){return this.saas.ownerBootstrapStatus();}
+ @Post('recover-password')@Header('Cache-Control','no-store')async recoverPassword(@Headers('x-saas-recovery-token')token:string|undefined,@Body()body:{email:string;newPassword:string}){try{return await this.saas.recoverOwnerPassword({...body,recoveryToken:token??''});}catch(error){mapError(error);}}
  @Post('bootstrap')@Header('Cache-Control','no-store')async bootstrap(@Headers('x-saas-bootstrap-token')token:string|undefined,@Body()body:{email:string;password:string}){try{return await this.saas.bootstrapOwner({...body,bootstrapToken:token??''});}catch(error){mapError(error);}}
  @Post('login')@Header('Cache-Control','no-store')async login(@Body()body:{email:string;password:string;mfaCode:string}){try{return await this.saas.loginOwner(body);}catch(error){mapError(error);}}
  @Post('recover-mfa')@Header('Cache-Control','no-store')async recoverMfa(@Headers('x-saas-recovery-token')token:string|undefined,@Body()body:{email:string;password:string}){try{return await this.saas.recoverOwnerMfa({...body,recoveryToken:token??''});}catch(error){mapError(error);}}

@@ -28,6 +28,8 @@ export class OwnerApiClient {
   return payload as T;
  }
  async bootstrapOwner(bootstrapToken:string,email:string,password:string){return this.request<{ownerId:string;email:string;mfaSecret:string;otpauthUri:string}>('/saas-owner/bootstrap',{method:'POST',bootstrapToken,body:{email,password}});}
+ async bootstrapStatus(){return this.request<{available:boolean}>('/saas-owner/bootstrap-status');}
+ async recoverPassword(recoveryToken:string,email:string,newPassword:string){return this.request<{ownerId:string;email:string;revokedSessions:number}>('/saas-owner/recover-password',{method:'POST',recoveryToken,body:{email,newPassword}});}
  async recoverMfa(recoveryToken:string,email:string,password:string){return this.request<{ownerId:string;email:string;mfaSecret:string;otpauthUri:string;revokedSessions:number}>('/saas-owner/recover-mfa',{method:'POST',recoveryToken,body:{email,password}});}
  async login(email:string,password:string,mfaCode:string){const result=await this.request<{token:string;expiresAt:string;owner:{id:string;email:string}}>('/saas-owner/login',{method:'POST',body:{email,password,mfaCode}});this.#ownerToken=result.token;return result;}
  async logout(){try{if(this.#ownerToken)await this.request('/saas-owner/logout',{method:'POST',owner:true});}finally{this.#ownerToken=null;}}
