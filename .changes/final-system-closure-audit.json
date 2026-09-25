@@ -14,7 +14,8 @@
     "platform-core",
     "saas-control-plane",
     "tax",
-    "financial-controls"
+    "financial-controls",
+    "tourism-finance-orchestration"
   ],
   "allowedPaths": [
     "apps/api/**",
