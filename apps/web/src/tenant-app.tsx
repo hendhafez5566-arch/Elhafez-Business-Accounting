@@ -1,5 +1,6 @@
 import{type FormEvent,useEffect,useMemo,useState}from'react';
 import{AppShell}from'./app-shell.js';
+import{browserPathname}from'./app-entry-path.js';
 import{TenantAuthClient}from'./tenant-auth-client.js';
 import{clearTenantSession,readTenantSession,selectTenantBranch,TENANT_SESSION_EVENT,type TenantSession,writeTenantSession}from'./tenant-session.js';
 import{Button,Card,EmptyState,FormField,Input,Select,Toast}from'./ui.js';
@@ -13,6 +14,8 @@ export function TenantApplication({client=new TenantAuthClient()}:{client?:Tenan
  if(!session.subscription.allowed)return <main className="tenant-entry-shell" dir="rtl"><Card title="الاشتراك غير متاح"><EmptyState title="لا يمكن فتح النظام حاليًا"><p>حالة الاشتراك: <strong>{session.subscription.status}</strong></p><p>{session.subscription.reason??'يرجى التواصل مع إدارة المنصة لتجديد أو تفعيل الاشتراك.'}</p><Button type="button" onClick={()=>void logout()}>تسجيل الخروج</Button></EmptyState></Card></main>;
  const branch=session.branches.find(value=>value.id===session.branchId);
  return <AppShell
+  pathname={browserPathname()}
+  preferenceScope={session.userId}
   companyLabel={session.companyCode}
   branchLabel={branch?.name??session.branchId}
   branches={session.branches.map(value=>({id:value.id,name:value.name}))}
