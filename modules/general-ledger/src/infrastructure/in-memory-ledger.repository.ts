@@ -13,6 +13,10 @@ export class InMemoryLedgerRepository implements LedgerRepository {
     this.accounts.push(account);
   }
 
+  async accounts(companyId:CompanyId):Promise<Account[]>{
+    return this.accounts.filter((x)=>x.companyId===companyId).sort((a,b)=>a.code.localeCompare(b.code));
+  }
+
   async account(companyId: CompanyId, id: string): Promise<Account | undefined> {
     return this.accounts.find((x) => x.companyId === companyId && x.id === id);
   }
