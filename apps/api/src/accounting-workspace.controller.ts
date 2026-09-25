@@ -2,17 +2,22 @@ import{createHash,randomUUID}from'node:crypto';
 import{BadRequestException,Body,Controller,Get,Headers,Param,Post,UnauthorizedException}from'@nestjs/common';
 import{decimalAmount,executionContext,type ExecutionContext}from'@elhafez/contracts';
 import{PLATFORM_CORE_PERMISSIONS,PlatformCoreApplicationService,PlatformError}from'@elhafez/platform-core';
-import{PeriodControlApplicationService}from'@elhafez/period-control';
-import{GeneralLedgerApplicationService,type AccountClassification,type PostingLine}from'@elhafez/general-ledger';
-import{BillingSubledgersApplicationService,type InvoiceType}from'@elhafez/billing-subledgers';
-import{TreasurySettlementApplicationService,type TreasuryType}from'@elhafez/treasury-settlement';
-import{TaxApplicationService}from'@elhafez/tax';
-import{FinancialControlsApplicationService,type FinancialAction}from'@elhafez/financial-controls';
+import{PeriodControlApplicationService,type FiscalYear,type AccountingPeriod}from'@elhafez/period-control';
+import{GeneralLedgerApplicationService,type Account,type AccountClassification,type Journal,type PostingLine}from'@elhafez/general-ledger';
+import{BillingSubledgersApplicationService,type Invoice,type InvoiceType}from'@elhafez/billing-subledgers';
+import{TreasurySettlementApplicationService,type Treasury,type TreasuryType,type Voucher}from'@elhafez/treasury-settlement';
+import{TaxApplicationService,type TaxPolicy}from'@elhafez/tax';
+import{FinancialControlsApplicationService,type ApprovalPolicy,type ApprovalRequest,type FinancialAction,type ReconciliationIssue}from'@elhafez/financial-controls';
 import{FinancialReportingApplicationService}from'@elhafez/financial-reporting';
 
 type HeaderContext={authorization?:string;companyId?:string;branchId?:string};
 type ManualJournalLine={accountId:string;debit?:string;credit?:string;partyId?:string;costCenterId?:string};
 type ManualInvoiceLine={accountId:string;amount:string;taxCode?:string};
+type AccountingOverviewOutput={
+ fiscalYears:readonly FiscalYear[];periods:readonly AccountingPeriod[];accounts:readonly Account[];journals:readonly Journal[];invoices:readonly Invoice[];
+ treasuries:readonly Treasury[];vouchers:readonly Voucher[];taxPolicies:readonly TaxPolicy[];approvalPolicies:readonly ApprovalPolicy[];approvalRequests:readonly ApprovalRequest[];
+ controlIssues:readonly ReconciliationIssue[];reports:{trialBalance:unknown;incomeStatement:unknown;balanceSheet:unknown;treasury:unknown;tax:unknown};
+};
 const ACCOUNT_CLASSES=new Set<AccountClassification>(['ASSET','LIABILITY','EQUITY','REVENUE','EXPENSE']);
 const TREASURY_TYPES=new Set<TreasuryType>(['CASH','BANK']);
 const INVOICE_TYPES=new Set<InvoiceType>(['CUSTOMER','SUPPLIER']);
@@ -50,7 +55,7 @@ export class AccountingWorkspaceController{
  }
 
  @Get('overview')
- async overview(@Headers('authorization')auth?:string,@Headers('x-company-id')company?:string,@Headers('x-branch-id')branch?:string){
+ async overview(@Headers('authorization')auth?:string,@Headers('x-company-id')company?:string,@Headers('x-branch-id')branch?:string):Promise<AccountingOverviewOutput>{
   const c=await this.context(this.headers(auth,company,branch),PLATFORM_CORE_PERMISSIONS.accountingFinanceRead);
   const scope={companyId:c.companyId,branchIds:[c.branchId] as const};
   const[
@@ -75,19 +80,19 @@ export class AccountingWorkspaceController{
  }
 
  @Post('fiscal-years')
- async createFiscalYear(@Headers('authorization')auth:string,@Headers('x-company-id')company:string,@Headers('x-branch-id')branch:string,@Body()input:{id?:string;startDate:string;endDate:string}){
+ async createFiscalYear(@Headers('authorization')auth:string,@Headers('x-company-id')company:string,@Headers('x-branch-id')branch:string,@Body()input:{id?:string;startDate:string;endDate:string}):Promise<FiscalYear>{
   const c=await this.context(this.headers(auth,company,branch),PLATFORM_CORE_PERMISSIONS.accountingFinanceOperate);
   return this.periods.createFiscalYear({id:input.id??randomUUID(),companyId:c.companyId,startDate:input.startDate,endDate:input.endDate,status:'OPEN'});
  }
 
  @Post('periods')
- async createPeriod(@Headers('authorization')auth:string,@Headers('x-company-id')company:string,@Headers('x-branch-id')branch:string,@Body()input:{id?:string;fiscalYearId:string;startDate:string;endDate:string}){
+ async createPeriod(@Headers('authorization')auth:string,@Headers('x-company-id')company:string,@Headers('x-branch-id')branch:string,@Body()input:{id?:string;fiscalYearId:string;startDate:string;endDate:string}):Promise<AccountingPeriod>{
   const c=await this.context(this.headers(auth,company,branch),PLATFORM_CORE_PERMISSIONS.accountingFinanceOperate);
   return this.periods.createPeriod({id:input.id??randomUUID(),companyId:c.companyId,fiscalYearId:text(input.fiscalYearId,'fiscalYearId'),startDate:input.startDate,endDate:input.endDate,status:'OPEN'});
  }
 
  @Post('periods/:id/status')
- async setPeriodStatus(@Headers('authorization')auth:string,@Headers('x-company-id')company:string,@Headers('x-branch-id')branch:string,@Param('id')id:string,@Body()input:{status:'OPEN'|'CLOSED'}){
+ async setPeriodStatus(@Headers('authorization')auth:string,@Headers('x-company-id')company:string,@Headers('x-branch-id')branch:string,@Param('id')id:string,@Body()input:{status:'OPEN'|'CLOSED'}):Promise<AccountingPeriod>{
   const c=await this.context(this.headers(auth,company,branch),PLATFORM_CORE_PERMISSIONS.accountingFinanceOperate);
   if(input.status!=='OPEN'&&input.status!=='CLOSED')throw new BadRequestException('invalid period status');
   await this.periods.setPeriodStatus(c.companyId,id,input.status);
