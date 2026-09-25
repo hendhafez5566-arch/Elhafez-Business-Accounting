@@ -9,13 +9,14 @@ const mfa=(value:string|undefined)=>{if(!value)throw new ForbiddenException('own
 export class SaasTenantController{
  constructor(@Inject(SaasControlPlaneApplicationService) private readonly saas:SaasControlPlaneApplicationService,@Inject(PlatformCoreApplicationService) private readonly platform:PlatformCoreApplicationService){}
  @Post('login')@Header('Cache-Control','no-store')async login(@Body()body:{companyCode:string;email:string;password:string}){
-  let session:{token:string;userId:string;expiresAt:Date}|null=null;
+  let session:{token:string;userId:string;expiresAt:Date}|null=null,companyName='';
   try{
    const resolved=await this.saas.resolveCompanyCode(body.companyCode);
    session=await this.platform.login(body.email,body.password);
    try{
     const company=await this.platform.getCompany(session.userId,resolved.companyId);
     if(!company.active)throw new PlatformError('FORBIDDEN','company is inactive');
+    companyName=company.name;
    }catch(error){
     await this.platform.logout(session.token);
     session=null;
@@ -25,7 +26,7 @@ export class SaasTenantController{
    const branches=await this.platform.listAccessibleBranches(session.userId,resolved.companyId);
    if(!branches.length){await this.platform.logout(session.token);session=null;throw new UnauthorizedException({code:'INVALID_TENANT_CREDENTIALS',message:'invalid company or credentials'});}
    const subscription=await this.saas.subscriptionStatus(resolved.companyId);
-   return{token:session.token,userId:session.userId,expiresAt:session.expiresAt,companyId:resolved.companyId,companyCode:resolved.companyCode,branches,defaultBranchId:branches[0]!.id,subscription};
+   return{token:session.token,userId:session.userId,expiresAt:session.expiresAt,companyId:resolved.companyId,companyCode:resolved.companyCode,companyName,branches,defaultBranchId:branches[0]!.id,subscription};
   }catch(error){
    if(session){await this.platform.logout(session.token);session=null;}
    if(error instanceof UnauthorizedException)throw error;
@@ -34,6 +35,7 @@ export class SaasTenantController{
    mapError(error);
   }
  }
+ @Post('logout')@Header('Cache-Control','no-store')async logout(@Headers('authorization')auth:string|undefined){if(!auth?.startsWith('Bearer '))throw new UnauthorizedException('tenant bearer session required');try{await this.platform.logout(auth.slice(7));return{loggedOut:true};}catch(error){mapError(error);}}
  @Get('subscription-status')@Header('Cache-Control','no-store')async status(@Headers('authorization')auth:string|undefined,@Headers('x-company-id')companyId:string|undefined){if(!companyId)throw new BadRequestException('x-company-id is required');if(!auth?.startsWith('Bearer '))throw new UnauthorizedException('tenant bearer session required');try{const user=await this.platform.currentUser(auth.slice(7));await this.platform.requireUserCompanyAccess(user.id,companyId);return await this.saas.subscriptionStatus(companyId);}catch(error){mapError(error);}}
 }
 
