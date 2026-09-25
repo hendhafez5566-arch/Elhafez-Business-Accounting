@@ -10,7 +10,7 @@ export interface OwnerRestore{id:string;backupId:string;status:'PREFLIGHT'|'REST
 export interface OwnerOperationsDiagnostics{database:'AVAILABLE'|'UNAVAILABLE';backupProvider:'AVAILABLE'|'UNAVAILABLE';restoreReady:boolean;maintenance:boolean;schemaCompatibility:'UNKNOWN'|'UNAVAILABLE';runtimeVersion:string}
 export interface OwnerPlan {id:string;code:string;name:string;intervalMonths:number;priceMinor:number;currency:string;entitlements:readonly string[];active:boolean;createdAt:string}
 type Fetcher=typeof fetch;
-type RequestInput={method?:string;body?:unknown;mfaCode?:string;owner?:boolean;bootstrapToken?:string};
+type RequestInput={method?:string;body?:unknown;mfaCode?:string;owner?:boolean;bootstrapToken?:string;recoveryToken?:string};
 export class OwnerApiClient {
  #ownerToken:string|null=null;
  constructor(private readonly baseUrl:string,private readonly fetcher:Fetcher=(input,init)=>globalThis.fetch(input,init)){}
@@ -21,12 +21,14 @@ export class OwnerApiClient {
   if(input.owner){if(!this.#ownerToken)throw new Error('owner session required');headers.authorization='Bearer '+this.#ownerToken;}
   if(input.mfaCode)headers['x-owner-totp']=input.mfaCode;
   if(input.bootstrapToken)headers['x-saas-bootstrap-token']=input.bootstrapToken;
+  if(input.recoveryToken)headers['x-saas-recovery-token']=input.recoveryToken;
   const response=await this.fetcher(this.baseUrl+path,{method:input.method??'GET',headers,...(input.body===undefined?{}:{body:JSON.stringify(input.body)})});
   const payload=await response.json().catch(()=>({}));
   if(!response.ok){const record=payload as {message?:string;code?:string};throw new Error(record.message??record.code??('HTTP '+response.status));}
   return payload as T;
  }
  async bootstrapOwner(bootstrapToken:string,email:string,password:string){return this.request<{ownerId:string;email:string;mfaSecret:string;otpauthUri:string}>('/saas-owner/bootstrap',{method:'POST',bootstrapToken,body:{email,password}});}
+ async recoverMfa(recoveryToken:string,email:string,password:string){return this.request<{ownerId:string;email:string;mfaSecret:string;otpauthUri:string;revokedSessions:number}>('/saas-owner/recover-mfa',{method:'POST',recoveryToken,body:{email,password}});}
  async login(email:string,password:string,mfaCode:string){const result=await this.request<{token:string;expiresAt:string;owner:{id:string;email:string}}>('/saas-owner/login',{method:'POST',body:{email,password,mfaCode}});this.#ownerToken=result.token;return result;}
  async logout(){try{if(this.#ownerToken)await this.request('/saas-owner/logout',{method:'POST',owner:true});}finally{this.#ownerToken=null;}}
  companies(){return this.request<OwnerCompany[]>('/saas-owner/companies',{owner:true});}
