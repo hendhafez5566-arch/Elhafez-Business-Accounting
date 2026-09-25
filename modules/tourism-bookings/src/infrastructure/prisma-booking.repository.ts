@@ -3,7 +3,7 @@ import{companyId}from'@elhafez/contracts';
 import type{BookingFinancialEvidence,TourismBooking,TourismBookingHistory,TourismBookingStatus}from'../domain/booking.js';
 import type{TourismBookingRepository}from'../application/booking.repository.js';
 
-function status(value:string):TourismBookingStatus{switch(value){case'DRAFT':case'CONFIRMING':case'CONFIRMED':case'CANCELLATION_REQUIRED':case'CANCELLED':case'COMPLETED':return value;default:throw new Error('invalid persisted tourism booking status');}}
+function status(value:string):TourismBookingStatus{switch(value){case'DRAFT':case'CONFIRMING':case'CONFIRMED':case'CANCELLING':case'CANCELLATION_REQUIRED':case'CANCELLED':case'COMPLETED':return value;default:throw new Error('invalid persisted tourism booking status');}}
 function travelerIds(value:Prisma.JsonValue):string[]{if(!Array.isArray(value)||!value.every(item=>typeof item==='string'&&item.trim().length>0))throw new Error('invalid persisted tourism booking travelers');return[...value];}
 function financialEvidence(value:Prisma.JsonValue|null):BookingFinancialEvidence|undefined{
  if(value===null)return undefined;if(typeof value!=='object'||Array.isArray(value))throw new Error('invalid persisted tourism booking financial evidence');
