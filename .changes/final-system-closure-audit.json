@@ -1,7 +1,7 @@
 {
   "id": "final-system-closure-audit",
-  "summary": "Execute final system closure in one owner-authorized phase: tenant entry, accounting workspace, complete general-tourism lifecycle, production frontend builds, secure platform backup/recovery, API hardening, deployment evidence, regression and UAT readiness.",
-  "type": "phase",
+  "summary": "Execute final system closure and its pre-Go-Live corrective fixes: tenant entry, accounting workspace, complete general-tourism lifecycle, production frontend builds, secure platform backup/recovery, API hardening, deployment evidence, regression and UAT readiness.",
+  "type": "bugfix",
   "allowedModules": [
     "general-ledger",
     "period-control",
@@ -15,7 +15,9 @@
     "saas-control-plane",
     "tax",
     "financial-controls",
-    "tourism-finance-orchestration"
+    "tourism-finance-orchestration",
+    "hajj-umrah-rooming",
+    "hajj-umrah-transport-operations"
   ],
   "allowedPaths": [
     "apps/api/**",
@@ -44,7 +46,11 @@
     "modules/*/module.json",
     "apps/web/src/ui/**"
   ],
-  "protectedReason": "Owner-authorized final system closure includes the canonical tenant-entry redesign from email credentials to company-scoped Username + temporary password, enforced first-login password rotation, self-service credential maintenance, and additive migration/backfill. Platform Core remains the sole identity owner; SaaS only resolves Company Code. Protected navigation changes expose the approved account-credentials page without duplicating identity truth.",
+  "protectedReason": "Owner-authorized final system closure includes the canonical tenant-entry redesign from email credentials to company-scoped Username + temporary password, enforced first-login password rotation, self-service credential maintenance, and additive migration/backfill. Platform Core remains the sole identity owner; SaaS only resolves Company Code. Protected navigation changes expose the approved account-credentials page without duplicating identity truth. The same pre-Go-Live corrective scope also repairs the merged-but-unexecutable SAAS-01 migration and retains the approved Hajj/Umrah advisory-lock runtime corrections.",
   "allowBreakingPublicApi": true,
-  "publicApiBreakingReason": "Owner-authorized pre-Go-Live tenant authentication contract change: /saas/login moves from Company Code + email + password to Company Code + company-scoped username + password. The staging system is not yet closed/merged for production, and existing database users receive additive backfilled company login identities."
+  "publicApiBreakingReason": "Owner-authorized pre-Go-Live tenant authentication contract change: /saas/login moves from Company Code + email + password to Company Code + company-scoped username + password. The staging system is not yet closed/merged for production, and existing database users receive additive backfilled company login identities.",
+  "unacceptedMigrationRepairs": [
+    "prisma/migrations/20260925200000_saas01_control_plane/migration.sql"
+  ],
+  "unacceptedMigrationRepairReason": "PR #81 merged SAAS-01 before Go-Live, but the fresh-database Railway drill proved this migration is syntactically unexecutable because two currency CHECK expressions were corrupted by injected SELECT text. The repair is limited to restoring the intended three-uppercase-letter currency constraints so the accepted schema can be created on a clean database; no historical business data or accepted runtime behavior is rewritten."
 }
