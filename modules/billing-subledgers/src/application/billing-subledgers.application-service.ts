@@ -121,6 +121,14 @@ export class BillingSubledgersApplicationService {
   ) {}
 
   /** Narrow AC-08 read contract. The returned value is a snapshot, not a repository entity. */
+  async listInvoices(companyId:CompanyId):Promise<Invoice[]>{
+    return this.repo.invoices(companyId);
+  }
+
+  async getInvoice(companyId:CompanyId,id:string):Promise<Invoice|undefined>{
+    return this.repo.invoice(companyId,id);
+  }
+
   async getOpenPosition(companyId: CompanyId, invoiceId: string): Promise<{
     invoiceId: string; companyId: CompanyId; partyKind: PartyKind; partyId: string;
     invoiceType: InvoiceType; currency: string; documentTotal: DecimalAmount;
