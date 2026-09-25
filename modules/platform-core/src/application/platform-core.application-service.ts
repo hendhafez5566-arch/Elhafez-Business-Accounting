@@ -9,7 +9,7 @@ const id = () => randomUUID();
 const digest = (value:string) => createHash('sha256').update(value).digest('base64url');
 const GENERIC_CONFIGURATION_KEYS = new Set(['locale','timezone','dateFormat','theme','companyName','companyLogo','address','phone','email','notificationPrefs','retention.days']);
 export const COMPANY_ADMINISTRATOR_ROLE = 'company-administrator';
-export const PLATFORM_CORE_PERMISSIONS = Object.freeze({managementControlRead:'management.control.read'} as const);
+export const PLATFORM_CORE_PERMISSIONS = Object.freeze({managementControlRead:'management.control.read',accountingFinanceRead:'accounting.finance.read',accountingFinanceOperate:'accounting.finance.operate'} as const);
 export interface RecoveryDeliveryPort { deliver(input:{recipient:string;token:string;expiresAt:Date}):Promise<void> }
 export interface FileStoragePort { put(input:{content:Uint8Array;contentType:string}):Promise<{key:string;size:number;checksum:string}>; get(key:string):Promise<Uint8Array>; delete(key:string):Promise<void> }
 export class NoopEventPublisher implements EventPublisher { async publish():Promise<void>{} }
