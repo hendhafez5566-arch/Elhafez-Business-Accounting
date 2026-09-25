@@ -42,7 +42,7 @@ export class PrismaTransportRepository implements TransportRepository{
     }
   }
   private async locks(tx:Prisma.TransactionClient,keys:readonly string[]){
-    for(const key of [...new Set(keys)].sort())await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${key}))`;
+    for(const key of [...new Set(keys)].sort())await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${key}))`);
   }
   private scope(companyId:string,branchId:string){return `${companyId}:${branchId}`;}
   private stale(kind:'run'|'manifest',expected:number,actual:number){
