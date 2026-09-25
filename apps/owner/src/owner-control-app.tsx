@@ -31,9 +31,15 @@ export function OwnerControlApp({client,initialCompanies=[],initialPlans=[],prev
   setBusy(true);setError(null);setMessage(null);
   try{
    if(backupOtp.length!==6)throw new Error('أدخل رمز MFA');
-   if(kind==='create')await client.createBackup(backupOtp,true);
-   else{if(!id)throw new Error('اختر نسخة احتياطية');if(kind==='verify')await client.verifyBackup(backupOtp,id);else if(kind==='pin')await client.pinBackup(backupOtp,id,true);else if(kind==='preflight')await client.preflightBackup(backupOtp,id);else{const result=await client.restoreBackup(backupOtp,id);setRestoreId(result.id);}}
-   setBackupOtp('');await load();setMessage(kind==='create'?'تم إنشاء النسخة والتحقق منها.':kind==='restore'?'تم تنفيذ الاستعادة وإلغاء الجلسات القديمة.':kind==='preflight'?'نجح فحص الاستعادة.':'تم تحديث النسخة الاحتياطية.');
+   if(kind==='create'){const result=await client.createBackup(backupOtp,true);if(result.status!=='VERIFIED')throw new Error(result.error??'فشل إنشاء أو التحقق من النسخة الاحتياطية.');}
+   else{
+    if(!id)throw new Error('اختر نسخة احتياطية');
+    if(kind==='verify'){const result=await client.verifyBackup(backupOtp,id);if(result.status!=='VERIFIED')throw new Error(result.error??'فشل التحقق من النسخة.');}
+    else if(kind==='pin')await client.pinBackup(backupOtp,id,true);
+    else if(kind==='preflight')await client.preflightBackup(backupOtp,id);
+    else{const result=await client.restoreBackup(backupOtp,id);setRestoreId(result.id);if(result.status!=='COMPLETED')throw new Error(result.error??'لم تكتمل عملية الاستعادة.');}
+   }
+   setBackupOtp('');await load();setMessage(kind==='create'?'تم إنشاء النسخة والتحقق منها.':kind==='restore'?'اكتملت الاستعادة وتم إلغاء الجلسات القديمة.':kind==='preflight'?'نجح فحص الاستعادة.':'تم تحديث النسخة الاحتياطية.');
   }catch(e){setError(e instanceof Error?e.message:String(e));}finally{setBusy(false);}
  }
  async function platformAction(active:boolean){
