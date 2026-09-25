@@ -806,11 +806,17 @@ function controlsFixture() {
     async findPolicy(companyId, action) {
       return policies.get(key(companyId, action));
     },
+    async listPolicies(companyId) {
+      return [...policies.values()].filter(value => value.companyId === companyId);
+    },
     async saveRequest(value) {
       requests.set(key(value.companyId, value.id), value);
     },
     async findRequest(companyId, id) {
       return requests.get(key(companyId, id));
+    },
+    async listRequests(companyId) {
+      return [...requests.values()].filter(value => value.companyId === companyId);
     },
     async saveDecision(value) {
       decisions.set(key(value.companyId, value.requestId), value);
@@ -826,6 +832,9 @@ function controlsFixture() {
     },
     async findIssue() {
       return undefined;
+    },
+    async listIssues() {
+      return [];
     },
     async resolveIssue() {
       throw new Error('issue resolution is not expected in approval integration coverage');
