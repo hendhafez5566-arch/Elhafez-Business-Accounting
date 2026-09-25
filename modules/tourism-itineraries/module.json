@@ -1,0 +1,1 @@
+{"name":"tourism-itineraries","publicApi":["src/public/index.ts","src/public/nest.ts"],"ownedTables":["tit_itinerary_days","tit_itinerary_history"],"allowedDependencies":["@elhafez/contracts","@elhafez/core","@elhafez/platform-core","@elhafez/tourism-programs"]}
