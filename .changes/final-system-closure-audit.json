@@ -12,7 +12,9 @@
     "tourism-bookings",
     "tourism-itineraries",
     "platform-core",
-    "saas-control-plane"
+    "saas-control-plane",
+    "tax",
+    "financial-controls"
   ],
   "allowedPaths": [
     "apps/api/**",
