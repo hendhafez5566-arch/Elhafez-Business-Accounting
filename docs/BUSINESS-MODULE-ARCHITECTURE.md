@@ -127,9 +127,9 @@ The accepted `platform-core` remains the canonical owner for the existing generi
 - configuration;
 - migration control.
 
-Future administration features should remain separate only when they acquire a distinct data/business lifecycle. Candidate planned owners:
+Administration features remain separate only when they acquire a distinct data/business lifecycle. Current/planned owners:
 
-| Feature | Planned owner |
+| Feature | Canonical owner / status |
 |---|---|
 | Custom fields | `custom-fields` |
 | Document numbering policies | `document-numbering` |
@@ -172,13 +172,13 @@ Never create `hajj-allotment`, `umrah-inventory`, or `tourism-hotel-stock` as pa
 
 ### `party-registry` — EXISTING / SHARED
 
-This will be the shared identity root for a person/organization that may have customer, supplier, agent, or other roles.
+This is the shared identity root for a person/organization that may have customer, supplier, agent, or other roles.
 
 Role-specific modules own only role-specific operational fields. Accounting modules reference opaque party IDs and retain financial truth.
 
 ### `traveler-management` — EXISTING / SHARED
 
-This will own reusable traveler/passport/travel-profile operational data and may be surfaced in both Hajj & Umrah and Tourism suites.
+This owns reusable traveler/passport/travel-profile operational data and may be surfaced in both Hajj & Umrah and Tourism suites.
 
 Program/booking-specific participation remains owned by the relevant booking/program module.
 
