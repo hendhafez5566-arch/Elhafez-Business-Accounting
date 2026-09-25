@@ -102,8 +102,20 @@ export function Sidebar({
 
 export function Topbar({
   onOpenMobile,
+  companyLabel='الشركة',
+  branchLabel='الفرع',
+  branches=[],
+  branchId='',
+  onBranchChange,
+  onLogout,
 }: {
   readonly onOpenMobile: () => void;
+  readonly companyLabel?: string;
+  readonly branchLabel?: string;
+  readonly branches?: readonly {readonly id:string;readonly name:string}[];
+  readonly branchId?: string;
+  readonly onBranchChange?: (id:string)=>void;
+  readonly onLogout?: ()=>void;
 }) {
   return (
     <header className="app-topbar">
@@ -116,8 +128,10 @@ export function Topbar({
         <Icon name="menu" />
       </Button>
       <div className="app-topbar__identity">
-        <strong>الشركة</strong>
-        <span>الفرع</span>
+        <strong>{companyLabel}</strong>
+        {branches.length>1&&onBranchChange
+          ? <label className="app-topbar__branch"><span className="sr-only">الفرع الحالي</span><select value={branchId} onChange={event=>onBranchChange(event.target.value)}>{branches.map(branch=><option key={branch.id} value={branch.id}>{branch.name}</option>)}</select></label>
+          : <span>{branchLabel}</span>}
       </div>
       <div className="topbar-actions">
         <Button variant="ghost" aria-label="الإشعارات" title="الإشعارات">
@@ -126,6 +140,7 @@ export function Topbar({
         <Dropdown label="الحساب">
           <a href="/settings/appearance">المظهر والتنقل</a>
           <a href="#account">إعدادات الحساب</a>
+          {onLogout?<Button variant="ghost" type="button" onClick={onLogout}>تسجيل الخروج</Button>:null}
         </Dropdown>
       </div>
     </header>
