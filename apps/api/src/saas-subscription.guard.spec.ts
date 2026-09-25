@@ -3,13 +3,12 @@ import assert from 'node:assert/strict';
 import {ForbiddenException,ServiceUnavailableException,UnauthorizedException,type ExecutionContext} from '@nestjs/common';
 import {SaasError,type SaasControlPlaneApplicationService} from '@elhafez/saas-control-plane';
 import {PlatformError,type PlatformCoreApplicationService} from '@elhafez/platform-core';
-import type{PlatformOperationsApplicationService}from'@elhafez/platform-operations';
-import {SaasSubscriptionGuard} from './saas-subscription.guard.js';
+import {SaasSubscriptionGuard,type MaintenanceStatusPort} from './saas-subscription.guard.js';
 
 function context(path:string,headers:Record<string,string|undefined>={},method='GET'):ExecutionContext{
  return{switchToHttp:()=>({getRequest:()=>({originalUrl:path,headers,method})})} as unknown as ExecutionContext;
 }
-function operations(active=false){return{maintenanceStatus:async()=>active}as PlatformOperationsApplicationService;}
+function operations(active=false):MaintenanceStatusPort{return{maintenanceStatus:async()=>active};}
 function platform(overrides:Partial<PlatformCoreApplicationService>={}){
  return{currentUser:async()=>({id:'user-a'}),getCompany:async()=>({id:'company-a',name:'A',active:true,createdAt:new Date()}),...overrides} as unknown as PlatformCoreApplicationService;
 }
