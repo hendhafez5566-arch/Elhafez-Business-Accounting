@@ -1,10 +1,11 @@
 import{BadRequestException,Body,Controller,Get,Headers,Param,Post,UnauthorizedException}from'@nestjs/common';
-import{PlatformOperationsApplicationService,PlatformOperationsError}from'@elhafez/platform-operations';
+import{PlatformOperationsApplicationService,PlatformOperationsError,type RestoreJob}from'@elhafez/platform-operations';
 import{SaasControlPlaneApplicationService}from'@elhafez/saas-control-plane';
 
 function bearer(value:string|undefined){if(!value?.startsWith('Bearer '))throw new UnauthorizedException('owner bearer session required');return value.slice(7);}
 function mfa(value:string|undefined){if(!value)throw new UnauthorizedException('owner MFA code required');return value;}
 function mapOperations(error:unknown):never{if(error instanceof PlatformOperationsError)throw new BadRequestException({code:'PLATFORM_OPERATIONS_ERROR',message:error.message});throw error;}
+type OwnerRestoreResponse=RestoreJob|(RestoreJob&{ownerSessionsRevoked:number;maintenance:boolean});
 
 @Controller('saas-owner/operations')
 export class PlatformOwnerOperationsController{
@@ -40,7 +41,7 @@ export class PlatformOwnerOperationsController{
   await this.saas.requireSensitiveOwner(bearer(auth),mfa(otp));try{return await this.operations.cleanup(null,body.retain);}catch(error){mapOperations(error);}
  }
  @Post('restores')
- async restore(@Headers('authorization')auth:string|undefined,@Headers('x-owner-totp')otp:string|undefined,@Body()body:{backupId:string}){
+ async restore(@Headers('authorization')auth:string|undefined,@Headers('x-owner-totp')otp:string|undefined,@Body()body:{backupId:string}):Promise<OwnerRestoreResponse>{
   const owner=await this.saas.requireSensitiveOwner(bearer(auth),mfa(otp));try{const result=await this.operations.restore({backupId:body.backupId,actorId:owner.id});if(result.status!=='COMPLETED')return result;const ownerSessionsRevoked=await this.saas.revokeAllOwnerSessionsForRecovery();return{...result,ownerSessionsRevoked,maintenance:await this.operations.maintenanceStatus()};}catch(error){mapOperations(error);}
  }
  @Get('restores/:id')
