@@ -13,7 +13,7 @@ type Fetcher=typeof fetch;
 type RequestInput={method?:string;body?:unknown;mfaCode?:string;owner?:boolean;bootstrapToken?:string};
 export class OwnerApiClient {
  #ownerToken:string|null=null;
- constructor(private readonly baseUrl:string,private readonly fetcher:Fetcher=fetch){}
+ constructor(private readonly baseUrl:string,private readonly fetcher:Fetcher=(input,init)=>globalThis.fetch(input,init)){}
  hasSession(){return this.#ownerToken!==null}
  clearSession(){this.#ownerToken=null}
  private async request<T>(path:string,input:RequestInput={}):Promise<T>{
