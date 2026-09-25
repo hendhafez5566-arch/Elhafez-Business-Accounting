@@ -1,5 +1,5 @@
 import{randomUUID}from'node:crypto';
-import{Body,Controller,Get,Headers,Post,UnauthorizedException}from'@nestjs/common';
+import{BadRequestException,Body,Controller,Get,Headers,Post,UnauthorizedException}from'@nestjs/common';
 import{decimalAmount,executionContext,type ExecutionContext}from'@elhafez/contracts';
 import{PLATFORM_CORE_PERMISSIONS,PlatformCoreApplicationService,PlatformError}from'@elhafez/platform-core';
 import{PeriodControlApplicationService}from'@elhafez/period-control';
@@ -41,7 +41,7 @@ export class AccountingWorkspaceController{
  @Get('overview')
  async overview(@Headers('authorization')auth?:string,@Headers('x-company-id')company?:string,@Headers('x-branch-id')branch?:string){
   const c=await this.context(this.headers(auth,company,branch),PLATFORM_CORE_PERMISSIONS.accountingFinanceRead);
-  const scope={companyId:c.companyId,branchIds:[c.branchId]};
+  const scope={companyId:c.companyId,companyWide:true as const};
   const[fiscalYears,periods,accounts,journals,invoices,treasuries,vouchers,trialBalance,incomeStatement,balanceSheet,treasuryReport]=await Promise.all([
    this.periods.listFiscalYears(c.companyId),this.periods.listPeriods(c.companyId),this.ledger.listAccounts(c.companyId),this.ledger.activity(c.companyId),
    this.billing.listInvoices(c.companyId),this.treasury.listTreasuries(c.companyId),this.treasury.listVouchers(c.companyId),
@@ -49,10 +49,10 @@ export class AccountingWorkspaceController{
   ]);
   return{
    fiscalYears,periods,accounts,
-   journals:journals.filter(value=>!('branchId'in value)||!value.branchId||value.branchId===c.branchId),
-   invoices:invoices.filter(value=>!value.branchId||value.branchId===c.branchId),
+   journals,
+   invoices,
    treasuries,
-   vouchers:vouchers.filter(value=>!value.branchId||value.branchId===c.branchId),
+   vouchers,
    reports:{trialBalance,incomeStatement,balanceSheet,treasury:treasuryReport},
   };
  }
@@ -60,7 +60,7 @@ export class AccountingWorkspaceController{
  async createAccount(@Headers('authorization')auth:string,@Headers('x-company-id')company:string,@Headers('x-branch-id')branch:string,
   @Body()input:{id?:string;code:string;name:string;classification:AccountClassification;postable?:boolean;parentId?:string;controlType?:string}){
   const c=await this.context(this.headers(auth,company,branch),PLATFORM_CORE_PERMISSIONS.accountingFinanceOperate);
-  if(!ACCOUNT_CLASSES.has(input.classification))throw new UnauthorizedException('invalid account classification');
+  if(!ACCOUNT_CLASSES.has(input.classification))throw new BadRequestException('invalid account classification');
   return this.ledger.createAccount({id:input.id??randomUUID(),companyId:c.companyId,code:input.code.trim(),name:input.name.trim(),classification:input.classification,active:true,postable:input.postable??true,...(input.parentId?.trim()?{parentId:input.parentId.trim()}:{}),...(input.controlType?.trim()?{controlType:input.controlType.trim()}:{})});
  }
  @Post('fiscal-years')
@@ -78,13 +78,13 @@ export class AccountingWorkspaceController{
   @Body()input:{id?:string;commandKey:string;number:string;postingDate:string;lines:ManualJournalLine[]}){
   const c=await this.context(this.headers(auth,company,branch),PLATFORM_CORE_PERMISSIONS.accountingFinanceOperate);
   const lines:PostingLine[]=input.lines.map(line=>({accountId:line.accountId,...(line.debit?.trim()?{debit:decimalAmount(line.debit)}:{}),...(line.credit?.trim()?{credit:decimalAmount(line.credit)}:{}),...(line.partyId?.trim()?{partyId:line.partyId.trim()}:{}),...(line.costCenterId?.trim()?{costCenterId:line.costCenterId.trim()}:{})}));
-  return this.ledger.post({id:input.id??randomUUID(),companyId:c.companyId,number:input.number.trim(),postingDate:input.postingDate,sourceType:'MANUAL_JOURNAL',sourceId:input.commandKey.trim(),correlationId:c.branchId,lines});
+  return this.ledger.post({id:input.id??randomUUID(),companyId:c.companyId,number:input.number.trim(),postingDate:input.postingDate,sourceType:'MANUAL_JOURNAL',sourceId:input.commandKey.trim(),lines});
  }
  @Post('treasuries')
  async createTreasury(@Headers('authorization')auth:string,@Headers('x-company-id')company:string,@Headers('x-branch-id')branch:string,
   @Body()input:{id?:string;code:string;name:string;type:TreasuryType;currency:string;glAccountId:string}){
   const c=await this.context(this.headers(auth,company,branch),PLATFORM_CORE_PERMISSIONS.accountingFinanceOperate);
-  if(!TREASURY_TYPES.has(input.type))throw new UnauthorizedException('invalid treasury type');
+  if(!TREASURY_TYPES.has(input.type))throw new BadRequestException('invalid treasury type');
   return this.treasury.createTreasury({id:input.id??randomUUID(),companyId:c.companyId,code:input.code.trim(),name:input.name.trim(),type:input.type,currency:input.currency,glAccountId:input.glAccountId});
  }
 }
