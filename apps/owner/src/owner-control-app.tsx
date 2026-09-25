@@ -9,7 +9,14 @@ export function OwnerControlApp({client,initialCompanies=[],initialPlans=[],prev
  const[selectedCompany,setSelectedCompany]=useState(''),[selectedPlan,setSelectedPlan]=useState(''),[months,setMonths]=useState('1'),[paymentRef,setPaymentRef]=useState(''),[amount,setAmount]=useState(''),[currency,setCurrency]=useState('EGP'),[actionOtp,setActionOtp]=useState('');
  const[planCode,setPlanCode]=useState('MONTHLY'),[planName,setPlanName]=useState('الاشتراك الشهري'),[planPrice,setPlanPrice]=useState(''),[planOtp,setPlanOtp]=useState('');
  const[companyName,setCompanyName]=useState(''),[adminEmail,setAdminEmail]=useState(''),[adminName,setAdminName]=useState(''),[companyOtp,setCompanyOtp]=useState('');
- const load=useCallback(async()=>{const[c,p,b,o]=await Promise.all([client.companies(),client.plans(),client.backups(),client.operationsDiagnostics()]);setCompanies(c);setPlans(p);setBackups(b);setOps(o);setSelectedCompany(value=>value||c[0]?.company.id||'');setSelectedPlan(value=>value||p[0]?.id||'');},[client]);
+ const load=useCallback(async()=>{
+  const o=await client.operationsDiagnostics();setOps(o);
+  if(o.maintenance){
+   const b=await client.backups();setBackups(b);setCompanies([]);setPlans([]);setSelectedCompany('');setSelectedPlan('');return;
+  }
+  const[c,p,b]=await Promise.all([client.companies(),client.plans(),client.backups()]);
+  setCompanies(c);setPlans(p);setBackups(b);setSelectedCompany(value=>value||c[0]?.company.id||'');setSelectedPlan(value=>value||p[0]?.id||'');
+ },[client]);
  useEffect(()=>{if(authenticated&&!preview)void load().catch(e=>setError(e instanceof Error?e.message:String(e)));},[authenticated,load,preview]);
  const selected=useMemo(()=>companies.find(value=>value.company.id===selectedCompany)??null,[companies,selectedCompany]);
  async function login(event:FormEvent){event.preventDefault();setBusy(true);setError(null);try{await client.login(email,password,loginOtp);setPassword('');setLoginOtp('');setAuthenticated(true);await load();}catch(e){setError(e instanceof Error?e.message:String(e));}finally{setBusy(false);}}
