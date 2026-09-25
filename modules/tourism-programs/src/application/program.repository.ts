@@ -1,0 +1,3 @@
+import type{CompanyId}from'@elhafez/contracts';import type{TourismProgram,TourismProgramHistory,TourismProgramStatus}from'../domain/program.js';
+export interface TourismProgramRepository{create(value:TourismProgram,history:TourismProgramHistory):Promise<TourismProgram>;save(value:TourismProgram,history:TourismProgramHistory):Promise<TourismProgram>;get(companyId:CompanyId,branchId:string,id:string):Promise<TourismProgram|null>;list(companyId:CompanyId,branchId:string,status?:TourismProgramStatus):Promise<TourismProgram[]>}
+export const TOURISM_PROGRAM_REPOSITORY=Symbol('TOURISM_PROGRAM_REPOSITORY');
