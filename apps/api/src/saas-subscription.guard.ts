@@ -8,7 +8,7 @@ export class SaasSubscriptionGuard implements CanActivate{
  async canActivate(context:ExecutionContext){
   const request=context.switchToHttp().getRequest<HttpRequest>(),rawPath=request.originalUrl??request.url??'',path=rawPath.split('?')[0]??rawPath;
   const ownerPath=path==='/saas-owner'||path.startsWith('/saas-owner/');
-  const publicPath=ownerPath||path==='/saas/login'||path==='/saas/subscription-status'||path==='/system-administration/recovery/request'||path==='/system-administration/recovery/reset';
+  const publicPath=ownerPath||path==='/saas/login'||path==='/saas/logout'||path==='/saas/subscription-status'||path==='/system-administration/recovery/request'||path==='/system-administration/recovery/reset';
   if(publicPath)return true;
   if((request.method??'GET').toUpperCase()==='POST'&&path==='/system-administration/companies')throw new ForbiddenException({code:'OWNER_CONTROL_REQUIRED',message:'new companies are provisioned only from Owner Control Center'});
   const companyId=header(request.headers['x-company-id']),branchId=header(request.headers['x-branch-id']),authorization=header(request.headers.authorization);
