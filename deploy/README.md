@@ -31,22 +31,42 @@ The edge terminates TLS, applies HSTS, CSP and other browser headers, caps reque
 
 ## PostgreSQL backup and recovery
 
-`ELHAFEZ_BACKUP_DIR` must be a durable filesystem path writable only by the API service account. The database host must provide compatible `pg_dump` and `pg_restore` binaries. The production provider creates PostgreSQL custom-format backups, calculates a streamed SHA-256 checksum, verifies it before marking the backup verified, and refuses to label a physical full-database backup as tenant-scoped.
+`ELHAFEZ_BACKUP_DIR` is a durable filesystem path writable only by the API service account and readable by Nginx for the external maintenance marker. The database host must provide compatible `pg_dump` and `pg_restore` binaries. The provider creates PostgreSQL custom-format backups, calculates a streamed SHA-256 checksum, verifies the archive with `pg_restore --list`, and refuses to represent a full physical database backup as tenant-scoped.
 
-Backup and restore are controlled only from the Owner Control Center and require an authenticated platform-owner session plus MFA for sensitive operations.
+Physical backup and restore are platform-owner operations only. Tenant administrators use Data Exchange for company-scoped portability; they do not receive physical restore authority.
 
-Restore is fail-closed by default. For a recovery drill, configure `ELHAFEZ_RESTORE_DATABASE_URL` to a dedicated non-production PostgreSQL database and set `ELHAFEZ_RESTORE_ENABLED=true`. Keep `ELHAFEZ_ALLOW_IN_PLACE_RESTORE=false`; an in-place production restore requires a separately approved incident procedure.
+### Recovery safety contract
 
-Before public go-live, perform one recovery drill on that non-production database:
+Restore is fail-closed and deliberately requires all of the following at the same time:
 
-1. create a backup from Owner Control Center;
-2. verify the backup and confirm status `VERIFIED`;
-3. run restore preflight;
-4. restore into the designated non-production recovery environment;
-5. verify schema/data smoke scenarios;
-6. confirm active sessions were revoked after restore.
+- authenticated platform-owner session;
+- fresh Owner TOTP MFA;
+- a previously `VERIFIED` backup;
+- `ELHAFEZ_RESTORE_ENABLED=true`;
+- `ELHAFEZ_ALLOW_IN_PLACE_RESTORE=true`;
+- `ELHAFEZ_RESTORE_DATABASE_URL` identifying the same environment database as `DATABASE_URL`;
+- active external maintenance marker at `ELHAFEZ_RESTORE_MAINTENANCE_FILE`.
 
-Do not use the first recovery exercise against the live database.
+The Owner Control Center creates/removes the marker through `platform-operations`. While the marker exists, the tenant Nginx host returns HTTP 503 before serving the application or forwarding any tenant API. The Owner host keeps only login and recovery operations reachable; other owner mutations are blocked by the edge.
+
+A successful restore deliberately keeps maintenance active and then revokes all tenant sessions and all platform-owner sessions. The owner must sign in again, verify the restored environment, and explicitly exit maintenance. Maintenance is never removed automatically by the restore request.
+
+### Required pre-go-live recovery drill
+
+Perform the drill on a separate **non-production deployment** whose `DATABASE_URL` points to that deployment's own test/recovery database:
+
+1. build and start the non-production deployment from the exact release-candidate commit;
+2. temporarily enable both restore switches and restart the API;
+3. create a backup from Owner Control Center and confirm status `VERIFIED`;
+4. enter maintenance mode and confirm the tenant hostname returns HTTP 503;
+5. run restore preflight;
+6. execute restore into that same non-production database;
+7. confirm the current Owner session has been revoked and sign in again;
+8. verify schema/data and critical business smoke scenarios;
+9. explicitly exit maintenance and confirm tenant access returns;
+10. disable both restore switches again and restart the API.
+
+The first recovery exercise must never target the live production database.
 
 ## Final release evidence
 
