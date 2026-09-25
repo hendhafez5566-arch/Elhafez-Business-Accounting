@@ -236,7 +236,7 @@ The closure audit confirmed substantial accepted implementation but found produc
 
 Authoritative audit: `docs/FINAL-SYSTEM-CLOSURE-AUDIT.md`.
 
-Historical stale/superseded PRs #33, #47–#51 and #65 were closed during the audit. At this checkpoint there are no open PRs.
+Historical stale/superseded PRs #33, #47–#51 and #65 were closed during the audit. No legacy implementation PR remains active; only the closure-audit governance change is expected to remain open until accepted.
 
 ## Post-AC-14 Business Platform architecture
 
