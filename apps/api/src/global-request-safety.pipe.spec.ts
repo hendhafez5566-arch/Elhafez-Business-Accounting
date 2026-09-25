@@ -1,0 +1,4 @@
+import test from'node:test';import assert from'node:assert/strict';import{BadRequestException}from'@nestjs/common';import{GlobalRequestSafetyPipe}from'./global-request-safety.pipe.js';
+const meta={type:'body' as const};
+test('global request safety accepts ordinary JSON and rejects prototype-style keys',()=>{const p=new GlobalRequestSafetyPipe();assert.deepEqual(p.transform({name:'x',rows:[1,true,null]},meta),{name:'x',rows:[1,true,null]});const polluted=JSON.parse('{"__proto__":{"admin":true}}') as unknown;assert.throws(()=>p.transform(polluted,meta),BadRequestException)});
+test('global request safety rejects deep and non-finite payloads',()=>{const p=new GlobalRequestSafetyPipe({maxDepth:2,maxArrayItems:10,maxObjectKeys:10,maxStringLength:20});assert.throws(()=>p.transform({a:{b:{c:1}}},meta),BadRequestException);assert.throws(()=>p.transform({amount:Number.POSITIVE_INFINITY},meta),BadRequestException)});
