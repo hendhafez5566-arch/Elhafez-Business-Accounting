@@ -1,3 +1,4 @@
+import './styles.css';
 import {createElement} from 'react';
 import {createRoot} from 'react-dom/client';
 import {OwnerControlApp} from './owner-control-app.js';
