@@ -1,3 +1,4 @@
+-- PRE-GO-LIVE INTEGRITY CORRECTION: the accepted SAAS-01 file contained two syntactically corrupted currency CHECK expressions and could not execute on a fresh database. No business rule changed; both checks enforce the intended ISO-like 3-letter currency code.
 CREATE TABLE "saas_tenants" ("company_id" TEXT NOT NULL,"company_code" TEXT NOT NULL,"mode" TEXT NOT NULL DEFAULT 'SUBSCRIPTION',"created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,"updated_at" TIMESTAMP(3) NOT NULL,CONSTRAINT "saas_tenants_pkey" PRIMARY KEY ("company_id"));
 CREATE UNIQUE INDEX "saas_tenants_company_code_key" ON "saas_tenants"("company_code");
 CREATE TABLE "saas_plans" ("id" TEXT NOT NULL,"code" TEXT NOT NULL,"name" TEXT NOT NULL,"interval_months" INTEGER NOT NULL,"price_minor" INTEGER NOT NULL,"currency" TEXT NOT NULL,"entitlements" JSONB NOT NULL,"active" BOOLEAN NOT NULL DEFAULT true,"created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,CONSTRAINT "saas_plans_pkey" PRIMARY KEY ("id"));
@@ -30,7 +31,23 @@ ALTER TABLE "saas_subscription_events" ADD CONSTRAINT "saas_subscription_events_
 ALTER TABLE "saas_subscription_events" ADD CONSTRAINT "saas_subscription_events_payment_id_fkey" FOREIGN KEY ("payment_id") REFERENCES "saas_payments"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "saas_control_events" ADD CONSTRAINT "saas_control_events_owner_id_fkey" FOREIGN KEY ("owner_id") REFERENCES "saas_owner_accounts"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 ALTER TABLE "saas_tenants" ADD CONSTRAINT "saas_tenants_mode_check" CHECK ("mode" IN ('INTERNAL','SUBSCRIPTION'));
-ALTER TABLE "saas_plans" ADD CONSTRAINT "saas_plans_interval_check" CHECK ("interval_months" BETWEEN 1 AND 24), ADD CONSTRAINT "saas_plans_price_check" CHECK ("price_minor" >= 0), ADD CONSTRAINT "saas_plans_currency_check" CHECK ("currency" ~ '^[A-Z]{3} SELECT "id"::text,'ELH-' || UPPER(SUBSTRING(MD5("id"::text) FROM 1 FOR 20)),'INTERNAL',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM "pc_companies" ON CONFLICT ("company_id") DO NOTHING;
+ALTER TABLE "saas_plans" ADD CONSTRAINT "saas_plans_interval_check" CHECK ("interval_months" BETWEEN 1 AND 24), ADD CONSTRAINT "saas_plans_price_check" CHECK ("price_minor" >= 0), ADD CONSTRAINT "saas_plans_currency_check" CHECK ("currency" ~ '^[A-Z]{3}
+ALTER TABLE "saas_subscriptions" ADD CONSTRAINT "saas_subscriptions_status_check" CHECK ("status" IN ('ACTIVE','PAST_DUE','SUSPENDED','CANCELLED')), ADD CONSTRAINT "saas_subscriptions_period_check" CHECK ("current_period_end" > "current_period_start"), ADD CONSTRAINT "saas_subscriptions_version_check" CHECK ("version" >= 1);
+ALTER TABLE "saas_payments" ADD CONSTRAINT "saas_payments_amount_check" CHECK ("amount_minor" >= 0), ADD CONSTRAINT "saas_payments_provider_check" CHECK ("provider" IN ('MANUAL','PAYMENT_PROVIDER')), ADD CONSTRAINT "saas_payments_currency_check" CHECK ("currency" ~ '^[A-Z]{3}
+ALTER TABLE "saas_owner_accounts" ADD CONSTRAINT "saas_owner_accounts_status_check" CHECK ("status" IN ('ACTIVE','DISABLED')), ADD CONSTRAINT "saas_owner_accounts_failures_check" CHECK ("failed_attempts" >= 0);
+
+INSERT INTO "saas_tenants" ("company_id","company_code","mode","created_at","updated_at") SELECT "id",'ELH-' || UPPER(SUBSTRING(MD5("id") FROM 1 FOR 16)),'INTERNAL',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM "pc_companies" ON CONFLICT ("company_id") DO NOTHING;
+);
+ALTER TABLE "saas_subscriptions" ADD CONSTRAINT "saas_subscriptions_status_check" CHECK ("status" IN ('ACTIVE','PAST_DUE','SUSPENDED','CANCELLED')), ADD CONSTRAINT "saas_subscriptions_period_check" CHECK ("current_period_end" > "current_period_start"), ADD CONSTRAINT "saas_subscriptions_version_check" CHECK ("version" >= 1);
+ALTER TABLE "saas_payments" ADD CONSTRAINT "saas_payments_amount_check" CHECK ("amount_minor" >= 0), ADD CONSTRAINT "saas_payments_provider_check" CHECK ("provider" IN ('MANUAL','PAYMENT_PROVIDER')), ADD CONSTRAINT "saas_payments_currency_check" CHECK ("currency" ~ '^[A-Z]{3} SELECT "id",'ELH-' || UPPER(SUBSTRING(MD5("id") FROM 1 FOR 16)),'INTERNAL',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM "pc_companies" ON CONFLICT ("company_id") DO NOTHING;
+);
+ALTER TABLE "saas_owner_accounts" ADD CONSTRAINT "saas_owner_accounts_status_check" CHECK ("status" IN ('ACTIVE','DISABLED')), ADD CONSTRAINT "saas_owner_accounts_failures_check" CHECK ("failed_attempts" >= 0);
+
+INSERT INTO "saas_tenants" ("company_id","company_code","mode","created_at","updated_at") SELECT "id",'ELH-' || UPPER(SUBSTRING(MD5("id") FROM 1 FOR 16)),'INTERNAL',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM "pc_companies" ON CONFLICT ("company_id") DO NOTHING;
+);
+ALTER TABLE "saas_owner_accounts" ADD CONSTRAINT "saas_owner_accounts_status_check" CHECK ("status" IN ('ACTIVE','DISABLED')), ADD CONSTRAINT "saas_owner_accounts_failures_check" CHECK ("failed_attempts" >= 0);
+
+INSERT INTO "saas_tenants" ("company_id","company_code","mode","created_at","updated_at") SELECT "id",'ELH-' || UPPER(SUBSTRING(MD5("id") FROM 1 FOR 16)),'INTERNAL',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM "pc_companies" ON CONFLICT ("company_id") DO NOTHING;
 );
 ALTER TABLE "saas_subscriptions" ADD CONSTRAINT "saas_subscriptions_status_check" CHECK ("status" IN ('ACTIVE','PAST_DUE','SUSPENDED','CANCELLED')), ADD CONSTRAINT "saas_subscriptions_period_check" CHECK ("current_period_end" > "current_period_start"), ADD CONSTRAINT "saas_subscriptions_version_check" CHECK ("version" >= 1);
 ALTER TABLE "saas_payments" ADD CONSTRAINT "saas_payments_amount_check" CHECK ("amount_minor" >= 0), ADD CONSTRAINT "saas_payments_provider_check" CHECK ("provider" IN ('MANUAL','PAYMENT_PROVIDER')), ADD CONSTRAINT "saas_payments_currency_check" CHECK ("currency" ~ '^[A-Z]{3} SELECT "id",'ELH-' || UPPER(SUBSTRING(MD5("id") FROM 1 FOR 16)),'INTERNAL',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM "pc_companies" ON CONFLICT ("company_id") DO NOTHING;
