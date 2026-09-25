@@ -60,6 +60,7 @@
     "@elhafez/tourism-programs": "workspace:*",
     "@elhafez/tourism-itineraries": "workspace:*",
     "@elhafez/tourism-bookings": "workspace:*",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "@nestjs/platform-express": "^11.0.11"
   }
 }
