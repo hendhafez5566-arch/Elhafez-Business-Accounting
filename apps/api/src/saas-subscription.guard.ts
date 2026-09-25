@@ -1,13 +1,19 @@
-import {ForbiddenException,UnauthorizedException,type CanActivate,type ExecutionContext} from '@nestjs/common';
-import {SaasError,type SaasControlPlaneApplicationService} from '@elhafez/saas-control-plane';
-import {PlatformError,type PlatformCoreApplicationService} from '@elhafez/platform-core';
+import{ForbiddenException,ServiceUnavailableException,UnauthorizedException,type CanActivate,type ExecutionContext}from'@nestjs/common';
+import{SaasError,type SaasControlPlaneApplicationService}from'@elhafez/saas-control-plane';
+import{PlatformError,type PlatformCoreApplicationService}from'@elhafez/platform-core';
+import type{PlatformOperationsApplicationService}from'@elhafez/platform-operations';
 type HttpRequest={headers:Record<string,string|string[]|undefined>;method?:string;url?:string;originalUrl?:string};
 const header=(value:string|string[]|undefined)=>Array.isArray(value)?value[0]:value;
 export class SaasSubscriptionGuard implements CanActivate{
- constructor(private readonly saas:SaasControlPlaneApplicationService,private readonly platform:PlatformCoreApplicationService){}
+ constructor(private readonly saas:SaasControlPlaneApplicationService,private readonly platform:PlatformCoreApplicationService,private readonly operations:PlatformOperationsApplicationService){}
  async canActivate(context:ExecutionContext){
   const request=context.switchToHttp().getRequest<HttpRequest>(),rawPath=request.originalUrl??request.url??'',path=rawPath.split('?')[0]??rawPath;
   const ownerPath=path==='/saas-owner'||path.startsWith('/saas-owner/');
+  const ownerRecoveryPath=path==='/saas-owner/login'||path==='/saas-owner/logout'||path==='/saas-owner/operations'||path.startsWith('/saas-owner/operations/');
+  if(await this.operations.maintenanceStatus()){
+   if(ownerRecoveryPath)return true;
+   throw new ServiceUnavailableException({code:'PLATFORM_MAINTENANCE',message:'المنصة في وضع الصيانة والاستعادة حالياً'});
+  }
   const publicPath=ownerPath||path==='/saas/login'||path==='/saas/logout'||path==='/saas/subscription-status'||path==='/system-administration/recovery/request'||path==='/system-administration/recovery/reset';
   if(publicPath)return true;
   if((request.method??'GET').toUpperCase()==='POST'&&path==='/system-administration/companies')throw new ForbiddenException({code:'OWNER_CONTROL_REQUIRED',message:'new companies are provisioned only from Owner Control Center'});
