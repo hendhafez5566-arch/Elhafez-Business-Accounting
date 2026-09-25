@@ -30,7 +30,8 @@ test('maintenance operations carry fresh MFA and recovery can clear the in-memor
 test('default owner transport calls global fetch with its native receiver',async()=>{
  const originalFetch=globalThis.fetch;
  const calls:string[]=[];
- globalThis.fetch=async(input:RequestInfo|URL)=>{
+ globalThis.fetch=async function(this:typeof globalThis,input:RequestInfo|URL){
+  assert.equal(this,globalThis);
   calls.push(String(input));
   return new Response(JSON.stringify({ownerId:'owner-1',email:'owner@example.test',mfaSecret:'test',otpauthUri:'test'}),{status:200,headers:{'content-type':'application/json'}});
  };
