@@ -119,7 +119,7 @@ WITH "closure_permissions"("id","name") AS (
     ('2eb87db8-535e-42dd-8dc5-6d8af4fb2404','tourism.bookings.cancel')
 )
 INSERT INTO "pc_permissions" ("id","name")
-SELECT "id","name" FROM "closure_permissions"
+SELECT "id"::uuid,"name" FROM "closure_permissions"
 ON CONFLICT ("name") DO UPDATE SET "name"=EXCLUDED."name";
 
 WITH "permission_names"("name") AS (
