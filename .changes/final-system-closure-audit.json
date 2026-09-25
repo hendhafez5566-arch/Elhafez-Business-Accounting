@@ -10,7 +10,8 @@
     "platform-operations",
     "tourism-programs",
     "tourism-bookings",
-    "tourism-itineraries"
+    "tourism-itineraries",
+    "platform-core"
   ],
   "allowedPaths": [
     "apps/api/**",
