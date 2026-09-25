@@ -35,7 +35,9 @@ The edge terminates TLS, applies HSTS, CSP and other browser headers, caps reque
 
 Backup and restore are controlled only from the Owner Control Center and require an authenticated platform-owner session plus MFA for sensitive operations.
 
-Before public go-live, perform one recovery drill on a non-production database:
+Restore is fail-closed by default. For a recovery drill, configure `ELHAFEZ_RESTORE_DATABASE_URL` to a dedicated non-production PostgreSQL database and set `ELHAFEZ_RESTORE_ENABLED=true`. Keep `ELHAFEZ_ALLOW_IN_PLACE_RESTORE=false`; an in-place production restore requires a separately approved incident procedure.
+
+Before public go-live, perform one recovery drill on that non-production database:
 
 1. create a backup from Owner Control Center;
 2. verify the backup and confirm status `VERIFIED`;
