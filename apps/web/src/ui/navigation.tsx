@@ -102,8 +102,14 @@ export function Sidebar({
 
 export function Topbar({
   onOpenMobile,
+  companyLabel='الشركة',
+  branchLabel='الفرع',
+  onLogout,
 }: {
   readonly onOpenMobile: () => void;
+  readonly companyLabel?: string;
+  readonly branchLabel?: string;
+  readonly onLogout?: () => void;
 }) {
   return (
     <header className="app-topbar">
@@ -116,8 +122,8 @@ export function Topbar({
         <Icon name="menu" />
       </Button>
       <div className="app-topbar__identity">
-        <strong>الشركة</strong>
-        <span>الفرع</span>
+        <strong>{companyLabel}</strong>
+        <span>{branchLabel}</span>
       </div>
       <div className="topbar-actions">
         <Button variant="ghost" aria-label="الإشعارات" title="الإشعارات">
@@ -126,6 +132,7 @@ export function Topbar({
         <Dropdown label="الحساب">
           <a href="/settings/appearance">المظهر والتنقل</a>
           <a href="#account">إعدادات الحساب</a>
+          {onLogout && <Button variant="ghost" onClick={onLogout}>تسجيل الخروج</Button>}
         </Dropdown>
       </div>
     </header>
