@@ -1,13 +1,13 @@
-import {BadRequestException,Body,ConflictException,Controller,ForbiddenException,Get,Header,Headers,InternalServerErrorException,NotFoundException,Param,Post,UnauthorizedException} from '@nestjs/common';
-import {SaasError,type SaasControlPlaneApplicationService} from '@elhafez/saas-control-plane';
-import {PlatformError,type PlatformCoreApplicationService} from '@elhafez/platform-core';
+import {BadRequestException,Body,ConflictException,Controller,ForbiddenException,Get,Header,Headers,Inject,InternalServerErrorException,NotFoundException,Param,Post,UnauthorizedException} from '@nestjs/common';
+import {SaasControlPlaneApplicationService,SaasError} from '@elhafez/saas-control-plane';
+import {PlatformCoreApplicationService,PlatformError} from '@elhafez/platform-core';
 function mapError(error:unknown):never{if(error instanceof PlatformError){if(['UNAUTHENTICATED','INVALID_CREDENTIALS','INVALID_RECOVERY_TOKEN'].includes(error.code))throw new UnauthorizedException({code:error.code,message:error.message});if(error.code==='FORBIDDEN')throw new ForbiddenException({code:error.code,message:error.message});if(error.code==='NOT_FOUND')throw new NotFoundException({code:error.code,message:error.message});if(error.code==='CONFLICT')throw new ConflictException({code:error.code,message:error.message});throw new BadRequestException({code:error.code,message:error.message});}if(!(error instanceof SaasError))throw error;if(error.code==='SECURITY_CONFIGURATION')throw new InternalServerErrorException({code:'SECURITY_CONFIGURATION',message:'SaaS security configuration is unavailable'});if(['AUTH_REQUIRED','INVALID_OWNER_CREDENTIALS','OWNER_LOCKED'].includes(error.code))throw new UnauthorizedException({code:error.code,message:error.message});if(['SUBSCRIPTION_REQUIRED','SUBSCRIPTION_EXPIRED','SUBSCRIPTION_SUSPENDED','SUBSCRIPTION_CANCELLED','ENTITLEMENT_REQUIRED','MFA_REQUIRED'].includes(error.code))throw new ForbiddenException({code:error.code,message:error.message});if(['CONFLICT','IDEMPOTENCY_CONFLICT','PAYMENT_REFERENCE_REUSED','BOOTSTRAP_CLOSED'].includes(error.code))throw new ConflictException({code:error.code,message:error.message});if(error.code==='NOT_FOUND')throw new NotFoundException({code:error.code,message:error.message});throw new BadRequestException({code:error.code,message:error.message});}
 const bearer=(value:string|undefined)=>{if(!value?.startsWith('Bearer '))throw new UnauthorizedException('owner bearer session required');return value.slice(7);};
 const mfa=(value:string|undefined)=>{if(!value)throw new ForbiddenException('owner MFA code required');return value;};
 
 @Controller('saas')
 export class SaasTenantController{
- constructor(private readonly saas:SaasControlPlaneApplicationService,private readonly platform:PlatformCoreApplicationService){}
+ constructor(@Inject(SaasControlPlaneApplicationService) private readonly saas:SaasControlPlaneApplicationService,@Inject(PlatformCoreApplicationService) private readonly platform:PlatformCoreApplicationService){}
  @Post('login')@Header('Cache-Control','no-store')async login(@Body()body:{companyCode:string;email:string;password:string}){
   let session:{token:string;userId:string;expiresAt:Date}|null=null;
   try{
@@ -39,7 +39,7 @@ export class SaasTenantController{
 
 @Controller('saas-owner')
 export class SaasOwnerController{
- constructor(private readonly saas:SaasControlPlaneApplicationService,private readonly platform:PlatformCoreApplicationService){}
+ constructor(@Inject(SaasControlPlaneApplicationService) private readonly saas:SaasControlPlaneApplicationService,@Inject(PlatformCoreApplicationService) private readonly platform:PlatformCoreApplicationService){}
  @Post('bootstrap')@Header('Cache-Control','no-store')async bootstrap(@Headers('x-saas-bootstrap-token')token:string|undefined,@Body()body:{email:string;password:string}){try{return await this.saas.bootstrapOwner({...body,bootstrapToken:token??''});}catch(error){mapError(error);}}
  @Post('login')@Header('Cache-Control','no-store')async login(@Body()body:{email:string;password:string;mfaCode:string}){try{return await this.saas.loginOwner(body);}catch(error){mapError(error);}}
  @Post('logout')async logout(@Headers('authorization')auth:string|undefined){try{await this.saas.logoutOwner(bearer(auth));return{loggedOut:true};}catch(error){mapError(error);}}
