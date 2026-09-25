@@ -11,7 +11,8 @@
     "tourism-programs",
     "tourism-bookings",
     "tourism-itineraries",
-    "platform-core"
+    "platform-core",
+    "saas-control-plane"
   ],
   "allowedPaths": [
     "apps/api/**",
