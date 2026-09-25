@@ -1,6 +1,7 @@
 import {useEffect,useState} from 'react';
 import {Button,Card,EmptyState,ErrorState,FormField,Input,LoadingState,Select,Tabs,Toast} from './ui.js';
 import {HttpAdministrationClient,type AdministrationClient,type AdministrationContext} from './system-administration-client.js';
+import {tenantRequestContext} from './auth-session.js';
 
 const areas=[
  ['المستخدمون','users'],['الأدوار والصلاحيات','roles'],['الشركات','companies'],['الفروع والوصول','branches'],
@@ -32,7 +33,7 @@ export function SystemAdministrationPage({client=new HttpAdministrationClient(),
  const [message,setMessage]=useState('');
  const [success,setSuccess]=useState('');
  const [form,setForm]=useState<Record<string,string>>({dataset:'CUSTOMERS',format:'CSV',mapping:'{}',configKey:'locale',configValue:'"ar"',retain:'7'});
- const ctx=context??{token:'',companyId:'',branchId:''};
+ const ctx=context??tenantRequestContext();
 
  const field=(name:string)=>form[name]??'';
  const setField=(name:string,value:string)=>setForm(current=>({...current,[name]:value}));
