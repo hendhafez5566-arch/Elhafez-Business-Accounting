@@ -35,17 +35,17 @@ This is a large operational system composed of independent modules.
 
 | Visible area | Canonical code owner | Status | Ownership |
 |---|---|---|---|
-| Seasons | `hajj-umrah-seasons` | PLANNED | seasons, date windows, season lifecycle |
-| Programs | `hajj-umrah-programs` | PLANNED | program templates/versions/lifecycle/readiness prerequisites |
-| Bookings | `hajj-umrah-bookings` | PLANNED | booking lifecycle, holds, confirmation/cancellation request state |
-| Travelers | `traveler-management` | PLANNED / SHARED | traveler profile, passport/travel-document operational data |
+| Seasons | `hajj-umrah-seasons` | EXISTING / MERGED | seasons, date windows, season lifecycle |
+| Programs | `hajj-umrah-programs` | EXISTING / MERGED | program templates/versions/lifecycle/readiness prerequisites |
+| Bookings | `hajj-umrah-bookings` | EXISTING / MERGED | booking lifecycle, holds, confirmation/cancellation request state |
+| Travelers | `traveler-management` | EXISTING / SHARED | traveler profile, passport/travel-document operational data |
 | Contracts / Allotment / Inventory | `tourism-contract-inventory` | EXISTING / SHARED | contracts, capacity, allotments, allocations, stop-sale, inventory history |
-| Rooming / Accommodation | `hajj-umrah-rooming` | PLANNED | room assignment/rooming lists; references canonical hotel inventory |
-| Visa operations | `hajj-umrah-visa-operations` | PLANNED | visa batches/items/operational status; references visa supply/quota |
-| Flight / Ticketing | `hajj-umrah-ticketing` | PLANNED | ticket issuance/manifest/deadlines; references flight inventory |
-| Transport operations | `hajj-umrah-transport-operations` | PLANNED | buses/runs/assignments/routes; references transport capacity |
-| Trip operations | `hajj-umrah-trip-operations` | PLANNED | trip tasks, execution, incidents, operational checklists |
-| Readiness | `hajj-umrah-readiness` | PLANNED | aggregate operational readiness projection/orchestration |
+| Rooming / Accommodation | `hajj-umrah-rooming` | EXISTING / MERGED | room assignment/rooming lists; references canonical hotel inventory |
+| Visa operations | `hajj-umrah-visa-operations` | EXISTING / MERGED | visa batches/items/operational status; references visa supply/quota |
+| Flight / Ticketing | `hajj-umrah-ticketing` | EXISTING / MERGED | ticket issuance/manifest/deadlines; references flight inventory |
+| Transport operations | `hajj-umrah-transport-operations` | EXISTING / MERGED | buses/runs/assignments/routes; references transport capacity |
+| Trip operations | `hajj-umrah-trip-operations` | EXISTING / MERGED | trip tasks, execution, incidents, operational checklists |
+| Readiness | `hajj-umrah-readiness` | EXISTING / MERGED | aggregate operational readiness projection/orchestration |
 | Egyptian Umrah Barcode | `hajj-umrah-barcode` | PLANNED / UI SHELL | future Egypt-specific Umrah barcode request/status/evidence lifecycle. The current web page is presentation-only and owns no business data; financial effects must stay with accepted accounting owners. |
 
 Financial effects from these modules are delegated to accepted accounting owners, especially `tourism-finance-orchestration`, Billing, Treasury, Cost, Procurement Finance, and Financial Controls. Operational modules must not reproduce financial truth.
@@ -56,23 +56,23 @@ Financial effects from these modules are delegated to accepted accounting owners
 |---|---|---|---|
 | Tourism programs / trips | `tourism-programs` | PLANNED | general-tourism trip/program lifecycle |
 | Tourism bookings | `tourism-bookings` | PLANNED | individual/group tourism booking lifecycle |
-| Travelers | `traveler-management` | PLANNED / SHARED | shared traveler identity/travel profile |
+| Travelers | `traveler-management` | EXISTING / SHARED | shared traveler identity/travel profile |
 | Daily itinerary | `tourism-itineraries` | PLANNED | days, activities, schedule |
 | Contracts / supply / capacity | `tourism-contract-inventory` | EXISTING / SHARED | hotel/flight/transport/visa/service supply and allocation |
-| Standalone services | `standalone-services` | PLANNED | hotel/flight/visa/transport/other standalone sale request |
-| Vouchers | `service-vouchers` | PLANNED | issued service vouchers/output lifecycle |
-| Service fulfillment | `service-fulfillment` | PLANNED | supplier confirmation/waiting/fulfillment operational state |
+| Standalone services | `standalone-services` | EXISTING / MERGED | hotel/flight/visa/transport/other standalone sale request |
+| Vouchers | `service-vouchers` | EXISTING / MERGED | issued service vouchers/output lifecycle |
+| Service fulfillment | `service-fulfillment` | EXISTING / MERGED | supplier confirmation/waiting/fulfillment operational state |
 
 ### C. CRM & Sales
 
 | Visible area | Canonical code owner | Status | Ownership |
 |---|---|---|---|
-| Common party identity | `party-registry` | PLANNED / SHARED | person/organization identity, contacts, canonical party ID/roles |
-| Customers | `customer-management` | PLANNED | customer commercial profile/preferences/status; references party ID |
-| Agents / delegates | `agent-management` | PLANNED | agent operational profile/assignment/terms; financial commissions stay in accounting |
-| Leads / opportunities | `crm-leads` | PLANNED | lead/opportunity lifecycle and conversion |
-| Follow-ups | `crm-followups` | PLANNED | tasks/interactions/follow-up history |
-| Quotations | `quotations` | PLANNED | quotation lifecycle and conversion intent |
+| Common party identity | `party-registry` | EXISTING / SHARED | person/organization identity, contacts, canonical party ID/roles |
+| Customers | `customer-management` | EXISTING / MERGED | customer commercial profile/preferences/status; references party ID |
+| Agents / delegates | `agent-management` | EXISTING / MERGED | agent operational profile/assignment/terms; financial commissions stay in accounting |
+| Leads / opportunities | `crm-leads` | EXISTING / MERGED | lead/opportunity lifecycle and conversion |
+| Follow-ups | `crm-followups` | EXISTING / MERGED | tasks/interactions/follow-up history |
+| Quotations | `quotations` | EXISTING / MERGED | quotation lifecycle and conversion intent |
 
 Customer balances, invoices, advances, commissions, netting and other financial truth remain in accepted accounting modules.
 
@@ -80,12 +80,12 @@ Customer balances, invoices, advances, commissions, netting and other financial 
 
 | Visible area | Canonical code owner | Status | Ownership |
 |---|---|---|---|
-| Common party identity | `party-registry` | PLANNED / SHARED | canonical supplier party identity |
-| Suppliers | `supplier-management` | PLANNED | supplier profile, approval-for-use, operational classification |
+| Common party identity | `party-registry` | EXISTING / SHARED | canonical supplier party identity |
+| Suppliers | `supplier-management` | EXISTING / MERGED | supplier profile, approval-for-use, operational classification |
 | Supplier commitments / Purchase Orders | `procurement-finance` | EXISTING | canonical commitments/PO financial-economic record and invoice conversion |
 | Receiving / execution / fulfillment | `procurement-fulfillment` | EXISTING | operational receipt/service execution evidence referencing canonical PO |
-| Supplier evaluation | `supplier-evaluation` | PLANNED | evaluation scorecards/history |
-| Supplier disputes | `supplier-disputes` | PLANNED | dispute cases/notes/status |
+| Supplier evaluation | `supplier-evaluation` | EXISTING / MERGED | evaluation scorecards/history |
+| Supplier disputes | `supplier-disputes` | EXISTING / MERGED | dispute cases/notes/status |
 
 **Do not create a second Purchase Order truth.** The existing `procurement-finance` owner is retained. New operational fulfillment references its public PO/commitment identity.
 
@@ -133,8 +133,8 @@ Future administration features should remain separate only when they acquire a d
 |---|---|
 | Custom fields | `custom-fields` |
 | Document numbering policies | `document-numbering` |
-| Import/export jobs and mappings | `data-exchange` |
-| Backup/support operational jobs | `platform-operations` |
+| Import/export jobs and mappings | `data-exchange` — EXISTING / MERGED |
+| Backup/support operational jobs | `platform-operations` — EXISTING / MERGED; production backup provider still requires deployment wiring |
 
 Do not split an already accepted `platform-core` capability merely to match a menu item.
 
@@ -170,13 +170,13 @@ It owns, among other accepted concepts:
 
 Never create `hajj-allotment`, `umrah-inventory`, or `tourism-hotel-stock` as parallel source-truth modules.
 
-### `party-registry` — PLANNED
+### `party-registry` — EXISTING / SHARED
 
 This will be the shared identity root for a person/organization that may have customer, supplier, agent, or other roles.
 
 Role-specific modules own only role-specific operational fields. Accounting modules reference opaque party IDs and retain financial truth.
 
-### `traveler-management` — PLANNED
+### `traveler-management` — EXISTING / SHARED
 
 This will own reusable traveler/passport/travel-profile operational data and may be surfaced in both Hajj & Umrah and Tourism suites.
 
@@ -253,3 +253,8 @@ Owner decision: the commercial SaaS lifecycle is a distinct platform truth owned
 - `pc_companies.active` remains an administrative/emergency kill switch and is not commercial subscription state.
 - Subscription expiry never deletes tenant data and is evaluated from server time.
 - Existing business and accounting owners are not modified to implement local licensing checks.
+
+
+## Final system closure note — 2026-09-25
+
+Canonical implementation status labels above were refreshed from live `main` during the owner-authorized closure audit. This status refresh does **not** declare product Go-Live. General-tourism `tourism-programs`, `tourism-bookings`, and `tourism-itineraries` remain PLANNED; Egyptian Umrah Barcode remains a UI shell. Product/deployment closure blockers are tracked in `docs/FINAL-SYSTEM-CLOSURE-AUDIT.md`.
