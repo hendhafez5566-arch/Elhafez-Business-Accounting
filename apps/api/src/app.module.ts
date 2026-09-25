@@ -17,6 +17,9 @@ import { ProcurementFinanceApplicationService } from '@elhafez/procurement-finan
 import { ProcurementFinanceModule } from '@elhafez/procurement-finance/nest';
 import { TourismContractInventoryModule } from '@elhafez/tourism-contract-inventory/nest';
 import { TourismFinanceOrchestrationModule } from '@elhafez/tourism-finance-orchestration/nest';
+import { TourismProgramsModule } from '@elhafez/tourism-programs/nest';
+import { TourismItinerariesModule } from '@elhafez/tourism-itineraries/nest';
+import { TourismBookingsModule } from '@elhafez/tourism-bookings/nest';
 import { HajjUmrahSeasonsModule } from '@elhafez/hajj-umrah-seasons/nest';
 import { HajjUmrahProgramsModule } from '@elhafez/hajj-umrah-programs/nest';
 import { HajjUmrahBookingsModule } from '@elhafez/hajj-umrah-bookings/nest';
@@ -75,6 +78,7 @@ import { SaasControlPlaneModule } from '@elhafez/saas-control-plane/nest';
 import { SaasOwnerController, SaasTenantController } from './saas.controller.js';
 import { SaasSubscriptionGuard } from './saas-subscription.guard.js';
 import { AccountingWorkspaceController } from './accounting-workspace.controller.js';
+import { TourismOperationsController } from './tourism-operations.controller.js';
 
 /** Composition root only. Business modules are registered here through public module APIs. */
 @Module({
@@ -82,9 +86,9 @@ import { AccountingWorkspaceController } from './accounting-workspace.controller
     PlatformCoreModule, DataExchangeModule, PlatformOperationsModule, PartyRegistryModule, AgentManagementModule, CustomerManagementModule, CrmLeadsModule, CrmFollowupsModule, QuotationsModule, SupplierManagementModule, SupplierEvaluationModule, SupplierDisputesModule, ProcurementFulfillmentModule, TravelerManagementModule,
     PeriodControlModule, GeneralLedgerModule, FinancialControlsModule, TaxModule, BillingSubledgersModule, TreasurySettlementModule, PartyAccountingModule,
     ExpenseCommissionRecognitionModule, CostBudgetAccountingModule, AssetsFinancingModule, ProcurementFinanceModule, TourismContractInventoryModule,
-    TourismFinanceOrchestrationModule, StandaloneServicesModule, ServiceFulfillmentModule, ServiceVouchersModule, HajjUmrahSeasonsModule, HajjUmrahProgramsModule, HajjUmrahBookingsModule, HajjUmrahRoomingModule, HajjUmrahVisaOperationsModule, HajjUmrahTicketingModule, HajjUmrahTransportOperationsModule, HajjUmrahTripOperationsModule, HajjUmrahReadinessModule, FinancialReportingModule, SaasControlPlaneModule, Ac14MigrationModule,
+    TourismFinanceOrchestrationModule, TourismProgramsModule, TourismItinerariesModule, TourismBookingsModule, StandaloneServicesModule, ServiceFulfillmentModule, ServiceVouchersModule, HajjUmrahSeasonsModule, HajjUmrahProgramsModule, HajjUmrahBookingsModule, HajjUmrahRoomingModule, HajjUmrahVisaOperationsModule, HajjUmrahTicketingModule, HajjUmrahTransportOperationsModule, HajjUmrahTripOperationsModule, HajjUmrahReadinessModule, FinancialReportingModule, SaasControlPlaneModule, Ac14MigrationModule,
   ],
-  controllers: [SaasOwnerController, SaasTenantController, AccountingWorkspaceController, SystemAdministrationController, CrmSalesReadModelController, SupplierIntelligenceReadModelController, HajjUmrahController, HajjUmrahOperationsController, HajjUmrahReadinessController, ManagementControlController, TourismServicesController],
+  controllers: [SaasOwnerController, SaasTenantController, AccountingWorkspaceController, SystemAdministrationController, CrmSalesReadModelController, SupplierIntelligenceReadModelController, HajjUmrahController, HajjUmrahOperationsController, HajjUmrahReadinessController, ManagementControlController, TourismServicesController, TourismOperationsController],
   providers: [
     FinancialReportingEvidenceAdapter,
     { provide: APP_GUARD, useFactory: (saas:SaasControlPlaneApplicationService,platform:PlatformCoreApplicationService) => new SaasSubscriptionGuard(saas,platform), inject: [SaasControlPlaneApplicationService,PlatformCoreApplicationService] },
