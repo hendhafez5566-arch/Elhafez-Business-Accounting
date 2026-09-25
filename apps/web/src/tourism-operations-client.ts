@@ -3,8 +3,8 @@ export type TourismProgramStatus='PREPARING'|'OPEN'|'OPERATING'|'CLOSED'|'CANCEL
 export interface TourismProgram{readonly id:string;readonly code:string;readonly nameAr:string;readonly nameEn?:string;readonly departureDate:string;readonly returnDate:string;readonly salesOpen:string;readonly salesClose:string;readonly currency:string;readonly notes?:string;readonly status:TourismProgramStatus;readonly revision:number}
 export interface TourismProgramInput{code:string;nameAr:string;nameEn?:string;departureDate:string;returnDate:string;salesOpen:string;salesClose:string;currency:string;notes?:string}
 export interface ItineraryDay{id:string;programId:string;dayNumber:number;serviceDate:string;title:string;description?:string;location?:string;revision:number}
-export type TourismBookingStatus='DRAFT'|'CONFIRMING'|'CONFIRMED'|'CANCELLATION_REQUIRED'|'CANCELLED'|'COMPLETED';
-export interface TourismBooking{id:string;code:string;programId:string;customerId:string;customerPartyId:string;travelerIds:readonly string[];status:TourismBookingStatus;revision:number;financialEvidence?:{workflowId:string;invoiceId?:string;allocationIds:readonly string[];commissionClaimId?:string}}
+export type TourismBookingStatus='DRAFT'|'CONFIRMING'|'CONFIRMED'|'CANCELLING'|'CANCELLATION_REQUIRED'|'CANCELLED'|'COMPLETED';
+export interface TourismBooking{id:string;code:string;programId:string;customerId:string;customerPartyId:string;travelerIds:readonly string[];status:TourismBookingStatus;pendingCommandKey?:string;revision:number;financialEvidence?:{workflowId:string;invoiceId?:string;allocationIds:readonly string[];commissionClaimId?:string}}
 export interface TourismBookingConfirm{commandKey:string;category:'HOTEL'|'FLIGHT'|'TRANSPORT'|'VISA'|'OTHER';costCenterId:string;currency:string;grossAmount:string;discountAmount:string;postingDate:string;dueDate:string;invoiceNumber:string;inventories:{allocationId:string;contractId:string;resourceType:string;resourceId:string;serviceDate:string;quantity:string;periodEnd?:string}[];approvalRequestId?:string}
 const enc=encodeURIComponent,base='/tourism';
 export const tourismOperationsApi={
