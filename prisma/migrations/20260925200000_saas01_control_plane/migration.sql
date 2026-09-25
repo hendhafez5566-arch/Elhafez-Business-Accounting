@@ -36,4 +36,4 @@ ALTER TABLE "saas_subscriptions" ADD CONSTRAINT "saas_subscriptions_status_check
 ALTER TABLE "saas_payments" ADD CONSTRAINT "saas_payments_amount_check" CHECK ("amount_minor" >= 0), ADD CONSTRAINT "saas_payments_provider_check" CHECK ("provider" IN ('MANUAL','PAYMENT_PROVIDER')), ADD CONSTRAINT "saas_payments_currency_check" CHECK (char_length("currency") = 3 AND "currency" ~ '^[A-Z]{3}');
 ALTER TABLE "saas_owner_accounts" ADD CONSTRAINT "saas_owner_accounts_status_check" CHECK ("status" IN ('ACTIVE','DISABLED')), ADD CONSTRAINT "saas_owner_accounts_failures_check" CHECK ("failed_attempts" >= 0);
 
-INSERT INTO "saas_tenants" ("company_id","company_code","mode","created_at","updated_at") SELECT "id",'ELH-' || UPPER(SUBSTRING(MD5("id") FROM 1 FOR 16)),'INTERNAL',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM "pc_companies" ON CONFLICT ("company_id") DO NOTHING;
+INSERT INTO "saas_tenants" ("company_id","company_code","mode","created_at","updated_at") SELECT "id",'ELH-' || UPPER(SUBSTRING(MD5("id"::text) FROM 1 FOR 16)),'INTERNAL',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP FROM "pc_companies" ON CONFLICT ("company_id") DO NOTHING;
