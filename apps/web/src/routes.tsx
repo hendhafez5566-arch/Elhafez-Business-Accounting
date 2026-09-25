@@ -11,6 +11,7 @@ import { TicketingPage, TransportPage, TripOperationsPage } from './hajj-umrah-o
 import { HajjUmrahReadinessPage } from './hajj-umrah-readiness-page.js';
 import { SystemAdministrationPage } from './system-administration-page.js';
 import { TourismServicesPage } from './tourism-services-page.js';
+import { TourismOperationsPage } from './tourism-operations-page.js';
 import { UmrahBarcodePage } from './hajj-umrah-barcode-page.js';
 import { ExecutiveDashboardPage, ManagementWorkCenterPage } from './management-control-page.js';
 import { AppearanceSettingsPage } from './ui/appearance-settings-page.js';
@@ -58,6 +59,9 @@ export const foundationRoutes = defineRoutes(
   { id: 'procurement-operations', path: '/procurement/purchase-orders', label: 'أوامر الشراء', group: 'المشتريات والموردون', icon: 'purchase', element: <ProcurementOperationsPage /> },
 
   { id: 'tourism-services', path: '/tourism/services', label: 'السياحة والخدمات', group: 'السياحة والخدمات', icon: 'tourism', element: <TourismServicesPage /> },
+  { id: 'tourism-programs', path: '/tourism/programs', label: 'البرامج السياحية', group: 'السياحة والخدمات', icon: 'program', element: <TourismOperationsPage initialTab="programs" /> },
+  { id: 'tourism-bookings', path: '/tourism/bookings', label: 'الحجوزات السياحية', group: 'السياحة والخدمات', icon: 'booking', element: <TourismOperationsPage initialTab="bookings" /> },
+  { id: 'tourism-itinerary', path: '/tourism/itinerary', label: 'البرنامج اليومي', group: 'السياحة والخدمات', icon: 'calendar', element: <TourismOperationsPage initialTab="itinerary" /> },
 
   { id: 'accounting-workspace', path: '/accounting', label: 'المحاسبة والمالية', group: 'المحاسبة والمالية', icon: 'analytics', element: <AccountingWorkspacePage /> },
 
