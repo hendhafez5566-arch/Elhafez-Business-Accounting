@@ -1,0 +1,3 @@
+import type{CompanyId}from'@elhafez/contracts';
+export interface ItineraryDay{readonly id:string;readonly companyId:CompanyId;readonly branchId:string;readonly programId:string;readonly dayNumber:number;readonly serviceDate:string;readonly title:string;readonly description?:string;readonly location?:string;readonly revision:number;readonly createdAt:string;readonly updatedAt:string}
+export interface ItineraryHistory{readonly id:string;readonly companyId:CompanyId;readonly branchId:string;readonly programId:string;readonly itineraryDayId:string;readonly action:'CREATED'|'UPDATED';readonly actorId:string;readonly occurredAt:string}
