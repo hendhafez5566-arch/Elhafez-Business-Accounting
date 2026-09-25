@@ -52,7 +52,7 @@ export class AccountingWorkspaceController{
  @Get('overview')
  async overview(@Headers('authorization')auth?:string,@Headers('x-company-id')company?:string,@Headers('x-branch-id')branch?:string){
   const c=await this.context(this.headers(auth,company,branch),PLATFORM_CORE_PERMISSIONS.accountingFinanceRead);
-  const scope={companyId:c.companyId,companyWide:true as const};
+  const scope={companyId:c.companyId,branchIds:[c.branchId] as const};
   const[
    fiscalYears,periods,accounts,journals,invoices,treasuries,vouchers,taxPolicies,approvalPolicies,approvalRequests,controlIssues,
    trialBalance,incomeStatement,balanceSheet,treasuryReport,taxReport
@@ -102,7 +102,7 @@ export class AccountingWorkspaceController{
   const c=await this.context(this.headers(auth,company,branch),PLATFORM_CORE_PERMISSIONS.accountingFinanceOperate);
   const commandKey=text(input.commandKey,'commandKey');
   const lines:PostingLine[]=input.lines.map(line=>({accountId:text(line.accountId,'accountId'),...(line.debit?.trim()?{debit:decimalAmount(line.debit)}:{}),...(line.credit?.trim()?{credit:decimalAmount(line.credit)}:{}),...(line.partyId?.trim()?{partyId:line.partyId.trim()}:{}),...(line.costCenterId?.trim()?{costCenterId:line.costCenterId.trim()}:{})}));
-  return this.ledger.post({id:stableId(c.companyId,'MANUAL_JOURNAL',commandKey),companyId:c.companyId,number:text(input.number,'number'),postingDate:input.postingDate,sourceType:'MANUAL_JOURNAL',sourceId:commandKey,correlationId:c.branchId,lines});
+  return this.ledger.post({id:stableId(c.companyId,'MANUAL_JOURNAL',commandKey),companyId:c.companyId,number:text(input.number,'number'),postingDate:input.postingDate,sourceType:'MANUAL_JOURNAL',sourceId:commandKey,lines});
  }
 
  @Post('invoices')
