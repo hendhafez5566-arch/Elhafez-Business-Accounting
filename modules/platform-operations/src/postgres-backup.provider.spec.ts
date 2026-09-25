@@ -36,15 +36,19 @@ test('physical backup refuses a tenant scope instead of pretending to isolate on
  }finally{await rm(directory,{recursive:true,force:true});}
 });
 
-test('restore requires explicit safe target and verifies artifact immediately before restore',async()=>{
+test('restore requires explicit maintenance and in-place recovery safety',async()=>{
  const directory=await mkdtemp(join(tmpdir(),'elhafez-backup-')),calls:{command:string;args:readonly string[];env:NodeJS.ProcessEnv}[]=[];
  try{
-  const provider=new PostgresBackupProvider({databaseUrl:'postgresql://backup:secret@localhost:5432/platform',restoreDatabaseUrl:'postgresql://restore:restore-secret@localhost:5432/recovery',directory,restoreEnabled:true},fakeRunner(calls));
+  const url='postgresql://backup:secret@localhost:5432/platform';
+  const provider=new PostgresBackupProvider({databaseUrl:url,restoreDatabaseUrl:url,directory,restoreEnabled:true,allowInPlaceRestore:true},fakeRunner(calls));
   const backup=await provider.create({backupId:'12345678-abcd-1234-abcd-123456789012',companyId:null});
-  assert.equal(await provider.restoreReady(),true);await provider.restore(backup.providerRef,backup.checksum);
-  const restore=calls.find(call=>call.command==='pg_restore'&&call.args.includes('--clean'));assert.ok(restore);assert.ok(restore!.args.includes('recovery'));assert.equal(restore!.env.PGPASSWORD,'restore-secret');
-  assert.equal(calls.some(call=>call.args.some(arg=>arg.includes('restore-secret')||arg.includes('secret@'))),false);
-  const unsafe=new PostgresBackupProvider({databaseUrl:'postgresql://backup:secret@localhost:5432/platform',restoreDatabaseUrl:'postgresql://backup:secret@localhost:5432/platform',directory,restoreEnabled:true},fakeRunner([]));
-  assert.equal(await unsafe.restoreReady(),false);
+  assert.equal(await provider.restoreReady(),false);
+  await provider.enterMaintenance();assert.equal(await provider.maintenanceStatus(),true);assert.equal(await provider.restoreReady(),true);
+  await provider.restore(backup.providerRef,backup.checksum);
+  const restore=calls.find(call=>call.command==='pg_restore'&&call.args.includes('--clean'));assert.ok(restore);assert.ok(restore!.args.includes('platform'));assert.equal(restore!.env.PGPASSWORD,'secret');
+  assert.equal(calls.some(call=>call.args.some(arg=>arg.includes('secret@'))),false);
+  const other=new PostgresBackupProvider({databaseUrl:url,restoreDatabaseUrl:'postgresql://backup:secret@localhost:5432/recovery',directory,restoreEnabled:true,allowInPlaceRestore:true},fakeRunner([]));
+  await other.enterMaintenance();assert.equal(await other.restoreReady(),false);
+  await provider.exitMaintenance();assert.equal(await provider.maintenanceStatus(),false);
  }finally{await rm(directory,{recursive:true,force:true});}
 });
