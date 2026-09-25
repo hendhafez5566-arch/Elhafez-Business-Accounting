@@ -3,8 +3,7 @@ import{companyId}from'@elhafez/contracts';
 import type{BookingFinancialEvidence,TourismBooking,TourismBookingHistory,TourismBookingStatus}from'../domain/booking.js';
 import type{TourismBookingRepository}from'../application/booking.repository.js';
 
-const STATUSES:readonly TourismBookingStatus[]=['DRAFT','CONFIRMING','CONFIRMED','CANCELLATION_REQUIRED','CANCELLED','COMPLETED'];
-function status(value:string):TourismBookingStatus{if(!STATUSES.includes(value as TourismBookingStatus))throw new Error('invalid persisted tourism booking status');return value as TourismBookingStatus;}
+function status(value:string):TourismBookingStatus{switch(value){case'DRAFT':case'CONFIRMING':case'CONFIRMED':case'CANCELLATION_REQUIRED':case'CANCELLED':case'COMPLETED':return value;default:throw new Error('invalid persisted tourism booking status');}}
 function travelerIds(value:Prisma.JsonValue):string[]{if(!Array.isArray(value)||!value.every(item=>typeof item==='string'&&item.trim().length>0))throw new Error('invalid persisted tourism booking travelers');return[...value];}
 function financialEvidence(value:Prisma.JsonValue|null):BookingFinancialEvidence|undefined{
  if(value===null)return undefined;if(typeof value!=='object'||Array.isArray(value))throw new Error('invalid persisted tourism booking financial evidence');
@@ -17,7 +16,7 @@ function financialEvidence(value:Prisma.JsonValue|null):BookingFinancialEvidence
 function evidenceJson(value:BookingFinancialEvidence|undefined):Prisma.InputJsonValue|typeof Prisma.JsonNull{
  return value?{workflowId:value.workflowId,...(value.invoiceId?{invoiceId:value.invoiceId}:{}),allocationIds:[...value.allocationIds],...(value.commissionClaimId?{commissionClaimId:value.commissionClaimId}:{})}:Prisma.JsonNull;
 }
-const map=(x:TbkBooking):TourismBooking=>({id:x.id,companyId:companyId(x.companyId),branchId:x.branchId,code:x.code,programId:x.programId,customerId:x.customerId,customerPartyId:x.customerPartyId,travelerIds:travelerIds(x.travelerIds),status:status(x.status),...(x.pendingCommandKey?{pendingCommandKey:x.pendingCommandKey}:{}),...(financialEvidence(x.financialEvidence)?{financialEvidence:financialEvidence(x.financialEvidence)!}:{}),revision:x.revision,createdAt:x.createdAt.toISOString(),updatedAt:x.updatedAt.toISOString()});
+function map(x:TbkBooking):TourismBooking{const evidence=financialEvidence(x.financialEvidence);return{id:x.id,companyId:companyId(x.companyId),branchId:x.branchId,code:x.code,programId:x.programId,customerId:x.customerId,customerPartyId:x.customerPartyId,travelerIds:travelerIds(x.travelerIds),status:status(x.status),...(x.pendingCommandKey?{pendingCommandKey:x.pendingCommandKey}:{}),...(evidence?{financialEvidence:evidence}:{}),revision:x.revision,createdAt:x.createdAt.toISOString(),updatedAt:x.updatedAt.toISOString()};}
 export class PrismaTourismBookingRepository implements TourismBookingRepository{
  constructor(private readonly db:PrismaClient){}
  private data(v:TourismBooking){return{companyId:v.companyId,branchId:v.branchId,code:v.code,programId:v.programId,customerId:v.customerId,customerPartyId:v.customerPartyId,travelerIds:[...v.travelerIds],status:v.status,pendingCommandKey:v.pendingCommandKey??null,financialEvidence:evidenceJson(v.financialEvidence),revision:v.revision,createdAt:new Date(v.createdAt),updatedAt:new Date(v.updatedAt)}}
