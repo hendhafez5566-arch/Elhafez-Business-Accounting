@@ -24,6 +24,7 @@ export class PrismaSaasRepository implements SaasRepository{
  async createOwnerSession(v:SaasOwnerSession,e:SaasControlEvent){await this.db.$transaction(async tx=>{await tx.saasOwnerSession.create({data:v});await tx.saasControlEvent.create({data:control(e)});});}
  async findOwnerSessionByHash(tokenHash:string){return await this.db.saasOwnerSession.findUnique({where:{tokenHash}});}
  async revokeOwnerSession(sessionId:string,revokedAt:Date,e:SaasControlEvent){await this.db.$transaction(async tx=>{await tx.saasOwnerSession.updateMany({where:{id:sessionId,revokedAt:null},data:{revokedAt}});await tx.saasControlEvent.create({data:control(e)});});}
+ async revokeAllOwnerSessions(revokedAt:Date,e:SaasControlEvent){return this.db.$transaction(async tx=>{const result=await tx.saasOwnerSession.updateMany({where:{revokedAt:null},data:{revokedAt}});await tx.saasControlEvent.create({data:control({...e,metadata:{...e.metadata,revokedSessions:result.count}})});return result.count;});}
  async createPlan(v:SaasPlan,e:SaasControlEvent){return this.db.$transaction(async tx=>{const r=await tx.saasPlan.create({data:{...v,entitlements:json(v.entitlements)}});await tx.saasControlEvent.create({data:control(e)});return plan(r);},{isolationLevel:Prisma.TransactionIsolationLevel.Serializable});}
  async findPlan(id:string){const r=await this.db.saasPlan.findUnique({where:{id}});return r?plan(r):null;}
  async listPlans(){return(await this.db.saasPlan.findMany({orderBy:{createdAt:'asc'}})).map(plan);}
