@@ -4,7 +4,7 @@ import type{BookingFinancialEvidence,TourismBooking,TourismBookingHistory,Touris
 import type{TourismBookingRepository}from'../application/booking.repository.js';
 
 function status(value:string):TourismBookingStatus{switch(value){case'DRAFT':case'CONFIRMING':case'CONFIRMED':case'CANCELLING':case'CANCELLATION_REQUIRED':case'CANCELLED':case'COMPLETED':return value;default:throw new Error('invalid persisted tourism booking status');}}
-function travelerIds(value:Prisma.JsonValue):string[]{if(!Array.isArray(value)||!value.every(item=>typeof item==='string'&&item.trim().length>0))throw new Error('invalid persisted tourism booking travelers');return[...value];}
+function travelerIds(value:Prisma.JsonValue):string[]{if(!Array.isArray(value))throw new Error('invalid persisted tourism booking travelers');const result:string[]=[];for(const item of value){if(typeof item!=='string'||!item.trim())throw new Error('invalid persisted tourism booking travelers');result.push(item);}return result;}
 function financialEvidence(value:Prisma.JsonValue|null):BookingFinancialEvidence|undefined{
  if(value===null)return undefined;if(typeof value!=='object'||Array.isArray(value))throw new Error('invalid persisted tourism booking financial evidence');
  const workflowId=value.workflowId,invoiceId=value.invoiceId,allocationIds=value.allocationIds,commissionClaimId=value.commissionClaimId;
