@@ -107,6 +107,7 @@ WITH "closure_permissions"("id","name") AS (
   VALUES
     ('2eb87db8-535e-42dd-8dc5-6d8af4fb2101','accounting.finance.read'),
     ('2eb87db8-535e-42dd-8dc5-6d8af4fb2102','accounting.finance.operate'),
+    ('2eb87db8-535e-42dd-8dc5-6d8af4fb2103','financial.controls.resolve'),
     ('2eb87db8-535e-42dd-8dc5-6d8af4fb2201','tourism.programs.view'),
     ('2eb87db8-535e-42dd-8dc5-6d8af4fb2202','tourism.programs.manage'),
     ('2eb87db8-535e-42dd-8dc5-6d8af4fb2203','tourism.programs.lifecycle'),
@@ -123,7 +124,7 @@ ON CONFLICT ("name") DO UPDATE SET "name"=EXCLUDED."name";
 
 WITH "permission_names"("name") AS (
   VALUES
-    ('accounting.finance.read'),('accounting.finance.operate'),
+    ('accounting.finance.read'),('accounting.finance.operate'),('financial.controls.resolve'),
     ('tourism.programs.view'),('tourism.programs.manage'),('tourism.programs.lifecycle'),
     ('tourism.itineraries.view'),('tourism.itineraries.manage'),
     ('tourism.bookings.view'),('tourism.bookings.manage'),('tourism.bookings.confirm'),('tourism.bookings.cancel')
