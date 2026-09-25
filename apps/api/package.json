@@ -55,6 +55,9 @@
     "@elhafez/hajj-umrah-readiness": "workspace:*",
     "@elhafez/data-exchange": "workspace:*",
     "@elhafez/platform-operations": "workspace:*",
-    "@elhafez/saas-control-plane": "workspace:*"
+    "@elhafez/saas-control-plane": "workspace:*",
+    "@elhafez/tourism-programs": "workspace:*",
+    "@elhafez/tourism-itineraries": "workspace:*",
+    "@elhafez/tourism-bookings": "workspace:*"
   }
 }
