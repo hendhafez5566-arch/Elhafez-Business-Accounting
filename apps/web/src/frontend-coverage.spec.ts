@@ -39,6 +39,7 @@ test('shared contract inventory is reachable from Hajj and Umrah without a secon
   const route = findRoute('/hajj-umrah/contracts-inventory');
   assert.equal(route.label, 'التعاقدات والمخزون');
   assert.equal(route.group, 'الحج والعمرة');
+  assert.equal(route.element.type, TourismContractInventoryPage);
 });
 
 test('corrective frontend coverage exposes owner-backed amendments, recognition, accrual and allowances', () => {
