@@ -2,6 +2,12 @@ name: CI
 
 on:
   pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+      - converted_to_draft
   push:
     branches:
       - main
@@ -13,36 +19,88 @@ concurrency:
 jobs:
   quality:
     runs-on: self-hosted
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          # Draft and post-merge smoke runs reuse installed dependencies on the persistent
+          # self-hosted workspace. Final ready-for-review runs stay clean-room.
+          clean: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft == false }}
+          # PR merge refs need only the merge commit and its parents.
+          # Main keeps a wider fail-closed history window without fetching all history.
+          fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 50 }}
+
+      - name: Sanitize persistent workspace
+        if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.draft == true)
+        run: |
+          git reset --hard HEAD
+          git clean -ffdx -e node_modules/ -e "**/node_modules/"
+
       - uses: pnpm/action-setup@v4
         with:
           version: 9.15.0
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Change safety (pull request)
         if: github.event_name == 'pull_request'
         env:
           CHANGE_BASE_SHA: ${{ github.event.pull_request.base.sha }}
           REQUIRE_CHANGE_SCOPE: 'true'
         run: pnpm change-safety:check
+
       - name: Change safety (main push)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           CHANGE_BASE_SHA: ${{ github.event.before }}
           REQUIRE_CHANGE_SCOPE: 'true'
         run: pnpm change-safety:check
+
       - name: Engineering integrity
         env:
           CHANGE_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: pnpm engineering-integrity:check
-      - run: pnpm prisma:generate
-      - run: pnpm typecheck
-      - run: pnpm lint
-      - run: pnpm architecture:check
-      - run: pnpm test
+
+      - name: Prisma generate
+        run: pnpm prisma:generate
+
+      - name: Affected workspace typecheck (draft PR)
+        if: github.event_name == 'pull_request' && github.event.pull_request.draft == true
+        run: pnpm --filter "...[${{ github.event.pull_request.base.sha }}]" run typecheck
+
+      - name: Full typecheck (ready PR)
+        if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
+        run: pnpm typecheck
+
+      - name: Affected workspace typecheck (main smoke)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: pnpm --filter "...[${{ github.event.before }}]" run typecheck
+
+      - name: Lint (pull requests)
+        if: github.event_name == 'pull_request'
+        run: pnpm lint
+
+      - name: Architecture check
+        run: pnpm architecture:check
+
+      - name: Affected workspace tests (draft PR)
+        if: github.event_name == 'pull_request' && github.event.pull_request.draft == true
+        run: pnpm --filter "...[${{ github.event.pull_request.base.sha }}]" run test
+
+      - name: Full test suite (ready PR)
+        if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
+        run: pnpm test
+
+      - name: Affected workspace tests (main smoke)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: pnpm --filter "...[${{ github.event.before }}]" run test
+
+      - name: Main post-merge smoke complete
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: echo "Main governance, affected typecheck/tests, and architecture checks passed."
