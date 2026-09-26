@@ -1,6 +1,6 @@
 {
   "id": "frontend-coverage-corrective-closure",
-  "summary": "Close remaining frontend coverage gaps on top of merged PR #84 by exposing existing canonical contract amendments/service inventory, ECR recognition/accrual, Assets allowances, and shared Hajj/Umrah access without duplicating business truth.",
+  "summary": "Close remaining frontend coverage gaps on top of merged PR #84 by exposing existing canonical contract amendments/service inventory, ECR recognition/accrual, Assets allowances, and shared Hajj/Umrah access without duplicating business truth. Also restore Windows self-hosted API test execution by passing the runtime preload as a standards-compliant file URL.",
   "type": "bugfix",
   "allowedModules": [
     "tourism-contract-inventory",
@@ -9,6 +9,7 @@
   ],
   "allowedPaths": [
     ".changes/frontend-coverage-corrective-closure.json",
+    "apps/api/scripts/run-tests.mjs",
     "apps/api/src/frontend-coverage.controller.ts",
     "apps/api/src/frontend-coverage.spec.ts",
     "apps/web/src/accounting-workspace-page.tsx",
