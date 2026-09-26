@@ -11,7 +11,8 @@
   "allowedDependencies": [
     "@elhafez/contracts",
     "@elhafez/core",
-    "@elhafez/platform-core"
+    "@elhafez/platform-core",
+    "@elhafez/tourism-finance-orchestration"
   ],
   "dataScope": "COMPANY_BRANCH",
   "branchScopedTables": [
@@ -20,6 +21,7 @@
   ],
   "criticalInvariants": [
     "Program records and lifecycle history are isolated by company and branch.",
-    "Lifecycle transitions remain history-preserving and concurrency-safe."
+    "Lifecycle transitions remain history-preserving and concurrency-safe.",
+    "Program cancellation must complete canonical financial orchestration before operational CANCELLED state is persisted."
   ]
 }
