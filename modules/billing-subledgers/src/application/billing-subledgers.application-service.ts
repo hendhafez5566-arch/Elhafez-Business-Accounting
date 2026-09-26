@@ -414,6 +414,7 @@ export class BillingSubledgersApplicationService {
     const journal = await this.gl.post({
       id: 'billing:' + id,
       companyId,
+      ...(invoice.branchId?{branchId:invoice.branchId}:{}),
       number: invoice.number,
       postingDate: invoice.postingDate,
       kind: invoice.type === 'OPENING_CUSTOMER_BALANCE' ? 'OPENING' : undefined,
@@ -444,6 +445,7 @@ export class BillingSubledgersApplicationService {
         const reclassification = await this.gl.post({
           id: 'billing-prefunding:' + allocation.id,
           companyId,
+          ...(invoice.branchId?{branchId:invoice.branchId}:{}),
           number: invoice.number + '-PF-' + (allocation.settlementSequence ?? allocation.id),
           postingDate: invoice.postingDate,
           sourceType: 'BILLING_PREFUNDING_RECLASS',
@@ -815,6 +817,7 @@ export class BillingSubledgersApplicationService {
     const journal = await this.gl.post({
       id: 'billing-adjustment:' + input.id,
       companyId: input.companyId,
+      ...(invoice.branchId?{branchId:invoice.branchId}:{}),
       number: input.number,
       postingDate: input.postingDate,
       sourceType: 'BILLING_ADJUSTMENT',
