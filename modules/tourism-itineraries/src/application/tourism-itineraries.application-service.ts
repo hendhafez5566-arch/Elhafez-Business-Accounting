@@ -4,7 +4,7 @@ export interface ItineraryDayInput{programId:string;dayNumber:number;serviceDate
 const req=(v:string,f:string)=>{const x=v.trim();if(!x)throw new ContractValidationError(f,'is required');return x};
 const date=(value:string,field:string)=>{const v=req(value,field);if(!/^\d{4}-\d{2}-\d{2}$/.test(v))throw new ContractValidationError(field,'must be YYYY-MM-DD');const parsed=new Date(v+'T00:00:00.000Z');if(Number.isNaN(parsed.valueOf())||parsed.toISOString().slice(0,10)!==v)throw new ContractValidationError(field,'must be a valid calendar date');return v};
 export class TourismItinerariesApplicationService{
- constructor(private readonly repo:ItineraryRepository,private readonly access:ItineraryAccess,private readonly programs:ItineraryProgramPort,private readonly now=()=>new Date(),private readonly newId=()=>randomUUID()){}
+ constructor(private readonly repo:ItineraryRepository,private readonly access:ItineraryAccess,private readonly programs:ItineraryProgramPort,private readonly now:()=>Date=()=>new Date(),private readonly newId:()=>string=()=>randomUUID()){}
  private async permitted(c:ExecutionContext,p:string){await this.access.requireBranch(c);await this.access.requirePermission(c,p)}
  private history(c:ExecutionContext,v:ItineraryDay,action:ItineraryHistory['action']):ItineraryHistory{return{id:this.newId(),companyId:c.companyId,branchId:c.branchId,programId:v.programId,itineraryDayId:v.id,action,actorId:c.actorId,occurredAt:this.now().toISOString()}}
  private async editable(c:ExecutionContext,programId:string){const p=await this.programs.require(c.companyId,c.branchId,programId);if(p.status!=='PREPARING')throw new ContractValidationError('programId','itinerary can be edited only while program is PREPARING');return p}
