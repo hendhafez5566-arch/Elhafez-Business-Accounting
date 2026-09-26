@@ -294,6 +294,8 @@ export interface StandaloneSupplyCommit {
 }
 
 export interface TourismContractInventoryApplicationService {
+  listContracts(companyId: CompanyId): Promise<TourismContract[]>;
+  inventoryOverview(companyId: CompanyId, contractId?: string): Promise<{hotels:HotelInventory[];flights:FlightBlock[];transport:TransportCapacity[];visas:VisaQuota[];services:GenericServiceInventory[];stopSales:StopSale[];allocations:Allocation[]}>;
   createContract(input: CreateTourismContractInput, key?: string): Promise<TourismContract>;
   amendContract(input: AmendContractInput, key?: string): Promise<ContractVersion>;
   getContract(companyId: CompanyId, id: string): Promise<TourismContract | null>;
