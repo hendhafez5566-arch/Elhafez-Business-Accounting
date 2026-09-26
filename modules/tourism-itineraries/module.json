@@ -1,1 +1,26 @@
-{"name":"tourism-itineraries","publicApi":["src/public/index.ts","src/public/nest.ts"],"ownedTables":["tit_itinerary_days","tit_itinerary_history"],"allowedDependencies":["@elhafez/contracts","@elhafez/core","@elhafez/platform-core","@elhafez/tourism-programs"]}
+{
+  "name": "tourism-itineraries",
+  "publicApi": [
+    "src/public/index.ts",
+    "src/public/nest.ts"
+  ],
+  "ownedTables": [
+    "tit_itinerary_days",
+    "tit_itinerary_history"
+  ],
+  "allowedDependencies": [
+    "@elhafez/contracts",
+    "@elhafez/core",
+    "@elhafez/platform-core",
+    "@elhafez/tourism-programs"
+  ],
+  "dataScope": "COMPANY_BRANCH",
+  "branchScopedTables": [
+    "tit_itinerary_days",
+    "tit_itinerary_history"
+  ],
+  "criticalInvariants": [
+    "Itinerary records and history are isolated by company and branch.",
+    "Itinerary mutations remain tied to the canonical program inside the same execution scope."
+  ]
+}
