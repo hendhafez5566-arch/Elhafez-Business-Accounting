@@ -23,9 +23,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          # Draft and post-merge smoke runs reuse installed dependencies on the persistent
+          # self-hosted workspace. Final ready-for-review runs stay clean-room.
+          clean: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft == false }}
           # PR merge refs need only the merge commit and its parents.
-          # Main keeps a wider fail-closed window without downloading all repository history.
+          # Main keeps a wider fail-closed history window without fetching all history.
           fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 50 }}
+
+      - name: Sanitize persistent workspace
+        if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.draft == true)
+        run: |
+          git reset --hard HEAD
+          git clean -ffdx -e node_modules/ -e "**/node_modules/"
 
       - uses: pnpm/action-setup@v4
         with:
@@ -69,9 +78,9 @@ jobs:
         if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
         run: pnpm typecheck
 
-      - name: Main post-merge typecheck
+      - name: Affected workspace typecheck (main smoke)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: pnpm typecheck
+        run: pnpm --filter "...[${{ github.event.before }}]" run typecheck
 
       - name: Lint (pull requests)
         if: github.event_name == 'pull_request'
@@ -88,6 +97,10 @@ jobs:
         if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
         run: pnpm test
 
+      - name: Affected workspace tests (main smoke)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: pnpm --filter "...[${{ github.event.before }}]" run test
+
       - name: Main post-merge smoke complete
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: echo "Main integrity, Prisma generation, typecheck, and architecture checks passed."
+        run: echo "Main governance, affected typecheck/tests, and architecture checks passed."
