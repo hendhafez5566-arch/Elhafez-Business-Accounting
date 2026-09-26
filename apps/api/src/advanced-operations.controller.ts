@@ -9,6 +9,7 @@ import {
 import {
   PLATFORM_CORE_PERMISSIONS,
   PlatformCoreApplicationService,
+  PlatformError,
 } from '@elhafez/platform-core';
 import {
   CurrencyFxApplicationService,
@@ -70,6 +71,20 @@ export class AdvancedOperationsController {
     const context=executionContext(headers.companyId,headers.branchId,user.id);
     await this.platform.requireBranchAccess(user.id,context.companyId,context.branchId);
     await this.platform.authorize(user.id,context.companyId,operate?PLATFORM_CORE_PERMISSIONS.accountingFinanceOperate:PLATFORM_CORE_PERMISSIONS.accountingFinanceRead);
+    return context;
+  }
+  private async inventoryContext(headers:HeaderContext,operate=true):Promise<ExecutionContext>{
+    if(!headers.authorization?.startsWith('Bearer ')||!headers.companyId||!headers.branchId)throw new UnauthorizedException('authenticated company and branch context required');
+    const user=await this.platform.currentUser(headers.authorization.slice(7));
+    const context=executionContext(headers.companyId,headers.branchId,user.id);
+    await this.platform.requireBranchAccess(user.id,context.companyId,context.branchId);
+    const primary=operate?'tourism.services.manage':'tourism.services.view';
+    const fallback=operate?'hajj_umrah.programs.edit':'hajj_umrah.programs.view';
+    try{await this.platform.authorize(user.id,context.companyId,primary);}
+    catch(error){
+      if(!(error instanceof PlatformError)||error.code!=='FORBIDDEN')throw error;
+      await this.platform.authorize(user.id,context.companyId,fallback);
+    }
     return context;
   }
 
@@ -172,19 +187,19 @@ export class AdvancedOperationsController {
 
   @Post('inventory/contracts')
   async createContract(@Headers('authorization')a:string,@Headers('x-company-id')c:string,@Headers('x-branch-id')b:string,@Body()x:ContractInput){
-    const ctx=await this.context(this.headers(a,c,b));return this.inventory.createContract({companyId:ctx.companyId,type:x.type,...(x.supplierId?{supplierId:x.supplierId}:{}),effectiveFrom:x.effectiveFrom,effectiveTo:x.effectiveTo,...(x.sourceType&&x.sourceId?{sourceReference:sourceReference(x.sourceType,x.sourceId)}:{})},crypto.randomUUID());
+    const ctx=await this.inventoryContext(this.headers(a,c,b));return this.inventory.createContract({companyId:ctx.companyId,type:x.type,...(x.supplierId?{supplierId:x.supplierId}:{}),effectiveFrom:x.effectiveFrom,effectiveTo:x.effectiveTo,...(x.sourceType&&x.sourceId?{sourceReference:sourceReference(x.sourceType,x.sourceId)}:{})},crypto.randomUUID());
   }
   @Get('inventory/contracts/:id')
   async getContract(@Headers('authorization')a:string,@Headers('x-company-id')c:string,@Headers('x-branch-id')b:string,@Param('id')id:string){
-    const ctx=await this.context(this.headers(a,c,b),false);return {contract:await this.inventory.getContract(ctx.companyId,id),versions:await this.inventory.getContractVersions(ctx.companyId,id)};
+    const ctx=await this.inventoryContext(this.headers(a,c,b),false);return {contract:await this.inventory.getContract(ctx.companyId,id),versions:await this.inventory.getContractVersions(ctx.companyId,id)};
   }
   @Post('inventory/contracts/:id/amend')
   async amendContract(@Headers('authorization')a:string,@Headers('x-company-id')c:string,@Headers('x-branch-id')b:string,@Param('id')id:string,@Body()x:{terms:Record<string,unknown>;effectiveFrom:string;effectiveTo?:string}){
-    const ctx=await this.context(this.headers(a,c,b));return this.inventory.amendContract({companyId:ctx.companyId,contractId:id,terms:x.terms,effectiveFrom:x.effectiveFrom,...(x.effectiveTo?{effectiveTo:x.effectiveTo}:{})},crypto.randomUUID());
+    const ctx=await this.inventoryContext(this.headers(a,c,b));return this.inventory.amendContract({companyId:ctx.companyId,contractId:id,terms:x.terms,effectiveFrom:x.effectiveFrom,...(x.effectiveTo?{effectiveTo:x.effectiveTo}:{})},crypto.randomUUID());
   }
   @Post('inventory/resources')
   async createResource(@Headers('authorization')a:string,@Headers('x-company-id')c:string,@Headers('x-branch-id')b:string,@Body()x:InventoryResourceInput){
-    const ctx=await this.context(this.headers(a,c,b)),key=crypto.randomUUID();
+    const ctx=await this.inventoryContext(this.headers(a,c,b)),key=crypto.randomUUID();
     if(x.kind==='HOTEL')return this.inventory.createHotelInventory({companyId:ctx.companyId,contractId:x.contractId,hotelId:x.hotelId??'',...(x.roomId?{roomId:x.roomId}:{}),serviceDate:x.serviceDate??'',contractedQuantity:decimalAmount(x.contractedQuantity??'0')},key);
     if(x.kind==='FLIGHT')return this.inventory.createFlightBlock({companyId:ctx.companyId,contractId:x.contractId,flightNumber:x.flightNumber??'',origin:x.origin??'',destination:x.destination??'',departureDate:x.departureDate??'',totalSeats:decimalAmount(x.totalSeats??'0')},key);
     if(x.kind==='TRANSPORT')return this.inventory.createTransportCapacity({companyId:ctx.companyId,contractId:x.contractId,vehicleId:x.vehicleId??'',capacityUnits:decimalAmount(x.capacityUnits??'0'),periodStart:x.periodStart??'',periodEnd:x.periodEnd??''},key);
@@ -193,18 +208,18 @@ export class AdvancedOperationsController {
   }
   @Post('inventory/availability')
   async availability(@Headers('authorization')a:string,@Headers('x-company-id')c:string,@Headers('x-branch-id')b:string,@Body()x:AvailabilityInput){
-    const ctx=await this.context(this.headers(a,c,b),false);return this.inventory.checkAvailability({companyId:ctx.companyId,...x});
+    const ctx=await this.inventoryContext(this.headers(a,c,b),false);return this.inventory.checkAvailability({companyId:ctx.companyId,...x});
   }
   @Post('inventory/allocations')
   async allocate(@Headers('authorization')a:string,@Headers('x-company-id')c:string,@Headers('x-branch-id')b:string,@Body()x:AllocationInput){
-    const ctx=await this.context(this.headers(a,c,b));return this.inventory.allocateCapacity({companyId:ctx.companyId,contractId:x.contractId,resourceType:x.resourceType,resourceId:x.resourceId,program:sourceReference(x.programSourceType,x.programSourceId),serviceDate:x.serviceDate,...(x.periodEnd?{periodEnd:x.periodEnd}:{}),quantity:decimalAmount(x.quantity)},crypto.randomUUID());
+    const ctx=await this.inventoryContext(this.headers(a,c,b));return this.inventory.allocateCapacity({companyId:ctx.companyId,contractId:x.contractId,resourceType:x.resourceType,resourceId:x.resourceId,program:sourceReference(x.programSourceType,x.programSourceId),serviceDate:x.serviceDate,...(x.periodEnd?{periodEnd:x.periodEnd}:{}),quantity:decimalAmount(x.quantity)},crypto.randomUUID());
   }
   @Get('inventory/allocations/:id')
   async allocation(@Headers('authorization')a:string,@Headers('x-company-id')c:string,@Headers('x-branch-id')b:string,@Param('id')id:string){
-    const ctx=await this.context(this.headers(a,c,b),false);return this.inventory.getAllocation(ctx.companyId,id);
+    const ctx=await this.inventoryContext(this.headers(a,c,b),false);return this.inventory.getAllocation(ctx.companyId,id);
   }
   @Post('inventory/allocations/:id/release')
   async releaseAllocation(@Headers('authorization')a:string,@Headers('x-company-id')c:string,@Headers('x-branch-id')b:string,@Param('id')id:string,@Body()x:{quantity:string}){
-    const ctx=await this.context(this.headers(a,c,b));return this.inventory.releaseAllocation({companyId:ctx.companyId,allocationId:id,quantity:decimalAmount(x.quantity)},crypto.randomUUID());
+    const ctx=await this.inventoryContext(this.headers(a,c,b));return this.inventory.releaseAllocation({companyId:ctx.companyId,allocationId:id,quantity:decimalAmount(x.quantity)},crypto.randomUUID());
   }
 }
