@@ -1,6 +1,6 @@
 import{type FormEvent,useEffect,useState}from'react';
 import{tourismOperationsApi,type ItineraryDay,type TourismBooking,type TourismBookingConfirm,type TourismProgram,type TourismProgramInput}from'./tourism-operations-client.js';
-import{ActionBar,Badge,Button,Card,DataGrid,EmptyState,ErrorState,FormField,Input,LoadingState,Select,Tabs,Textarea,Toast}from'./ui.js';
+import{ActionBar,Badge,Button,Card,DataGrid,DisclosureCard,EmptyState,ErrorState,FormField,Input,LoadingState,MetricCard,Select,Tabs,Textarea,Toast}from'./ui.js';
 
 const programStatus:Record<string,string>={PREPARING:'تحت التجهيز',OPEN:'مفتوح للبيع',OPERATING:'قيد التشغيل',CLOSED:'مغلق',CANCELLED:'ملغي'};
 const bookingStatus:Record<string,string>={DRAFT:'مسودة',CONFIRMING:'جارٍ التأكيد',CONFIRMED:'مؤكد',CANCELLING:'جارٍ الإلغاء',CANCELLATION_REQUIRED:'يحتاج تسوية قبل الإلغاء',CANCELLED:'ملغي',COMPLETED:'مكتمل'};
@@ -16,7 +16,8 @@ export function TourismOperationsPage({initialTab='programs'}:{initialTab?:'prog
  if(loading)return <LoadingState/>;if(error)return <ErrorState message={error}/>;
  return <section dir="rtl" className="ui-page-stack">
   {notice?<Toast tone="success">{notice}</Toast>:null}
-  <Card title="السياحة العامة"><p>برامج وحجوزات وبرنامج يومي مستقلون تشغيليًا، مع بقاء المخزون والمحاسبة في مصادر الحقيقة الحالية.</p><ActionBar><Button variant="secondary" onClick={()=>void reload()}>تحديث</Button></ActionBar></Card>
+  <Card title="السياحة العامة"><p>مساحة تشغيل موحدة للبرامج والحجوزات والبرنامج اليومي.</p><ActionBar><Button variant="secondary" onClick={()=>void reload()}>تحديث</Button></ActionBar></Card>
+  <div className="ui-metric-grid" aria-label="مؤشرات السياحة العامة"><MetricCard label="البرامج" value={programs.length}/><MetricCard label="مفتوح للبيع" value={programs.filter(p=>p.status==='OPEN').length} tone="success"/><MetricCard label="الحجوزات" value={bookings.length}/><MetricCard label="حجوزات مؤكدة" value={bookings.filter(b=>b.status==='CONFIRMED').length} tone="success"/></div>
   <Tabs tabs={[{id:'programs',label:'البرامج السياحية'},{id:'bookings',label:'الحجوزات'},{id:'itinerary',label:'البرنامج اليومي'}]} active={tab} onChange={id=>setTab(id as typeof tab)}/>
   {tab==='programs'?<Programs programs={programs} done={async m=>{setNotice(m);await reload();}}/>:null}
   {tab==='bookings'?<Bookings programs={programs} bookings={bookings} done={async m=>{setNotice(m);await reload();}}/>:null}
@@ -28,7 +29,7 @@ function Programs({programs,done}:{programs:TourismProgram[];done:(message:strin
  const[form,setForm]=useState<TourismProgramInput>(blankProgram);
  async function submit(e:FormEvent){e.preventDefault();await tourismOperationsApi.createProgram(form);setForm(blankProgram);await done('تم إنشاء البرنامج السياحي تحت التجهيز.');}
  async function action(id:string,kind:'open'|'start'|'close'){if(kind==='open')await tourismOperationsApi.openProgram(id);else if(kind==='start')await tourismOperationsApi.startProgram(id);else await tourismOperationsApi.closeProgram(id);await done('تم تحديث دورة البرنامج.');}
- return <><Card title="برنامج سياحي جديد"><form className="ui-filter-grid" onSubmit={submit}>
+ return <><DisclosureCard title="برنامج سياحي جديد" description="افتح النموذج عند إنشاء برنامج جديد؛ قائمة البرامج هي مساحة المتابعة." ><form className="ui-filter-grid" onSubmit={submit}>
   <FormField label="الكود" required><Input required value={form.code} onChange={e=>setForm({...form,code:e.target.value})}/></FormField>
   <FormField label="اسم البرنامج" required><Input required value={form.nameAr} onChange={e=>setForm({...form,nameAr:e.target.value})}/></FormField>
   <FormField label="تاريخ السفر" required><Input required type="date" value={form.departureDate} onChange={e=>setForm({...form,departureDate:e.target.value})}/></FormField>
@@ -38,7 +39,7 @@ function Programs({programs,done}:{programs:TourismProgram[];done:(message:strin
   <FormField label="العملة" required><Input required value={form.currency} onChange={e=>setForm({...form,currency:e.target.value.toUpperCase()})}/></FormField>
   <FormField label="ملاحظات"><Textarea value={form.notes??''} onChange={e=>setForm({...form,notes:e.target.value})}/></FormField>
   <Button type="submit">إنشاء البرنامج</Button>
- </form></Card>
+ </form></DisclosureCard>
  <DataGrid columns={['الكود','البرنامج','السفر','العودة','الحالة','الإجراء']}>{programs.map(p=><tr key={p.id}><td>{p.code}</td><td>{p.nameAr}</td><td>{p.departureDate}</td><td>{p.returnDate}</td><td><Badge tone={p.status==='OPEN'?'success':p.status==='CANCELLED'?'error':'neutral'}>{programStatus[p.status]??p.status}</Badge></td><td><ActionBar>{p.status==='PREPARING'?<Button onClick={()=>void action(p.id,'open')}>فتح للبيع</Button>:null}{p.status==='OPEN'?<Button onClick={()=>void action(p.id,'start')}>بدء التشغيل</Button>:null}{['OPEN','OPERATING'].includes(p.status)?<Button variant="secondary" onClick={()=>void action(p.id,'close')}>إغلاق</Button>:null}</ActionBar></td></tr>)}</DataGrid></>;
 }
 
@@ -47,7 +48,7 @@ function Bookings({programs,bookings,done}:{programs:TourismProgram[];bookings:T
  async function create(e:FormEvent){e.preventDefault();await tourismOperationsApi.createBooking({code:form.code,programId:form.programId,customerId:form.customerId,travelerIds:form.travelerIds.split(',').map(x=>x.trim()).filter(Boolean)});setForm(blankBooking);await done('تم إنشاء الحجز كمسودة مرتبطة بالبرنامج والعميل والمسافرين.');}
  async function confirmBooking(e:FormEvent){e.preventDefault();if(!confirmId)return;await tourismOperationsApi.confirmBooking(confirmId,{commandKey:'tourism-confirm:'+confirmId+':'+confirm.invoiceNumber,category:confirm.category,costCenterId:confirm.costCenterId,currency:confirm.currency,grossAmount:confirm.grossAmount,discountAmount:confirm.discountAmount,postingDate:confirm.postingDate,dueDate:confirm.dueDate,invoiceNumber:confirm.invoiceNumber,inventories:[{allocationId:confirm.allocationId,contractId:confirm.contractId,resourceType:confirm.resourceType,resourceId:confirm.resourceId,serviceDate:confirm.serviceDate,quantity:confirm.quantity,...(confirm.periodEnd?{periodEnd:confirm.periodEnd}:{})}]});setConfirmId('');setConfirm(blankConfirm);await done('تم تأكيد الحجز عبر مسار المخزون والتمويل المعتمد.');}
  async function cancel(b:TourismBooking){const date=new Date().toISOString().slice(0,10),commandKey=b.pendingCommandKey??'tourism-cancel:'+b.id+':'+date;await tourismOperationsApi.cancelBooking(b.id,{commandKey,postingDate:date});await done('تم تنفيذ طلب الإلغاء وفق الموانع المالية المسجلة.');}
- return <><Card title="حجز سياحي جديد"><form className="ui-filter-grid" onSubmit={create}><FormField label="رقم الحجز" required><Input required value={form.code} onChange={e=>setForm({...form,code:e.target.value})}/></FormField><FormField label="البرنامج" required><Select required value={form.programId} onChange={e=>setForm({...form,programId:e.target.value})}><option value="">اختر برنامجًا مفتوحًا</option>{programs.filter(p=>p.status==='OPEN').map(p=><option key={p.id} value={p.id}>{p.code} — {p.nameAr}</option>)}</Select></FormField><FormField label="معرّف العميل" required><Input required value={form.customerId} onChange={e=>setForm({...form,customerId:e.target.value})}/></FormField><FormField label="المسافرون" hint="افصل المعرفات بفاصلة"><Input required value={form.travelerIds} onChange={e=>setForm({...form,travelerIds:e.target.value})}/></FormField><Button type="submit">إنشاء الحجز</Button></form></Card>
+ return <><DisclosureCard title="حجز سياحي جديد" description="افتح النموذج عند تسجيل حجز جديد؛ قائمة الحجوزات تظهر أولًا للمراجعة اليومية."><form className="ui-filter-grid" onSubmit={create}><FormField label="رقم الحجز" required><Input required value={form.code} onChange={e=>setForm({...form,code:e.target.value})}/></FormField><FormField label="البرنامج" required><Select required value={form.programId} onChange={e=>setForm({...form,programId:e.target.value})}><option value="">اختر برنامجًا مفتوحًا</option>{programs.filter(p=>p.status==='OPEN').map(p=><option key={p.id} value={p.id}>{p.code} — {p.nameAr}</option>)}</Select></FormField><FormField label="معرّف العميل" required><Input required value={form.customerId} onChange={e=>setForm({...form,customerId:e.target.value})}/></FormField><FormField label="المسافرون" hint="افصل المعرفات بفاصلة"><Input required value={form.travelerIds} onChange={e=>setForm({...form,travelerIds:e.target.value})}/></FormField><Button type="submit">إنشاء الحجز</Button></form></DisclosureCard>
  <DataGrid columns={['الحجز','البرنامج','العميل','المسافرون','الحالة','الإجراء']}>{bookings.map(b=>{
   const canConfirm=b.status==='DRAFT'||b.status==='CONFIRMING';
   const canCancel=b.status==='CONFIRMED'||b.status==='CANCELLING'||b.status==='CANCELLATION_REQUIRED';
