@@ -10,13 +10,13 @@ export class InMemoryFinancialControlsRepository implements FinancialControlsRep
   async listPolicies(c:string){return[...this.policies.values()].filter(v=>v.companyId===c);}
   async saveRequest(v: ApprovalRequest) { this.requests.set(this.key(v.companyId, v.id), v); }
   async findRequest(c: string, id: string) { return this.requests.get(this.key(c, id)); }
-  async listRequests(c:string){return[...this.requests.values()].filter(v=>v.companyId===c);}
+  async listRequests(c:string,branchId?:string){return[...this.requests.values()].filter(v=>v.companyId===c&&(branchId===undefined||v.branchId===branchId));}
   async saveDecision(v: ApprovalDecision) { this.decisions.set(this.key(v.companyId, v.requestId), v); const request = this.requests.get(this.key(v.companyId, v.requestId)); if (request) this.requests.set(this.key(v.companyId, v.requestId), { ...request, status: v.outcome }); }
   async findDecision(c: string, id: string) { return this.decisions.get(this.key(c, id)); }
   async saveRun(run: ReconciliationRun, issues: readonly ReconciliationIssue[]) { this.runs.set(this.key(run.companyId, run.correlationId), { run, issues: [...issues] }); for (const issue of issues) this.issues.set(this.key(run.companyId, issue.id), issue); }
   async findRun(c: string, id: string) { return this.runs.get(this.key(c, id)); }
   async findIssue(c: string, id: string) { return this.issues.get(this.key(c, id)); }
-  async listIssues(c:string){return[...this.issues.values()].filter(v=>v.companyId===c);}
+  async listIssues(c:string,branchId?:string){return[...this.issues.values()].filter(v=>{if(v.companyId!==c)return false;if(branchId===undefined)return true;for(const entry of this.runs.values())if(entry.run.companyId===c&&entry.run.id===v.runId)return entry.run.branchId===branchId;return false;});}
   async resolveIssue(c: string, id: string, at: string, reference: string) { const issue = this.issues.get(this.key(c, id)); if (!issue) throw new ContractValidationError('issueId', 'not found'); const resolved = { ...issue, resolvedAt: at, resolutionReference: reference }; this.issues.set(this.key(c, id), resolved); return resolved; }
   async saveCloseRun(v: CloseReadinessRun) { const existing = await this.findCloseRun(v.companyId, v.correlationId); if (existing) return existing; this.closeRuns.push(v); return v; }
   async findCloseRun(c: string, correlationId: string) { return this.closeRuns.find((x) => x.companyId === c && x.correlationId === correlationId); }
