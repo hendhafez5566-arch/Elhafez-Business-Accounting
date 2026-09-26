@@ -62,9 +62,9 @@ export class AccountingWorkspaceController{
    fiscalYears,periods,accounts,journals,invoices,treasuries,vouchers,taxPolicies,approvalPolicies,approvalRequests,controlIssues,
    trialBalance,incomeStatement,balanceSheet,treasuryReport,taxReport
   ]=await Promise.all([
-   this.periods.listFiscalYears(c.companyId),this.periods.listPeriods(c.companyId),this.ledger.listAccounts(c.companyId),this.ledger.activity(c.companyId),
-   this.billing.listInvoices(c.companyId),this.treasury.listTreasuries(c.companyId),this.treasury.listVouchers(c.companyId),this.tax.listPolicies(c.companyId),
-   this.controls.listApprovalPolicies(c.companyId),this.controls.listApprovalRequests(c.companyId),this.controls.listControlIssues(c.companyId),
+   this.periods.listFiscalYears(c.companyId),this.periods.listPeriods(c.companyId),this.ledger.listAccounts(c.companyId),this.ledger.activity(c.companyId,c.branchId),
+   this.billing.listInvoices(c.companyId).then(values=>values.filter(value=>value.branchId===c.branchId)),this.treasury.listTreasuries(c.companyId),this.treasury.listVouchers(c.companyId).then(values=>values.filter(value=>value.branchId===c.branchId)),this.tax.listPolicies(c.companyId),
+   this.controls.listApprovalPolicies(c.companyId),this.controls.listApprovalRequests(c.companyId,c.branchId),this.controls.listControlIssues(c.companyId,c.branchId),
    this.reporting.trialBalance(scope),this.reporting.incomeStatement(scope),this.reporting.balanceSheet(scope),this.reporting.treasury(scope),this.reporting.tax(scope),
   ]);
   return{fiscalYears,periods,accounts,journals,invoices,treasuries,vouchers,taxPolicies,approvalPolicies,approvalRequests,controlIssues,
@@ -107,7 +107,7 @@ export class AccountingWorkspaceController{
   const c=await this.context(this.headers(auth,company,branch),PLATFORM_CORE_PERMISSIONS.accountingFinanceOperate);
   const commandKey=text(input.commandKey,'commandKey');
   const lines:PostingLine[]=input.lines.map(line=>({accountId:text(line.accountId,'accountId'),...(line.debit?.trim()?{debit:decimalAmount(line.debit)}:{}),...(line.credit?.trim()?{credit:decimalAmount(line.credit)}:{}),...(line.partyId?.trim()?{partyId:line.partyId.trim()}:{}),...(line.costCenterId?.trim()?{costCenterId:line.costCenterId.trim()}:{})}));
-  return this.ledger.post({id:stableId(c.companyId,'MANUAL_JOURNAL',commandKey),companyId:c.companyId,number:text(input.number,'number'),postingDate:input.postingDate,sourceType:'MANUAL_JOURNAL',sourceId:commandKey,lines});
+  return this.ledger.post({id:stableId(c.companyId,'MANUAL_JOURNAL',commandKey),companyId:c.companyId,branchId:c.branchId,number:text(input.number,'number'),postingDate:input.postingDate,sourceType:'MANUAL_JOURNAL',sourceId:commandKey,lines});
  }
 
  @Post('invoices')
@@ -126,6 +126,7 @@ export class AccountingWorkspaceController{
  @Post('invoices/:id/cancel')
  async cancelInvoice(@Headers('authorization')auth:string,@Headers('x-company-id')company:string,@Headers('x-branch-id')branch:string,@Param('id')id:string,@Body()input:{postingDate:string;number:string}){
   const c=await this.context(this.headers(auth,company,branch),PLATFORM_CORE_PERMISSIONS.accountingFinanceOperate);
+  const target=await this.billing.getInvoice(c.companyId,id);if(!target||target.branchId!==c.branchId)throw new BadRequestException('invoice not found in current branch');
   return this.billing.cancelInvoice(c.companyId,id,input.postingDate,text(input.number,'number'));
  }
 
@@ -142,11 +143,12 @@ export class AccountingWorkspaceController{
   @Body()input:{commandKey:string;invoiceId:string;treasuryId:string;number:string;postingDate:string;amount:string;advanceAccountId?:string;realizedFxGainAccountId?:string;realizedFxLossAccountId?:string;approvalRequestId?:string}){
   const c=await this.context(this.headers(auth,company,branch),PLATFORM_CORE_PERMISSIONS.accountingFinanceOperate);
   const position=await this.billing.getOpenPosition(c.companyId,text(input.invoiceId,'invoiceId'));
+  if(position.branchId!==c.branchId)throw new BadRequestException('invoice not found in current branch');
   if(position.status!=='POSTED')throw new BadRequestException('posted invoice position required');
   const commandKey=text(input.commandKey,'commandKey'),id=stableId(c.companyId,'MANUAL_SETTLEMENT',commandKey);
   return this.treasury.postVoucher({id,companyId:c.companyId,branchId:c.branchId,treasuryId:text(input.treasuryId,'treasuryId'),
    kind:position.partyKind==='CUSTOMER'?'RECEIPT':'PAYMENT',partyKind:position.partyKind,partyId:position.partyId,number:text(input.number,'number'),postingDate:input.postingDate,
-   amount:decimalAmount(input.amount),sourceType:'MANUAL_ACCOUNTING_SETTLEMENT',sourceId:commandKey,controlAccountId:position.controlAccountId,actorId:c.actorId,
+   amount:decimalAmount(input.amount),sourceType:'MANUAL_ACCOUNTING_SETTLEMENT',sourceId:commandKey,controlAccountId:position.controlAccountId,actorId:c.actorId,explicitPostedInvoiceId:position.invoiceId,
    ...(input.advanceAccountId?.trim()?{advanceAccountId:input.advanceAccountId.trim()}:{}),...(input.realizedFxGainAccountId?.trim()?{realizedFxGainAccountId:input.realizedFxGainAccountId.trim()}:{}),
    ...(input.realizedFxLossAccountId?.trim()?{realizedFxLossAccountId:input.realizedFxLossAccountId.trim()}:{}),...(input.approvalRequestId?.trim()?{approvalRequestId:input.approvalRequestId.trim()}:{})});
  }
@@ -154,6 +156,7 @@ export class AccountingWorkspaceController{
  @Post('vouchers/:id/reverse')
  async reverseVoucher(@Headers('authorization')auth:string,@Headers('x-company-id')company:string,@Headers('x-branch-id')branch:string,@Param('id')id:string,@Body()input:{postingDate:string;number:string}){
   const c=await this.context(this.headers(auth,company,branch),PLATFORM_CORE_PERMISSIONS.accountingFinanceOperate);
+  const target=(await this.treasury.listVouchers(c.companyId)).find(value=>value.id===id);if(!target||target.branchId!==c.branchId)throw new BadRequestException('voucher not found in current branch');
   return this.treasury.voidVoucher(c.companyId,id,input.postingDate,text(input.number,'number'));
  }
 
@@ -178,6 +181,7 @@ export class AccountingWorkspaceController{
   @Body()input:{outcome:'APPROVED'|'REJECTED';reason?:string}){
   const c=await this.context(this.headers(auth,company,branch),PLATFORM_CORE_PERMISSIONS.accountingFinanceOperate);
   if(input.outcome!=='APPROVED'&&input.outcome!=='REJECTED')throw new BadRequestException('invalid approval outcome');
+  const request=await this.controls.getApprovalRequest(c.companyId,id);if(!request||request.branchId!==c.branchId)throw new BadRequestException('approval request not found in current branch');
   return this.controls.decideApproval({companyId:c.companyId,requestId:id,decisionId:stableId(c.companyId,'APPROVAL_DECISION',id,input.outcome),actorId:c.actorId,outcome:input.outcome,...(input.reason?.trim()?{reason:input.reason.trim()}:{})});
  }
 }
