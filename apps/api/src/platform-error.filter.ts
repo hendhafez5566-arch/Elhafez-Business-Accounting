@@ -1,4 +1,5 @@
-import { ArgumentsHost, Catch, ExceptionFilter, HttpStatus } from '@nestjs/common';
+import { Catch, HttpStatus } from '@nestjs/common';
+import type { ArgumentsHost, ExceptionFilter } from '@nestjs/common';
 import { PlatformError } from '@elhafez/platform-core';
 
 type HttpResponse = { status(code:number): HttpResponse; json(body:unknown): void };
