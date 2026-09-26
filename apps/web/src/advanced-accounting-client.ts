@@ -30,4 +30,12 @@ export const advancedAccountingApi={
  payLoanInstallment:(loanId:string,installmentId:string,input:{treasuryId:string;postingDate:string;number:string})=>crmPost<AdvancedResult>(base+'/loans/'+enc(loanId)+'/installments/'+enc(installmentId)+'/pay',input),
  createProvision:(input:{name:string;provisionAccountId:string;expenseAccountId:string;releaseAccountId:string})=>crmPost<AdvancedResult>(base+'/provisions',input),
  moveProvision:(id:string,input:{kind:'RECOGNIZE'|'INCREASE'|'USE'|'RELEASE';amount:string;sourceType:string;sourceId:string;postingDate:string;number:string;useOffsetAccountId?:string})=>crmPost<AdvancedResult>(base+'/provisions/'+enc(id)+'/movements',input),
+ createRecognitionSchedule:(input:{kind:'PREPAID_EXPENSE'|'DEFERRED_REVENUE'|'DEFERRED_COST';sourceType:string;sourceId:string;sourceInvoiceId?:string;currency:string;sourceAmount:string;baseAmount:string;deferredAccountId:string;recognitionAccountId:string;serviceDates:string[];postingDate:string;number:string;precision?:number})=>crmPost<AdvancedResult>(base+'/recognition-schedules',input),
+ postRecognitionPart:(scheduleId:string,partId:string,input:{postingDate:string;number:string})=>crmPost<AdvancedResult>(base+'/recognition-schedules/'+enc(scheduleId)+'/parts/'+enc(partId)+'/post',input),
+ reverseRecognitionPart:(scheduleId:string,partId:string,input:{postingDate:string;number:string})=>crmPost<AdvancedResult>(base+'/recognition-schedules/'+enc(scheduleId)+'/parts/'+enc(partId)+'/reverse',input),
+ accrueRevenue:(input:{sourceType:string;sourceId:string;amount:string;serviceDate:string;number:string;accruedRevenueAccountId:string;revenueAccountId:string})=>crmPost<AdvancedResult>(base+'/accruals',input),
+ clearAccruedRevenue:(id:string,input:{billingInvoiceId:string;postingDate:string;number:string})=>crmPost<AdvancedResult>(base+'/accruals/'+enc(id)+'/clear',input),
+ recognizeAllowance:(input:{customerId?:string;sourceReference:string;allowanceAccountId:string;expenseAccountId:string;releaseAccountId:string;amount:string;postingDate:string;number:string})=>crmPost<AdvancedResult>(base+'/allowances',input),
+ releaseAllowance:(id:string,input:{amount:string;postingDate:string;number:string})=>crmPost<AdvancedResult>(base+'/allowances/'+enc(id)+'/release',input),
+ writeOffReceivable:(id:string,input:{invoiceId:string;amount:string;postingDate:string;number:string})=>crmPost<AdvancedResult>(base+'/allowances/'+enc(id)+'/write-off',input),
 };
