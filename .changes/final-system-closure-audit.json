@@ -41,6 +41,7 @@
     "docs/BUSINESS-MODULE-ROUTING.md",
     "docs/UI-ARCHITECTURE.md",
     ".github/workflows/**",
+    "eslint.config.mjs",
     "apps/web/src/app-shell.tsx",
     "apps/web/src/routes.tsx",
     "apps/web/src/styles.css",
