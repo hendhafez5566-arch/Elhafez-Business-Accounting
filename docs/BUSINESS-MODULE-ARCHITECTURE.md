@@ -213,7 +213,8 @@ When a PLANNED owner is implemented:
 6. declare only required public dependencies;
 7. add tests before registration;
 8. register in `apps/api` only through the public Nest module;
-9. add UI routes without moving ownership into the UI/composition root.
+9. add UI routes without moving ownership into the UI/composition root;
+10. declare `dataScope`, any `branchScopedTables`, and explicit `criticalInvariants` in `module.json` so AE-01 can reject an unscoped new owner.
 
 ## 7. Existing-owner preservation
 
