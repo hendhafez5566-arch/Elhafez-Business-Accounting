@@ -41,6 +41,7 @@ export const advancedOperationsApi={
   getContract:(id:string)=>crmGet<{contract:JsonRecord|null;versions:JsonRecord[]}>(base+'/inventory/contracts/'+encodeURIComponent(id)),
   amendContract:(id:string,input:{terms:Record<string,unknown>;effectiveFrom:string;effectiveTo?:string})=>crmPost<JsonRecord>(base+'/inventory/contracts/'+encodeURIComponent(id)+'/amend',input),
   createResource:(input:JsonRecord)=>crmPost<JsonRecord>(base+'/inventory/resources',input),
+  createStopSale:(input:{contractId:string;reason:string;effectiveFrom:string;effectiveTo:string})=>crmPost<JsonRecord>(base+'/inventory/stop-sales',input),
   availability:(input:{contractId:string;resourceType:ResourceType;resourceId:string;serviceDate:string;periodEnd?:string})=>crmPost<JsonRecord>(base+'/inventory/availability',input),
   allocate:(input:{contractId:string;resourceType:ContractType;resourceId:string;programSourceType:string;programSourceId:string;serviceDate:string;periodEnd?:string;quantity:string})=>crmPost<JsonRecord>(base+'/inventory/allocations',input),
   getAllocation:(id:string)=>crmGet<JsonRecord|null>(base+'/inventory/allocations/'+encodeURIComponent(id)),
