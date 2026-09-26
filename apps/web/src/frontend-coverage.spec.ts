@@ -37,9 +37,11 @@ test('advanced accounting capabilities have real product surfaces', () => {
 
 test('shared contract inventory is reachable from Hajj and Umrah without a second owner', () => {
   const route = findRoute('/hajj-umrah/contracts-inventory');
+  const tourismRoute = findRoute('/tourism/contracts-inventory');
   assert.equal(route.label, 'التعاقدات والمخزون');
   assert.equal(route.group, 'الحج والعمرة');
   assert.equal(route.element.type, TourismContractInventoryPage);
+  assert.equal(route.element.type, tourismRoute.element.type);
 });
 
 test('corrective frontend coverage exposes owner-backed amendments, recognition, accrual and allowances', () => {
