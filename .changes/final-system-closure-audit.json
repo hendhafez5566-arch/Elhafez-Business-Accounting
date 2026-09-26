@@ -1,6 +1,6 @@
 {
   "id": "final-system-closure-audit",
-  "summary": "Execute final system closure and its pre-Go-Live corrective fixes: tenant entry, accounting workspace, complete general-tourism lifecycle, production frontend builds, secure platform backup/recovery, API hardening, deployment evidence, regression and UAT readiness.",
+  "summary": "Execute final system closure and pre-Go-Live product closure: tenant entry, company-scoped administrator authorization, stable API error mapping, operational Arabic workspaces, accounting and tourism closure, production frontend builds, secure backup/recovery, deployment evidence, regression and UAT readiness.",
   "type": "bugfix",
   "allowedModules": [
     "general-ledger",
@@ -48,7 +48,7 @@
     "modules/*/module.json",
     "apps/web/src/ui/**"
   ],
-  "protectedReason": "Owner-authorized final system closure includes the canonical tenant-entry redesign from email credentials to company-scoped Username + temporary password, enforced first-login password rotation, self-service credential maintenance, and additive migration/backfill. Platform Core remains the sole identity owner; SaaS only resolves Company Code. Protected navigation changes expose the approved account-credentials page without duplicating identity truth. The same pre-Go-Live corrective scope also repairs the merged-but-unexecutable SAAS-01 migration and retains the approved Hajj/Umrah advisory-lock runtime corrections.",
+  "protectedReason": "Owner-authorized final system closure includes the canonical company-scoped Username authentication design and the final Product UI closure required for client delivery. Platform Core remains the sole identity/authorization owner; the canonical company-administrator role has full capability access only inside its assigned company while ordinary roles remain explicit-permission scoped. Protected navigation changes keep operational workspaces in the primary sidebar while moving record-detail (360/program workspace) and account settings to contextual flows. API PlatformError mapping converts domain authorization failures to stable HTTP semantics, and the Arabic UI presents controlled permission/session feedback instead of raw server errors. The same pre-Go-Live scope retains the previously approved SAAS migration repair and Hajj/Umrah runtime corrections.",
   "allowBreakingPublicApi": true,
   "publicApiBreakingReason": "Owner-authorized pre-Go-Live tenant authentication contract change: /saas/login moves from Company Code + email + password to Company Code + company-scoped username + password. The staging system is not yet closed/merged for production, and existing database users receive additive backfilled company login identities.",
   "unacceptedMigrationRepairs": [
