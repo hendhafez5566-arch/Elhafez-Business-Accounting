@@ -358,6 +358,7 @@ export class TreasurySettlementApplicationService {
     const journal = await this.gl.post({
       id: "treasury:" + input.id,
       companyId: input.companyId,
+      ...(input.branchId?{branchId:input.branchId}:{}),
       number: input.number,
       postingDate: input.postingDate,
       sourceType: "TREASURY_VOUCHER",
@@ -422,6 +423,7 @@ export class TreasurySettlementApplicationService {
     const journal=await this.gl.post({
       id:'treasury-owner:'+ownerSourceId,
       companyId:input.companyId,
+      ...(input.branchId?{branchId:input.branchId}:{}),
       number:input.number,
       postingDate:input.postingDate,
       sourceType:'TREASURY_OWNER_PAYMENT',
@@ -453,6 +455,7 @@ export class TreasurySettlementApplicationService {
     const journal=await this.gl.post({
       id:'treasury-supplier-refund:'+sourceId,
       companyId:input.companyId,
+      ...(input.branchId?{branchId:input.branchId}:{}),
       number:input.number,
       postingDate:input.postingDate,
       sourceType:'TREASURY_SUPPLIER_ADVANCE_REFUND',
