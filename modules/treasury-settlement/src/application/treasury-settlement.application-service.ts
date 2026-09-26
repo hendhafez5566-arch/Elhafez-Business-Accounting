@@ -290,6 +290,9 @@ export class TreasurySettlementApplicationService {
       ...(input.explicitDraftInvoiceId
         ? { explicitDraftInvoiceId: input.explicitDraftInvoiceId }
         : {}),
+      ...(input.explicitPostedInvoiceId
+        ? { explicitPostedInvoiceId: input.explicitPostedInvoiceId }
+        : {}),
       ...(input.restrictionSourceType
         ? { restrictionSourceType: input.restrictionSourceType }
         : {}),
