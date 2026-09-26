@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "mode": "fail-closed",
+  "requiredVerifySequence": [
+    "pnpm change-safety:check",
+    "pnpm engineering-integrity:check",
+    "pnpm prisma:generate",
+    "pnpm lint",
+    "pnpm typecheck",
+    "pnpm architecture:check",
+    "pnpm test"
+  ],
+  "requiredCiCommands": [
+    "pnpm change-safety:check",
+    "pnpm engineering-integrity:check",
+    "pnpm prisma:generate",
+    "pnpm typecheck",
+    "pnpm lint",
+    "pnpm architecture:check",
+    "pnpm test"
+  ],
+  "requiredProtectedPaths": [
+    "AGENTS.md",
+    "AI_CHANGE_PROTOCOL.md",
+    ".github/workflows/**",
+    ".governance/**",
+    "tools/architecture/**",
+    "tools/governance/**",
+    "eslint.config.mjs",
+    "tsconfig*.json",
+    "package.json",
+    "modules/*/module.json",
+    "prisma/migrations/**"
+  ]
+}
