@@ -552,3 +552,16 @@ test('BLOCKER-6 unrelated customer advance does not block invoice A cancellation
   const evidenceBHistory = await service.getCancellationEvidence(company, invoiceB.id);
   assert.equal(evidenceBHistory.hasHistoricalAllocationEvidence, true, 'historical allocation evidence retained');
 });
+
+
+test('explicit posted invoice settlement never redirects to an older party invoice',async()=>{
+ const f=fixture();
+ for(const [id,due] of [['older','2026-09-01'],['selected','2026-10-01']] as const){
+  await f.service.createDraft(invoice({id,sourceId:'src-'+id,number:'N-'+id,dueDate:due,lines:[{id:'l-'+id,accountId:'revenue',amount:amount('100')}]}));
+  await f.service.postInvoice(company,id);
+ }
+ const result=await f.service.settle({id:'explicit-posted',companyId:company,partyKind:'CUSTOMER',partyId:'party',amount:amount('50'),settlementCurrency:'EGP',settlementDate:'2026-09-26',explicitPostedInvoiceId:'selected'});
+ assert.deepEqual(result.allocations.map(x=>x.invoiceId),['selected']);
+ assert.equal(await f.service.invoiceOutstanding(company,'older'),'100');
+ assert.equal(await f.service.invoiceOutstanding(company,'selected'),'50');
+});
