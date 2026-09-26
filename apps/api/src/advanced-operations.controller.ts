@@ -207,6 +207,11 @@ export class AdvancedOperationsController {
     if(x.kind==='VISA')return this.inventory.createVisaQuota({companyId:ctx.companyId,contractId:x.contractId,visaType:x.visaType??'',...(x.nationality?{nationality:x.nationality}:{}),quotaTotal:decimalAmount(x.quotaTotal??'0'),effectiveFrom:x.effectiveFrom??'',effectiveTo:x.effectiveTo??''},key);
     return this.inventory.createGenericService({companyId:ctx.companyId,contractId:x.contractId,category:x.category??'OTHER',name:x.name??'',...(x.description?{description:x.description}:{}),unit:x.unit??'',serviceStart:x.serviceStart??'',serviceEnd:x.serviceEnd??'',capacity:decimalAmount(x.capacity??'0'),...(x.releaseDeadline?{releaseDeadline:x.releaseDeadline}:{})},key);
   }
+  @Post('inventory/stop-sales')
+  async createStopSale(@Headers('authorization')a:string,@Headers('x-company-id')c:string,@Headers('x-branch-id')b:string,@Body()x:{contractId:string;reason:string;effectiveFrom:string;effectiveTo:string}){
+    const ctx=await this.inventoryContext(this.headers(a,c,b));return this.inventory.createStopSale({companyId:ctx.companyId,contractId:x.contractId,reason:x.reason,effectiveFrom:x.effectiveFrom,effectiveTo:x.effectiveTo},randomUUID());
+  }
+
   @Post('inventory/availability')
   async availability(@Headers('authorization')a:string,@Headers('x-company-id')c:string,@Headers('x-branch-id')b:string,@Body()x:AvailabilityInput){
     const ctx=await this.inventoryContext(this.headers(a,c,b),false);return this.inventory.checkAvailability({companyId:ctx.companyId,...x});
