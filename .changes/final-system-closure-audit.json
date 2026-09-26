@@ -39,7 +39,8 @@
     ".governance/change-safety.json",
     "tools/governance/check-engineering-integrity.ts",
     "tools/governance/check-change-safety.ts",
-    "AGENTS.md"
+    "AGENTS.md",
+    ".github/CODEOWNERS"
   ],
   "protectedPaths": [
     "PROJECT_STATE.md",
@@ -57,7 +58,8 @@
     ".governance/**",
     "tools/governance/**",
     "package.json",
-    "prisma/migrations/**"
+    "prisma/migrations/**",
+    ".github/CODEOWNERS"
   ],
   "protectedReason": "Owner-authorized final system closure includes the canonical company-scoped Username authentication design and the final Product UI closure required for client delivery. Platform Core remains the sole identity/authorization owner; the canonical company-administrator role has full capability access only inside its assigned company while ordinary roles remain explicit-permission scoped. Protected navigation changes keep operational workspaces in the primary sidebar while moving record-detail (360/program workspace) and account settings to contextual flows. API PlatformError mapping converts domain authorization failures to stable HTTP semantics, and the Arabic UI presents controlled permission/session feedback instead of raw server errors. The same pre-Go-Live scope retains the previously approved SAAS migration repair and Hajj/Umrah runtime corrections. Owner-authorized AE-01 architecture enforcement adds fail-closed anti-patching, CI self-check, protected verification scripts, mandatory changed-test evidence, and an immutable exact-blob lock for the one-time pre-Go-Live SAAS migration repair.",
   "allowBreakingPublicApi": true,
