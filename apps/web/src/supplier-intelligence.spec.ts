@@ -17,6 +17,6 @@ test('Supplier Intelligence UI exposes required 360, metrics, evaluation, disput
  const html=renderToStaticMarkup(createElement(SupplierIntelligencePage));
  for(const text of ['تقييم ومتابعة الموردين','اختر المورد'])assert.match(html,new RegExp(text));
  const source=readFileSync(new URL('./supplier-intelligence-page.tsx',import.meta.url),'utf8');
- for(const text of ['Supplier 360','أداء المشتريات','إضافة تقييم','فتح نزاع','رفع Hold','نشط','غير نشط','موقوف مؤقتًا'])assert.match(source,new RegExp(text));
+ for(const text of ['ملف المورد 360°','أداء المشتريات','إضافة تقييم','فتح نزاع','رفع الإيقاف','نشط','غير نشط','موقوف مؤقتًا'])assert.match(source,new RegExp(text));
  assert.doesNotMatch(source,/window\.(prompt|confirm|alert)/);
 });
