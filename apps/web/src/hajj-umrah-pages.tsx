@@ -293,11 +293,13 @@ function ProgramForm({
   onChange,
   submitLabel,
   onSubmit,
+  seasons,
 }: {
   readonly value: ProgramInput;
   readonly onChange: (value: ProgramInput) => void;
   readonly submitLabel: string;
   readonly onSubmit: (event: FormEvent) => void;
+  readonly seasons: readonly Season[];
 }) {
   const [requirements, setRequirements] = useState((value.requirements ?? []).join(','));
   const [components, setComponents] = useState(JSON.stringify(value.components ?? [], null, 2));
@@ -320,7 +322,7 @@ function ProgramForm({
   return <form onSubmit={onSubmit}>
     <FormField label="الكود" required><Input required value={value.code} onChange={(event) => onChange({ ...value, code: event.target.value })} /></FormField>
     <FormField label="النوع" required><Select value={value.type} onChange={(event) => onChange({ ...value, type: event.target.value as Program['type'] })}><option value="UMRAH">عمرة</option><option value="HAJJ">حج</option></Select></FormField>
-    <FormField label="معرّف الموسم" required><Input required value={value.seasonId} onChange={(event) => onChange({ ...value, seasonId: event.target.value })} /></FormField>
+    <FormField label="الموسم" required><Select required value={value.seasonId} onChange={(event) => onChange({ ...value, seasonId: event.target.value })}><option value="">اختر الموسم</option>{seasons.filter(season=>season.status==='ACTIVE').map(season=><option key={season.id} value={season.id}>{season.code} — {season.arabicName}</option>)}</Select></FormField>
     <FormField label="الاسم العربي" required><Input required value={value.arabicName} onChange={(event) => onChange({ ...value, arabicName: event.target.value })} /></FormField>
     <FormField label="الاسم الإنجليزي"><Input value={value.englishName ?? ''} onChange={(event) => onChange({ ...value, englishName: event.target.value })} /></FormField>
     <FormField label="تاريخ السفر" required><Input required type="date" value={value.departureDate} onChange={(event) => onChange({ ...value, departureDate: event.target.value })} /></FormField>
@@ -339,6 +341,7 @@ function ProgramForm({
 
 export function ProgramsPage({ api = hajjUmrahApi }: { readonly api?: HajjUmrahApi } = {}) {
   const [rows, setRows] = useState<Program[]>([]);
+  const [seasons, setSeasons] = useState<Season[]>([]);
   const [capabilities, setCapabilities] = useState<HajjUmrahCapabilities>(emptyCapabilities);
   const [form, setForm] = useState<ProgramInput>(emptyProgramInput());
   const [showCreate, setShowCreate] = useState(false);
@@ -350,8 +353,8 @@ export function ProgramsPage({ api = hajjUmrahApi }: { readonly api?: HajjUmrahA
   async function reload() {
     setLoading(true);
     try {
-      const [nextRows, nextCapabilities] = await Promise.all([loadPrograms(api), api.capabilities()]);
-      setRows(nextRows); setCapabilities(nextCapabilities); setError('');
+      const [nextRows, nextCapabilities, nextSeasons] = await Promise.all([loadPrograms(api), api.capabilities(), loadSeasons(api)]);
+      setRows(nextRows); setCapabilities(nextCapabilities); setSeasons(nextSeasons); setError('');
     } catch (error) { setError(errorMessage(error)); }
     finally { setLoading(false); }
   }
@@ -374,7 +377,7 @@ export function ProgramsPage({ api = hajjUmrahApi }: { readonly api?: HajjUmrahA
       <Input aria-label="بحث البرامج" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="بحث بالاسم أو الكود" />
       {capabilities.programCreate && <Button type="button" onClick={() => setShowCreate((value) => !value)}>{showCreate ? 'إغلاق النموذج' : 'إنشاء برنامج'}</Button>}
     </Card>
-    {showCreate && capabilities.programCreate && <Card title="إنشاء برنامج"><ProgramForm value={form} onChange={setForm} submitLabel="حفظ البرنامج" onSubmit={create} /></Card>}
+    {showCreate && capabilities.programCreate && <Card title="إنشاء برنامج"><ProgramForm value={form} onChange={setForm} submitLabel="حفظ البرنامج" onSubmit={create} seasons={seasons} /></Card>}
     <Card title="قائمة البرامج"><ProgramsView rows={filtered} capabilities={capabilities} loading={loading} error={error} /></Card>
     {notice && <Toast>{notice}</Toast>}
   </section>;
