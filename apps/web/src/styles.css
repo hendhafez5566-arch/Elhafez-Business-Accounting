@@ -418,7 +418,70 @@ a { color: var(--color-primary); }
   border-radius: var(--radius-md);
 }
 
-.ui-state--error { border-color: var(--color-danger); }
+.ui-state {
+  min-height: 8rem;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.ui-state h2,
+.ui-state p { margin: 0; }
+
+.ui-state p {
+  margin-top: .3rem;
+  color: var(--color-text-muted);
+}
+
+.ui-state__content {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.ui-state__icon {
+  inline-size: 2.5rem;
+  block-size: 2.5rem;
+  flex: 0 0 2.5rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--color-surface-subtle);
+  color: var(--color-text-muted);
+  font-weight: 900;
+  font-size: 1.15rem;
+}
+
+.ui-state--empty {
+  border-style: dashed;
+  box-shadow: none;
+}
+
+.ui-state--error {
+  border-color: color-mix(in srgb, var(--color-danger) 45%, var(--color-border));
+  background: color-mix(in srgb, var(--color-danger-soft) 40%, var(--color-surface));
+}
+
+.ui-state--error .ui-state__icon {
+  color: var(--color-danger);
+  background: var(--color-danger-soft);
+}
+
+.ui-state--loading {
+  color: var(--color-text-muted);
+}
+
+.ui-state__spinner {
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  flex: 0 0 1.5rem;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: ui-state-spin .8s linear infinite;
+}
+
+@keyframes ui-state-spin { to { transform: rotate(360deg); } }
+
 
 .ui-drawer { display: none; }
 
