@@ -19,7 +19,9 @@
     "apps/web/src/styles.css",
     "modules/*/module.json",
     "apps/web/src/ui/**",
-    "docs/UI-ARCHITECTURE.md"
+    "docs/UI-ARCHITECTURE.md",
+    "package.json",
+    "prisma/migrations/**"
   ],
   "generatedOrForbiddenPaths": [
     "**/*.tsbuildinfo",
