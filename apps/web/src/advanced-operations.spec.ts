@@ -14,6 +14,7 @@ test('contracts and inventory is exposed in Tourism and Hajj/Umrah without dupli
   const html=renderToStaticMarkup(createElement(ContractInventoryPage));
   assert.match(html,/التعاقدات والمخزون/);
   assert.match(html,/Tourism Contract Inventory/);
+  assert.match(html,/إيقاف بيع/);
   assert.equal(findRoute('/tourism/contracts-inventory').label,'التعاقدات والمخزون');
   assert.equal(findRoute('/hajj-umrah/contracts-inventory').label,'التعاقدات والمخزون');
 });
