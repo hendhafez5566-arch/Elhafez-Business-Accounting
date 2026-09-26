@@ -24,6 +24,14 @@ export class InMemoryCurrencyFxRepository implements CurrencyFxRepository {
     return [...this.currencies.values()].find((x) => x.companyId === companyId && x.isBase);
   }
 
+  async listCurrencies(companyId: CompanyId): Promise<CurrencyConfiguration[]> {
+    return [...this.currencies.values()].filter((value) => value.companyId === companyId).sort((a,b) => a.code.localeCompare(b.code));
+  }
+
+  async listRates(companyId: CompanyId): Promise<FxRate[]> {
+    return this.rates.filter((value) => value.companyId === companyId).sort((a,b) => b.effectiveAt.localeCompare(a.effectiveAt));
+  }
+
   async saveRate(value: FxRate): Promise<void> {
     const duplicate = this.rates.find(
       (x) =>
