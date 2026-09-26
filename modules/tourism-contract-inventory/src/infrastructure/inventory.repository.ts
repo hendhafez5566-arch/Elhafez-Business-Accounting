@@ -51,6 +51,14 @@ export interface AdjustmentResult {
 }
 
 export interface TourismInventoryRepository {
+  listContracts(companyId: CompanyId): Promise<TourismContract[]>;
+  listHotelInventory(companyId: CompanyId, contractId?: string): Promise<HotelInventory[]>;
+  listFlightBlocks(companyId: CompanyId, contractId?: string): Promise<FlightBlock[]>;
+  listTransportCapacities(companyId: CompanyId, contractId?: string): Promise<TransportCapacity[]>;
+  listVisaQuotas(companyId: CompanyId, contractId?: string): Promise<VisaQuota[]>;
+  listServiceInventory(companyId: CompanyId, contractId?: string): Promise<GenericServiceInventory[]>;
+  listStopSales(companyId: CompanyId, contractId?: string): Promise<StopSale[]>;
+  listAllocations(companyId: CompanyId, contractId?: string): Promise<Allocation[]>;
   planStandaloneSupply(input: PlanStandaloneSupplyInput): Promise<StandaloneSupplyPlan>;
   getStandaloneSupplyPlan(companyId: CompanyId, planId: string): Promise<StandaloneSupplyPlan | null>;
   commitStandaloneSupplyPlan(input: CommitStandaloneSupplyPlanInput, key: string | undefined, hash: string): Promise<StandaloneSupplyCommit>;
