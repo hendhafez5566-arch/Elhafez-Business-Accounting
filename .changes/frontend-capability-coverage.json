@@ -18,7 +18,7 @@
     "apps/web/src/routes.tsx",
     "apps/web/src/capability-coverage-client.ts",
     "apps/web/src/capability-coverage-pages.tsx",
-    "apps/web/src/capability-coverage.spec.tsx"
+    "apps/web/src/ui/capability-coverage.spec.ts"
   ],
   "protectedPaths": [
     "apps/api/src/app.module.ts",
