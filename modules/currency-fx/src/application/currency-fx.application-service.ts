@@ -47,6 +47,9 @@ export type RevaluationPreparation = Readonly<
 export class CurrencyFxApplicationService {
   constructor(private readonly repository: CurrencyFxRepository) {}
 
+  async listCurrencies(companyId: CompanyId): Promise<CurrencyConfiguration[]> { return this.repository.listCurrencies(companyId); }
+  async listRates(companyId: CompanyId): Promise<FxRate[]> { return this.repository.listRates(companyId); }
+
   async configure(input: CurrencyConfiguration): Promise<CurrencyConfiguration> {
     const value = configureCurrency(input);
     await this.repository.saveCurrency(value);
