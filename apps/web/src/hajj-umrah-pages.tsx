@@ -400,6 +400,7 @@ export function ProgramWorkspaceView({
   onAction,
   onCancel,
   onReopen,
+  seasonLabel,
 }: {
   readonly program: Program | null;
   readonly versions: readonly ProgramVersion[];
@@ -409,13 +410,14 @@ export function ProgramWorkspaceView({
   readonly onAction?: (action: ProgramAction) => void;
   readonly onCancel?: () => void;
   readonly onReopen?: () => void;
+  readonly seasonLabel?: string;
 }) {
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message={error} />;
   if (!program) return <EmptyState title="اختر برنامجًا لفتح مساحة العمل"><p>ابدأ من قائمة برامج الحج والعمرة، ثم اختر «فتح مساحة العمل» للبرنامج المطلوب.</p><a href="/hajj-umrah/programs">الانتقال إلى قائمة البرامج</a></EmptyState>;
   return <Card title={`${program.arabicName} — ${program.code}`}>
     <p><Badge tone={lifecycleTone(program.status)}>{lifecycleLabels[program.status]}</Badge> <Badge tone={program.bookingOpen ? 'success' : 'warning'}>{program.bookingOpen ? 'الحجز متاح' : 'الحجز مغلق'}</Badge></p>
-    <p>الموسم: {program.seasonId} · الإصدار الحالي: {program.currentVersion} · عدد الإصدارات: {versions.length}</p>
+    <p>الموسم: {seasonLabel??program.seasonId} · الإصدار الحالي: {program.currentVersion} · عدد الإصدارات: {versions.length}</p>
     {capabilities.programAvailability && program.status === 'BOOKABLE' && onAction && <Button type="button" onClick={() => onAction(program.bookingOpen ? 'booking-close' : 'booking-open')}>{program.bookingOpen ? 'إغلاق الحجز' : 'فتح الحجز'}</Button>}
     {capabilities.programLifecycle && program.status === 'PREPARING' && onAction && <Button type="button" onClick={() => onAction('open')}>اعتماد الجاهزية وإتاحة البرنامج</Button>}
     {capabilities.programLifecycle && program.status === 'BOOKABLE' && onAction && <Button type="button" onClick={() => onAction('departure')}>تسجيل المغادرة</Button>}
@@ -440,6 +442,7 @@ export function ProgramWorkspacePage({
   const id = programId ?? browserProgramId();
   const [program, setProgram] = useState<Program | null>(null);
   const [versions, setVersions] = useState<ProgramVersion[]>([]);
+  const [seasons, setSeasons] = useState<Season[]>([]);
   const [capabilities, setCapabilities] = useState<HajjUmrahCapabilities>(emptyCapabilities);
   const [tab, setTab] = useState('basic');
   const [editor, setEditor] = useState<ProgramInput>(emptyProgramInput());
@@ -453,12 +456,13 @@ export function ProgramWorkspacePage({
     if (!id) { setLoading(false); return; }
     setLoading(true);
     try {
-      const [nextProgram, nextVersions, nextCapabilities] = await Promise.all([
+      const [nextProgram, nextVersions, nextCapabilities, nextSeasons] = await Promise.all([
         api.getProgram(id),
         api.versions(id),
         api.capabilities(),
+        api.listSeasons(),
       ]);
-      setProgram(nextProgram); setVersions(nextVersions); setCapabilities(nextCapabilities);
+      setProgram(nextProgram); setVersions(nextVersions); setCapabilities(nextCapabilities); setSeasons(nextSeasons);
       setEditor(programToInput(nextProgram)); setError('');
     } catch (error) { setError(errorMessage(error)); }
     finally { setLoading(false); }
@@ -510,14 +514,15 @@ export function ProgramWorkspacePage({
       onAction={(value) => void action(value)}
       onCancel={() => setReasonMode('cancel')}
       onReopen={() => setReasonMode('reopen')}
+      seasonLabel={seasons.find(season=>season.id===program?.seasonId)?.arabicName}
     />
     {program && <>
       <Tabs tabs={workspaceTabs} active={tab} onChange={setTab} />
       {tab === 'basic' && <Card title="البيانات الأساسية والموسم">
-        <p>النوع: {program.type === 'HAJJ' ? 'حج' : 'عمرة'} · الموسم: {program.seasonId}</p>
+        <p>النوع: {program.type === 'HAJJ' ? 'حج' : 'عمرة'} · الموسم: {seasons.find(season=>season.id===program.seasonId)?.arabicName??program.seasonId}</p>
         <p>الاسم الإنجليزي: {program.englishName ?? '—'} · مسؤول العمليات: {program.operationsManager ?? '—'} · قائد المجموعة: {program.groupLeader ?? '—'} · المرشد: {program.guide ?? '—'} · التواصل: {program.contact ?? '—'}</p>
         {(program.status === 'PREPARING' ? capabilities.programEdit : capabilities.programAmend) &&
-          <ProgramForm value={editor} onChange={setEditor} submitLabel={program.status === 'PREPARING' ? 'حفظ تعديل التجهيز' : 'إنشاء تعديل معتمد'} onSubmit={saveDefinition} />}
+          <ProgramForm value={editor} onChange={setEditor} submitLabel={program.status === 'PREPARING' ? 'حفظ تعديل التجهيز' : 'إنشاء تعديل معتمد'} onSubmit={saveDefinition} seasons={seasons} />}
       </Card>}
       {tab === 'dates' && <Card title="التواريخ والسعة">
         <p>السفر: {program.snapshot.departureDate.slice(0, 10)} · العودة: {program.snapshot.returnDate.slice(0, 10)}</p>
