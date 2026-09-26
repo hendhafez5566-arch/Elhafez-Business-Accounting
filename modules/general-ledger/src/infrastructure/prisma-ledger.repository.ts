@@ -56,6 +56,7 @@ export class PrismaLedgerRepository implements LedgerRepository {
         data: {
           id: journal.id,
           companyId: journal.companyId,
+          branchId: journal.branchId ?? null,
           number: journal.number,
           postingDate: new Date(journal.postingDate),
           kind: journal.kind,
@@ -81,6 +82,7 @@ export class PrismaLedgerRepository implements LedgerRepository {
     return {
       ...value,
       postingDate: value.postingDate.toISOString().slice(0, 10),
+      branchId: value.branchId ?? undefined,
       correlationId: value.correlationId ?? undefined,
       reversalOfId: value.reversalOfId ?? undefined,
       fiscalYearId: value.fiscalYearId ?? undefined,
