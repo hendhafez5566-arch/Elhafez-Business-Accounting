@@ -164,6 +164,31 @@ function sameSource(left: SourceReference, right: SourceReference): boolean {
 export class PrismaTourismInventoryRepository implements TourismInventoryRepository {
   constructor(private readonly db: PrismaClient) {}
 
+  async listContracts(companyId: CompanyId): Promise<TourismContract[]> {
+    return (await this.db.tciContract.findMany({where:{companyId},orderBy:{createdAt:'desc'}})).map(contract);
+  }
+  async listHotelInventory(companyId: CompanyId, contractId?: string): Promise<HotelInventory[]> {
+    return (await this.db.tciHotelInventory.findMany({where:{companyId,...(contractId?{contractId}:{})},orderBy:{serviceDate:'asc'}})).map(row=>({id:row.id,companyId:row.companyId as CompanyId,contractId:row.contractId,hotelId:row.hotelId,roomId:row.roomId??undefined,serviceDate:iso(row.serviceDate),contractedQuantity:amount(row.contractedQuantity),allocatedQuantity:amount(row.allocatedQuantity),availableQuantity:amount(row.availableQuantity),status:row.status as HotelInventory['status']}));
+  }
+  async listFlightBlocks(companyId: CompanyId, contractId?: string): Promise<FlightBlock[]> {
+    return (await this.db.tciFlightBlock.findMany({where:{companyId,...(contractId?{contractId}:{})},orderBy:{departureDate:'asc'}})).map(row=>({id:row.id,companyId:row.companyId as CompanyId,contractId:row.contractId,flightNumber:row.flightNumber,origin:row.origin,destination:row.destination,departureDate:iso(row.departureDate),totalSeats:amount(row.totalSeats),consumedSeats:amount(row.consumedSeats),availableSeats:amount(row.availableSeats)}));
+  }
+  async listTransportCapacities(companyId: CompanyId, contractId?: string): Promise<TransportCapacity[]> {
+    return (await this.db.tciTransportCapacity.findMany({where:{companyId,...(contractId?{contractId}:{})},orderBy:{periodStart:'asc'}})).map(row=>({id:row.id,companyId:row.companyId as CompanyId,contractId:row.contractId,vehicleId:row.vehicleId,capacityUnits:amount(row.capacityUnits),periodStart:iso(row.periodStart),periodEnd:iso(row.periodEnd),consumedUnits:amount(row.consumedUnits)}));
+  }
+  async listVisaQuotas(companyId: CompanyId, contractId?: string): Promise<VisaQuota[]> {
+    return (await this.db.tciVisaQuota.findMany({where:{companyId,...(contractId?{contractId}:{})},orderBy:{effectiveFrom:'asc'}})).map(row=>({id:row.id,companyId:row.companyId as CompanyId,contractId:row.contractId,visaType:row.visaType,nationality:row.nationality??undefined,quotaTotal:amount(row.quotaTotal),quotaConsumed:amount(row.quotaConsumed),quotaRemaining:amount(row.quotaRemaining),effectiveFrom:iso(row.effectiveFrom),effectiveTo:iso(row.effectiveTo)}));
+  }
+  async listServiceInventory(companyId: CompanyId, contractId?: string): Promise<GenericServiceInventory[]> {
+    return (await this.db.tciServiceInventory.findMany({where:{companyId,...(contractId?{contractId}:{})},orderBy:{serviceStart:'asc'}})).map(row=>({id:row.id,companyId:row.companyId as CompanyId,contractId:row.contractId,category:row.category as GenericServiceInventory['category'],name:row.name,description:row.description??undefined,unit:row.unit,serviceStart:iso(row.serviceStart),serviceEnd:iso(row.serviceEnd),capacity:amount(row.capacity),allocatedQuantity:amount(row.allocatedQuantity),availableQuantity:amount(row.availableQuantity),releaseDeadline:row.releaseDeadline?iso(row.releaseDeadline):undefined,status:row.status as GenericServiceInventory['status']}));
+  }
+  async listStopSales(companyId: CompanyId, contractId?: string): Promise<StopSale[]> {
+    return (await this.db.tciStopSale.findMany({where:{companyId,...(contractId?{contractId}:{})},orderBy:{createdAt:'desc'}})).map(row=>({id:row.id,companyId:row.companyId as CompanyId,contractId:row.contractId,reason:row.reason,effectiveFrom:iso(row.effectiveFrom),effectiveTo:iso(row.effectiveTo),createdAt:iso(row.createdAt),isActive:row.isActive}));
+  }
+  async listAllocations(companyId: CompanyId, contractId?: string): Promise<Allocation[]> {
+    return (await this.db.tciAllocation.findMany({where:{companyId,...(contractId?{contractId}:{})},orderBy:{createdAt:'desc'}})).map(row=>allocation(row as AllocationRow));
+  }
+
   async planStandaloneSupply(input: PlanStandaloneSupplyInput): Promise<StandaloneSupplyPlan> {
     if (!input.branchId.trim() || !input.service.sourceId.trim() || !Number.isInteger(input.serviceRevision) || input.serviceRevision < 1 || input.requests.length === 0) {
       throw new Error('branch, real service source and supply requests are required');
