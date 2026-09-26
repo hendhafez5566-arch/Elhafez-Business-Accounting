@@ -2,6 +2,7 @@ import type { CompanyId } from '@elhafez/contracts';
 import type { Allowance,AllowanceMovement,AllowanceWriteOff,Asset,AssetDepreciation,AssetDisposal,Loan,PayrollRun,Provision,ProvisionMovement } from '../domain/assets-financing.js';
 export const ASSETS_FINANCING_REPOSITORY=Symbol('ASSETS_FINANCING_REPOSITORY');
 export interface AssetsFinancingRepository {
+ listAssets(c:CompanyId):Promise<Asset[]>; listLoans(c:CompanyId):Promise<Loan[]>; listProvisions(c:CompanyId):Promise<Provision[]>; listAllowances(c:CompanyId):Promise<Allowance[]>; listPayrollRuns(c:CompanyId):Promise<PayrollRun[]>;
  asset(c:CompanyId,id:string):Promise<Asset|undefined>; assetByCode(c:CompanyId,code:string):Promise<Asset|undefined>; reserveAsset(v:Asset):Promise<Asset>; finalizeAssetCapitalization(c:CompanyId,id:string,journalId:string):Promise<Asset>;
  depreciation(c:CompanyId,id:string):Promise<AssetDepreciation|undefined>; reserveDepreciation(v:AssetDepreciation):Promise<AssetDepreciation>; finalizeDepreciation(v:AssetDepreciation):Promise<AssetDepreciation>;
  disposal(c:CompanyId,id:string):Promise<AssetDisposal|undefined>; reserveDisposal(v:AssetDisposal):Promise<AssetDisposal>; recordDisposalEffects(v:AssetDisposal):Promise<void>; finalizeDisposal(c:CompanyId,id:string):Promise<AssetDisposal>;
