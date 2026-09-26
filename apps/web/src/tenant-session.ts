@@ -8,6 +8,7 @@ export interface TenantSession {
  readonly expiresAt:string;
  readonly companyId:string;
  readonly companyCode:string;
+ readonly companyName:string;
  readonly branches:readonly TenantBranch[];
  readonly branchId:string;
  readonly subscription:TenantSubscription;
@@ -24,7 +25,7 @@ function storage():Storage|undefined{
 function valid(value:unknown):value is TenantSession{
  if(!value||typeof value!=='object')return false;
  const v=value as Partial<TenantSession>;
- return typeof v.token==='string'&&Boolean(v.token)&&typeof v.userId==='string'&&Boolean(v.userId)&&typeof v.username==='string'&&Boolean(v.username)&&typeof v.mustChangePassword==='boolean'&&typeof v.companyId==='string'&&Boolean(v.companyId)&&typeof v.branchId==='string'&&Boolean(v.branchId)&&typeof v.companyCode==='string'&&Array.isArray(v.branches)&&typeof v.expiresAt==='string'&&Boolean(v.subscription)&&typeof v.subscription?.allowed==='boolean';
+ return typeof v.token==='string'&&Boolean(v.token)&&typeof v.userId==='string'&&Boolean(v.userId)&&typeof v.username==='string'&&Boolean(v.username)&&typeof v.mustChangePassword==='boolean'&&typeof v.companyId==='string'&&Boolean(v.companyId)&&typeof v.branchId==='string'&&Boolean(v.branchId)&&typeof v.companyCode==='string'&&typeof v.companyName==='string'&&Boolean(v.companyName)&&Array.isArray(v.branches)&&typeof v.expiresAt==='string'&&Boolean(v.subscription)&&typeof v.subscription?.allowed==='boolean';
 }
 function emit(){if(typeof window!=='undefined')window.dispatchEvent(new Event(TENANT_SESSION_EVENT));}
 export function readTenantSession():TenantSession|null{
