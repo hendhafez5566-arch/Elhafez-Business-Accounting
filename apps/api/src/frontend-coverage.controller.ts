@@ -5,12 +5,14 @@ import { PLATFORM_CORE_PERMISSIONS, PlatformCoreApplicationService } from '@elha
 import { CurrencyFxApplicationService } from '@elhafez/currency-fx';
 import { CostBudgetAccountingApplicationService, costCenterId } from '@elhafez/cost-budget-accounting';
 import { PartyAccountingApplicationService, type PartyRole } from '@elhafez/party-accounting';
-import { ExpenseCommissionRecognitionApplicationService, type ExpenseForm } from '@elhafez/expense-commission-recognition';
+import { ExpenseCommissionRecognitionApplicationService, type ExpenseForm, type RecognitionKind } from '@elhafez/expense-commission-recognition';
 import { AssetsFinancingApplicationService, type RegisterAssetInput } from '@elhafez/assets-financing';
 import type {
   AllocateCapacityInput,
+  AmendContractInput,
   CheckAvailabilityInput,
   CreateFlightBlockInput,
+  CreateGenericServiceInput,
   CreateHotelInventoryInput,
   CreateStopSaleInput,
   CreateTourismContractInput,
@@ -236,6 +238,51 @@ export class AdvancedAccountingController {
     });
   }
 
+  @Post('recognition-schedules')
+  async createRecognitionSchedule(@Headers('authorization') auth: string, @Headers('x-company-id') company: string, @Headers('x-branch-id') branch: string,
+    @Body() input: { id?: string; kind: RecognitionKind; sourceType: string; sourceId: string; sourceInvoiceId?: string; currency: string; sourceAmount: string; baseAmount: string; deferredAccountId: string; recognitionAccountId: string; serviceDates: string[]; postingDate: string; number: string; precision?: number }) {
+    const c = await this.context(auth, company, branch, true);
+    return this.ecr.createRecognitionSchedule({
+      id: input.id?.trim() || randomUUID(), companyId: c.companyId, kind: input.kind, sourceType: input.sourceType, sourceId: input.sourceId,
+      ...(input.sourceInvoiceId?.trim() ? { sourceInvoiceId: input.sourceInvoiceId.trim() } : {}),
+      currency: input.currency, sourceAmount: decimalAmount(input.sourceAmount), baseAmount: decimalAmount(input.baseAmount),
+      deferredAccountId: input.deferredAccountId, recognitionAccountId: input.recognitionAccountId, serviceDates: input.serviceDates,
+      postingDate: input.postingDate, number: input.number, ...(input.precision === undefined ? {} : { precision: input.precision }),
+    });
+  }
+
+  @Post('recognition-schedules/:scheduleId/parts/:partId/post')
+  async postRecognitionPart(@Headers('authorization') auth: string, @Headers('x-company-id') company: string, @Headers('x-branch-id') branch: string,
+    @Param('scheduleId') scheduleId: string, @Param('partId') partId: string, @Body() input: { postingDate: string; number: string }) {
+    const c = await this.context(auth, company, branch, true);
+    return this.ecr.postRecognitionPart(c.companyId, scheduleId, partId, input.postingDate, input.number);
+  }
+
+  @Post('recognition-schedules/:scheduleId/parts/:partId/reverse')
+  async reverseRecognitionPart(@Headers('authorization') auth: string, @Headers('x-company-id') company: string, @Headers('x-branch-id') branch: string,
+    @Param('scheduleId') scheduleId: string, @Param('partId') partId: string, @Body() input: { postingDate: string; number: string }) {
+    const c = await this.context(auth, company, branch, true);
+    return this.ecr.reverseRecognitionPart(c.companyId, scheduleId, partId, input.postingDate, input.number);
+  }
+
+  @Post('accruals')
+  async accrueRevenue(@Headers('authorization') auth: string, @Headers('x-company-id') company: string, @Headers('x-branch-id') branch: string,
+    @Body() input: { id?: string; sourceType: string; sourceId: string; amount: string; serviceDate: string; number: string; accruedRevenueAccountId: string; revenueAccountId: string }) {
+    const c = await this.context(auth, company, branch, true);
+    return this.ecr.accrueRevenue({
+      id: input.id?.trim() || randomUUID(), companyId: c.companyId, sourceType: input.sourceType, sourceId: input.sourceId,
+      amount: decimalAmount(input.amount), serviceDate: input.serviceDate, number: input.number,
+      accruedRevenueAccountId: input.accruedRevenueAccountId, revenueAccountId: input.revenueAccountId,
+    });
+  }
+
+  @Post('accruals/:id/clear')
+  async clearAccruedRevenue(@Headers('authorization') auth: string, @Headers('x-company-id') company: string, @Headers('x-branch-id') branch: string,
+    @Param('id') accrualId: string, @Body() input: { billingInvoiceId: string; postingDate: string; number: string }) {
+    const c = await this.context(auth, company, branch, true);
+    return this.ecr.clearAccruedRevenue({ companyId: c.companyId, accrualId, billingInvoiceId: input.billingInvoiceId, postingDate: input.postingDate, number: input.number });
+  }
+
   @Post('assets')
   async registerAsset(@Headers('authorization') auth: string, @Headers('x-company-id') company: string, @Headers('x-branch-id') branch: string,
     @Body() input: Omit<RegisterAssetInput, 'companyId' | 'id'> & { id?: string }) {
@@ -268,6 +315,31 @@ export class AdvancedAccountingController {
     @Param('loanId') loanId: string, @Param('installmentId') installmentId: string, @Body() input: { treasuryId: string; postingDate: string; number: string }) {
     const c = await this.context(auth, company, branch, true);
     return this.assets.payLoanInstallment({ companyId: c.companyId, loanId, installmentId, treasuryId: input.treasuryId, postingDate: input.postingDate, number: input.number });
+  }
+
+  @Post('allowances')
+  async recognizeAllowance(@Headers('authorization') auth: string, @Headers('x-company-id') company: string, @Headers('x-branch-id') branch: string,
+    @Body() input: { id?: string; customerId?: string; sourceReference: string; allowanceAccountId: string; expenseAccountId: string; releaseAccountId: string; amount: string; postingDate: string; number: string }) {
+    const c = await this.context(auth, company, branch, true);
+    return this.assets.recognizeAllowance({
+      id: input.id?.trim() || randomUUID(), companyId: c.companyId, ...(input.customerId?.trim() ? { customerId: input.customerId.trim() } : {}),
+      sourceReference: input.sourceReference, allowanceAccountId: input.allowanceAccountId, expenseAccountId: input.expenseAccountId,
+      releaseAccountId: input.releaseAccountId, amount: decimalAmount(input.amount), postingDate: input.postingDate, number: input.number,
+    });
+  }
+
+  @Post('allowances/:id/release')
+  async releaseAllowance(@Headers('authorization') auth: string, @Headers('x-company-id') company: string, @Headers('x-branch-id') branch: string,
+    @Param('id') allowanceId: string, @Body() input: { movementId?: string; amount: string; postingDate: string; number: string }) {
+    const c = await this.context(auth, company, branch, true);
+    return this.assets.releaseAllowance({ id: input.movementId?.trim() || randomUUID(), companyId: c.companyId, allowanceId, amount: decimalAmount(input.amount), postingDate: input.postingDate, number: input.number });
+  }
+
+  @Post('allowances/:id/write-off')
+  async writeOffReceivable(@Headers('authorization') auth: string, @Headers('x-company-id') company: string, @Headers('x-branch-id') branch: string,
+    @Param('id') allowanceId: string, @Body() input: { writeOffId?: string; invoiceId: string; amount: string; postingDate: string; number: string }) {
+    const c = await this.context(auth, company, branch, true);
+    return this.assets.writeOffReceivable({ id: input.writeOffId?.trim() || randomUUID(), companyId: c.companyId, allowanceId, invoiceId: input.invoiceId, amount: decimalAmount(input.amount), postingDate: input.postingDate, number: input.number });
   }
 
   @Post('provisions')
@@ -308,6 +380,14 @@ export class TourismContractInventoryController {
     return this.inventory.createContract({ ...body, companyId: c.companyId }, commandKey?.trim() || undefined);
   }
 
+  @Post('contracts/:id/amendments')
+  async amendContract(@Headers('authorization') auth: string, @Headers('x-company-id') company: string, @Headers('x-branch-id') branch: string,
+    @Param('id') contractId: string, @Body() input: Omit<AmendContractInput, 'companyId' | 'contractId'> & { commandKey?: string }) {
+    const c = await this.context(auth, company, branch);
+    const { commandKey, ...body } = input;
+    return this.inventory.amendContract({ ...body, contractId, companyId: c.companyId }, commandKey?.trim() || undefined);
+  }
+
   @Get('contracts/:id')
   async contract(@Headers('authorization') auth: string, @Headers('x-company-id') company: string, @Headers('x-branch-id') branch: string, @Param('id') id: string) {
     const c = await this.context(auth, company, branch);
@@ -346,6 +426,14 @@ export class TourismContractInventoryController {
     @Body() input: Omit<CreateVisaQuotaInput, 'companyId'> & { commandKey?: string }) {
     const c = await this.context(auth, company, branch); const { commandKey, ...body } = input;
     return this.inventory.createVisaQuota({ ...body, companyId: c.companyId }, commandKey?.trim() || undefined);
+  }
+
+  @Post('service-inventory')
+  async createServiceInventory(@Headers('authorization') auth: string, @Headers('x-company-id') company: string, @Headers('x-branch-id') branch: string,
+    @Body() input: Omit<CreateGenericServiceInput, 'companyId'> & { commandKey?: string }) {
+    const c = await this.context(auth, company, branch);
+    const { commandKey, ...body } = input;
+    return this.inventory.createGenericService({ ...body, companyId: c.companyId }, commandKey?.trim() || undefined);
   }
 
   @Post('stop-sales')
