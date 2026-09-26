@@ -32,8 +32,8 @@ export class FinancialControlsApplicationService {
   constructor(private readonly repository: FinancialControlsRepository, private readonly authorization: TrustedAuthorizationPort) {}
 
   async listApprovalPolicies(companyId:string){return this.repository.listPolicies(companyId);}
-  async listApprovalRequests(companyId:string){return this.repository.listRequests(companyId);}
-  async listControlIssues(companyId:string){return this.repository.listIssues(companyId);}
+  async listApprovalRequests(companyId:string,branchId?:string){return this.repository.listRequests(companyId,branchId);}
+  async listControlIssues(companyId:string,branchId?:string){return this.repository.listIssues(companyId,branchId);}
 
   async configureApprovalPolicy(input: Omit<ApprovalPolicy, 'threshold'> & { threshold: string }): Promise<ApprovalPolicy> {
     requireText(input.id, 'id'); requireText(input.companyId, 'companyId'); requireText(input.requiredAuthority, 'requiredAuthority');
