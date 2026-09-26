@@ -9,14 +9,14 @@ const message=(error:unknown)=>error instanceof Error?error.message:'تعذر ت
 
 export function TourismContractInventoryCorrectiveSection({contractId}:{contractId:string}){
  const[notice,setNotice]=useState(''),[result,setResult]=useState<InventoryResult|null>(null);
- const[terms,setTerms]=useState<TermRow[]>([{key:'',value:''}]),[effectiveFrom,setEffectiveFrom]=useState(today()),[effectiveTo,setEffectiveTo]=useState('');
+ const[terms,setTerms]=useState<TermRow[]>([{key:'',value:''}]),[effectiveFrom,setEffectiveFrom]=useState(today()),[effectiveTo,setEffectiveTo]=useState(today());
  const[service,setService]=useState({category:'OTHER' as ServiceCategory,name:'',description:'',unit:'UNIT',serviceStart:today(),serviceEnd:today(),capacity:'1',releaseDeadline:''});
  function updateTerm(index:number,field:keyof TermRow,value:string){setTerms(rows=>rows.map((row,rowIndex)=>rowIndex===index?{...row,[field]:value}:row));}
  async function amend(event:FormEvent){
   event.preventDefault();
   const normalized=Object.fromEntries(terms.map(row=>[row.key.trim(),row.value]).filter(([key])=>Boolean(key)));
   if(!contractId){setNotice('اختر عقدًا أولًا.');return;}if(Object.keys(normalized).length===0){setNotice('أضف بند تعديل واحدًا على الأقل.');return;}
-  try{const value=await tourismContractInventoryApi.amendContract(contractId,{terms:normalized,effectiveFrom,...(effectiveTo?{effectiveTo}:{}),commandKey:crypto.randomUUID()});setResult(value);setNotice('تم إنشاء نسخة تعديل جديدة للعقد.');}catch(error){setNotice(message(error));}
+  try{const value=await tourismContractInventoryApi.amendContract(contractId,{terms:normalized,effectiveFrom,effectiveTo,commandKey:crypto.randomUUID()});setResult(value);setNotice('تم إنشاء نسخة تعديل جديدة للعقد.');}catch(error){setNotice(message(error));}
  }
  async function addService(event:FormEvent){
   event.preventDefault();if(!contractId){setNotice('اختر عقد خدمة أولًا.');return;}
@@ -29,7 +29,7 @@ export function TourismContractInventoryCorrectiveSection({contractId}:{contract
     {terms.map((row,index)=><div className="ui-filter-grid" key={index}><FormField label="اسم البند" required><Input required value={row.key} onChange={event=>updateTerm(index,'key',event.target.value)}/></FormField><FormField label="القيمة" required><Input required value={row.value} onChange={event=>updateTerm(index,'value',event.target.value)}/></FormField><Button type="button" variant="secondary" onClick={()=>setTerms(rows=>rows.length===1?[{key:'',value:''}]:rows.filter((_,rowIndex)=>rowIndex!==index))}>حذف البند</Button></div>)}
     <ActionBar><Button type="button" variant="secondary" onClick={()=>setTerms(rows=>[...rows,{key:'',value:''}])}>إضافة بند</Button></ActionBar>
     <FormField label="ساري من" required><Input required type="date" value={effectiveFrom} onChange={event=>setEffectiveFrom(event.target.value)}/></FormField>
-    <FormField label="ساري إلى — اختياري"><Input type="date" value={effectiveTo} onChange={event=>setEffectiveTo(event.target.value)}/></FormField>
+    <FormField label="ساري إلى" required><Input required type="date" value={effectiveTo} onChange={event=>setEffectiveTo(event.target.value)}/></FormField>
     <Button type="submit">إنشاء تعديل للعقد</Button>
    </form></Card>
    <Card title="مخزون الخدمات العامة"><form onSubmit={addService}>
