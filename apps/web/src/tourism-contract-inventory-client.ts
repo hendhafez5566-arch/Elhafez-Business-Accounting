@@ -14,7 +14,7 @@ export const tourismContractInventoryApi={
  createVisa:(input:{contractId:string;visaType:string;nationality?:string;quotaTotal:string;effectiveFrom:string;effectiveTo:string;commandKey?:string})=>crmPost<InventoryResult>(base+'/visa-quotas',input),
  stopSale:(input:{contractId:string;reason:string;effectiveFrom:string;effectiveTo:string;commandKey?:string})=>crmPost<InventoryResult>(base+'/stop-sales',input),
  availability:(input:{contractId:string;resourceType:'HOTEL'|'FLIGHT_BLOCK'|'TRANSPORT'|'VISA'|'SERVICE';resourceId:string;serviceDate:string;periodEnd?:string})=>crmPost<InventoryResult>(base+'/availability',input),
- allocate:(input:{contractId:string;resourceType:'HOTEL'|'FLIGHT_BLOCK'|'TRANSPORT'|'VISA'|'SERVICE';resourceId:string;program:{type:string;id:string};serviceDate:string;periodEnd?:string;quantity:string;commandKey?:string})=>crmPost<InventoryResult>(base+'/allocations',input),
+ allocate:(input:{contractId:string;resourceType:'HOTEL'|'FLIGHT_BLOCK'|'TRANSPORT'|'VISA'|'SERVICE';resourceId:string;program:{sourceType:string;sourceId:string};serviceDate:string;periodEnd?:string;quantity:string;commandKey?:string})=>crmPost<InventoryResult>(base+'/allocations',input),
  allocation:(id:string)=>crmGet<InventoryResult|null>(base+'/allocations/'+enc(id)),
  release:(id:string,input:{quantity:string;commandKey?:string})=>crmPost<InventoryResult>(base+'/allocations/'+enc(id)+'/release',input),
 };
