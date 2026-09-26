@@ -1,5 +1,5 @@
 import { type FormEvent, useState } from 'react';
-import { ActionBar, Badge, Button, Card, DataGrid, FormField, Input, MetricCard, Select, Toast } from './ui.js';
+import { ActionBar, Button, Card, DataGrid, FormField, Input, MetricCard, Select, Toast } from './ui.js';
 import { tourismContractInventoryApi, type InventoryResult } from './tourism-contract-inventory-client.js';
 
 type ResourceType='HOTEL'|'FLIGHT_BLOCK'|'TRANSPORT'|'VISA'|'SERVICE';
