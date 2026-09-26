@@ -123,11 +123,50 @@ a { color: var(--color-primary); }
   gap: .2rem;
 }
 
+.app-navigation__group--collapsible {
+  border-radius: var(--radius-md);
+}
+
 .app-navigation__group-label {
   margin: .25rem .5rem;
   color: rgba(255, 255, 255, .62);
   font-size: var(--font-size-sm);
   white-space: nowrap;
+}
+
+summary.app-navigation__group-label {
+  min-height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1);
+  padding: .3rem .4rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+summary.app-navigation__group-label::-webkit-details-marker { display: none; }
+
+summary.app-navigation__group-label:hover,
+summary.app-navigation__group-label:focus-visible {
+  color: #fff;
+  background: rgba(255, 255, 255, .08);
+}
+
+.app-navigation__chevron {
+  transition: transform var(--transition-fast);
+}
+
+.app-navigation__group--collapsible[open] .app-navigation__chevron {
+  transform: rotate(180deg);
+}
+
+.app-navigation__items {
+  display: grid;
+  gap: .2rem;
 }
 
 .app-navigation a {
