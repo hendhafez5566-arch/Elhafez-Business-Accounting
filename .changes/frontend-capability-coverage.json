@@ -1,0 +1,30 @@
+{
+  "id": "frontend-capability-coverage",
+  "summary": "Expose existing canonical contracts/inventory and advanced accounting capabilities through Arabic-first product workspaces without duplicating business truth.",
+  "type": "phase",
+  "allowedModules": [
+    "tourism-contract-inventory",
+    "currency-fx",
+    "cost-budget-accounting",
+    "party-accounting",
+    "expense-commission-recognition",
+    "assets-financing",
+    "traveler-management"
+  ],
+  "allowedPaths": [
+    "apps/api/src/app.module.ts",
+    "apps/api/src/capability-coverage.controller.ts",
+    "apps/api/src/capability-coverage.spec.ts",
+    "apps/web/src/routes.tsx",
+    "apps/web/src/capability-coverage-client.ts",
+    "apps/web/src/capability-coverage-pages.tsx",
+    "apps/web/src/capability-coverage.spec.tsx"
+  ],
+  "protectedPaths": [
+    "apps/api/src/app.module.ts",
+    "apps/web/src/routes.tsx"
+  ],
+  "protectedReason": "Register presentation/composition surfaces for accepted canonical owners. No owner tables, migrations, public module APIs, or business invariants are changed.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": ""
+}
