@@ -21,6 +21,9 @@ import type { CostCenterRepository } from './cost-center.repository.js';
 export class CostBudgetAccountingApplicationService {
   constructor(private readonly repository: CostCenterRepository) {}
 
+  async listCostCenters(companyId: CompanyId): Promise<CostCenter[]> { return this.repository.listCenters(companyId); }
+  async listBudgets(companyId: CompanyId): Promise<Budget[]> { return this.repository.listBudgets(companyId); }
+
   async create(input: CostCenter): Promise<CostCenter> {
     const value = createCostCenter(input);
     if (await this.repository.findByCode(value.companyId, value.code)) {
