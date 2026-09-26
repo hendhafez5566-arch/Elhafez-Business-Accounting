@@ -1,0 +1,15 @@
+{
+  "id": "20260927-ci-reuse-dependencies",
+  "summary": "Reuse verified dependencies on the persistent self-hosted runner for both draft and final CI while preserving every existing governance, typecheck, lint, architecture, and test gate.",
+  "type": "governance",
+  "allowedModules": [],
+  "allowedPaths": [
+    ".github/workflows/ci.yml"
+  ],
+  "protectedPaths": [
+    ".github/workflows/ci.yml"
+  ],
+  "protectedReason": "Optimize self-hosted runner preparation time without removing or weakening any required CI quality gate.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": ""
+}
