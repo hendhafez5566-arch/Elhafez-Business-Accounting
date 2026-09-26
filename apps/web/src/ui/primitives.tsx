@@ -4,6 +4,7 @@ import {
   type ReactNode,
   useEffect,
   useRef,
+  useState,
 } from 'react';
 
 export type Tone = 'neutral' | 'success' | 'error' | 'warning' | 'info';
@@ -142,8 +143,14 @@ export function DisclosureCard({
   readonly children: ReactNode;
   readonly open?: boolean;
 }) {
+  const [expanded, setExpanded] = useState(open);
+  useEffect(() => setExpanded(open), [open]);
   return (
-    <details className="ui-disclosure-card" open={open}>
+    <details
+      className="ui-disclosure-card"
+      open={expanded}
+      onToggle={(event) => setExpanded(event.currentTarget.open)}
+    >
       <summary>
         <span>
           <strong>{title}</strong>
