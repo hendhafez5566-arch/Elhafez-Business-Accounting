@@ -1,0 +1,15 @@
+{
+  "id": "20260926-ci-fast-full-pipeline",
+  "summary": "Split CI execution by pull-request readiness so draft development uses focused verification while ready pull requests retain the full final quality gate.",
+  "type": "governance",
+  "allowedModules": [],
+  "allowedPaths": [
+    ".github/workflows/ci.yml"
+  ],
+  "protectedPaths": [
+    ".github/workflows/ci.yml"
+  ],
+  "protectedReason": "This explicitly authorized governance change restructures CI execution timing without removing the final full verification gate or weakening enforcement.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": ""
+}
