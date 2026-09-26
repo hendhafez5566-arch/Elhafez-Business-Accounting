@@ -47,6 +47,15 @@ export class PrismaCurrencyFxRepository implements CurrencyFxRepository {
     })) as CurrencyConfiguration | undefined;
   }
 
+  async listCurrencies(companyId: CompanyId): Promise<CurrencyConfiguration[]> {
+    return (await this.db.fxCurrency.findMany({ where: { companyId }, orderBy: { code: 'asc' } })) as CurrencyConfiguration[];
+  }
+
+  async listRates(companyId: CompanyId): Promise<FxRate[]> {
+    const values = await this.db.fxRate.findMany({ where: { companyId }, orderBy: { effectiveAt: 'desc' } });
+    return values.map((value) => ({ ...value, effectiveAt: value.effectiveAt.toISOString(), rate: value.rate.toString() } as FxRate));
+  }
+
   async saveRate(value: FxRate): Promise<void> {
     const identity = {
       companyId: value.companyId,
