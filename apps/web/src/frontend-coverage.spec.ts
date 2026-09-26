@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createElement } from 'react';
+import { createElement, isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { findRoute } from './routes.js';
 import { TourismContractInventoryPage } from './tourism-contract-inventory-page.js';
@@ -40,8 +40,12 @@ test('shared contract inventory is reachable from Hajj and Umrah without a secon
   const tourismRoute = findRoute('/tourism/contracts-inventory');
   assert.equal(route.label, 'التعاقدات والمخزون');
   assert.equal(route.group, 'الحج والعمرة');
-  assert.equal(route.element.type, TourismContractInventoryPage);
-  assert.equal(route.element.type, tourismRoute.element.type);
+  const hajjElement = route.element;
+  const tourismElement = tourismRoute.element;
+  assert.ok(isValidElement(hajjElement));
+  assert.ok(isValidElement(tourismElement));
+  assert.equal(hajjElement.type, TourismContractInventoryPage);
+  assert.equal(hajjElement.type, tourismElement.type);
 });
 
 test('corrective frontend coverage exposes owner-backed amendments, recognition, accrual and allowances', () => {
