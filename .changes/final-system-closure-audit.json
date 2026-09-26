@@ -17,7 +17,8 @@
     "financial-controls",
     "tourism-finance-orchestration",
     "hajj-umrah-rooming",
-    "hajj-umrah-transport-operations"
+    "hajj-umrah-transport-operations",
+    "_template"
   ],
   "allowedPaths": [
     "apps/api/**",
