@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Body, Controller, Get, Headers, Inject, Param, Post, UnauthorizedException } from '@nestjs/common';
 import {
   currencyCode,
@@ -187,7 +188,7 @@ export class AdvancedOperationsController {
 
   @Post('inventory/contracts')
   async createContract(@Headers('authorization')a:string,@Headers('x-company-id')c:string,@Headers('x-branch-id')b:string,@Body()x:ContractInput){
-    const ctx=await this.inventoryContext(this.headers(a,c,b));return this.inventory.createContract({companyId:ctx.companyId,type:x.type,...(x.supplierId?{supplierId:x.supplierId}:{}),effectiveFrom:x.effectiveFrom,effectiveTo:x.effectiveTo,...(x.sourceType&&x.sourceId?{sourceReference:sourceReference(x.sourceType,x.sourceId)}:{})},crypto.randomUUID());
+    const ctx=await this.inventoryContext(this.headers(a,c,b));return this.inventory.createContract({companyId:ctx.companyId,type:x.type,...(x.supplierId?{supplierId:x.supplierId}:{}),effectiveFrom:x.effectiveFrom,effectiveTo:x.effectiveTo,...(x.sourceType&&x.sourceId?{sourceReference:sourceReference(x.sourceType,x.sourceId)}:{})},randomUUID());
   }
   @Get('inventory/contracts/:id')
   async getContract(@Headers('authorization')a:string,@Headers('x-company-id')c:string,@Headers('x-branch-id')b:string,@Param('id')id:string){
@@ -195,11 +196,11 @@ export class AdvancedOperationsController {
   }
   @Post('inventory/contracts/:id/amend')
   async amendContract(@Headers('authorization')a:string,@Headers('x-company-id')c:string,@Headers('x-branch-id')b:string,@Param('id')id:string,@Body()x:{terms:Record<string,unknown>;effectiveFrom:string;effectiveTo?:string}){
-    const ctx=await this.inventoryContext(this.headers(a,c,b));return this.inventory.amendContract({companyId:ctx.companyId,contractId:id,terms:x.terms,effectiveFrom:x.effectiveFrom,...(x.effectiveTo?{effectiveTo:x.effectiveTo}:{})},crypto.randomUUID());
+    const ctx=await this.inventoryContext(this.headers(a,c,b));return this.inventory.amendContract({companyId:ctx.companyId,contractId:id,terms:x.terms,effectiveFrom:x.effectiveFrom,...(x.effectiveTo?{effectiveTo:x.effectiveTo}:{})},randomUUID());
   }
   @Post('inventory/resources')
   async createResource(@Headers('authorization')a:string,@Headers('x-company-id')c:string,@Headers('x-branch-id')b:string,@Body()x:InventoryResourceInput){
-    const ctx=await this.inventoryContext(this.headers(a,c,b)),key=crypto.randomUUID();
+    const ctx=await this.inventoryContext(this.headers(a,c,b)),key=randomUUID();
     if(x.kind==='HOTEL')return this.inventory.createHotelInventory({companyId:ctx.companyId,contractId:x.contractId,hotelId:x.hotelId??'',...(x.roomId?{roomId:x.roomId}:{}),serviceDate:x.serviceDate??'',contractedQuantity:decimalAmount(x.contractedQuantity??'0')},key);
     if(x.kind==='FLIGHT')return this.inventory.createFlightBlock({companyId:ctx.companyId,contractId:x.contractId,flightNumber:x.flightNumber??'',origin:x.origin??'',destination:x.destination??'',departureDate:x.departureDate??'',totalSeats:decimalAmount(x.totalSeats??'0')},key);
     if(x.kind==='TRANSPORT')return this.inventory.createTransportCapacity({companyId:ctx.companyId,contractId:x.contractId,vehicleId:x.vehicleId??'',capacityUnits:decimalAmount(x.capacityUnits??'0'),periodStart:x.periodStart??'',periodEnd:x.periodEnd??''},key);
@@ -212,7 +213,7 @@ export class AdvancedOperationsController {
   }
   @Post('inventory/allocations')
   async allocate(@Headers('authorization')a:string,@Headers('x-company-id')c:string,@Headers('x-branch-id')b:string,@Body()x:AllocationInput){
-    const ctx=await this.inventoryContext(this.headers(a,c,b));return this.inventory.allocateCapacity({companyId:ctx.companyId,contractId:x.contractId,resourceType:x.resourceType,resourceId:x.resourceId,program:sourceReference(x.programSourceType,x.programSourceId),serviceDate:x.serviceDate,...(x.periodEnd?{periodEnd:x.periodEnd}:{}),quantity:decimalAmount(x.quantity)},crypto.randomUUID());
+    const ctx=await this.inventoryContext(this.headers(a,c,b));return this.inventory.allocateCapacity({companyId:ctx.companyId,contractId:x.contractId,resourceType:x.resourceType,resourceId:x.resourceId,program:sourceReference(x.programSourceType,x.programSourceId),serviceDate:x.serviceDate,...(x.periodEnd?{periodEnd:x.periodEnd}:{}),quantity:decimalAmount(x.quantity)},randomUUID());
   }
   @Get('inventory/allocations/:id')
   async allocation(@Headers('authorization')a:string,@Headers('x-company-id')c:string,@Headers('x-branch-id')b:string,@Param('id')id:string){
@@ -220,6 +221,6 @@ export class AdvancedOperationsController {
   }
   @Post('inventory/allocations/:id/release')
   async releaseAllocation(@Headers('authorization')a:string,@Headers('x-company-id')c:string,@Headers('x-branch-id')b:string,@Param('id')id:string,@Body()x:{quantity:string}){
-    const ctx=await this.inventoryContext(this.headers(a,c,b));return this.inventory.releaseAllocation({companyId:ctx.companyId,allocationId:id,quantity:decimalAmount(x.quantity)},crypto.randomUUID());
+    const ctx=await this.inventoryContext(this.headers(a,c,b));return this.inventory.releaseAllocation({companyId:ctx.companyId,allocationId:id,quantity:decimalAmount(x.quantity)},randomUUID());
   }
 }
