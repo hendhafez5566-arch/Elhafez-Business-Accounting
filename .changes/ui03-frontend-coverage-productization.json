@@ -26,5 +26,9 @@
   ],
   "protectedReason": "Register composition-only API and presentation routes for already accepted canonical owners. No owner tables, migrations or business truth are duplicated.",
   "allowBreakingPublicApi": false,
-  "publicApiBreakingReason": ""
+  "publicApiBreakingReason": "",
+  "testEvidence": [
+    "apps/api/src/advanced-operations.spec.ts",
+    "apps/web/src/advanced-operations.spec.ts"
+  ]
 }
