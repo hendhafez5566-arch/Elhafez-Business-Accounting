@@ -54,10 +54,10 @@ Financial effects from these modules are delegated to accepted accounting owners
 
 | Visible area | Canonical code owner | Status | Ownership |
 |---|---|---|---|
-| Tourism programs / trips | `tourism-programs` | PLANNED | general-tourism trip/program lifecycle |
-| Tourism bookings | `tourism-bookings` | PLANNED | individual/group tourism booking lifecycle |
+| Tourism programs / trips | `tourism-programs` | IMPLEMENTED / PR #82 CANDIDATE | general-tourism trip/program lifecycle |
+| Tourism bookings | `tourism-bookings` | IMPLEMENTED / PR #82 CANDIDATE | individual/group tourism booking lifecycle |
 | Travelers | `traveler-management` | EXISTING / SHARED | shared traveler identity/travel profile |
-| Daily itinerary | `tourism-itineraries` | PLANNED | days, activities, schedule |
+| Daily itinerary | `tourism-itineraries` | IMPLEMENTED / PR #82 CANDIDATE | days, activities, schedule |
 | Contracts / supply / capacity | `tourism-contract-inventory` | EXISTING / SHARED | hotel/flight/transport/visa/service supply and allocation |
 | Standalone services | `standalone-services` | EXISTING / MERGED | hotel/flight/visa/transport/other standalone sale request |
 | Vouchers | `service-vouchers` | EXISTING / MERGED | issued service vouchers/output lifecycle |
@@ -257,4 +257,4 @@ Owner decision: the commercial SaaS lifecycle is a distinct platform truth owned
 
 ## Final system closure note — 2026-09-25
 
-Canonical implementation status labels above were refreshed from live `main` during the owner-authorized closure audit. This status refresh does **not** declare product Go-Live. General-tourism `tourism-programs`, `tourism-bookings`, and `tourism-itineraries` remain PLANNED; Egyptian Umrah Barcode remains a UI shell. Product/deployment closure blockers are tracked in `docs/FINAL-SYSTEM-CLOSURE-AUDIT.md`.
+Canonical implementation status labels above were refreshed during the owner-authorized closure audit. This status refresh does **not** declare product Go-Live. General-tourism `tourism-programs`, `tourism-bookings`, and `tourism-itineraries` are implemented in PR #82 as an unmerged candidate and are not accepted until the final closure gates pass; Egyptian Umrah Barcode remains a UI shell. Product/deployment closure blockers are tracked in `docs/FINAL-SYSTEM-CLOSURE-AUDIT.md`.
