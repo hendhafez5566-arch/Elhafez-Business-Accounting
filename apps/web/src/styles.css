@@ -310,6 +310,56 @@ summary.app-navigation__group-label:focus-visible {
   box-shadow: var(--shadow-sm);
 }
 
+.ui-disclosure-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+  overflow: clip;
+}
+
+.ui-disclosure-card > summary {
+  min-height: 3.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: .85rem var(--space-3);
+  cursor: pointer;
+  list-style: none;
+  background: var(--color-surface);
+}
+
+.ui-disclosure-card > summary::-webkit-details-marker { display: none; }
+
+.ui-disclosure-card > summary:hover {
+  background: var(--color-surface-subtle);
+}
+
+.ui-disclosure-card > summary > span:first-child {
+  display: grid;
+  gap: .15rem;
+}
+
+.ui-disclosure-card > summary small {
+  color: var(--color-text-muted);
+  font-weight: 400;
+}
+
+.ui-disclosure-card__chevron {
+  color: var(--color-text-muted);
+  transition: transform var(--transition-fast);
+}
+
+.ui-disclosure-card[open] .ui-disclosure-card__chevron {
+  transform: rotate(180deg);
+}
+
+.ui-disclosure-card__body {
+  padding: 0 var(--space-3) var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
 .ui-card > h2,
 .ui-form-section h2,
 .ui-state h2 {
