@@ -76,6 +76,7 @@ export interface PostVoucherInput {
   actorId?: string;
   approvalRequestId?: string;
   explicitDraftInvoiceId?: string;
+  explicitPostedInvoiceId?: string;
   restrictionSourceType?: string;
   restrictionSourceId?: string;
 }
