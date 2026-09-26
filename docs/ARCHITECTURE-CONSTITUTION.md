@@ -36,7 +36,17 @@ Accepted migration history is immutable. The single pre-Go-Live SAAS-01 repair i
 
 ## Test evidence
 
-Behavioral source changes must carry changed automated test evidence in the change manifest. This does not replace semantic review, but prevents source-only delivery without executable evidence.
+Behavioral source changes must carry changed automated test evidence in the change manifest. Committed test declaration count may not decrease, and focused/skipped tests are rejected. This does not replace semantic review, but prevents source-only delivery without executable evidence.
+
+## New-module scope contract
+
+Every newly added module must declare in `module.json`:
+
+- `dataScope`: `PLATFORM`, `COMPANY`, or `COMPANY_BRANCH`;
+- `branchScopedTables` when the module is branch-scoped, and every listed table must be owned by that module;
+- at least one non-empty `criticalInvariants` declaration.
+
+The canonical module template carries these fields, and the engineering-integrity gate rejects a new module that omits them.
 
 ## Protection boundary
 
