@@ -409,7 +409,7 @@ export function ProgramWorkspaceView({
 }) {
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message={error} />;
-  if (!program) return <EmptyState title="اختر برنامجاً من قائمة البرامج" />;
+  if (!program) return <EmptyState title="اختر برنامجًا لفتح مساحة العمل"><p>ابدأ من قائمة برامج الحج والعمرة، ثم اختر «فتح مساحة العمل» للبرنامج المطلوب.</p><a href="/hajj-umrah/programs">الانتقال إلى قائمة البرامج</a></EmptyState>;
   return <Card title={`${program.arabicName} — ${program.code}`}>
     <p><Badge tone={lifecycleTone(program.status)}>{lifecycleLabels[program.status]}</Badge> <Badge tone={program.bookingOpen ? 'success' : 'warning'}>{program.bookingOpen ? 'الحجز متاح' : 'الحجز مغلق'}</Badge></p>
     <p>الموسم: {program.seasonId} · الإصدار الحالي: {program.currentVersion} · عدد الإصدارات: {versions.length}</p>
