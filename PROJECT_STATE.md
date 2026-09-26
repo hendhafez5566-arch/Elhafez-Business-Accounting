@@ -12,7 +12,7 @@ Last verified: 2026-09-25
 - Current closed accounting phase: **AC-14**
 - Accounting next phase: **None. There is no approved AC-15.**
 - Post-AC-14 Business Platform architecture: **OWNER APPROVED** and defined by `docs/BUSINESS-MODULE-ARCHITECTURE.md` + `docs/BUSINESS-MODULE-ROUTING.md` (governance PR #55).
-- Post-AC-14 implementation now also includes Management & System Administration (MC-SA-01/02), Tourism standalone services (TS-01), UI-01/UI-02, and SAAS-01. Egyptian Umrah Barcode remains a presentation-only shell. PR #82 now carries the **Final System Closure implementation candidate**; Go-Live is not accepted until its executable verification, recovery drill, stable CI and human UAT pass. See `docs/FINAL-SYSTEM-CLOSURE-AUDIT.md`.
+- Post-AC-14 implementation now also includes Management & System Administration (MC-SA-01/02), Tourism standalone services (TS-01), UI-01/UI-02, and SAAS-01. Egyptian Umrah Barcode remains a presentation-only shell. PR #82 now carries the **Final System Closure implementation candidate**; Go-Live is not accepted until its executable verification, recovery drill, Railway executable verification and human UAT pass. See `docs/FINAL-SYSTEM-CLOSURE-AUDIT.md`.
 
 ## Closed / accepted foundation
 
@@ -236,7 +236,7 @@ PR #82 now implements the closure work originally identified by the audit: canon
 
 The candidate deliberately preserves accepted module ownership. Accounting, inventory, finance, customer and traveler truth remain in their canonical owners; the new UI/API surfaces compose public application services rather than duplicate them.
 
-Remaining acceptance gates are executable rather than architectural: frozen install/change-safety, Prisma generation and migration-chain validation, typecheck/lint/architecture/full tests/verify/build, production-contract smoke tests, non-production recovery drill, a stable green self-hosted CI run, and focused human UAT.
+Remaining acceptance gates are executable rather than architectural: frozen install/change-safety, Prisma generation and migration-chain validation, typecheck/lint/architecture/full tests/verify/build, production-contract smoke tests, non-production recovery drill, a Railway executable verification on the exact candidate, and focused human UAT.
 
 Authoritative closure record: `docs/FINAL-SYSTEM-CLOSURE-AUDIT.md`.
 
@@ -275,7 +275,7 @@ Governance record: PR #55.
 
 The approved accounting build sequence AC-00 through AC-14 is **CLOSED / ACCEPTED / MERGED**.
 
-Current live main still ends at SAAS-01 while PR #82 carries the Final System Closure implementation candidate. The candidate closes the previously missing tenant entry, Accounting workspace, general Tourism owners, production delivery/hardening and backup-provider implementation gaps, but SYSTEM CLOSED / GO-LIVE remains pending executable verification, recovery drill, stable CI and human UAT. PR #68 remains only the Umrah Barcode coming-soon UI shell; functional barcode behavior remains future work.
+Current live main still ends at SAAS-01 while PR #82 carries the Final System Closure implementation candidate. The candidate closes the previously missing tenant entry, Accounting workspace, general Tourism owners, production delivery/hardening and backup-provider implementation gaps, but SYSTEM CLOSED / GO-LIVE remains pending executable verification, recovery drill, Railway executable verification and human UAT. PR #68 remains only the Umrah Barcode coming-soon UI shell; functional barcode behavior remains future work.
 
 There is currently **no approved AC-15**.
 
