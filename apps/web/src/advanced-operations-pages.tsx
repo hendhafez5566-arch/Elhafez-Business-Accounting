@@ -1,7 +1,6 @@
 import { type FormEvent, useEffect, useState } from 'react';
 import {
   ActionBar,
-  Badge,
   Button,
   Card,
   DataGrid,
