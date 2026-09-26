@@ -130,7 +130,7 @@ export class BillingSubledgersApplicationService {
   }
 
   async getOpenPosition(companyId: CompanyId, invoiceId: string): Promise<{
-    invoiceId: string; companyId: CompanyId; partyKind: PartyKind; partyId: string;
+    invoiceId: string; companyId: CompanyId; branchId?: string; partyKind: PartyKind; partyId: string;
     invoiceType: InvoiceType; currency: string; documentTotal: DecimalAmount;
     outstanding: DecimalAmount; baseTotal: DecimalAmount;
     controlAccountId: string; status: Invoice['status']; postingDate: string; deferred: boolean;
@@ -139,7 +139,7 @@ export class BillingSubledgersApplicationService {
     const documentTotal = add(
       ...invoice.lines.map((line) => add(line.amount, line.taxAmount ?? zero)),
     );
-    return { invoiceId: invoice.id, companyId: invoice.companyId,
+    return { invoiceId: invoice.id, companyId: invoice.companyId, ...(invoice.branchId?{branchId:invoice.branchId}:{}),
       partyKind: expectedPartyKind(invoice.type), partyId: invoice.partyId,
       invoiceType: invoice.type, currency: invoice.currency, documentTotal,
       outstanding: invoice.outstanding, baseTotal: invoice.baseTotal,
@@ -618,7 +618,7 @@ export class BillingSubledgersApplicationService {
   async settle(input: {
     id: string; companyId: CompanyId; partyKind: PartyKind; partyId: string;
     amount: DecimalAmount; settlementCurrency: string; settlementDate: string;
-    explicitDraftInvoiceId?: string; restrictionSourceType?: string; restrictionSourceId?: string;
+    explicitDraftInvoiceId?: string; explicitPostedInvoiceId?: string; restrictionSourceType?: string; restrictionSourceId?: string;
     prefundingAccountId?: string;
   }): Promise<{ settlementId: string; allocations: Allocation[]; advanceId?: string;
     carryingBaseAmount: DecimalAmount; prefundingBaseAmount: DecimalAmount; advanceBaseAmount: DecimalAmount;
@@ -630,6 +630,7 @@ export class BillingSubledgersApplicationService {
       : await this.fx.calculateSettlement(input.companyId, money(amount, input.settlementCurrency), base.code, input.settlementDate + 'T23:59:59.999Z');
     const settlementBase = checked(conversion.converted.amount, 'settlementBaseAmount');
     const groupHash = fingerprint({ ...input, amount });
+    if(input.explicitDraftInvoiceId&&input.explicitPostedInvoiceId)throw new ContractValidationError('invoiceId','draft and posted invoice intents are mutually exclusive');
     if (input.explicitDraftInvoiceId && !input.prefundingAccountId) {
       throw new ContractValidationError(
         'prefundingAccountId',
@@ -651,12 +652,15 @@ export class BillingSubledgersApplicationService {
     let sequence = existing.reduce((maximum, value) => Math.max(maximum, value.settlementSequence ?? -1), -1) + 1;
     const candidates = input.explicitDraftInvoiceId
       ? [await this.requiredInvoice(input.companyId, input.explicitDraftInvoiceId)]
-      : (await this.repo.invoices(input.companyId))
+      : input.explicitPostedInvoiceId
+        ? [await this.requiredInvoice(input.companyId,input.explicitPostedInvoiceId)]
+        : (await this.repo.invoices(input.companyId))
           .filter((x) => x.partyId === input.partyId && expectedPartyKind(x.type) === input.partyKind && x.status === 'POSTED' && scaled18(x.outstanding) > 0n)
           .sort((a, b) => {
             if (!a.dueDate || !b.dueDate) throw new ContractValidationError('dueDate', 'explicit due date evidence is required for settlement');
             return a.dueDate.localeCompare(b.dueDate) || a.postingDate.localeCompare(b.postingDate) || a.number.localeCompare(b.number) || a.id.localeCompare(b.id);
           });
+    if(input.explicitPostedInvoiceId){const invoice=candidates[0]!;if(invoice.status!=='POSTED'||invoice.partyId!==input.partyId||expectedPartyKind(invoice.type)!==input.partyKind)throw new ContractValidationError('invoiceId','explicit posted invoice must match the settlement party and be POSTED');}
     const result: Allocation[] = [...existing];
     for (const invoice of candidates) {
       if (scaled18(remaining) <= 0n) break;
