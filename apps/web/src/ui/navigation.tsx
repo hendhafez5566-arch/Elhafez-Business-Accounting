@@ -7,6 +7,7 @@ import type { SidebarMode } from './preferences.js';
 function groupRoutes(routes: readonly AppRoute[]): ReadonlyArray<readonly [string, readonly AppRoute[]]> {
   const groups = new Map<string, AppRoute[]>();
   for (const route of routes) {
+    if (route.navigation === false) continue;
     const group = route.group ?? 'عام';
     const list = groups.get(group) ?? [];
     list.push(route);
