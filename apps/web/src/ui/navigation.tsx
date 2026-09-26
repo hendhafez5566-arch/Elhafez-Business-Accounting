@@ -28,24 +28,32 @@ export function NavigationMenu({
 }) {
   return (
     <nav aria-label="التنقل الرئيسي" className="app-navigation">
-      {groupRoutes(routes).map(([group, items]) => (
-        <section className="app-navigation__group" key={group}>
-          {labelsVisible && <p className="app-navigation__group-label">{group}</p>}
-          {items.map((route) => (
-            <a
-              key={route.id}
-              href={route.path}
-              aria-current={activeId === route.id ? 'page' : undefined}
-              aria-label={labelsVisible ? undefined : route.label}
-              title={labelsVisible ? undefined : route.label}
-              onClick={onNavigate}
-            >
-              <Icon name={route.icon ?? 'program'} />
-              {labelsVisible && <span className="app-navigation__label">{route.label}</span>}
-            </a>
-          ))}
-        </section>
-      ))}
+      {groupRoutes(routes).map(([group, items]) => {
+        const activeGroup = items.some((route) => route.id === activeId);
+        const links = items.map((route) => (
+          <a
+            key={route.id}
+            href={route.path}
+            aria-current={activeId === route.id ? 'page' : undefined}
+            aria-label={labelsVisible ? undefined : route.label}
+            title={labelsVisible ? undefined : route.label}
+            onClick={onNavigate}
+          >
+            <Icon name={route.icon ?? 'program'} />
+            {labelsVisible && <span className="app-navigation__label">{route.label}</span>}
+          </a>
+        ));
+        if (!labelsVisible) return <section className="app-navigation__group" key={group}>{links}</section>;
+        return (
+          <details className="app-navigation__group app-navigation__group--collapsible" key={group} open={activeGroup}>
+            <summary className="app-navigation__group-label">
+              <span>{group}</span>
+              <span className="app-navigation__chevron" aria-hidden="true">⌄</span>
+            </summary>
+            <div className="app-navigation__items">{links}</div>
+          </details>
+        );
+      })}
     </nav>
   );
 }
