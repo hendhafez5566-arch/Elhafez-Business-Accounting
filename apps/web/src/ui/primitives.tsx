@@ -131,6 +131,31 @@ export function Card({
   );
 }
 
+export function DisclosureCard({
+  title,
+  description,
+  children,
+  open = false,
+}: {
+  readonly title: string;
+  readonly description?: string;
+  readonly children: ReactNode;
+  readonly open?: boolean;
+}) {
+  return (
+    <details className="ui-disclosure-card" open={open}>
+      <summary>
+        <span>
+          <strong>{title}</strong>
+          {description && <small>{description}</small>}
+        </span>
+        <span className="ui-disclosure-card__chevron" aria-hidden="true">⌄</span>
+      </summary>
+      <div className="ui-disclosure-card__body">{children}</div>
+    </details>
+  );
+}
+
 export function FormSection({
   title,
   description,
