@@ -282,6 +282,7 @@ export class TreasurySettlementApplicationService {
     const settlement = await this.billing.settle({
       id: input.id,
       companyId: input.companyId,
+      ...(input.branchId ? { branchId: input.branchId } : {}),
       partyKind: input.partyKind,
       partyId: input.partyId,
       amount,
