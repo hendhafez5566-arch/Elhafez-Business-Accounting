@@ -47,9 +47,9 @@ export const foundationRoutes = defineRoutes(
 
   { id: 'crm-dashboard', path: '/crm/dashboard', label: 'لوحة العملاء والمبيعات', group: 'العملاء والمبيعات', icon: 'dashboard', element: <CrmSalesDashboardPage /> },
   { id: 'crm-customers', path: '/crm/customers', label: 'العملاء', group: 'العملاء والمبيعات', icon: 'customers', element: <CustomersPage /> },
-  { id: 'crm-customer-360', path: '/crm/customer-360', label: 'Customer 360', group: 'العملاء والمبيعات', icon: 'profile', element: <Customer360Page /> },
+  { id: 'crm-customer-360', path: '/crm/customer-360', label: 'ملف العميل 360°', group: 'العملاء والمبيعات', icon: 'profile', element: <Customer360Page /> },
   { id: 'crm-agents', path: '/crm/agents', label: 'الوكلاء', group: 'العملاء والمبيعات', icon: 'agents', element: <AgentsPage /> },
-  { id: 'crm-agent-360', path: '/crm/agent-360', label: 'Agent 360', group: 'العملاء والمبيعات', icon: 'profile', element: <Agent360Page /> },
+  { id: 'crm-agent-360', path: '/crm/agent-360', label: 'ملف الوكيل 360°', group: 'العملاء والمبيعات', icon: 'profile', element: <Agent360Page /> },
   { id: 'crm-leads', path: '/crm/leads', label: 'العملاء المحتملون', group: 'العملاء والمبيعات', icon: 'leads', element: <LeadsPage /> },
   { id: 'crm-quotations', path: '/crm/quotations', label: 'عروض الأسعار', group: 'العملاء والمبيعات', icon: 'quote', element: <QuotationsPage /> },
   { id: 'crm-followups', path: '/crm/followups', label: 'المتابعات', group: 'العملاء والمبيعات', icon: 'followup', element: <FollowupsPage /> },
