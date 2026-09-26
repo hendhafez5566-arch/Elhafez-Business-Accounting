@@ -5,6 +5,8 @@ export interface CurrencyFxRepository {
   saveCurrency(value: CurrencyConfiguration): Promise<void>;
   findCurrency(companyId: CompanyId, code: CurrencyCode): Promise<CurrencyConfiguration | undefined>;
   findBaseCurrency(companyId: CompanyId): Promise<CurrencyConfiguration | undefined>;
+  listCurrencies(companyId: CompanyId): Promise<CurrencyConfiguration[]>;
+  listRates(companyId: CompanyId): Promise<FxRate[]>;
   saveRate(value: FxRate): Promise<void>;
   findRate(companyId: CompanyId, from: CurrencyCode, to: CurrencyCode, at: string): Promise<FxRate | undefined>;
 }
