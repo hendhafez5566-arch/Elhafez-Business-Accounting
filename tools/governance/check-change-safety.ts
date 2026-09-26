@@ -123,6 +123,8 @@ for (const entry of entries) {
   }
 }
 
+checkTestNonRegression(base, entries);
+
 if (manifest) {
   checkTestEvidence(entries, manifest);
 
@@ -349,6 +351,34 @@ function isLockedMigrationRepair(baseSha: string, path: string): boolean {
   } catch {
     return false;
   }
+}
+
+function checkTestNonRegression(baseSha: string, diffEntries: DiffEntry[]): void {
+  for (const entry of diffEntries) {
+    const beforePath = entry.oldPath ?? entry.path;
+    if (!isTestPath(beforePath) && !isTestPath(entry.path)) continue;
+
+    const before = show(baseSha, beforePath);
+    const after = existsSync(join(root, entry.path))
+      ? readFileSync(join(root, entry.path), 'utf8')
+      : '';
+    const beforeCount = testDeclarationCount(before);
+    const afterCount = testDeclarationCount(after);
+    if (afterCount < beforeCount) {
+      errors.push(
+        entry.path +
+          ': committed test count may not decrease (' +
+          beforeCount +
+          ' -> ' +
+          afterCount +
+          '). Replace or strengthen evidence instead of deleting coverage.',
+      );
+    }
+  }
+}
+
+function testDeclarationCount(content: string): number {
+  return [...content.matchAll(/\b(?:test|it)\s*\(/g)].length;
 }
 
 function checkTestEvidence(diffEntries: DiffEntry[], scope: ChangeManifest): void {
