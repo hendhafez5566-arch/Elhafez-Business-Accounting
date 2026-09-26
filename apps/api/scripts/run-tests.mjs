@@ -1,7 +1,7 @@
 import { readdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { join, resolve } from 'node:path';
-import { fileURLToPath, URL } from 'node:url';
+import { URL } from 'node:url';
 import process from 'node:process';
 
 function specs(directory) {
@@ -20,7 +20,7 @@ if (!files.length) {
   process.exit(1);
 }
 
-const runtime = fileURLToPath(new URL('./typescript-test-runtime.mjs', import.meta.url));
+const runtime = new URL('./typescript-test-runtime.mjs', import.meta.url).href;
 const result = spawnSync(
   process.execPath,
   ['--import', runtime, '--test', ...files],
