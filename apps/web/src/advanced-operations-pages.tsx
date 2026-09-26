@@ -252,6 +252,7 @@ function AssetsFinancingSection(){
       <FormField label="كود الأصل" required><Input required value={asset.code} onChange={e=>setAsset({...asset,code:e.target.value.toUpperCase()})}/></FormField>
       <FormField label="اسم الأصل" required><Input required value={asset.name} onChange={e=>setAsset({...asset,name:e.target.value})}/></FormField>
       <FormField label="قيمة الاقتناء" required><Input required inputMode="decimal" value={asset.acquisitionValue} onChange={e=>setAsset({...asset,acquisitionValue:e.target.value})}/></FormField>
+      <FormField label="العملة الأساسية" required><Input required maxLength={3} value={asset.currency} onChange={e=>setAsset({...asset,currency:e.target.value.toUpperCase()})}/></FormField>
       <FormField label="القيمة الأساسية"><Input inputMode="decimal" value={asset.baseValue} onChange={e=>setAsset({...asset,baseValue:e.target.value})}/></FormField>
       <FormField label="القيمة التخريدية"><Input inputMode="decimal" value={asset.residualValue} onChange={e=>setAsset({...asset,residualValue:e.target.value})}/></FormField>
       <FormField label="العمر بالشهور"><Input type="number" min="1" value={asset.usefulLifeMonths} onChange={e=>setAsset({...asset,usefulLifeMonths:e.target.value})}/></FormField>
@@ -277,6 +278,7 @@ function AssetsFinancingSection(){
         <FormField label="المُقرض" required><Input required value={loan.lenderId} onChange={e=>setLoan({...loan,lenderId:e.target.value})}/></FormField>
         <FormField label="مرجع القرض" required><Input required value={loan.reference} onChange={e=>setLoan({...loan,reference:e.target.value})}/></FormField>
         <FormField label="أصل القرض" required><Input required inputMode="decimal" value={loan.principal} onChange={e=>setLoan({...loan,principal:e.target.value})}/></FormField>
+        <FormField label="العملة الأساسية" required><Input required maxLength={3} value={loan.currency} onChange={e=>setLoan({...loan,currency:e.target.value.toUpperCase()})}/></FormField>
         <FormField label="فائدة أول قسط"><Input inputMode="decimal" value={loan.interest} onChange={e=>setLoan({...loan,interest:e.target.value})}/></FormField>
         <FormField label="استحقاق أول قسط"><Input type="date" value={loan.dueDate} onChange={e=>setLoan({...loan,dueDate:e.target.value})}/></FormField>
         <FormField label="حساب التزام القرض" required><Input required value={loan.liabilityAccountId} onChange={e=>setLoan({...loan,liabilityAccountId:e.target.value})}/></FormField>
@@ -372,6 +374,7 @@ function AllocationsSection(){
   const a=useAction();
   const[availability,setAvailability]=useState({contractId:'',resourceType:'HOTEL' as ContractType,resourceId:'',serviceDate:today(),periodEnd:''});
   const[allocation,setAllocation]=useState({contractId:'',resourceType:'HOTEL' as ContractType,resourceId:'',programSourceType:'PROGRAM',programSourceId:'',serviceDate:today(),periodEnd:'',quantity:''});
+  const[stopSale,setStopSale]=useState({contractId:'',reason:'',effectiveFrom:today(),effectiveTo:today()});
   const[lookup,setLookup]=useState(''),[release,setRelease]=useState('');
   return <div className="ui-page-stack">
     {a.notice?<Toast tone={a.notice.startsWith('تم')?'success':'error'}>{a.notice}</Toast>:null}
@@ -393,6 +396,13 @@ function AllocationsSection(){
         <Button type="submit" loading={a.busy}>تخصيص</Button>
       </form></Card>
     </div>
+    <Card title="إيقاف بيع على عقد"><form className="ui-filter-grid" onSubmit={e=>{e.preventDefault();void a.run('تم تسجيل إيقاف البيع على العقد.',()=>api.createStopSale(stopSale))}}>
+      <FormField label="العقد" required><Input required value={stopSale.contractId} onChange={e=>setStopSale({...stopSale,contractId:e.target.value})}/></FormField>
+      <FormField label="سبب الإيقاف" required><Input required value={stopSale.reason} onChange={e=>setStopSale({...stopSale,reason:e.target.value})}/></FormField>
+      <FormField label="ساري من" required><Input required type="date" value={stopSale.effectiveFrom} onChange={e=>setStopSale({...stopSale,effectiveFrom:e.target.value})}/></FormField>
+      <FormField label="ساري إلى" required><Input required type="date" value={stopSale.effectiveTo} onChange={e=>setStopSale({...stopSale,effectiveTo:e.target.value})}/></FormField>
+      <Button type="submit" loading={a.busy}>تسجيل إيقاف البيع</Button>
+    </form></Card>
     <Card title="متابعة تخصيص"><div className="ui-filter-grid"><FormField label="معرّف التخصيص"><Input value={lookup} onChange={e=>setLookup(e.target.value)}/></FormField><FormField label="كمية التحرير"><Input inputMode="decimal" value={release} onChange={e=>setRelease(e.target.value)}/></FormField></div><ActionBar>
       <Button disabled={!lookup||a.busy} onClick={()=>void a.run('تم تحميل التخصيص.',()=>api.getAllocation(lookup))}>عرض</Button>
       <Button variant="danger" disabled={!lookup||!release||a.busy} onClick={()=>void a.run('تم تنفيذ تحرير السعة وفق موانع المخزون.',()=>api.releaseAllocation(lookup,release))}>تحرير سعة</Button>
