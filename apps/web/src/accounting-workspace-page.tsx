@@ -2,6 +2,7 @@ import{type FormEvent,useEffect,useState}from'react';
 import{accountingApi,type AccountingCapabilities,type AccountingOverview,type AccountClassification,type FinancialAction}from'./accounting-client.js';
 import{ActionBar,Badge,Button,Card,DataGrid,EmptyState,ErrorState,FormField,Input,LoadingState,MetricCard,Select,Tabs,Toast}from'./ui.js';
 import{AssetsFinancingSection,CostBudgetSection,CurrencyFxSection,ExpenseCommissionSection,PartyAccountingSection}from'./advanced-accounting-sections.js';
+import{AllowancesSection,RecognitionAccrualSection}from'./advanced-accounting-corrective-sections.js';
 
 const emptyOverview:AccountingOverview={
  fiscalYears:[],periods:[],accounts:[],journals:[],invoices:[],treasuries:[],vouchers:[],taxPolicies:[],approvalPolicies:[],approvalRequests:[],controlIssues:[],
@@ -12,7 +13,7 @@ const actionLabel:Record<FinancialAction,string>={PAYMENT:'دفعة',PAID_EXPENS
 const tabs=[
  {id:'overview',label:'نظرة عامة'},{id:'accounts',label:'دليل الحسابات'},{id:'journals',label:'القيود'},{id:'periods',label:'الفترات'},
  {id:'billing',label:'الذمم والفواتير'},{id:'treasury',label:'الخزائن والبنوك'},{id:'currency-fx',label:'العملات والصرف'},{id:'cost-budget',label:'مراكز التكلفة والموازنات'},
- {id:'party-accounting',label:'حسابات الأطراف والمقاصة'},{id:'expense-commission',label:'المصروفات والعمولات'},{id:'assets-financing',label:'الأصول والتمويل'},
+ {id:'party-accounting',label:'حسابات الأطراف والمقاصة'},{id:'expense-commission',label:'المصروفات والعمولات'},{id:'recognition-accrual',label:'الاستحقاق والاعتراف'},{id:'assets-financing',label:'الأصول والتمويل'},{id:'allowances',label:'مخصصات الديون'},
  {id:'tax',label:'الضرائب'},{id:'controls',label:'الرقابة والاعتمادات'},{id:'reports',label:'التقارير'},
 ];
 
@@ -36,7 +37,9 @@ export function AccountingWorkspacePage(){
   {tab==='cost-budget'?(cap.operate?<CostBudgetSection/>:<EmptyState title="صلاحية قراءة فقط">هذه المساحة تحتوي عمليات مالية وتحتاج صلاحية تشغيل المحاسبة.</EmptyState>):null}
   {tab==='party-accounting'?(cap.operate?<PartyAccountingSection/>:<EmptyState title="صلاحية قراءة فقط">هذه المساحة تحتوي عمليات مالية وتحتاج صلاحية تشغيل المحاسبة.</EmptyState>):null}
   {tab==='expense-commission'?(cap.operate?<ExpenseCommissionSection/>:<EmptyState title="صلاحية قراءة فقط">هذه المساحة تحتوي عمليات مالية وتحتاج صلاحية تشغيل المحاسبة.</EmptyState>):null}
+  {tab==='recognition-accrual'?(cap.operate?<RecognitionAccrualSection accounts={data.accounts} invoices={data.invoices}/>:<EmptyState title="صلاحية قراءة فقط">هذه المساحة تحتوي عمليات مالية وتحتاج صلاحية تشغيل المحاسبة.</EmptyState>):null}
   {tab==='assets-financing'?(cap.operate?<AssetsFinancingSection/>:<EmptyState title="صلاحية قراءة فقط">هذه المساحة تحتوي عمليات مالية وتحتاج صلاحية تشغيل المحاسبة.</EmptyState>):null}
+  {tab==='allowances'?(cap.operate?<AllowancesSection accounts={data.accounts} invoices={data.invoices}/>:<EmptyState title="صلاحية قراءة فقط">هذه المساحة تحتوي عمليات مالية وتحتاج صلاحية تشغيل المحاسبة.</EmptyState>):null}
   {tab==='tax'?<Tax data={data} operate={cap.operate} done={done}/>:null}
   {tab==='controls'?<Controls data={data} operate={cap.operate} done={done}/>:null}
   {tab==='reports'?<Reports data={data}/>:null}

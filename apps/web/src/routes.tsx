@@ -70,6 +70,7 @@ export const foundationRoutes = defineRoutes(
   { id: 'accounting-workspace', path: '/accounting', label: 'المحاسبة والمالية', group: 'المحاسبة والمالية', icon: 'analytics', element: <AccountingWorkspacePage /> },
 
   { id: 'hajj-umrah-seasons', path: '/hajj-umrah/seasons', label: 'المواسم', group: 'الحج والعمرة', icon: 'calendar', element: <SeasonsPage /> },
+  { id: 'hajj-umrah-contract-inventory', path: '/hajj-umrah/contracts-inventory', label: 'التعاقدات والمخزون', group: 'الحج والعمرة', icon: 'workspace', element: <TourismContractInventoryPage /> },
   { id: 'hajj-umrah-programs', path: '/hajj-umrah/programs', label: 'برامج الحج والعمرة', group: 'الحج والعمرة', icon: 'program', element: <ProgramsPage /> },
   { id: 'hajj-umrah-program-workspace', path: '/hajj-umrah/program-workspace', label: 'مساحة عمل البرنامج', group: 'الحج والعمرة', icon: 'workspace', navigation: false, element: <ProgramWorkspacePage /> },
   { id: 'hajj-umrah-bookings', path: '/hajj-umrah/bookings', label: 'الحجوزات', group: 'الحج والعمرة', icon: 'booking', element: <BookingsPage /> },
