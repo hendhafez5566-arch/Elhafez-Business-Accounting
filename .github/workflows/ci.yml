@@ -23,7 +23,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          # PR merge refs need only the merge commit and its parents.
+          # Main keeps a wider fail-closed window without downloading all repository history.
+          fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 50 }}
 
       - uses: pnpm/action-setup@v4
         with:
@@ -59,7 +61,16 @@ jobs:
       - name: Prisma generate
         run: pnpm prisma:generate
 
-      - name: Typecheck
+      - name: Affected workspace typecheck (draft PR)
+        if: github.event_name == 'pull_request' && github.event.pull_request.draft == true
+        run: pnpm --filter "...[${{ github.event.pull_request.base.sha }}]" run typecheck
+
+      - name: Full typecheck (ready PR)
+        if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
+        run: pnpm typecheck
+
+      - name: Main post-merge typecheck
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: pnpm typecheck
 
       - name: Lint (pull requests)
