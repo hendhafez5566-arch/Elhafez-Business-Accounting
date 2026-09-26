@@ -40,8 +40,12 @@ export async function crmRequest<T>(path: string, init: RequestInit = {}, contex
   if (!response.ok) {
     if(response.status===401)clearTenantSession();
     try{
-      const body=await responseBody<{message?:string;error?:string}>(response);
-      throw new CrmApiError(response.status,body?.message??body?.error??'تعذر تنفيذ الطلب.');
+      const body=await responseBody<{code?:string;message?:string;error?:string}>(response);
+      const friendly=body?.code==='FORBIDDEN'?'ليس لديك صلاحية لتنفيذ هذا الإجراء.'
+        :body?.code==='UNAUTHENTICATED'||body?.code==='INVALID_CREDENTIALS'?'انتهت الجلسة أو بيانات الدخول غير صالحة. سجّل الدخول مرة أخرى.'
+        :body?.code==='CREDENTIAL_CHANGE_REQUIRED'?'يجب تغيير كلمة المرور المؤقتة قبل استخدام النظام.'
+        :body?.message??body?.error??'تعذر تنفيذ الطلب.';
+      throw new CrmApiError(response.status,friendly);
     }catch(error){
       if(error instanceof CrmApiError)throw error;
       throw new CrmApiError(response.status,'تعذر تنفيذ الطلب.');
