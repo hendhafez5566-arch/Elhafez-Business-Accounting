@@ -1,5 +1,5 @@
 import { type FormEvent, useEffect, useState } from 'react';
-import { ActionBar, Badge, Button, Card, DataGrid, FormField, Input, MetricCard, Select, Toast } from './ui.js';
+import { ActionBar, Badge, Button, Card, Checkbox, DataGrid, FormField, Input, MetricCard, Select, Toast } from './ui.js';
 import { advancedAccountingApi, type AdvancedResult } from './advanced-accounting-client.js';
 
 const today=()=>new Date().toISOString().slice(0,10);
@@ -26,7 +26,7 @@ export function CurrencyFxSection(){
   <Notice text={notice}/>
   <div className="ui-metric-grid"><MetricCard label="العملة الأساسية" value={String(base?.code??'غير محددة')}/><MetricCard label="الدقة" value={String(base?.precision??'—')}/><MetricCard label="الحالة" value={String(base?.status??'—')}/></div>
   <div className="ui-grid-md">
-   <Card title="إعداد عملة"><form onSubmit={configure}><FormField label="كود العملة" required><Input required maxLength={3} value={code} onChange={e=>setCode(e.target.value)}/></FormField><FormField label="عدد الكسور" required><Input required inputMode="numeric" value={precision} onChange={e=>setPrecision(e.target.value)}/></FormField><label className="ui-checkbox-field"><input type="checkbox" checked={isBase} onChange={e=>setIsBase(e.target.checked)}/><span>عملة أساسية للشركة</span></label><Button type="submit">حفظ العملة</Button></form></Card>
+   <Card title="إعداد عملة"><form onSubmit={configure}><FormField label="كود العملة" required><Input required maxLength={3} value={code} onChange={e=>setCode(e.target.value)}/></FormField><FormField label="عدد الكسور" required><Input required inputMode="numeric" value={precision} onChange={e=>setPrecision(e.target.value)}/></FormField><label className="ui-checkbox-field"><Checkbox checked={isBase} onChange={e=>setIsBase(e.target.checked)}/><span>عملة أساسية للشركة</span></label><Button type="submit">حفظ العملة</Button></form></Card>
    <Card title="أسعار الصرف"><form onSubmit={publish}><FormField label="من" required><Input required maxLength={3} value={from} onChange={e=>setFrom(e.target.value)}/></FormField><FormField label="إلى" required><Input required maxLength={3} value={to} onChange={e=>setTo(e.target.value)}/></FormField><FormField label="السعر" required><Input required inputMode="decimal" value={rate} onChange={e=>setRate(e.target.value)}/></FormField><FormField label="ساري من" required><Input required type="datetime-local" value={effectiveAt.slice(0,16)} onChange={e=>setEffectiveAt(e.target.value)}/></FormField><FormField label="المصدر"><Input value={source} onChange={e=>setSource(e.target.value)}/></FormField><ActionBar><Button type="submit">نشر السعر</Button><Button type="button" variant="secondary" onClick={()=>void resolve()}>عرض السعر الساري</Button></ActionBar></form></Card>
   </div>
   <ResultCard title="آخر نتيجة" value={result}/>
