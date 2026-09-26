@@ -139,7 +139,7 @@ Use the exact final PR #82 commit for every gate:
 4. `pnpm verify` and production build;
 5. tenant + Owner browser smoke through the production reverse-proxy contract;
 6. non-production backup create → verify → preflight → restore drill;
-7. stable green self-hosted CI on the same immutable candidate;
+7. executable Railway verification on the same immutable candidate (GitHub Actions CI is currently unavailable because the account quota is exhausted and no self-hosted runner is available);
 8. focused human UAT;
 9. merge only after acceptance, then record the resulting `main` SHA as **SYSTEM CLOSED / GO-LIVE BASELINE**.
 
