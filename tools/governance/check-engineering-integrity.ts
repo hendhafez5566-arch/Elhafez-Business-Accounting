@@ -68,6 +68,7 @@ if (errors.length === 0) {
 }
 
 const base = resolveBase();
+checkAddedModuleManifests(base);
 const diff = git(['diff', '--unified=0', '--no-color', base + '...HEAD', '--']);
 let currentPath = '';
 
@@ -143,6 +144,53 @@ if (errors.length) {
 }
 
 console.log('Engineering integrity check passed (fail-closed constitution, anti-patching diff scan, CI self-check, and test-focus guard).');
+
+function checkAddedModuleManifests(baseSha: string): void {
+  const output = git(['diff', '--name-status', baseSha + '...HEAD']).trim();
+  if (!output) return;
+
+  for (const line of output.split('\n')) {
+    const parts = line.split('\t');
+    if (parts[0] !== 'A') continue;
+    const path = parts[1] ?? '';
+    const match = /^modules\/([^/]+)\/module\.json$/.exec(path);
+    if (!match || match[1] === '_template') continue;
+
+    try {
+      const metadata = JSON.parse(readFileSync(join(root, path), 'utf8')) as {
+        readonly ownedTables?: string[];
+        readonly dataScope?: string;
+        readonly branchScopedTables?: string[];
+        readonly criticalInvariants?: string[];
+      };
+      if (!['PLATFORM', 'COMPANY', 'COMPANY_BRANCH'].includes(metadata.dataScope ?? '')) {
+        errors.push(path + ': new modules must declare dataScope as PLATFORM, COMPANY, or COMPANY_BRANCH.');
+      }
+      if (!Array.isArray(metadata.criticalInvariants) || metadata.criticalInvariants.length === 0) {
+        errors.push(path + ': new modules must declare at least one criticalInvariant.');
+      } else if (metadata.criticalInvariants.some((value) => typeof value !== 'string' || !value.trim())) {
+        errors.push(path + ': criticalInvariants must contain non-empty descriptions.');
+      }
+
+      if (metadata.dataScope === 'COMPANY_BRANCH') {
+        if (!Array.isArray(metadata.branchScopedTables) || metadata.branchScopedTables.length === 0) {
+          errors.push(path + ': COMPANY_BRANCH modules must declare branchScopedTables.');
+        } else {
+          const owned = new Set(metadata.ownedTables ?? []);
+          for (const table of metadata.branchScopedTables) {
+            if (!owned.has(table)) {
+              errors.push(path + ': branchScopedTable is not owned by the module: ' + table + '.');
+            }
+          }
+        }
+      } else if (metadata.branchScopedTables?.length) {
+        errors.push(path + ': branchScopedTables are allowed only when dataScope is COMPANY_BRANCH.');
+      }
+    } catch (error) {
+      errors.push(path + ': invalid module metadata (' + String(error) + ').');
+    }
+  }
+}
 
 function resolveBase(): string {
   if (process.env.CHANGE_BASE_SHA?.trim()) return process.env.CHANGE_BASE_SHA.trim();
