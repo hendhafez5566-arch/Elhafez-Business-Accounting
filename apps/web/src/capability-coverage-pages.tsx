@@ -1,5 +1,5 @@
 import{type FormEvent,useEffect,useState}from'react';
-import{ActionBar,Badge,Button,Card,DisclosureCard,FormField,Input,MetricCard,PageHeader,Select,Tabs,Textarea,Toast}from'./ui.js';
+import{ActionBar,Button,Card,DisclosureCard,FormField,Input,MetricCard,PageHeader,Select,Tabs,Textarea,Toast}from'./ui.js';
 import{capabilityApi,type ContractType,type OperationResult,type ServiceCategory}from'./capability-coverage-client.js';
 
 const errorMessage=(error:unknown)=>error instanceof Error?error.message:'تعذر تنفيذ العملية.';
@@ -40,7 +40,7 @@ export function TourismContractsInventoryPage(){
  const[allocationView,setAllocationView]=useState<{allocation:OperationResult|null;blockers:OperationResult[]}|null>(null);
 
  async function createContract(event:FormEvent){event.preventDefault();await op.run('تم إنشاء العقد من خلال المالك المعتمد للتعاقدات والمخزون.',()=>capabilityApi.createContract(contract));}
- async function lookup(event:FormEvent){event.preventDefault();try{const value=await capabilityApi.contract(lookupId.trim());setContractView(value);op.setResult(value.contract); }catch(reason){void op.run('',async()=>{throw reason})}}
+ async function lookup(event:FormEvent){event.preventDefault();await op.run('تم تحميل العقد وإصداراته.',async()=>{const value=await capabilityApi.contract(lookupId.trim());setContractView(value);return value.contract??{};});}
  async function amendContract(event:FormEvent){event.preventDefault();await op.run('تم حفظ إصدار تعاقدي جديد مع الاحتفاظ بتاريخ الإصدارات.',()=>capabilityApi.amendContract(amend.contractId,{effectiveFrom:amend.effectiveFrom,...(amend.effectiveTo?{effectiveTo:amend.effectiveTo}:{}),terms:JSON.parse(amend.terms)}));}
  async function createInventory(event:FormEvent){event.preventDefault();const base={contractId:stock.contractId};
   if(kind==='HOTEL')await op.run('تمت إضافة سعة الفندق.',()=>capabilityApi.createHotel({...base,hotelId:stock.resourceId,...(stock.secondary?{roomId:stock.secondary}:{}),serviceDate:stock.from,contractedQuantity:stock.quantity}));
@@ -51,7 +51,7 @@ export function TourismContractsInventoryPage(){
  }
  async function checkAvailability(event:FormEvent){event.preventDefault();await op.run('تم فحص الإتاحة من المخزون الحقيقي.',()=>capabilityApi.availability({...availability,...(availability.periodEnd?{periodEnd:availability.periodEnd}:{})}));}
  async function allocate(event:FormEvent){event.preventDefault();await op.run('تم إنشاء التخصيص من المخزون المعتمد.',()=>capabilityApi.allocate({...allocation,program:{sourceType:allocation.programType,sourceId:allocation.programId},...(allocation.periodEnd?{periodEnd:allocation.periodEnd}:{}),...(allocation.resourceType==='FLIGHT_BLOCK'?{flightSegment:{sourceType:allocation.flightType,sourceId:allocation.flightId}}:{}),...(allocation.resourceType==='VISA'?{visaBatch:{sourceType:allocation.visaType,sourceId:allocation.visaId}}:{})}));}
- async function loadAllocation(event:FormEvent){event.preventDefault();const value=await capabilityApi.allocation(allocationId.trim());setAllocationView(value);op.setResult(value.allocation);}
+ async function loadAllocation(event:FormEvent){event.preventDefault();await op.run('تم تحميل التخصيص وموانع التحرير.',async()=>{const value=await capabilityApi.allocation(allocationId.trim());setAllocationView(value);return value.allocation??{};});}
  async function release(event:FormEvent){event.preventDefault();await op.run('تم تنفيذ طلب تحرير السعة وفق موانع المخزون المسجلة.',()=>capabilityApi.release(allocationId,{quantity:releaseQuantity}));}
 
  return <section dir="rtl" className="ui-page-stack" aria-label="التعاقدات والمخزون">
@@ -117,7 +117,7 @@ export function AccountingCapabilitiesPage({initialTab='currency'}:{initialTab?:
  async function publishRate(e:FormEvent){e.preventDefault();await op.run('تم نشر سعر الصرف.',()=>capabilityApi.publishRate(rate));}
  async function resolveRate(e:FormEvent){e.preventDefault();await op.run('تم استرجاع سعر الصرف المعتمد.',()=>capabilityApi.resolveRate(resolve));}
  async function createCost(e:FormEvent){e.preventDefault();await op.run('تم إنشاء مركز التكلفة.',()=>capabilityApi.createCostCenter({...cost,...(cost.id?{id:cost.id}:{}),...(cost.parentId?{parentId:cost.parentId}:{})}));}
- async function lookupCost(e:FormEvent){e.preventDefault();await op.run('تم تحميل مركز التكلفة.',()=>capabilityApi.costCenter(costLookup));}
+ async function lookupCost(){await op.run('تم تحميل مركز التكلفة.',()=>capabilityApi.costCenter(costLookup));}
  async function createBudget(e:FormEvent){e.preventDefault();await op.run('تم إنشاء الموازنة.',()=>capabilityApi.createBudget({...budget,...(budget.id?{id:budget.id}:{})}));}
  async function budgetAction(action:'authorize'|'check'){await op.run(action==='authorize'?'تم اعتماد الموازنة.':'تم فحص الموازنة مقابل الفعلي.',()=>action==='authorize'?capabilityApi.authorizeBudget(budgetActionId):capabilityApi.checkBudget(budgetActionId));}
  async function createGroup(e:FormEvent){e.preventDefault();await op.run('تم إنشاء مجموعة أطراف للمقاصة.',()=>capabilityApi.createPartyGroup({name:group.name,members:[{role:'CUSTOMER',partyId:group.customerPartyId},{role:'SUPPLIER',partyId:group.supplierPartyId}]}));}
@@ -144,7 +144,7 @@ export function AccountingCapabilitiesPage({initialTab='currency'}:{initialTab?:
   {tab==='cost'?<>
    <div className="ui-grid-md"><DisclosureCard title="مركز تكلفة جديد"><form onSubmit={createCost}><FormField label="الكود"><Input required value={cost.code} onChange={e=>setCost({...cost,code:e.target.value.toUpperCase()})}/></FormField><FormField label="الاسم"><Input required value={cost.name} onChange={e=>setCost({...cost,name:e.target.value})}/></FormField><FormField label="المركز الأب"><Input value={cost.parentId} onChange={e=>setCost({...cost,parentId:e.target.value})}/></FormField><Button type="submit">إنشاء المركز</Button></form></DisclosureCard>
    <DisclosureCard title="موازنة"><form onSubmit={createBudget}><FormField label="مركز التكلفة"><Input required value={budget.costCenterId} onChange={e=>setBudget({...budget,costCenterId:e.target.value})}/></FormField><FormField label="من"><Input required type="date" value={budget.periodStart} onChange={e=>setBudget({...budget,periodStart:e.target.value})}/></FormField><FormField label="إلى"><Input required type="date" value={budget.periodEnd} onChange={e=>setBudget({...budget,periodEnd:e.target.value})}/></FormField><FormField label="العملة"><Input required value={budget.currency} onChange={e=>setBudget({...budget,currency:e.target.value.toUpperCase()})}/></FormField><FormField label="القيمة"><Input required inputMode="decimal" value={budget.amount} onChange={e=>setBudget({...budget,amount:e.target.value})}/></FormField><Button type="submit">إنشاء الموازنة</Button></form></DisclosureCard></div>
-   <Card title="استعلام وتشغيل"><div className="ui-filter-grid"><FormField label="مركز تكلفة"><Input value={costLookup} onChange={e=>setCostLookup(e.target.value)}/></FormField><Button onClick={e=>void lookupCost(e as unknown as FormEvent)}>عرض المركز</Button><FormField label="معرّف الموازنة"><Input value={budgetActionId} onChange={e=>setBudgetActionId(e.target.value)}/></FormField><Button onClick={()=>void budgetAction('check')}>فحص</Button><Button variant="secondary" onClick={()=>void budgetAction('authorize')}>اعتماد</Button></div></Card>
+   <Card title="استعلام وتشغيل"><div className="ui-filter-grid"><FormField label="مركز تكلفة"><Input value={costLookup} onChange={e=>setCostLookup(e.target.value)}/></FormField><Button onClick={()=>void lookupCost()}>عرض المركز</Button><FormField label="معرّف الموازنة"><Input value={budgetActionId} onChange={e=>setBudgetActionId(e.target.value)}/></FormField><Button onClick={()=>void budgetAction('check')}>فحص</Button><Button variant="secondary" onClick={()=>void budgetAction('authorize')}>اعتماد</Button></div></Card>
   </>:null}
   {tab==='parties'?<>
    <div className="ui-grid-md"><DisclosureCard title="مجموعة أطراف"><form onSubmit={createGroup}><FormField label="اسم المجموعة"><Input required value={group.name} onChange={e=>setGroup({...group,name:e.target.value})}/></FormField><FormField label="طرف العميل"><Input required value={group.customerPartyId} onChange={e=>setGroup({...group,customerPartyId:e.target.value})}/></FormField><FormField label="طرف المورد"><Input required value={group.supplierPartyId} onChange={e=>setGroup({...group,supplierPartyId:e.target.value})}/></FormField><Button type="submit">إنشاء المجموعة</Button></form></DisclosureCard>
