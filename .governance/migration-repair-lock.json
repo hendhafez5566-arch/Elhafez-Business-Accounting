@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "repairs": [
+    {
+      "path": "prisma/migrations/20260925200000_saas01_control_plane/migration.sql",
+      "baseBlobSha": "db40c82977bc35b39584297fca2e94b6e5538bf0",
+      "repairedBlobSha": "95495a975b606ac4297b38abc5f2364aabad0200",
+      "reason": "One-time pre-Go-Live repair of the syntactically corrupted SAAS-01 currency CHECK expressions proven by the fresh-database drill. This exact blob transition is locked and cannot be reused for later history edits."
+    }
+  ]
+}
