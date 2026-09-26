@@ -1,6 +1,7 @@
 import { createHash, randomBytes, randomUUID, scrypt as nodeScrypt, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 import type { EventPublisher } from '@elhafez/contracts';
+import { COMPANY_ADMINISTRATOR_ROLE } from '../domain/platform.constants.js';
 import { fail, PlatformError, type AuditEntry, type Branch, type Company, type CompanyLoginIdentity, type CompanyUserProjection, type Id, type Notification, type SessionProjection, type StoredFile, type StoredFileContent, type User, type UserProjection } from '../domain/platform.types.js';
 import type { PlatformCoreRepository } from './platform-core.repository.js';
 
@@ -8,7 +9,7 @@ const scrypt = async (password:string,salt:string):Promise<Buffer> => (await pro
 const id = () => randomUUID();
 const digest = (value:string) => createHash('sha256').update(value).digest('base64url');
 const GENERIC_CONFIGURATION_KEYS = new Set(['locale','timezone','dateFormat','theme','companyName','companyLogo','address','phone','email','notificationPrefs','retention.days']);
-export const COMPANY_ADMINISTRATOR_ROLE = 'company-administrator';
+export { COMPANY_ADMINISTRATOR_ROLE } from '../domain/platform.constants.js';
 export const PLATFORM_CORE_PERMISSIONS = Object.freeze({managementControlRead:'management.control.read',accountingFinanceRead:'accounting.finance.read',accountingFinanceOperate:'accounting.finance.operate'} as const);
 export interface RecoveryDeliveryPort { deliver(input:{recipient:string;token:string;expiresAt:Date}):Promise<void> }
 export interface FileStoragePort { put(input:{content:Uint8Array;contentType:string}):Promise<{key:string;size:number;checksum:string}>; get(key:string):Promise<Uint8Array>; delete(key:string):Promise<void> }
