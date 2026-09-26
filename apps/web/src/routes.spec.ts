@@ -36,3 +36,12 @@ test('duplicate route ids and paths are rejected before they can corrupt navigat
 
 
 test('account credentials have one canonical self-service route',()=>{const route=findRoute('/settings/account');assert.equal(route.id,'account-settings');assert.equal(route.group,'الإعدادات');assert.equal(route.icon,'profile');});
+
+
+test('detail and account routes remain reachable without cluttering the main navigation',()=>{
+ for(const path of ['/crm/customer-360','/crm/agent-360','/hajj-umrah/program-workspace','/settings/appearance','/settings/account']){
+  const route=findRoute(path);
+  assert.equal(route.path,path);
+  assert.equal(route.navigation,false);
+ }
+});
