@@ -18,7 +18,7 @@ test('CS-03 CRM composition pages render Arabic-first operational surfaces witho
   const customer=renderToStaticMarkup(createElement(Customer360Page));
   const agent=renderToStaticMarkup(createElement(Agent360Page));
   const travelers=renderToStaticMarkup(createElement(TravelersPage));
-  assert.match(dashboard,/جارٍ التحميل/);
+  assert.match(dashboard,/جارٍ تحميل/);
   assert.match(customer,/ملف العميل 360°/);
   assert.match(agent,/ملف الوكيل 360°/);
   assert.match(travelers,/إضافة مسافر/);
