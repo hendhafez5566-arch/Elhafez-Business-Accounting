@@ -17,6 +17,6 @@ export const tourismContractInventoryApi={
  allocate:(input:{contractId:string;resourceType:'HOTEL'|'FLIGHT_BLOCK'|'TRANSPORT'|'VISA'|'SERVICE';resourceId:string;program:{sourceType:string;sourceId:string};serviceDate:string;periodEnd?:string;quantity:string;commandKey?:string})=>crmPost<InventoryResult>(base+'/allocations',input),
  allocation:(id:string)=>crmGet<InventoryResult|null>(base+'/allocations/'+enc(id)),
  release:(id:string,input:{quantity:string;commandKey?:string})=>crmPost<InventoryResult>(base+'/allocations/'+enc(id)+'/release',input),
- amendContract:(id:string,input:{terms:Record<string,unknown>;effectiveFrom:string;effectiveTo?:string;commandKey?:string})=>crmPost<InventoryResult>(base+'/contracts/'+enc(id)+'/amendments',input),
+ amendContract:(id:string,input:{terms:Record<string,unknown>;effectiveFrom:string;effectiveTo:string;commandKey?:string})=>crmPost<InventoryResult>(base+'/contracts/'+enc(id)+'/amendments',input),
  createService:(input:{contractId:string;category:'CAMP'|'MEAL'|'VISIT'|'GUIDE'|'RAWDA'|'INSURANCE'|'OTHER';name:string;description?:string;unit:string;serviceStart:string;serviceEnd:string;capacity:string;releaseDeadline?:string;commandKey?:string})=>crmPost<InventoryResult>(base+'/service-inventory',input),
 };
