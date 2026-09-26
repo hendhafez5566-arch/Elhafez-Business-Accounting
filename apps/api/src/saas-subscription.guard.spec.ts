@@ -46,11 +46,11 @@ test('authorized tenant with valid subscription reaches business controllers',as
  assert.equal(await guard.canActivate(context('/tourism-services',{'x-company-id':'company-a',...authorizationHeaders()})),true);
  assert.deepEqual(calls,['session','company:user-a:company-a','credentials:user-a:company-a','subscription:company-a']);
 });
-test('owner control, company-code resolution, subscription status and password recovery bypass tenant gate only',async()=>{
+test('owner control, company-code resolution and subscription status bypass tenant gate only',async()=>{
  const saas={assertTenantAccess:async()=>{throw new Error('must not be called')}} as unknown as SaasControlPlaneApplicationService;
  const core=platform({currentCompanyUser:async()=>{throw new Error('must not be called')}});
  const guard=new SaasSubscriptionGuard(saas,core,operations());
- for(const path of['/saas-owner/login','/saas/login','/saas/subscription-status','/saas/credentials','/saas/credentials/initial-password','/system-administration/recovery/request','/system-administration/recovery/reset'])assert.equal(await guard.canActivate(context(path)),true);
+ for(const path of['/saas-owner/login','/saas/login','/saas/subscription-status','/saas/credentials','/saas/credentials/initial-password'])assert.equal(await guard.canActivate(context(path)),true);
 });
 function authorizationHeaders(){return{authorization:'Bearer tenant-session'};}
 
