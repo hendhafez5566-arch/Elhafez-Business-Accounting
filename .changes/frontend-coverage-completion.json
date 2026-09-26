@@ -1,0 +1,33 @@
+{
+  "id": "frontend-coverage-completion",
+  "summary": "Expose previously hidden canonical tourism inventory and advanced accounting capabilities through Arabic product workspaces without duplicating business truth.",
+  "type": "phase",
+  "allowedModules": [
+    "currency-fx",
+    "cost-budget-accounting",
+    "party-accounting",
+    "expense-commission-recognition",
+    "assets-financing",
+    "tourism-contract-inventory"
+  ],
+  "allowedPaths": [
+    ".changes/frontend-coverage-completion.json",
+    "apps/api/src/app.module.ts",
+    "apps/api/src/frontend-coverage.controller.ts",
+    "apps/api/src/frontend-coverage.spec.ts",
+    "apps/web/src/routes.tsx",
+    "apps/web/src/accounting-workspace-page.tsx",
+    "apps/web/src/advanced-accounting-client.ts",
+    "apps/web/src/advanced-accounting-sections.tsx",
+    "apps/web/src/tourism-contract-inventory-client.ts",
+    "apps/web/src/tourism-contract-inventory-page.tsx",
+    "apps/web/src/frontend-coverage.spec.ts"
+  ],
+  "protectedPaths": [
+    "apps/api/src/app.module.ts",
+    "apps/web/src/routes.tsx"
+  ],
+  "protectedReason": "Register composition controllers and visible navigation for already accepted canonical owners. No business ownership, tables, migrations, or source-of-truth responsibilities move into the UI or composition root.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": ""
+}
