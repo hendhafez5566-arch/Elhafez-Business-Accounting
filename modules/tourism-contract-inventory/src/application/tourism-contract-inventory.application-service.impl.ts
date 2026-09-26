@@ -69,6 +69,9 @@ export class TourismContractInventoryApplicationServiceImpl
     return this.repo.commitStandaloneSupplyPlan(input, key, idempotencyHash(input));
   }
 
+  listContracts(companyId: CompanyId){return this.repo.listContracts(companyId);}
+  async inventoryOverview(companyId: CompanyId, contractId?: string){const[hotels,flights,transport,visas,services,stopSales,allocations]=await Promise.all([this.repo.listHotelInventory(companyId,contractId),this.repo.listFlightBlocks(companyId,contractId),this.repo.listTransportCapacities(companyId,contractId),this.repo.listVisaQuotas(companyId,contractId),this.repo.listServiceInventory(companyId,contractId),this.repo.listStopSales(companyId,contractId),this.repo.listAllocations(companyId,contractId)]);return{hotels,flights,transport,visas,services,stopSales,allocations};}
+
   createContract(input: CreateTourismContractInput, key?: string): Promise<TourismContract> {
     return this.repo.createContract(input, key, idempotencyHash(input));
   }
