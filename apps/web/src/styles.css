@@ -698,6 +698,7 @@ dialog {
 
 /* UI-02 application patterns */
 .ui-card form,
+.ui-disclosure-card form,
 dialog form,
 .ui-form-section form,
 .admin-actions {
@@ -712,6 +713,7 @@ dialog form,
 }
 
 .ui-card form > .ui-button,
+.ui-disclosure-card form > .ui-button,
 .admin-actions > .ui-button {
   justify-self: start;
 }
@@ -735,6 +737,15 @@ dialog form,
   justify-content: flex-end;
   gap: var(--space-1);
   flex-wrap: wrap;
+}
+
+.ui-disclosure-card form {
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  align-items: end;
+}
+
+.ui-disclosure-card form > .ui-checkbox-field {
+  align-self: center;
 }
 
 .ui-filter-grid {
@@ -828,6 +839,7 @@ dialog form,
 
 @media (max-width: 700px) {
   .ui-filter-grid,
+  .ui-disclosure-card form,
   .ui-dashboard-grid,
   .admin-actions {
     grid-template-columns: 1fr;
