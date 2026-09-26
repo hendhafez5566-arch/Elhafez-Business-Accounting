@@ -28,7 +28,7 @@ function InvoiceSelect({label,value,onChange,invoices,type='CUSTOMER',required=f
 
 export function RecognitionAccrualSection({accounts,invoices}:{accounts:readonly AccountRow[];invoices:readonly InvoiceRow[]}){
  const[notice,setNotice]=useState(''),[result,setResult]=useState<AdvancedResult|null>(null),[kind,setKind]=useState<RecognitionKind>('PREPAID_EXPENSE');
- const[sourceId,setSourceId]=useState(''),[sourceInvoiceId,setSourceInvoiceId]=useState(''),[currency,setCurrency]=useState('EGP'),[amount,setAmount]=useState(''),[deferredAccountId,setDeferredAccountId]=useState(''),[recognitionAccountId,setRecognitionAccountId]=useState(''),[dates,setDates]=useState(today()),[postingDate,setPostingDate]=useState(today()),[number,setNumber]=useState('');
+ const[sourceId,setSourceId]=useState(''),[sourceInvoiceId,setSourceInvoiceId]=useState(''),[currency,setCurrency]=useState('EGP'),[amount,setAmount]=useState(''),[baseAmount,setBaseAmount]=useState(''),[deferredAccountId,setDeferredAccountId]=useState(''),[recognitionAccountId,setRecognitionAccountId]=useState(''),[dates,setDates]=useState(today()),[postingDate,setPostingDate]=useState(today()),[number,setNumber]=useState('');
  const[scheduleId,setScheduleId]=useState(''),[partId,setPartId]=useState(''),[partDate,setPartDate]=useState(today()),[partNumber,setPartNumber]=useState('');
  const[accrual,setAccrual]=useState({sourceType:'TOURISM_SERVICE',sourceId:'',amount:'',serviceDate:today(),number:'',accruedRevenueAccountId:'',revenueAccountId:''}),[accrualId,setAccrualId]=useState(''),[clearInvoiceId,setClearInvoiceId]=useState(''),[clearDate,setClearDate]=useState(today()),[clearNumber,setClearNumber]=useState('');
  async function createSchedule(event:FormEvent){
@@ -37,7 +37,7 @@ export function RecognitionAccrualSection({accounts,invoices}:{accounts:readonly
    const invoice=kind==='PREPAID_EXPENSE'?'':sourceInvoiceId;
    const value=await advancedAccountingApi.createRecognitionSchedule({
     kind,sourceType:kind==='PREPAID_EXPENSE'?'EXPENSE':'INVOICE',sourceId:kind==='PREPAID_EXPENSE'?sourceId:invoice,
-    ...(invoice?{sourceInvoiceId:invoice}:{}),currency:currency.toUpperCase(),sourceAmount:amount,baseAmount:amount,
+    ...(invoice?{sourceInvoiceId:invoice}:{}),currency:currency.toUpperCase(),sourceAmount:amount,baseAmount,
     deferredAccountId,recognitionAccountId,serviceDates:dates.split(/[\n,]+/).map(item=>item.trim()).filter(Boolean),postingDate,number,
    });
    setResult(value);setScheduleId(resultId(value));setPartId(firstPartId(value));setNotice('تم إنشاء جدول الاستحقاق والاعتراف.');
@@ -58,7 +58,8 @@ export function RecognitionAccrualSection({accounts,invoices}:{accounts:readonly
     <FormField label="نوع الجدول"><Select value={kind} onChange={event=>setKind(event.target.value as RecognitionKind)}><option value="PREPAID_EXPENSE">مصروف مقدم</option><option value="DEFERRED_REVENUE">إيراد مؤجل</option><option value="DEFERRED_COST">تكلفة مؤجلة</option></Select></FormField>
     {kind==='PREPAID_EXPENSE'?<FormField label="معرّف المصروف المقدم" required><Input required value={sourceId} onChange={event=>setSourceId(event.target.value)}/></FormField>:<InvoiceSelect label={kind==='DEFERRED_REVENUE'?'فاتورة العميل المؤجلة':'فاتورة المورد المؤجلة'} value={sourceInvoiceId} onChange={setSourceInvoiceId} invoices={invoices} type={kind==='DEFERRED_REVENUE'?'CUSTOMER':'SUPPLIER'} required/>}
     <FormField label="العملة" required><Input required maxLength={3} value={currency} onChange={event=>setCurrency(event.target.value)}/></FormField>
-    <FormField label="القيمة" required><Input required inputMode="decimal" value={amount} onChange={event=>setAmount(event.target.value)}/></FormField>
+    <FormField label="قيمة المصدر" required><Input required inputMode="decimal" value={amount} onChange={event=>setAmount(event.target.value)}/></FormField>
+    <FormField label="القيمة بالعملة الأساسية" required><Input required inputMode="decimal" value={baseAmount} onChange={event=>setBaseAmount(event.target.value)}/></FormField>
     <AccountSelect label="حساب المؤجل / المقدم" value={deferredAccountId} onChange={setDeferredAccountId} accounts={accounts} required/>
     <AccountSelect label="حساب الاعتراف" value={recognitionAccountId} onChange={setRecognitionAccountId} accounts={accounts} required/>
     <FormField label="تواريخ الخدمة — تاريخ بكل سطر" required><Textarea required value={dates} onChange={event=>setDates(event.target.value)}/></FormField>
