@@ -28,6 +28,11 @@ export class PrismaTaxRepository implements TaxRepository {
     );
   }
 
+  async listPolicies(companyId: CompanyId) {
+    const values=await this.db.taxPolicy.findMany({where:{companyId},orderBy:[{code:'asc'},{effectiveFrom:'desc'}]});
+    return values.map(value=>({...value,effectiveFrom:value.effectiveFrom.toISOString().slice(0,10),rate:value.rate.toString()}) as TaxPolicy);
+  }
+
   async saveSnapshot(value: TaxSnapshot) {
     await this.db.taxSnapshot.create({
       data: {

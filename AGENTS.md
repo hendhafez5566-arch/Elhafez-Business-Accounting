@@ -9,6 +9,7 @@ Before editing any code, every coding agent MUST read:
 5. `docs/BUSINESS-MODULE-ROUTING.md`
 6. `docs/MODULE-STANDARD.md`
 7. `docs/TESTING-STANDARD.md`
+8. `docs/ARCHITECTURE-CONSTITUTION.md`
 
 For accounting/financial work also read the relevant `docs/accounting/*` architecture, ownership, dependency, contracts and coverage files.
 
@@ -32,7 +33,7 @@ Before editing, create exactly one change-scope manifest under `.changes/<change
 12. State-changing financial/economic workflows must use durable idempotency and concurrency-safe persistence where races matter.
 13. Never erase financial/economic history to implement cancellation or correction.
 14. UI changes are local by default; do not change sidebar/shell/global CSS for a local feature.
-15. Never weaken tests, lint, type safety, architecture checks, or migrations to make CI green.
+15. Never weaken tests, lint, type safety, architecture checks, migrations, or the fail-closed engineering-integrity gate to make CI green. New suppression/bypass code is prohibited by machine enforcement.
 16. Run focused tests plus repository quality gates before completion.
 17. Inspect final changed filenames and remove generated/unrelated artifacts.
 18. Never edit an accepted historical Prisma migration. Schema evolution is additive through a new migration.
@@ -44,6 +45,7 @@ Required repository gates:
 
 ```bash
 pnpm change-safety:check
+pnpm engineering-integrity:check
 pnpm verify
 ```
 

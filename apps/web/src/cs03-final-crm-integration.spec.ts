@@ -18,9 +18,9 @@ test('CS-03 CRM composition pages render Arabic-first operational surfaces witho
   const customer=renderToStaticMarkup(createElement(Customer360Page));
   const agent=renderToStaticMarkup(createElement(Agent360Page));
   const travelers=renderToStaticMarkup(createElement(TravelersPage));
-  assert.match(dashboard,/جارٍ التحميل/);
-  assert.match(customer,/Customer 360/);
-  assert.match(agent,/Agent 360/);
+  assert.match(dashboard,/جارٍ تحميل/);
+  assert.match(customer,/ملف العميل 360°/);
+  assert.match(agent,/ملف الوكيل 360°/);
   assert.match(travelers,/إضافة مسافر/);
   assert.doesNotMatch(customer,/إنشاء قيد|تسجيل دفعة/);
   assert.doesNotMatch(agent,/صرف عمولة|تسجيل قيد/);
@@ -29,6 +29,6 @@ test('CS-03 CRM composition pages render Arabic-first operational surfaces witho
 test('quotation UI exposes print PDF WhatsApp and immutable communication history surfaces',()=>{
   const markup=renderToStaticMarkup(createElement(QuotationsPage));
   assert.match(markup,/حفظ PDF/);
-  assert.match(markup,/WhatsApp/);
+  assert.match(markup,/واتساب/);
   assert.match(markup,/سجل الإرسال والتصدير/);
 });

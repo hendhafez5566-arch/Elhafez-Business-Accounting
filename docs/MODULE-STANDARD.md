@@ -57,3 +57,14 @@ They must:
 - remain rebuildable when defined as projections;
 - never become source truth for the underlying business entities;
 - never use direct cross-module Prisma reads as a shortcut.
+
+
+## Fail-closed module scope metadata
+
+Every module introduced after AE-01 must declare the following in `module.json`:
+
+- `dataScope`: one of `PLATFORM`, `COMPANY`, or `COMPANY_BRANCH`;
+- `branchScopedTables`: required for `COMPANY_BRANCH`, containing only tables in that module's `ownedTables`;
+- `criticalInvariants`: at least one explicit business invariant that the module's tests must preserve.
+
+The repository engineering-integrity gate validates this contract for newly added modules. Do not bypass it by placing business state in apps, shared packages, or an existing unrelated module.

@@ -4,6 +4,7 @@ import {
   Button,
   Card,
   DataGrid,
+  DisclosureCard,
   Dialog,
   EmptyState,
   ErrorState,
@@ -415,7 +416,7 @@ export function ProcurementOperationsPage() {
 
   return (
     <section aria-label="تشغيل المشتريات">
-      <Card title={editingId ? 'تعديل أمر شراء Draft' : 'أمر شراء جديد'}>
+      <DisclosureCard title={editingId ? 'تعديل أمر شراء' : 'أمر شراء جديد'} description="افتح النموذج عند إنشاء أمر جديد أو تعديل أمر قائم." open={Boolean(editingId)}>
         <form onSubmit={savePo}>
           <FormField label="المورد" required>
             <Select required value={supplierId} onChange={(event) => setSupplierId(event.target.value)}>
@@ -467,7 +468,7 @@ export function ProcurementOperationsPage() {
           <Button type="submit">{editingId ? 'حفظ التعديل' : 'إنشاء أمر الشراء'}</Button>
           {editingId && <Button type="button" onClick={resetForm}>إلغاء التعديل</Button>}
         </form>
-      </Card>
+      </DisclosureCard>
 
       {notice && <p role="status">{notice}</p>}
 

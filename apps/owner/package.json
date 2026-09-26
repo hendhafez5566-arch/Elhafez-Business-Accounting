@@ -3,10 +3,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "node scripts/build.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "tsx --test src/**/*.spec.ts",
-    "preview": "tsx src/preview-server.tsx"
+    "preview": "tsx src/preview-server.tsx",
+    "build:types": "tsc -p tsconfig.json",
+    "preview:prod": "node scripts/serve.mjs"
   },
   "dependencies": {
     "react": "^19.0.0",

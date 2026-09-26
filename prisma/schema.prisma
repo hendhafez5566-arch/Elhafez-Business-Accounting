@@ -9,7 +9,7 @@ datasource db {
 
 model PcUser {
   id           String               @id @default(uuid()) @map("id")
-  email        String               @unique
+  email        String?              @unique
   passwordHash String               @map("password_hash")
   displayName  String               @map("display_name")
   status       String               @default("ACTIVE")
@@ -19,6 +19,7 @@ model PcUser {
   userRoles    PcUserRole[]
   recoveryTokens PcPasswordRecovery[]
   branchAccess PcUserBranchAccess[]
+  companyLoginIdentities PcCompanyLoginIdentity[]
 
   @@map("pc_users")
 }
@@ -82,6 +83,8 @@ model PcCompany {
   createdAt DateTime   @default(now()) @map("created_at")
   branches  PcBranch[]
   userRoles PcUserRole[]
+  loginIdentities PcCompanyLoginIdentity[]
+  sessions PcSession[]
 
   @@map("pc_companies")
 }
@@ -112,13 +115,16 @@ model PcUserBranchAccess {
 model PcSession {
   id        String    @id @default(uuid())
   userId    String    @map("user_id")
+  companyId String?   @map("company_id")
   tokenHash String    @unique @map("token_hash")
   expiresAt DateTime  @map("expires_at")
   revokedAt DateTime? @map("revoked_at")
   createdAt DateTime  @default(now()) @map("created_at")
   user      PcUser    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company   PcCompany? @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([companyId])
   @@map("pc_sessions")
 }
 
@@ -133,6 +139,23 @@ model PcPasswordRecovery {
   user PcUser @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([userId, expiresAt])
   @@map("pc_password_recovery")
+}
+
+model PcCompanyLoginIdentity {
+  companyId          String   @map("company_id")
+  userId             String   @map("user_id")
+  username           String
+  passwordHash       String   @map("password_hash")
+  mustChangePassword Boolean  @default(true) @map("must_change_password")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+  company            PcCompany @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user               PcUser    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([companyId, userId])
+  @@unique([companyId, username])
+  @@index([userId])
+  @@map("pc_company_login_identities")
 }
 
 model PcAuditLog {
@@ -398,6 +421,7 @@ model GlAccount {
 model GlJournal {
   id            String          @id
   companyId     String          @map("company_id")
+  branchId      String?         @map("branch_id")
   number        String
   postingDate   DateTime        @map("posting_date") @db.Date
   kind          String
@@ -415,7 +439,7 @@ model GlJournal {
   @@unique([companyId, number])
   @@unique([companyId, sourceType, sourceId])
   @@unique([companyId, id])
-  @@index([companyId, postingDate])
+  @@index([companyId, branchId, postingDate])
   @@map("gl_journals")
 }
 
@@ -3695,4 +3719,116 @@ model SaasControlEvent {
   @@index([companyId, occurredAt])
   @@index([ownerId, occurredAt])
   @@map("saas_control_events")
+}
+
+
+/// FC-02 — general tourism program lifecycle. Operational truth only; financial truth remains in accepted accounting owners.
+model TprProgram {
+  id            String   @id
+  companyId     String   @map("company_id")
+  branchId      String   @map("branch_id")
+  code          String
+  nameAr        String   @map("name_ar")
+  nameEn        String?  @map("name_en")
+  departureDate DateTime @map("departure_date")
+  returnDate    DateTime @map("return_date")
+  salesOpen     DateTime @map("sales_open")
+  salesClose    DateTime @map("sales_close")
+  currency      String
+  notes         String?
+  status        String
+  revision      Int      @default(1)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@unique([id, companyId, branchId])
+  @@unique([companyId, branchId, code])
+  @@index([companyId, branchId, status, departureDate])
+  @@map("tpr_programs")
+}
+
+model TprProgramHistory {
+  id         String   @id
+  companyId  String   @map("company_id")
+  branchId   String   @map("branch_id")
+  programId  String   @map("program_id")
+  action     String
+  actorId    String   @map("actor_id")
+  reason     String?
+  occurredAt DateTime @map("occurred_at")
+
+  @@index([companyId, branchId, programId, occurredAt])
+  @@map("tpr_program_history")
+}
+
+/// FC-02 — program-owned daily itinerary. No copied supply or financial state.
+model TitItineraryDay {
+  id          String   @id
+  companyId   String   @map("company_id")
+  branchId    String   @map("branch_id")
+  programId   String   @map("program_id")
+  dayNumber   Int      @map("day_number")
+  serviceDate DateTime @map("service_date")
+  title       String
+  description String?
+  location    String?
+  revision    Int      @default(1)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@unique([id, companyId, branchId])
+  @@unique([companyId, branchId, programId, dayNumber])
+  @@index([companyId, branchId, programId, serviceDate])
+  @@map("tit_itinerary_days")
+}
+
+model TitItineraryHistory {
+  id             String   @id
+  companyId      String   @map("company_id")
+  branchId       String   @map("branch_id")
+  programId      String   @map("program_id")
+  itineraryDayId String   @map("itinerary_day_id")
+  action         String
+  actorId        String   @map("actor_id")
+  occurredAt     DateTime @map("occurred_at")
+
+  @@index([companyId, branchId, programId, itineraryDayId, occurredAt])
+  @@map("tit_itinerary_history")
+}
+
+/// FC-02 — general tourism operational booking. Stores only references to Finance-owned economic truth.
+model TbkBooking {
+  id                String   @id
+  companyId         String   @map("company_id")
+  branchId          String   @map("branch_id")
+  code              String
+  programId         String   @map("program_id")
+  customerId        String   @map("customer_id")
+  customerPartyId   String   @map("customer_party_id")
+  travelerIds       Json     @map("traveler_ids")
+  status            String
+  pendingCommandKey String?  @map("pending_command_key")
+  financialEvidence Json?    @map("financial_evidence")
+  revision          Int      @default(1)
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@unique([id, companyId, branchId])
+  @@unique([companyId, branchId, code])
+  @@index([companyId, branchId, programId, status])
+  @@index([companyId, branchId, customerId, status])
+  @@map("tbk_bookings")
+}
+
+model TbkBookingHistory {
+  id         String   @id
+  companyId  String   @map("company_id")
+  branchId   String   @map("branch_id")
+  bookingId  String   @map("booking_id")
+  action     String
+  actorId    String   @map("actor_id")
+  occurredAt DateTime @map("occurred_at")
+
+  @@index([companyId, branchId, bookingId, occurredAt])
+  @@map("tbk_booking_history")
 }

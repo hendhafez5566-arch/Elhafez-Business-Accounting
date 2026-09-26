@@ -17,6 +17,7 @@ interface ChangeManifest {
   readonly protectedReason: string;
   readonly allowBreakingPublicApi: boolean;
   readonly publicApiBreakingReason: string;
+  readonly testEvidence?: string[];
   readonly unacceptedMigrationRepairs?: string[];
   readonly unacceptedMigrationRepairReason?: string;
   readonly historicalMigrationIdentifierRepairs?: Array<{
@@ -32,8 +33,19 @@ interface DiffEntry {
   readonly path: string;
 }
 
+interface MigrationRepairLock {
+  readonly version: number;
+  readonly repairs: Array<{
+    readonly path: string;
+    readonly baseBlobSha: string;
+    readonly repairedBlobSha: string;
+    readonly reason: string;
+  }>;
+}
+
 const root = process.cwd();
 const configPath = join(root, '.governance', 'change-safety.json');
+const migrationRepairLockPath = join(root, '.governance', 'migration-repair-lock.json');
 const errors: string[] = [];
 
 if (!existsSync(configPath)) {
@@ -42,6 +54,7 @@ if (!existsSync(configPath)) {
 }
 
 const config = JSON.parse(readFileSync(configPath, 'utf8')) as SafetyConfig;
+const migrationRepairLock = loadMigrationRepairLock();
 const base = resolveBase();
 const entries = readDiff(base);
 if (entries.length === 0) {
@@ -69,6 +82,15 @@ if (scopeEntries.length === 1) {
 }
 
 for (const entry of entries) {
+  if (
+    entry.path === '.governance/migration-repair-lock.json' &&
+    Boolean(show(base, entry.path))
+  ) {
+    errors.push(
+      '.governance/migration-repair-lock.json: the one-time migration repair lock is immutable once introduced.',
+    );
+  }
+
   const paths = [entry.oldPath, entry.path].filter(Boolean) as string[];
   for (const path of paths) {
     if (config.generatedOrForbiddenPaths.some((pattern) => matches(pattern, path))) {
@@ -82,12 +104,15 @@ for (const entry of entries) {
       entry.status === 'M' &&
       manifest?.type === 'bugfix' &&
       Boolean(manifest.unacceptedMigrationRepairReason?.trim()) &&
-      migrationPaths.every((path) => manifest.unacceptedMigrationRepairs?.includes(path));
+      migrationPaths.every(
+        (path) => manifest.unacceptedMigrationRepairs?.includes(path) && isLockedMigrationRepair(base, path),
+      );
 
     const explicitlyApprovedIdentifierRepair =
       entry.status === 'M' &&
       manifest?.type === 'bugfix' &&
       migrationPaths.length === 1 &&
+      isLockedMigrationRepair(base, entry.path) &&
       isApprovedHistoricalIdentifierRepair(base, entry.path, manifest);
 
     if (!explicitlyApprovedUnacceptedRepair && !explicitlyApprovedIdentifierRepair) {
@@ -98,7 +123,11 @@ for (const entry of entries) {
   }
 }
 
+checkTestNonRegression(base, entries);
+
 if (manifest) {
+  checkTestEvidence(entries, manifest);
+
   for (const entry of entries) {
     const path = entry.path;
     if (path === scopeEntries[0]!.path) continue;
@@ -207,6 +236,14 @@ function validateManifest(value: ChangeManifest): void {
   if (value.protectedPaths?.length && !value.protectedReason?.trim()) {
     errors.push('change manifest: protectedReason is required when protectedPaths is non-empty.');
   }
+  if (value.testEvidence !== undefined && !Array.isArray(value.testEvidence)) {
+    errors.push('change manifest: testEvidence must be an array when provided.');
+  }
+  for (const evidence of value.testEvidence ?? []) {
+    if (typeof evidence !== 'string' || !evidence.trim()) {
+      errors.push('change manifest: testEvidence entries must be non-empty paths.');
+    }
+  }
   if (value.allowBreakingPublicApi && !value.publicApiBreakingReason?.trim()) {
     errors.push(
       'change manifest: publicApiBreakingReason is required when allowBreakingPublicApi is true.',
@@ -270,6 +307,126 @@ function validateManifest(value: ChangeManifest): void {
       }
     }
   }
+}
+
+function loadMigrationRepairLock(): MigrationRepairLock {
+  if (!existsSync(migrationRepairLockPath)) {
+    errors.push('.governance/migration-repair-lock.json is required.');
+    return { version: 1, repairs: [] };
+  }
+
+  try {
+    const lock = JSON.parse(readFileSync(migrationRepairLockPath, 'utf8')) as MigrationRepairLock;
+    if (lock.version !== 1 || !Array.isArray(lock.repairs)) {
+      errors.push('.governance/migration-repair-lock.json: invalid lock format.');
+      return { version: 1, repairs: [] };
+    }
+    for (const repair of lock.repairs) {
+      if (
+        !repair.path?.startsWith('prisma/migrations/') ||
+        !repair.baseBlobSha?.trim() ||
+        !repair.repairedBlobSha?.trim() ||
+        !repair.reason?.trim()
+      ) {
+        errors.push('.governance/migration-repair-lock.json: every repair requires path, exact before/after blobs, and reason.');
+      }
+    }
+    return lock;
+  } catch (error) {
+    errors.push(
+      '.governance/migration-repair-lock.json: invalid JSON (' + String(error) + ').',
+    );
+    return { version: 1, repairs: [] };
+  }
+}
+
+function isLockedMigrationRepair(baseSha: string, path: string): boolean {
+  const lock = migrationRepairLock.repairs.find((item) => item.path === path);
+  if (!lock) return false;
+
+  try {
+    const beforeBlob = git(['rev-parse', baseSha + ':' + path]).trim();
+    const afterBlob = git(['hash-object', path]).trim();
+    return beforeBlob === lock.baseBlobSha && afterBlob === lock.repairedBlobSha;
+  } catch {
+    return false;
+  }
+}
+
+function checkTestNonRegression(baseSha: string, diffEntries: DiffEntry[]): void {
+  for (const entry of diffEntries) {
+    const beforePath = entry.oldPath ?? entry.path;
+    if (!isTestPath(beforePath) && !isTestPath(entry.path)) continue;
+
+    const before = show(baseSha, beforePath);
+    const after = existsSync(join(root, entry.path))
+      ? readFileSync(join(root, entry.path), 'utf8')
+      : '';
+    const beforeCount = testDeclarationCount(before);
+    const afterCount = testDeclarationCount(after);
+    if (afterCount < beforeCount) {
+      errors.push(
+        entry.path +
+          ': committed test count may not decrease (' +
+          beforeCount +
+          ' -> ' +
+          afterCount +
+          '). Replace or strengthen evidence instead of deleting coverage.',
+      );
+    }
+  }
+}
+
+function testDeclarationCount(content: string): number {
+  return [...content.matchAll(/\b(?:test|it)\s*\(/g)].length;
+}
+
+function checkTestEvidence(diffEntries: DiffEntry[], scope: ChangeManifest): void {
+  if (scope.type === 'governance' || scope.type === 'architecture') return;
+
+  const behaviorChanged = diffEntries.some(
+    (entry) =>
+      entry.status !== 'D' &&
+      isBehaviorSource(entry.path) &&
+      !isTestPath(entry.path),
+  );
+  if (!behaviorChanged) return;
+
+  if (!scope.testEvidence?.length) {
+    errors.push(
+      'change manifest: behavioral source changes require changed automated testEvidence.',
+    );
+    return;
+  }
+
+  const changedPaths = new Set(
+    diffEntries.filter((entry) => entry.status !== 'D').map((entry) => entry.path),
+  );
+  for (const path of scope.testEvidence) {
+    if (!isTestPath(path)) {
+      errors.push('change manifest: testEvidence must reference a test file: ' + path + '.');
+      continue;
+    }
+    if (!changedPaths.has(path)) {
+      errors.push('change manifest: testEvidence must be changed in the same scope: ' + path + '.');
+    }
+    if (!existsSync(join(root, path))) {
+      errors.push('change manifest: testEvidence path does not exist: ' + path + '.');
+    }
+  }
+}
+
+function isBehaviorSource(path: string): boolean {
+  return (
+    /^(?:apps\/(?:api|web|owner)\/src\/|modules\/|packages\/).+\.(?:[cm]?[jt]sx?)$/.test(path)
+  );
+}
+
+function isTestPath(path: string): boolean {
+  return (
+    /(?:^|\/)(?:__tests__|tests?|spec)(?:\/|$)/.test(path) ||
+    /\.(?:spec|test)\.[cm]?[jt]sx?$/.test(path)
+  );
 }
 
 function isApprovedHistoricalIdentifierRepair(

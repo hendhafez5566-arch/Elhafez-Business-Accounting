@@ -23,6 +23,10 @@ export class PrismaLedgerRepository implements LedgerRepository {
     });
   }
 
+  async accounts(companyId:CompanyId):Promise<Account[]>{
+    return (await this.db.glAccount.findMany({where:{companyId},orderBy:{code:'asc'}})) as Account[];
+  }
+
   async account(companyId: CompanyId, id: string): Promise<Account | undefined> {
     return (await this.db.glAccount.findUnique({
       where: { companyId_id: { companyId, id } },
@@ -52,6 +56,7 @@ export class PrismaLedgerRepository implements LedgerRepository {
         data: {
           id: journal.id,
           companyId: journal.companyId,
+          branchId: journal.branchId ?? null,
           number: journal.number,
           postingDate: new Date(journal.postingDate),
           kind: journal.kind,
@@ -77,6 +82,7 @@ export class PrismaLedgerRepository implements LedgerRepository {
     return {
       ...value,
       postingDate: value.postingDate.toISOString().slice(0, 10),
+      branchId: value.branchId ?? undefined,
       correlationId: value.correlationId ?? undefined,
       reversalOfId: value.reversalOfId ?? undefined,
       fiscalYearId: value.fiscalYearId ?? undefined,

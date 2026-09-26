@@ -40,6 +40,7 @@ export interface PostingLine {
 export interface PostingInstruction {
   id: string;
   companyId: CompanyId;
+  branchId?: string;
   number: string;
   postingDate: string;
   kind?: JournalKind;
@@ -64,6 +65,10 @@ export class GeneralLedgerApplicationService {
     >,
     private readonly fx?: Pick<CurrencyFxApplicationService, 'resolveRate' | 'getBaseCurrency'>,
   ) {}
+
+  async listAccounts(companyId:CompanyId):Promise<Account[]>{
+    return this.repo.accounts(companyId);
+  }
 
   async createAccount(account: Account): Promise<Account> {
     if (await this.repo.accountByCode(account.companyId, account.code)) {
@@ -274,6 +279,7 @@ export class GeneralLedgerApplicationService {
       {
         id: 'reversal:' + journalId,
         companyId,
+        ...(original.branchId?{branchId:original.branchId}:{}),
         number,
         postingDate,
         kind: 'REVERSAL',
@@ -392,7 +398,7 @@ export class GeneralLedgerApplicationService {
     return this.repo.journal(companyId, id);
   }
 
-  async activity(companyId: CompanyId): Promise<Journal[]> {
-    return this.repo.journals(companyId);
+  async activity(companyId: CompanyId,branchId?:string): Promise<Journal[]> {
+    const values=await this.repo.journals(companyId);return branchId===undefined?values:values.filter(value=>value.branchId===branchId);
   }
 }

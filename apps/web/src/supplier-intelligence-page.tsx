@@ -16,6 +16,9 @@ type Overview={
 const errorMessage=(error:unknown)=>error instanceof Error?error.message:'حدث خطأ غير متوقع';
 const statusLabel=(status:string)=>status==='ACTIVE'?'نشط':status==='INACTIVE'?'غير نشط':status==='ON_HOLD'?'موقوف مؤقتًا':status;
 const statusTone=(status:string):'success'|'warning'|'neutral'=>status==='ACTIVE'?'success':status==='ON_HOLD'?'warning':'neutral';
+const approvalLabel=(status:string)=>status==='APPROVED'?'معتمد':status==='PENDING'?'بانتظار الاعتماد':status==='REJECTED'?'مرفوض':status;
+const severityLabel=(value:string)=>value==='LOW'?'منخفض':value==='MEDIUM'?'متوسط':value==='HIGH'?'مرتفع':value==='CRITICAL'?'حرج':value;
+const disputeStatusLabel=(value:string)=>value==='OPEN'?'مفتوح':value==='RESOLVED'?'محلول':value==='CANCELLED'?'ملغي':value;
 
 export function SupplierIntelligencePage(){
   const[q,setQ]=useState(''),[rows,setRows]=useState<SupplierRow[]>([]),[selected,setSelected]=useState<string|null>(null),[overview,setOverview]=useState<Overview|null>(null);
@@ -57,7 +60,7 @@ export function SupplierIntelligencePage(){
     const body=action.kind==='resolve'?{resolution:reason}:action.kind==='cancel'?{cancellationReason:reason}:{releaseReason:reason};
     try{
       await supplierPost('/supplier-intelligence/'+selected+'/disputes/'+action.dispute.id+'/'+suffix,body);
-      setNotice(action.kind==='release'?'تم رفع Hold الخاص بهذا النزاع فقط.':'تم تحديث النزاع دون رفع Hold تلقائيًا.');
+      setNotice(action.kind==='release'?'تم رفع الإيقاف الخاص بهذا النزاع فقط.':'تم تحديث النزاع دون رفع الإيقاف تلقائيًا.');
       setAction(null);setReason('');await load(selected);
     }catch(e){setNotice(errorMessage(e));}
   }
@@ -69,16 +72,16 @@ export function SupplierIntelligencePage(){
     </Card>
     <Card title="اختر المورد">
       {rows.length?<DataGrid columns={['الكود','المورد','الحالة','الاعتماد','']}>{rows.map(row=><tr key={row.supplier.id}>
-        <td>{row.supplier.supplierCode}</td><td>{row.party.displayName}</td><td><Badge tone={statusTone(row.supplier.status)}>{statusLabel(row.supplier.status)}</Badge></td><td>{row.supplier.approvalStatus}</td>
-        <td><Button onClick={()=>void load(row.party.id)}>Supplier 360</Button></td>
+        <td>{row.supplier.supplierCode}</td><td>{row.party.displayName}</td><td><Badge tone={statusTone(row.supplier.status)}>{statusLabel(row.supplier.status)}</Badge></td><td>{approvalLabel(row.supplier.approvalStatus)}</td>
+        <td><Button onClick={()=>void load(row.party.id)}>ملف المورد 360°</Button></td>
       </tr>)}</DataGrid>:<EmptyState/>}
     </Card>
     {overview&&<>
-      <Card title={'Supplier 360 — '+overview.supplier.party.displayName}>
+      <Card title={'ملف المورد 360° — '+overview.supplier.party.displayName}>
         <p>الكود: {overview.supplier.supplierCode}</p>
         <p>التصنيفات: {overview.supplier.categories.join('، ')||'—'}</p>
-        <p>الحالة: <Badge tone={statusTone(overview.supplier.status)}>{statusLabel(overview.supplier.status)}</Badge> · الاعتماد: {overview.supplier.approvalStatus}</p>
-        {overview.holds.isHeld&&<p>حالات الإيقاف: {overview.holds.active.map(hold=>hold.reason+' ('+hold.sourceType+')').join('، ')}</p>}
+        <p>الحالة: <Badge tone={statusTone(overview.supplier.status)}>{statusLabel(overview.supplier.status)}</Badge> · الاعتماد: {approvalLabel(overview.supplier.approvalStatus)}</p>
+        {overview.holds.isHeld&&<p>حالات الإيقاف: {overview.holds.active.map(hold=>hold.reason).join('، ')}</p>}
       </Card>
       <Card title="أداء المشتريات">
         <DataGrid columns={['أوامر الشراء','ملغاة','المطلوب','المستلم','نسبة الإكمال','مكتملة','تصحيحات','في الموعد','متأخر','غير مصنف']}>
@@ -93,8 +96,8 @@ export function SupplierIntelligencePage(){
       <Card title="النزاعات">
         <Button onClick={()=>setDisputeOpen(true)}>فتح نزاع</Button>
         <DataGrid columns={['الخطورة','العنوان','الحالة','التاريخ','إجراءات']}>{overview.disputes.history.map(dispute=><tr key={dispute.id}>
-          <td>{dispute.severity}</td><td>{dispute.title}</td><td>{dispute.status}</td><td>{dispute.openedAt}</td>
-          <td>{dispute.status==='OPEN'?<><Button onClick={()=>{setAction({kind:'resolve',dispute});setReason('');}}>حل</Button><Button onClick={()=>{setAction({kind:'cancel',dispute});setReason('');}}>إلغاء</Button></>:dispute.severity==='CRITICAL'&&overview.holds.criticalDisputeIds.includes(dispute.id)?<Button onClick={()=>{setAction({kind:'release',dispute});setReason('');}}>رفع Hold</Button>:null}</td>
+          <td>{severityLabel(dispute.severity)}</td><td>{dispute.title}</td><td>{disputeStatusLabel(dispute.status)}</td><td>{dispute.openedAt}</td>
+          <td>{dispute.status==='OPEN'?<><Button onClick={()=>{setAction({kind:'resolve',dispute});setReason('');}}>حل</Button><Button onClick={()=>{setAction({kind:'cancel',dispute});setReason('');}}>إلغاء</Button></>:dispute.severity==='CRITICAL'&&overview.holds.criticalDisputeIds.includes(dispute.id)?<Button onClick={()=>{setAction({kind:'release',dispute});setReason('');}}>رفع الإيقاف</Button>:null}</td>
         </tr>)}</DataGrid>
       </Card>
     </>}
@@ -109,14 +112,14 @@ export function SupplierIntelligencePage(){
     </Dialog>
     <Dialog open={disputeOpen} title="فتح نزاع" onClose={()=>setDisputeOpen(false)}>
       <form onSubmit={createDispute}>
-        <FormField label="الخطورة" required><Select value={severity} onChange={e=>setSeverity(e.target.value)}><option>LOW</option><option>MEDIUM</option><option>HIGH</option><option>CRITICAL</option></Select></FormField>
+        <FormField label="الخطورة" required><Select value={severity} onChange={e=>setSeverity(e.target.value)}><option value="LOW">منخفض</option><option value="MEDIUM">متوسط</option><option value="HIGH">مرتفع</option><option value="CRITICAL">حرج</option></Select></FormField>
         <FormField label="العنوان" required><Input required value={title} onChange={e=>setTitle(e.target.value)}/></FormField>
         <FormField label="الوصف" required><Textarea required value={description} onChange={e=>setDescription(e.target.value)}/></FormField>
         <Button type="submit">فتح النزاع</Button>
       </form>
     </Dialog>
-    <Dialog open={Boolean(action)} title={action?.kind==='release'?'رفع Hold':action?.kind==='resolve'?'حل النزاع':'إلغاء النزاع'} onClose={()=>setAction(null)}>
-      <FormField label={action?.kind==='resolve'?'قرار الحل':action?.kind==='release'?'سبب رفع Hold':'سبب الإلغاء'} required><Textarea required value={reason} onChange={e=>setReason(e.target.value)}/></FormField>
+    <Dialog open={Boolean(action)} title={action?.kind==='release'?'رفع الإيقاف':action?.kind==='resolve'?'حل النزاع':'إلغاء النزاع'} onClose={()=>setAction(null)}>
+      <FormField label={action?.kind==='resolve'?'قرار الحل':action?.kind==='release'?'سبب رفع الإيقاف':'سبب الإلغاء'} required><Textarea required value={reason} onChange={e=>setReason(e.target.value)}/></FormField>
       <Button disabled={!reason.trim()} onClick={()=>void runAction()}>تأكيد</Button>
     </Dialog>
   </section>;

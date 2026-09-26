@@ -37,6 +37,10 @@ jobs:
           CHANGE_BASE_SHA: ${{ github.event.before }}
           REQUIRE_CHANGE_SCOPE: 'true'
         run: pnpm change-safety:check
+      - name: Engineering integrity
+        env:
+          CHANGE_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: pnpm engineering-integrity:check
       - run: pnpm prisma:generate
       - run: pnpm typecheck
       - run: pnpm lint

@@ -66,6 +66,8 @@ function multiplyExact(left: DecimalAmount, right: DecimalAmount): DecimalAmount
 export class TaxApplicationService {
   constructor(private readonly repo: TaxRepository) {}
 
+  async listPolicies(companyId:CompanyId){return this.repo.listPolicies(companyId);}
+
   async configurePolicy(policy: TaxPolicy) {
     const effectiveFrom = canonicalDate(policy.effectiveFrom, 'effectiveFrom');
     const rate = nonNegative(policy.rate, 'rate');

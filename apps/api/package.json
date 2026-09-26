@@ -6,7 +6,8 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "node scripts/run-tests.mjs",
-    "ac14": "tsx src/ac14-migration/main.ts"
+    "ac14": "tsx src/ac14-migration/main.ts",
+    "start:prod": "node ./dist/main.js"
   },
   "dependencies": {
     "@elhafez/platform-core": "workspace:*",
@@ -55,6 +56,12 @@
     "@elhafez/hajj-umrah-readiness": "workspace:*",
     "@elhafez/data-exchange": "workspace:*",
     "@elhafez/platform-operations": "workspace:*",
-    "@elhafez/saas-control-plane": "workspace:*"
+    "@elhafez/saas-control-plane": "workspace:*",
+    "@elhafez/tourism-programs": "workspace:*",
+    "@elhafez/tourism-itineraries": "workspace:*",
+    "@elhafez/tourism-bookings": "workspace:*",
+    "typescript": "^5.7.3",
+    "@nestjs/platform-express": "11.2.5",
+    "prisma": "6.19.0"
   }
 }

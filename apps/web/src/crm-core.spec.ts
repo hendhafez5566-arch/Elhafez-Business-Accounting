@@ -22,6 +22,6 @@ test('customer and agent pages expose lifecycle/edit controls without financial 
 test('lead and follow-up pages expose CRM Core lifecycle without a quotation implementation', () => {
   const leads=renderToStaticMarkup(createElement(LeadsPage));
   const followups=renderToStaticMarkup(createElement(FollowupsPage));
-  assert.match(leads,/Pipeline العملاء المحتملين/); assert.match(leads,/حفظ العميل المحتمل/); assert.doesNotMatch(leads,/إنشاء عرض سعر|قبول عرض السعر|رفض عرض السعر/);
+  assert.match(leads,/مسار العملاء المحتملين/); assert.match(leads,/حفظ العميل المحتمل/); assert.doesNotMatch(leads,/إنشاء عرض سعر|قبول عرض السعر|رفض عرض السعر/);
   assert.match(followups,/جدولة متابعة/); assert.match(followups,/متأخرة/); assert.match(followups,/WHATSAPP/);
 });

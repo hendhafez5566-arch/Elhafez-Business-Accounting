@@ -1,0 +1,27 @@
+{
+  "name": "tourism-programs",
+  "publicApi": [
+    "src/public/index.ts",
+    "src/public/nest.ts"
+  ],
+  "ownedTables": [
+    "tpr_programs",
+    "tpr_program_history"
+  ],
+  "allowedDependencies": [
+    "@elhafez/contracts",
+    "@elhafez/core",
+    "@elhafez/platform-core",
+    "@elhafez/tourism-finance-orchestration"
+  ],
+  "dataScope": "COMPANY_BRANCH",
+  "branchScopedTables": [
+    "tpr_programs",
+    "tpr_program_history"
+  ],
+  "criticalInvariants": [
+    "Program records and lifecycle history are isolated by company and branch.",
+    "Lifecycle transitions remain history-preserving and concurrency-safe.",
+    "Program cancellation must complete canonical financial orchestration before operational CANCELLED state is persisted."
+  ]
+}

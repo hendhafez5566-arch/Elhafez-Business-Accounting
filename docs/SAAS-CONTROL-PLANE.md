@@ -28,9 +28,9 @@ First-owner bootstrap is protected twice: application state rejects bootstrap wh
 
 The normal tenant entry flow is:
 
-1. the customer supplies its non-secret Company Code plus user email/password;
+1. the customer supplies its non-secret Company Code plus company-scoped Username and password;
 2. the server resolves Company Code to company ID;
-3. Platform Core authenticates the user;
+3. Platform Core authenticates the company-scoped login identity; a temporary password is allowed only for the first credential-change step;
 4. the server verifies that the authenticated user belongs to that exact company and that the company is administratively active;
 5. the server returns only active branches that this user is authorized to access, plus a default branch;
 6. the server returns the tenant session together with the current subscription projection.
@@ -41,7 +41,7 @@ Every protected tenant request must include company context and a valid tenant b
 
 After tenant authentication, the guard asks the server-side subscription authority whether access is currently allowed. Expiration is evaluated from the server clock on every request; no scheduler is required for correctness. Expired, suspended or cancelled subscriptions retain their data but cannot execute business operations.
 
-The only subscription-gate bypasses are narrowly defined bootstrap/login/status/recovery control routes. Route matching is exact or boundary-aware so lookalike paths cannot inherit the exemption.
+The only tenant subscription-gate bypasses are narrowly defined health, Owner Control, tenant login/logout, subscription-status and credential-change routes. Tenant email password-recovery endpoints are not public: company administrators issue/reset the company-scoped username credential and users complete the authenticated credential-change flow. Route matching is exact or boundary-aware so lookalike paths cannot inherit the exemption.
 
 ## Plans and entitlements
 
@@ -72,16 +72,21 @@ Company Code is an identifier, not a secret or a licence key. Knowing it alone n
 
 ## Backup / restore security invariant
 
-Tenant-scoped backup or restore must **never** contain or overwrite SaaS control-plane tables, platform-owner credentials, owner sessions, subscription/payment history or licensing secrets. Otherwise a customer restore could roll commercial truth backward.
+PostgreSQL physical backup is intentionally **platform-wide**, not tenant-scoped. A tenant administrator cannot invoke it. Company-scoped portability remains the responsibility of Data Exchange and canonical module import/export boundaries.
 
-A future real backup provider must therefore enforce:
-- company-scoped tenant backups contain tenant business/platform data only;
-- SaaS control-plane tables are excluded from tenant restore payloads;
-- platform-wide control-plane recovery is an infrastructure/owner operation, not a tenant permission;
-- restore integrity is verified before application;
-- affected tenant sessions are revoked after restore.
+The platform-wide physical recovery path is owned by `platform-operations` and exposed only through the Owner Control Center. It preserves these invariants:
 
-The current platform-operations production composition is fail-closed until a real backup provider is configured; any future provider implementation must prove the above invariant with tests before production use.
+- a physical backup is always labelled `PLATFORM`; the provider rejects a company ID rather than falsely claiming tenant isolation;
+- the archive is PostgreSQL custom format and receives streamed SHA-256 integrity evidence;
+- verification checks both checksum and `pg_restore --list`;
+- restore is disabled unless explicit deployment switches permit it;
+- restore requires external maintenance mode, enforced by the reverse proxy before tenant traffic reaches Nest;
+- the configured restore database must be the same environment database; restoring an unrelated target through a live source process is rejected;
+- a successful restore revokes all tenant sessions and all platform-owner sessions;
+- maintenance remains active after restore until a newly authenticated owner verifies the environment and explicitly exits maintenance;
+- physical backup controls are absent from tenant System Administration.
+
+This separation prevents a customer from rolling SaaS commercial truth backward while still providing a complete infrastructure recovery path for the platform owner.
 
 ## Threat/control matrix
 
@@ -96,7 +101,7 @@ The current platform-operations production composition is fail-closed until a re
 | Repeat network/payment request | Durable idempotency + payload hash + unique payment evidence |
 | Concurrent renewal | Row lock + serializable transaction + subscription version |
 | Concurrent first-owner bootstrap | PostgreSQL advisory lock + durable owner-count check |
-| Restore old tenant backup to regain subscription | Control-plane state excluded from tenant backups/restores |
+| Restore data to roll subscription or owner state backward | Physical restore is Owner+MFA only, maintenance-gated, platform-wide, and revokes all sessions; tenant portability has no physical restore authority |
 | Tamper with frontend price or duration | Server recomputes expected plan amount/currency/interval |
 | Delete history to hide renewal/suspension | Append-only payment/subscription/control events; no delete API |
 

@@ -1,6 +1,20 @@
 {
   "name": "module-name",
-  "publicApi": ["src/public/index.ts"],
-  "ownedTables": ["module_name_example"],
-  "allowedDependencies": ["@elhafez/contracts", "@elhafez/core"]
+  "publicApi": [
+    "src/public/index.ts"
+  ],
+  "ownedTables": [
+    "module_name_example"
+  ],
+  "allowedDependencies": [
+    "@elhafez/contracts",
+    "@elhafez/core"
+  ],
+  "dataScope": "COMPANY_BRANCH",
+  "branchScopedTables": [
+    "module_name_example"
+  ],
+  "criticalInvariants": [
+    "Describe the business invariant that must remain true across all writes."
+  ]
 }

@@ -76,6 +76,7 @@ export interface PostVoucherInput {
   actorId?: string;
   approvalRequestId?: string;
   explicitDraftInvoiceId?: string;
+  explicitPostedInvoiceId?: string;
   restrictionSourceType?: string;
   restrictionSourceId?: string;
 }
@@ -115,6 +116,16 @@ export class TreasurySettlementApplicationService {
     const journal=await this.gl.post({id:`treasury-accounting:${input.id}`,companyId:input.companyId,number:input.number,postingDate:input.postingDate,sourceType:'TREASURY_ACCOUNTING_MOVEMENT',sourceId:`${input.sourceType}:${input.sourceId}`,lines:[...offset,treasuryLine]});
     voucher={...voucher,status:'POSTED',journalId:journal.id};await this.repo.saveVoucher(voucher);return voucher;
   }
+  async listTreasuries(companyId:CompanyId):Promise<Treasury[]>{
+    return this.repo.treasuries(companyId);
+  }
+  async listVouchers(companyId:CompanyId,treasuryId?:string):Promise<Voucher[]>{
+    return this.repo.vouchers(companyId,treasuryId);
+  }
+  async listBankLines(companyId:CompanyId,treasuryId:string):Promise<BankLine[]>{
+    return this.repo.bankLines(companyId,treasuryId);
+  }
+
   async createTreasury(input: {
     id: string;
     companyId: CompanyId;
@@ -271,6 +282,7 @@ export class TreasurySettlementApplicationService {
     const settlement = await this.billing.settle({
       id: input.id,
       companyId: input.companyId,
+      ...(input.branchId ? { branchId: input.branchId } : {}),
       partyKind: input.partyKind,
       partyId: input.partyId,
       amount,
@@ -278,6 +290,9 @@ export class TreasurySettlementApplicationService {
       settlementDate: input.postingDate,
       ...(input.explicitDraftInvoiceId
         ? { explicitDraftInvoiceId: input.explicitDraftInvoiceId }
+        : {}),
+      ...(input.explicitPostedInvoiceId
+        ? { explicitPostedInvoiceId: input.explicitPostedInvoiceId }
         : {}),
       ...(input.restrictionSourceType
         ? { restrictionSourceType: input.restrictionSourceType }
@@ -344,6 +359,7 @@ export class TreasurySettlementApplicationService {
     const journal = await this.gl.post({
       id: "treasury:" + input.id,
       companyId: input.companyId,
+      ...(input.branchId?{branchId:input.branchId}:{}),
       number: input.number,
       postingDate: input.postingDate,
       sourceType: "TREASURY_VOUCHER",
@@ -408,6 +424,7 @@ export class TreasurySettlementApplicationService {
     const journal=await this.gl.post({
       id:'treasury-owner:'+ownerSourceId,
       companyId:input.companyId,
+      ...(input.branchId?{branchId:input.branchId}:{}),
       number:input.number,
       postingDate:input.postingDate,
       sourceType:'TREASURY_OWNER_PAYMENT',
@@ -439,6 +456,7 @@ export class TreasurySettlementApplicationService {
     const journal=await this.gl.post({
       id:'treasury-supplier-refund:'+sourceId,
       companyId:input.companyId,
+      ...(input.branchId?{branchId:input.branchId}:{}),
       number:input.number,
       postingDate:input.postingDate,
       sourceType:'TREASURY_SUPPLIER_ADVANCE_REFUND',

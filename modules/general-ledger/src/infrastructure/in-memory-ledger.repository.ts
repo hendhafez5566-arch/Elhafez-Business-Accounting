@@ -3,22 +3,26 @@ import type { LedgerRepository } from '../application/ledger.repository.js';
 import type { Account, Journal } from '../domain/ledger.js';
 
 export class InMemoryLedgerRepository implements LedgerRepository {
-  private accounts: Account[] = [];
+  private accountValues: Account[] = [];
   private journalValues: Journal[] = [];
 
   async saveAccount(account: Account): Promise<void> {
-    this.accounts = this.accounts.filter(
+    this.accountValues = this.accountValues.filter(
       (x) => !(x.companyId === account.companyId && x.id === account.id),
     );
-    this.accounts.push(account);
+    this.accountValues.push(account);
+  }
+
+  async accounts(companyId:CompanyId):Promise<Account[]>{
+    return this.accountValues.filter((x)=>x.companyId===companyId).sort((a,b)=>a.code.localeCompare(b.code));
   }
 
   async account(companyId: CompanyId, id: string): Promise<Account | undefined> {
-    return this.accounts.find((x) => x.companyId === companyId && x.id === id);
+    return this.accountValues.find((x) => x.companyId === companyId && x.id === id);
   }
 
   async accountByCode(companyId: CompanyId, code: string): Promise<Account | undefined> {
-    return this.accounts.find((x) => x.companyId === companyId && x.code === code);
+    return this.accountValues.find((x) => x.companyId === companyId && x.code === code);
   }
 
   async hasHistory(companyId: CompanyId, id: string): Promise<boolean> {

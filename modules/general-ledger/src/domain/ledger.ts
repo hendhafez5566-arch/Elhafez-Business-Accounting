@@ -33,6 +33,7 @@ export type JournalKind = 'STANDARD' | 'OPENING' | 'REVERSAL' | 'FISCAL_CLOSE';
 export interface Journal {
   id: string;
   companyId: CompanyId;
+  branchId?: string;
   number: string;
   postingDate: string;
   kind: JournalKind;

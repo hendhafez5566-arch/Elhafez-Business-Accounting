@@ -20,6 +20,13 @@ export interface AppShellProps {
   readonly children?: ReactNode;
   readonly preferenceScope?: string;
   readonly initialPreferences?: Partial<UiPreferences>;
+  readonly companyLabel?: string;
+  readonly branchLabel?: string;
+  readonly branches?: readonly {readonly id:string;readonly name:string}[];
+  readonly branchId?: string;
+  readonly onBranchChange?: (id:string)=>void;
+  readonly onLogout?: ()=>void;
+  readonly sessionKey?: string;
 }
 
 export function AppShell({
@@ -28,10 +35,17 @@ export function AppShell({
   children,
   preferenceScope = 'local-user',
   initialPreferences,
+  companyLabel,
+  branchLabel,
+  branches,
+  branchId,
+  onBranchChange,
+  onLogout,
+  sessionKey,
 }: AppShellProps) {
   return (
     <UiPreferencesProvider scope={preferenceScope} initialPreferences={initialPreferences}>
-      <AppShellFrame routes={routes} pathname={pathname}>{children}</AppShellFrame>
+      <AppShellFrame routes={routes} pathname={pathname} companyLabel={companyLabel} branchLabel={branchLabel} branches={branches} branchId={branchId} onBranchChange={onBranchChange} onLogout={onLogout} sessionKey={sessionKey}>{children}</AppShellFrame>
     </UiPreferencesProvider>
   );
 }
@@ -40,10 +54,24 @@ function AppShellFrame({
   routes,
   pathname,
   children,
+  companyLabel,
+  branchLabel,
+  branches,
+  branchId,
+  onBranchChange,
+  onLogout,
+  sessionKey,
 }: {
   readonly routes: readonly AppRoute[];
   readonly pathname: string;
   readonly children?: ReactNode;
+  readonly companyLabel?: string;
+  readonly branchLabel?: string;
+  readonly branches?: readonly {readonly id:string;readonly name:string}[];
+  readonly branchId?: string;
+  readonly onBranchChange?: (id:string)=>void;
+  readonly onLogout?: ()=>void;
+  readonly sessionKey?: string;
 }) {
   const [state, setState] = useState(initialShellState);
   const active = findRoute(pathname, routes);
@@ -89,12 +117,12 @@ function AppShellFrame({
         />
       </Drawer>
 
-      <Topbar onOpenMobile={() => setState((current) => setMobileDrawer(current, true))} />
+      <Topbar onOpenMobile={() => setState((current) => setMobileDrawer(current, true))} companyLabel={companyLabel} branchLabel={branchLabel} branches={branches} branchId={branchId} onBranchChange={onBranchChange} onLogout={onLogout} />
 
       <main className="app-main">
         <div className="app-content" tabIndex={-1}>
           <PageHeader eyebrow={active.group} title={active.label} />
-          <div className="ui-page-stack">{children ?? active.element}</div>
+          <div className="ui-page-stack" key={sessionKey}>{children ?? active.element}</div>
         </div>
       </main>
     </div>

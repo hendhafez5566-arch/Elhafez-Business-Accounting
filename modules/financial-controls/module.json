@@ -15,6 +15,7 @@
   ],
   "allowedDependencies": [
     "@elhafez/contracts",
-    "@elhafez/core"
+    "@elhafez/core",
+    "@elhafez/platform-core"
   ]
 }

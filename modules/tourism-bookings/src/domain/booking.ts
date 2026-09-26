@@ -1,0 +1,5 @@
+import type{CompanyId}from'@elhafez/contracts';
+export type TourismBookingStatus='DRAFT'|'CONFIRMING'|'CONFIRMED'|'CANCELLING'|'CANCELLATION_REQUIRED'|'CANCELLED'|'COMPLETED';
+export interface BookingFinancialEvidence{readonly workflowId:string;readonly invoiceId?:string;readonly allocationIds:readonly string[];readonly commissionClaimId?:string}
+export interface TourismBooking{readonly id:string;readonly companyId:CompanyId;readonly branchId:string;readonly code:string;readonly programId:string;readonly customerId:string;readonly customerPartyId:string;readonly travelerIds:readonly string[];readonly status:TourismBookingStatus;readonly pendingCommandKey?:string;readonly financialEvidence?:BookingFinancialEvidence;readonly revision:number;readonly createdAt:string;readonly updatedAt:string}
+export interface TourismBookingHistory{readonly id:string;readonly companyId:CompanyId;readonly branchId:string;readonly bookingId:string;readonly action:'CREATED'|'CONFIRMING'|'CONFIRMED'|'CANCELLING'|'CANCELLATION_REQUIRED'|'CANCELLED'|'COMPLETED';readonly actorId:string;readonly occurredAt:string}

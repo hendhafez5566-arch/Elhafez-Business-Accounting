@@ -7,6 +7,9 @@
 /.github/workflows/ @mhafez300300-byte
 /tools/architecture/ @mhafez300300-byte
 /tools/governance/ @mhafez300300-byte
+/package.json @mhafez300300-byte
+/modules/*/module.json @mhafez300300-byte
+/docs/ARCHITECTURE-CONSTITUTION.md @mhafez300300-byte
 
 # Database history
 /prisma/migrations/ @mhafez300300-byte

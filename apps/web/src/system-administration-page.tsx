@@ -1,14 +1,15 @@
 import {useEffect,useState} from 'react';
-import {Button,Card,EmptyState,ErrorState,FormField,Input,LoadingState,Select,Tabs,Toast} from './ui.js';
+import {Button,Card,DisclosureCard,EmptyState,ErrorState,FormField,Input,LoadingState,Select,Tabs,Toast} from './ui.js';
 import {HttpAdministrationClient,type AdministrationClient,type AdministrationContext} from './system-administration-client.js';
+import {tenantApiContext} from './tenant-session.js';
 
 const areas=[
  ['المستخدمون','users'],['الأدوار والصلاحيات','roles'],['الشركات','companies'],['الفروع والوصول','branches'],
  ['الجلسات والأجهزة','sessions'],['سجل النشاط','audit'],['الملفات والمرفقات','files'],['الإشعارات','notifications'],
- ['إعدادات الشركة','configuration/locale'],['استيراد وتصدير البيانات','imports'],['النسخ الاحتياطي والاستعادة','operations/backups'],
+ ['إعدادات الشركة','configuration/locale'],['استيراد وتصدير البيانات','imports'],
  ['صحة النظام والتشخيص','operations/diagnostics']
 ] as const;
-const labels:Record<string,string>={id:'المعرّف',name:'الاسم',displayName:'الاسم',email:'البريد',status:'الحالة',active:'نشط',type:'النوع',fileName:'الملف',format:'الصيغة',dataset:'مجموعة البيانات',createdAt:'تاريخ الإنشاء',readAt:'تاريخ القراءة',action:'العملية',resource:'المورد',backupProvider:'موفر النسخ',database:'قاعدة البيانات',schemaCompatibility:'توافق المخطط',runtimeVersion:'إصدار التشغيل',value:'القيمة',resultKey:'ملف التصدير'};
+const labels:Record<string,string>={id:'المعرّف',name:'الاسم',displayName:'الاسم',username:'اسم المستخدم',mustChangePassword:'تغيير كلمة المرور مطلوب',status:'الحالة',active:'نشط',type:'النوع',fileName:'الملف',format:'الصيغة',dataset:'مجموعة البيانات',createdAt:'تاريخ الإنشاء',readAt:'تاريخ القراءة',action:'العملية',resource:'المورد',backupProvider:'موفر النسخ',database:'قاعدة البيانات',schemaCompatibility:'توافق المخطط',runtimeVersion:'إصدار التشغيل',value:'القيمة',resultKey:'ملف التصدير'};
 type DatasetOption={id:string;label:string;requiredFields:readonly string[];targetFields:readonly string[]};
 type DownloadPayload={fileName:string;contentType:string;contentBase64:string};
 type FilePayload={metadata:{id:string;contentType:string};contentBase64:string};
@@ -32,7 +33,7 @@ export function SystemAdministrationPage({client=new HttpAdministrationClient(),
  const [message,setMessage]=useState('');
  const [success,setSuccess]=useState('');
  const [form,setForm]=useState<Record<string,string>>({dataset:'CUSTOMERS',format:'CSV',mapping:'{}',configKey:'locale',configValue:'"ar"',retain:'7'});
- const ctx=context??{token:'',companyId:'',branchId:''};
+ const ctx=context??tenantApiContext();
 
  const field=(name:string)=>form[name]??'';
  const setField=(name:string,value:string)=>setForm(current=>({...current,[name]:value}));
@@ -68,7 +69,17 @@ export function SystemAdministrationPage({client=new HttpAdministrationClient(),
  const button=(label:string,onClick:()=>void)=><Button type="button" disabled={loading} onClick={onClick}>{label}</Button>;
 
  function actions(){
-  if(selected==='users')return <div className="admin-actions">{input('userEmail','البريد','email')}{input('userName','الاسم')}{input('userPassword','كلمة مرور أولية','password')}{input('userRoleId','معرّف الدور (اختياري)')}{button('إنشاء مستخدم',()=>void run('تم إنشاء المستخدم.',()=>client.action('users',ctx,{email:field('userEmail'),displayName:field('userName'),password:field('userPassword'),roleId:field('userRoleId')||undefined})))}{input('userId','معرّف المستخدم')}{input('userAssignRoleId','معرّف الدور')}{button('إسناد الدور',()=>void run('تم إسناد الدور.',()=>client.action(`users/${field('userId')}/roles/${field('userAssignRoleId')}`,ctx)))}{button('سحب الدور',()=>void run('تم سحب الدور.',()=>client.remove(`users/${field('userId')}/roles/${field('userAssignRoleId')}`,ctx)))}{button('تعطيل المستخدم',()=>void run('تم تحديث المستخدم.',()=>client.patch(`users/${field('userId')}`,ctx,{active:false})))}{button('إعادة تفعيل المستخدم',()=>void run('تم تحديث المستخدم.',()=>client.patch(`users/${field('userId')}`,ctx,{active:true})))}</div>;
+  if(selected==='users')return <div className="ui-admin-workflows">
+   <DisclosureCard title="إنشاء مستخدم" description="إنشاء حساب جديد باسم مستخدم وكلمة مرور مؤقتة.">
+    <div className="admin-actions">{input('userUsername','اسم المستخدم')}{input('userName','الاسم')}{input('userPassword','كلمة مرور مؤقتة','password')}{input('userRoleId','معرّف الدور (اختياري)')}{button('إنشاء مستخدم',()=>void run('تم إنشاء المستخدم. يجب تغيير كلمة المرور في أول دخول.',()=>client.action('users',ctx,{username:field('userUsername'),displayName:field('userName'),temporaryPassword:field('userPassword'),roleId:field('userRoleId')||undefined})))}</div>
+   </DisclosureCard>
+   <DisclosureCard title="إعادة تعيين بيانات الدخول" description="استخدمها فقط عند نسيان بيانات الدخول أو الحاجة لإلغاء الجلسات القديمة.">
+    <div className="admin-actions">{input('userId','معرّف المستخدم')}{input('resetUsername','اسم المستخدم لإعادة التعيين')}{input('resetPassword','كلمة مرور مؤقتة جديدة','password')}{button('إعادة تعيين بيانات الدخول',()=>void run('تمت إعادة تعيين بيانات الدخول وإلغاء الجلسات القديمة.',()=>client.action(`users/${field('userId')}/credentials`,ctx,{username:field('resetUsername'),temporaryPassword:field('resetPassword')}),false))}</div>
+   </DisclosureCard>
+   <DisclosureCard title="الدور وحالة المستخدم" description="إسناد الصلاحيات أو تعليق الحساب وإعادة تفعيله.">
+    <div className="admin-actions">{input('userId','معرّف المستخدم')}{input('userAssignRoleId','معرّف الدور')}{button('إسناد الدور',()=>void run('تم إسناد الدور.',()=>client.action(`users/${field('userId')}/roles/${field('userAssignRoleId')}`,ctx)))}{button('سحب الدور',()=>void run('تم سحب الدور.',()=>client.remove(`users/${field('userId')}/roles/${field('userAssignRoleId')}`,ctx)))}{button('تعطيل المستخدم',()=>void run('تم تحديث المستخدم.',()=>client.patch(`users/${field('userId')}`,ctx,{active:false})))}{button('إعادة تفعيل المستخدم',()=>void run('تم تحديث المستخدم.',()=>client.patch(`users/${field('userId')}`,ctx,{active:true})))}</div>
+   </DisclosureCard>
+  </div>;
   if(selected==='roles')return <div className="admin-actions">{input('roleName','اسم الدور')}{button('إنشاء دور',()=>void run('تم إنشاء الدور.',()=>client.action('roles',ctx,{name:field('roleName')})))}{button('عرض الصلاحيات',()=>void load('permissions'))}{input('roleId','معرّف الدور')}{input('permissionId','معرّف الصلاحية')}{button('منح الصلاحية',()=>void run('تم منح الصلاحية.',()=>client.action(`roles/${field('roleId')}/permissions/${field('permissionId')}`,ctx)))}{button('سحب الصلاحية',()=>void run('تم سحب الصلاحية.',()=>client.remove(`roles/${field('roleId')}/permissions/${field('permissionId')}`,ctx)))}</div>;
   if(selected==='companies')return <div className="admin-actions"><p>إنشاء الشركات الجديدة وإدارة الاشتراك يتمان حصريًا من مركز تحكم مالك المنصة.</p>{input('currentCompanyName','الاسم الجديد للشركة الحالية')}{button('تحديث اسم الشركة الحالية',()=>void run('تم تحديث الشركة.',()=>client.patch(`companies/${ctx.companyId}`,ctx,{name:field('currentCompanyName')}),false))}</div>;
   if(selected==='branches')return <div className="admin-actions">{input('branchName','اسم الفرع')}{button('إنشاء فرع',()=>void run('تم إنشاء الفرع.',()=>client.action('branches',ctx,{name:field('branchName')})))}{input('branchId','معرّف الفرع')}{input('accessUserId','معرّف المستخدم')}{button('منح وصول للفرع',()=>void run('تم منح الوصول.',()=>client.action(`branches/${field('branchId')}/access/${field('accessUserId')}`,ctx)))}{button('سحب وصول الفرع',()=>void run('تم سحب الوصول.',()=>client.remove(`branches/${field('branchId')}/access/${field('accessUserId')}`,ctx)))}{button('تعطيل الفرع',()=>void run('تم تحديث الفرع.',()=>client.patch(`branches/${field('branchId')}`,ctx,{active:false})))}</div>;
@@ -101,7 +112,7 @@ export function SystemAdministrationPage({client=new HttpAdministrationClient(),
    {button('تنفيذ الاستيراد',()=>void run('تم تنفيذ الاستيراد.',()=>client.action(`imports/${field('importJobId')}/execute`,ctx)))}
    <hr/>{input('exportFileName','اسم ملف التصدير')}{button('إنشاء تصدير CSV',()=>void run('تم إنشاء ملف التصدير.',async()=>{const result=await client.action('exports',ctx,{dataset:field('dataset'),fileName:field('exportFileName')||'export.csv',format:'CSV',idempotencyKey:`export-${Date.now()}`});if(objectRecord(result)&&typeof result.id==='string')setField('exportJobId',result.id);return result;},false))}{button('إنشاء تصدير XLSX',()=>void run('تم إنشاء ملف التصدير.',async()=>{const result=await client.action('exports',ctx,{dataset:field('dataset'),fileName:field('exportFileName')||'export.xlsx',format:'XLSX',idempotencyKey:`export-${Date.now()}`});if(objectRecord(result)&&typeof result.id==='string')setField('exportJobId',result.id);return result;},false))}{input('exportJobId','معرّف مهمة التصدير')}{button('تنزيل التصدير',()=>void run('تم تجهيز ملف التصدير.',downloadExport,false))}
   </div>;
-  if(selected==='operations/backups')return <div className="admin-actions">{button('إنشاء نسخة احتياطية',()=>void run('تم إرسال طلب النسخ الاحتياطي.',()=>client.action('operations/backups',ctx,{})))}{input('backupId','معرّف النسخة')}{button('التحقق من النسخة',()=>void run('تم التحقق من النسخة.',()=>client.action(`operations/backups/${field('backupId')}/verify`,ctx)))}{button('تثبيت النسخة',()=>void run('تم تثبيت النسخة.',()=>client.action(`operations/backups/${field('backupId')}/pin`,ctx,{pinned:true})))}{button('فحص الاستعادة مسبقًا',()=>void run('نجح فحص الاستعادة.',()=>client.action(`operations/restores/${field('backupId')}/preflight`,ctx),false))}{button('بدء الاستعادة',()=>void run('تم تنفيذ طلب الاستعادة.',async()=>{const result=await client.action('operations/restores',ctx,{backupId:field('backupId')});if(objectRecord(result)&&typeof result.id==='string')setField('restoreId',result.id);return result;},false))}{input('restoreId','معرّف الاستعادة')}{button('عرض حالة الاستعادة',()=>void run('تم تحميل حالة الاستعادة.',async()=>{const result=await client.read(`operations/restores/${field('restoreId')}`,ctx);setRows([result]);return result;},false))}{input('retain','عدد النسخ المحتفظ بها','number')}{button('تطبيق سياسة الاحتفاظ',()=>void run('تم تطبيق سياسة الاحتفاظ.',()=>client.action('operations/backups/retention',ctx,{retain:Number(field('retain'))})))}</div>;
+
   return null;
  }
 

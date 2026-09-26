@@ -65,11 +65,19 @@ test('Supplier Intelligence controller resolves currentUser and enforces branch/
 test('Supplier Intelligence route metadata and real Nest composition register SP-03', async () => {
   const metadata=(Reflect as unknown as {getMetadata:(key:string,target:unknown)=>unknown}).getMetadata;
   assert.equal(metadata('path',SupplierIntelligenceReadModelController),'supplier-intelligence');
-  const app=await NestFactory.createApplicationContext(AppModule,{logger:false});
-  assert.ok(app.get(SupplierEvaluationApplicationService));
-  assert.ok(app.get(SupplierDisputesApplicationService));
-  assert.ok(app.get(SupplierIntelligenceReadModelService));
-  await app.close();
+  const previous=process.env.NODE_ENV;
+  process.env.NODE_ENV='test';
+  try{
+    const app=await NestFactory.createApplicationContext(AppModule,{logger:false});
+    try{
+      assert.ok(app.get(SupplierEvaluationApplicationService));
+      assert.ok(app.get(SupplierDisputesApplicationService));
+      assert.ok(app.get(SupplierIntelligenceReadModelService));
+    }finally{await app.close();}
+  }finally{
+    if(previous===undefined)delete process.env.NODE_ENV;
+    else process.env.NODE_ENV=previous;
+  }
 });
 
 test('SP-03 migration preserves legacy ON_HOLD suppliers without inventing branch identity', async () => {

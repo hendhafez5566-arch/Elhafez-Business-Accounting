@@ -1,0 +1,3 @@
+import type{CompanyId}from'@elhafez/contracts';import type{TourismBooking,TourismBookingHistory,TourismBookingStatus}from'../domain/booking.js';
+export interface TourismBookingRepository{create(value:TourismBooking,history:TourismBookingHistory):Promise<TourismBooking>;save(value:TourismBooking,history:TourismBookingHistory):Promise<TourismBooking>;get(companyId:CompanyId,branchId:string,id:string):Promise<TourismBooking|null>;list(companyId:CompanyId,branchId:string,status?:TourismBookingStatus):Promise<TourismBooking[]>;listForProgram(companyId:CompanyId,branchId:string,programId:string):Promise<TourismBooking[]>}
+export const TOURISM_BOOKING_REPOSITORY=Symbol('TOURISM_BOOKING_REPOSITORY');

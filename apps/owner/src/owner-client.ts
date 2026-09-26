@@ -5,37 +5,57 @@ export interface OwnerCompany {
  gracePeriodEnd:string|null;entitlements:readonly string[];reason:string|null;
  subscriptionId:string|null;subscriptionVersion:number|null;
 }
+export interface OwnerBackup{id:string;status:'CREATING'|'CREATED'|'VERIFIED'|'FAILED';createdAt:string;manifest:Record<string,unknown>;checksum:string|null;providerRef:string|null;pinned:boolean;error?:string}
+export interface OwnerRestore{id:string;backupId:string;status:'PREFLIGHT'|'RESTORING'|'COMPLETED'|'FAILED';createdAt:string;error?:string}
+export interface OwnerOperationsDiagnostics{database:'AVAILABLE'|'UNAVAILABLE';backupProvider:'AVAILABLE'|'UNAVAILABLE';restoreReady:boolean;maintenance:boolean;schemaCompatibility:'UNKNOWN'|'UNAVAILABLE';runtimeVersion:string}
 export interface OwnerPlan {id:string;code:string;name:string;intervalMonths:number;priceMinor:number;currency:string;entitlements:readonly string[];active:boolean;createdAt:string}
 type Fetcher=typeof fetch;
-type RequestInput={method?:string;body?:unknown;mfaCode?:string;owner?:boolean;bootstrapToken?:string};
+type RequestInput={method?:string;body?:unknown;mfaCode?:string;owner?:boolean;bootstrapToken?:string;recoveryToken?:string};
 export class OwnerApiClient {
  #ownerToken:string|null=null;
- constructor(private readonly baseUrl:string,private readonly fetcher:Fetcher=fetch){}
+ constructor(private readonly baseUrl:string,private readonly fetcher:Fetcher=(input,init)=>globalThis.fetch(input,init)){}
  hasSession(){return this.#ownerToken!==null}
+ clearSession(){this.#ownerToken=null}
  private async request<T>(path:string,input:RequestInput={}):Promise<T>{
   const headers:Record<string,string>={'content-type':'application/json'};
   if(input.owner){if(!this.#ownerToken)throw new Error('owner session required');headers.authorization='Bearer '+this.#ownerToken;}
   if(input.mfaCode)headers['x-owner-totp']=input.mfaCode;
   if(input.bootstrapToken)headers['x-saas-bootstrap-token']=input.bootstrapToken;
+  if(input.recoveryToken)headers['x-saas-recovery-token']=input.recoveryToken;
   const response=await this.fetcher(this.baseUrl+path,{method:input.method??'GET',headers,...(input.body===undefined?{}:{body:JSON.stringify(input.body)})});
   const payload=await response.json().catch(()=>({}));
   if(!response.ok){const record=payload as {message?:string;code?:string};throw new Error(record.message??record.code??('HTTP '+response.status));}
   return payload as T;
  }
  async bootstrapOwner(bootstrapToken:string,email:string,password:string){return this.request<{ownerId:string;email:string;mfaSecret:string;otpauthUri:string}>('/saas-owner/bootstrap',{method:'POST',bootstrapToken,body:{email,password}});}
+ async bootstrapStatus(){return this.request<{available:boolean}>('/saas-owner/bootstrap-status');}
+ async recoverPassword(recoveryToken:string,email:string,newPassword:string){return this.request<{ownerId:string;email:string;revokedSessions:number}>('/saas-owner/recover-password',{method:'POST',recoveryToken,body:{email,newPassword}});}
+ async recoverMfa(recoveryToken:string,email:string,password:string){return this.request<{ownerId:string;email:string;mfaSecret:string;otpauthUri:string;revokedSessions:number}>('/saas-owner/recover-mfa',{method:'POST',recoveryToken,body:{email,password}});}
  async login(email:string,password:string,mfaCode:string){const result=await this.request<{token:string;expiresAt:string;owner:{id:string;email:string}}>('/saas-owner/login',{method:'POST',body:{email,password,mfaCode}});this.#ownerToken=result.token;return result;}
  async logout(){try{if(this.#ownerToken)await this.request('/saas-owner/logout',{method:'POST',owner:true});}finally{this.#ownerToken=null;}}
  companies(){return this.request<OwnerCompany[]>('/saas-owner/companies',{owner:true});}
- createCompany(mfaCode:string,input:{name:string;administratorEmail:string;administratorDisplayName:string}){return this.request<{company:{id:string;name:string;active:boolean;createdAt:string;initialBranchId:string};administrator:{id:string;email:string;displayName:string};invitationStatus:'SENT'|'EXISTING_USER'|'DELIVERY_UNAVAILABLE'}>('/saas-owner/companies',{method:'POST',owner:true,mfaCode,body:input});}
+ createCompany(mfaCode:string,input:{name:string;administratorUsername:string;temporaryPassword:string;administratorDisplayName:string}){return this.request<{company:{id:string;name:string;active:boolean;createdAt:string;initialBranchId:string};administrator:{id:string;email:string|null;displayName:string};credentials:{username:string;mustChangePassword:true}}>('/saas-owner/companies',{method:'POST',owner:true,mfaCode,body:input});}
+ resetAdministratorCredentials(mfaCode:string,companyId:string,input:{username:string;temporaryPassword:string}){return this.request<{userId:string;username:string;mustChangePassword:true}>('/saas-owner/companies/'+encodeURIComponent(companyId)+'/administrator-credentials',{method:'POST',owner:true,mfaCode,body:input});}
  plans(){return this.request<OwnerPlan[]>('/saas-owner/plans',{owner:true});}
  createPlan(mfaCode:string,input:{code:string;name:string;intervalMonths:number;priceMinor:number;currency:string;entitlements:string[]}){return this.request<OwnerPlan>('/saas-owner/plans',{method:'POST',owner:true,mfaCode,body:input});}
- activate(mfaCode:string,companyId:string,input:{planId:string;months:number;paymentReference:string;amountMinor:number;currency:string;idempotencyKey:string}){return this.request('/saas-owner/companies/'+encodeURIComponent(companyId)+'/activate',{method:'POST',owner:true,mfaCode,body:input});}
- renew(mfaCode:string,companyId:string,input:{months:number;paymentReference:string;amountMinor:number;currency:string;idempotencyKey:string}){return this.request('/saas-owner/companies/'+encodeURIComponent(companyId)+'/renew',{method:'POST',owner:true,mfaCode,body:input});}
+ activate(mfaCode:string,companyId:string,input:{planId:string;months?:number;periodEnd?:string;paymentReference:string;amountMinor:number;currency:string;idempotencyKey:string}){return this.request('/saas-owner/companies/'+encodeURIComponent(companyId)+'/activate',{method:'POST',owner:true,mfaCode,body:input});}
+ renew(mfaCode:string,companyId:string,input:{months?:number;periodEnd?:string;paymentReference:string;amountMinor:number;currency:string;idempotencyKey:string}){return this.request('/saas-owner/companies/'+encodeURIComponent(companyId)+'/renew',{method:'POST',owner:true,mfaCode,body:input});}
  suspend(mfaCode:string,companyId:string){return this.request('/saas-owner/companies/'+encodeURIComponent(companyId)+'/suspend',{method:'POST',owner:true,mfaCode});}
  resume(mfaCode:string,companyId:string){return this.request('/saas-owner/companies/'+encodeURIComponent(companyId)+'/resume',{method:'POST',owner:true,mfaCode});}
  cancel(mfaCode:string,companyId:string){return this.request('/saas-owner/companies/'+encodeURIComponent(companyId)+'/cancel',{method:'POST',owner:true,mfaCode});}
  platformSuspend(mfaCode:string,companyId:string){return this.request('/saas-owner/companies/'+encodeURIComponent(companyId)+'/platform-suspend',{method:'POST',owner:true,mfaCode});}
  platformResume(mfaCode:string,companyId:string){return this.request('/saas-owner/companies/'+encodeURIComponent(companyId)+'/platform-resume',{method:'POST',owner:true,mfaCode});}
+ operationsDiagnostics(){return this.request<OwnerOperationsDiagnostics>('/saas-owner/operations/diagnostics',{owner:true});}
+ maintenance(){return this.request<{active:boolean}>('/saas-owner/operations/maintenance',{owner:true});}
+ enterMaintenance(mfaCode:string){return this.request<{active:true}>('/saas-owner/operations/maintenance/enter',{method:'POST',owner:true,mfaCode});}
+ exitMaintenance(mfaCode:string){return this.request<{active:false}>('/saas-owner/operations/maintenance/exit',{method:'POST',owner:true,mfaCode});}
+ backups(){return this.request<OwnerBackup[]>('/saas-owner/operations/backups',{owner:true});}
+ createBackup(mfaCode:string,pin=false){return this.request<OwnerBackup>('/saas-owner/operations/backups',{method:'POST',owner:true,mfaCode,body:{pin}});}
+ verifyBackup(mfaCode:string,id:string){return this.request<OwnerBackup>('/saas-owner/operations/backups/'+encodeURIComponent(id)+'/verify',{method:'POST',owner:true,mfaCode});}
+ pinBackup(mfaCode:string,id:string,pinned:boolean){return this.request<OwnerBackup>('/saas-owner/operations/backups/'+encodeURIComponent(id)+'/pin',{method:'POST',owner:true,mfaCode,body:{pinned}});}
+ preflightBackup(mfaCode:string,id:string){return this.request<OwnerBackup>('/saas-owner/operations/backups/'+encodeURIComponent(id)+'/preflight',{method:'POST',owner:true,mfaCode});}
+ restoreBackup(mfaCode:string,backupId:string){return this.request<OwnerRestore&{ownerSessionsRevoked?:number;maintenance?:boolean}>('/saas-owner/operations/restores',{method:'POST',owner:true,mfaCode,body:{backupId}});}
+ restoreStatus(id:string){return this.request<OwnerRestore>('/saas-owner/operations/restores/'+encodeURIComponent(id),{owner:true});}
 }
 export function amountToMinor(value:string){
  const match=value.trim().match(/^(\d+)(?:\.(\d{1,2}))?$/);if(!match)throw new Error('invalid amount');
