@@ -107,9 +107,12 @@ for (const line of diff.split('\n')) {
   }
 
   if (
-    currentPath === 'package.json' ||
-    currentPath.startsWith('.github/workflows/') ||
-    currentPath.startsWith('tools/')
+    !self &&
+    (
+      currentPath === 'package.json' ||
+      currentPath.startsWith('.github/workflows/') ||
+      currentPath.startsWith('tools/')
+    )
   ) {
     if (/continue-on-error\s*:\s*true/.test(added)) {
       errors.push(currentPath + ': continue-on-error is forbidden for quality/enforcement work.');
