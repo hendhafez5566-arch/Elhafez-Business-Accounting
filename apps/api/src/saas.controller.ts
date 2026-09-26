@@ -18,7 +18,7 @@ export class SaasTenantController{
    const branches=await this.platform.listAccessibleBranches(session.userId,resolved.companyId);
    if(!branches.length){await this.platform.logout(session.token);session=null;throw new UnauthorizedException({code:'INVALID_TENANT_CREDENTIALS',message:'invalid company or credentials'});}
    const subscription=await this.saas.subscriptionStatus(resolved.companyId);
-   return{token:session.token,userId:session.userId,expiresAt:session.expiresAt,username:session.username,mustChangePassword:session.mustChangePassword,companyId:resolved.companyId,companyCode:resolved.companyCode,branches,defaultBranchId:branches[0]!.id,subscription};
+   return{token:session.token,userId:session.userId,expiresAt:session.expiresAt,username:session.username,mustChangePassword:session.mustChangePassword,companyId:resolved.companyId,companyCode:resolved.companyCode,companyName:company.name,branches,defaultBranchId:branches[0]!.id,subscription};
   }catch(error){
    if(session){await this.platform.logout(session.token);session=null;}
    if(error instanceof UnauthorizedException)throw error;
