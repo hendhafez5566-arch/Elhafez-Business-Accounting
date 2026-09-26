@@ -210,21 +210,27 @@ export function DataGrid({
 }
 
 export function EmptyState({
-  title = 'لا توجد بيانات',
+  title = 'لا توجد بيانات بعد',
   children,
 }: {
   readonly title?: string;
   readonly children?: ReactNode;
 }) {
-  return <section className="ui-state"><h2>{title}</h2>{children}</section>;
+  return <section className="ui-state ui-state--empty"><div className="ui-state__icon" aria-hidden="true">○</div><div><h2>{title}</h2>{children??<p>ستظهر السجلات هنا عند توفرها.</p>}</div></section>;
 }
 
-export function LoadingState() {
-  return <section className="ui-state" role="status">جارٍ التحميل…</section>;
+export function LoadingState({label='جارٍ تحميل البيانات…'}:{readonly label?:string}={}) {
+  return <section className="ui-state ui-state--loading" role="status" aria-live="polite"><span className="ui-state__spinner" aria-hidden="true"/><div><strong>{label}</strong><p>يرجى الانتظار لحظات.</p></div></section>;
 }
 
-export function ErrorState({ message = 'حدث خطأ غير متوقع' }: { readonly message?: string }) {
-  return <section className="ui-state ui-state--error" role="alert">{message}</section>;
+export function ErrorState({
+  message = 'تعذر تحميل البيانات. حاول مرة أخرى.',
+  onRetry,
+}: {
+  readonly message?: string;
+  readonly onRetry?: () => void;
+}) {
+  return <section className="ui-state ui-state--error" role="alert"><div className="ui-state__icon" aria-hidden="true">!</div><div className="ui-state__content"><h2>تعذر تحميل البيانات</h2><p>{message}</p>{onRetry?<Button variant="secondary" type="button" onClick={onRetry}>إعادة المحاولة</Button>:null}</div></section>;
 }
 
 export function Pagination({
