@@ -16,6 +16,11 @@ export interface RegisterAssetInput extends Omit<Asset,'status'|'accumulatedDepr
 export class AssetsFinancingApplicationService {
  constructor(private readonly repo:AssetsFinancingRepository,private readonly gl:Pick<GeneralLedgerApplicationService,'post'>,private readonly billing:Pick<BillingSubledgersApplicationService,'getOpenPosition'|'createAdjustment'>,private readonly treasury:Pick<TreasurySettlementApplicationService,'postAccountingMovement'>,private readonly fx:Pick<CurrencyFxApplicationService,'getBaseCurrency'>){}
  private async requireBaseCurrency(companyId:CompanyId,currency:string){const base=await this.fx.getBaseCurrency(companyId),normalized=currencyCode(currency);if(normalized!==base.code)throw new ContractValidationError('currency','foreign-currency AC-09 workflow requires approved settlement/carrying policy; unsupported');return base.code;}
+ async listAssets(companyId:CompanyId){return this.repo.listAssets(companyId)}
+ async listLoans(companyId:CompanyId){return this.repo.listLoans(companyId)}
+ async listProvisions(companyId:CompanyId){return this.repo.listProvisions(companyId)}
+ async listAllowances(companyId:CompanyId){return this.repo.listAllowances(companyId)}
+ async listPayrollRuns(companyId:CompanyId){return this.repo.listPayrollRuns(companyId)}
  async registerAsset(input:RegisterAssetInput):Promise<Asset>{
   if(!input.code.trim()||!input.name.trim())throw new ContractValidationError('asset','code and name required');if(input.method&&input.method!=='STRAIGHT_LINE')throw new ContractValidationError('method','unsupported');positive(input.acquisitionValue);positive(input.baseValue);nonnegative(input.residualValue);if(scaled(input.residualValue)>scaled(input.baseValue)||!Number.isInteger(input.usefulLifeMonths)||input.usefulLifeMonths<1)throw new ContractValidationError('asset','invalid residual value or useful life');await this.requireBaseCurrency(input.companyId,input.currency);
   const normalized={...input,currency:currencyCode(input.currency),method:'STRAIGHT_LINE' as const},requestHash=fingerprint(normalized);let asset=await this.repo.asset(input.companyId,input.id);
