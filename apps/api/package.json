@@ -7,7 +7,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "node scripts/run-tests.mjs",
     "ac14": "tsx src/ac14-migration/main.ts",
-    "start:prod": "node --import ./scripts/typescript-runtime.mjs ./src/main.ts"
+    "start:prod": "node ./dist/main.js"
   },
   "dependencies": {
     "@elhafez/platform-core": "workspace:*",
