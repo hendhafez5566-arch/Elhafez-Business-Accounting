@@ -16,7 +16,6 @@ const TOURISM_MANAGE='tourism.services.manage';
 type HeaderContext={authorization?:string;companyId?:string;branchId?:string};
 type SourceInput={sourceType:string;sourceId:string};
 const ref=(value:SourceInput)=>sourceReference(value.sourceType,value.sourceId);
-const optionalRef=(value?:SourceInput)=>value?ref(value):undefined;
 const text=(value:string)=>value.trim();
 
 @Controller('capabilities')
@@ -182,7 +181,7 @@ export class CapabilityCoverageController{
  }
 
  @Post('accounting/party-groups')
- async createPartyGroup(@Headers('authorization')auth:string|undefined,@Headers('x-company-id')company:string|undefined,@Headers('x-branch-id')branch:string|undefined,@Body()input:{id?:string;name:string;members:{id?:string;role:'CUSTOMER'|'SUPPLIER'|'AGENT'|'OTHER';partyId:string}[]}){
+ async createPartyGroup(@Headers('authorization')auth:string|undefined,@Headers('x-company-id')company:string|undefined,@Headers('x-branch-id')branch:string|undefined,@Body()input:{id?:string;name:string;members:{id?:string;role:'CUSTOMER'|'SUPPLIER'|'AGENT';partyId:string}[]}){
   const c=await this.context(this.headers(auth,company,branch),PLATFORM_CORE_PERMISSIONS.accountingFinanceOperate);
   return this.partyAccounting.createGroup({id:input.id??randomUUID(),companyId:c.companyId,name:input.name,members:input.members.map(member=>({id:member.id??randomUUID(),role:member.role,partyId:member.partyId}))});
  }
