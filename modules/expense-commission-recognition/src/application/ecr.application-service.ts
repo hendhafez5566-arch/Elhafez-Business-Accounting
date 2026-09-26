@@ -22,6 +22,11 @@ export class ExpenseCommissionRecognitionApplicationService {
   private readonly fx:Pick<CurrencyFxApplicationService,'getBaseCurrency'|'calculateSettlement'>,
   private readonly controls:Pick<FinancialControlsApplicationService,'evaluateApprovalRequirement'|'getApprovalRequest'|'getApprovalDecision'>){}
 
+ async listExpenses(companyId:CompanyId,branchId?:string){return this.repo.listExpenses(companyId,branchId)}
+ async listRecognitionSchedules(companyId:CompanyId){return this.repo.listSchedules(companyId)}
+ async listCommissionClaims(companyId:CompanyId,branchId?:string){return this.repo.listClaims(companyId,branchId)}
+ async listAccruals(companyId:CompanyId){return this.repo.listAccruals(companyId)}
+
  async createExpense(input:{id:string;companyId:CompanyId;branchId?:string;form:ExpenseForm;sourceType:string;sourceId:string;currency:string;amount:DecimalAmount;baseAmount:DecimalAmount;expenseAccountId?:string;prepaidAccountId?:string;billingInvoiceId?:string;approvalRequestId?:string}):Promise<Expense>{
   const normalized={...input,currency:currencyCode(input.currency),amount:pos(input.amount),baseAmount:pos(input.baseAmount)},requestHash=h(normalized),prior=await this.repo.expense(input.companyId,input.id);
   if(prior){if(prior.requestHash!==requestHash)throw new ContractValidationError('source','conflicting replay');return prior}
