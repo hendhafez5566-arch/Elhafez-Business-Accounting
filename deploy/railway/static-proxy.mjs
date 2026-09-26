@@ -15,7 +15,7 @@ async function waitForApi(){
   try{
    const health=await fetch(apiBase+'/health',{signal:AbortSignal.timeout(3_000)});
    if(health.ok)return;
-  }catch{}
+  }catch(error){void error;}
   if(Date.now()>=deadline)break;
   await new Promise(resolve=>setTimeout(resolve,700));
  }while(Date.now()<deadline);

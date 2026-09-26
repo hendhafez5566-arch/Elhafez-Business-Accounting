@@ -1,4 +1,4 @@
-import{BadRequestException,Body,Controller,Get,Headers,Param,Post,UnauthorizedException}from'@nestjs/common';
+import{BadRequestException,Body,Controller,Get,Headers,Inject,Param,Post,UnauthorizedException}from'@nestjs/common';
 import{PlatformOperationsApplicationService,PlatformOperationsError,type RestoreJob}from'@elhafez/platform-operations';
 import{SaasControlPlaneApplicationService}from'@elhafez/saas-control-plane';
 
@@ -9,7 +9,7 @@ type OwnerRestoreResponse=RestoreJob|(RestoreJob&{ownerSessionsRevoked:number;ma
 
 @Controller('saas-owner/operations')
 export class PlatformOwnerOperationsController{
- constructor(private readonly saas:SaasControlPlaneApplicationService,private readonly operations:PlatformOperationsApplicationService){}
+ constructor(@Inject(SaasControlPlaneApplicationService) private readonly saas:SaasControlPlaneApplicationService,@Inject(PlatformOperationsApplicationService) private readonly operations:PlatformOperationsApplicationService){}
  @Get('diagnostics')
  async diagnostics(@Headers('authorization')auth:string|undefined){await this.saas.requireOwner(bearer(auth));return this.operations.diagnostics();}
  @Get('maintenance')

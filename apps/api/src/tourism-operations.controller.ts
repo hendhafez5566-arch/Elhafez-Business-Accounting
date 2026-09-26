@@ -1,4 +1,4 @@
-import{Body,Controller,Get,Headers,Param,Patch,Post,Query,UnauthorizedException}from'@nestjs/common';
+import{Body,Controller,Get,Headers,Inject,Param,Patch,Post,Query,UnauthorizedException}from'@nestjs/common';
 import{executionContext,type ExecutionContext}from'@elhafez/contracts';
 import{PlatformCoreApplicationService}from'@elhafez/platform-core';
 import{TourismProgramsApplicationService,type TourismProgramInput,type TourismProgramStatus}from'@elhafez/tourism-programs';
@@ -7,7 +7,7 @@ import{TourismBookingsApplicationService,type BookingFinanceConfirmInput,type Cr
 
 @Controller('tourism')
 export class TourismOperationsController{
- constructor(private readonly platform:PlatformCoreApplicationService,private readonly programs:TourismProgramsApplicationService,private readonly itineraries:TourismItinerariesApplicationService,private readonly bookings:TourismBookingsApplicationService){}
+ constructor(@Inject(PlatformCoreApplicationService) private readonly platform:PlatformCoreApplicationService,@Inject(TourismProgramsApplicationService) private readonly programs:TourismProgramsApplicationService,@Inject(TourismItinerariesApplicationService) private readonly itineraries:TourismItinerariesApplicationService,@Inject(TourismBookingsApplicationService) private readonly bookings:TourismBookingsApplicationService){}
  private async context(auth?:string,companyId?:string,branchId?:string):Promise<ExecutionContext>{if(!auth?.startsWith('Bearer ')||!companyId||!branchId)throw new UnauthorizedException('authenticated company and branch context required');const user=await this.platform.currentUser(auth.slice(7));return executionContext(companyId,branchId,user.id)}
  @Get('programs')async listPrograms(@Headers('authorization')a?:string,@Headers('x-company-id')c?:string,@Headers('x-branch-id')b?:string,@Query('status')status?:TourismProgramStatus){return this.programs.list(await this.context(a,c,b),status)}
  @Post('programs')async createProgram(@Headers('authorization')a:string,@Headers('x-company-id')c:string,@Headers('x-branch-id')b:string,@Body()input:TourismProgramInput){return this.programs.create(await this.context(a,c,b),input)}

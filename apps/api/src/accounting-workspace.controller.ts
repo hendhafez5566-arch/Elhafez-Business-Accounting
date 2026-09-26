@@ -1,5 +1,5 @@
 import{createHash,randomUUID}from'node:crypto';
-import{BadRequestException,Body,Controller,Get,Headers,Param,Post,UnauthorizedException}from'@nestjs/common';
+import{BadRequestException,Body,Controller,Get,Headers,Inject,Param,Post,UnauthorizedException}from'@nestjs/common';
 import{decimalAmount,executionContext,type ExecutionContext}from'@elhafez/contracts';
 import{PLATFORM_CORE_PERMISSIONS,PlatformCoreApplicationService,PlatformError}from'@elhafez/platform-core';
 import{PeriodControlApplicationService,type FiscalYear,type AccountingPeriod}from'@elhafez/period-control';
@@ -28,14 +28,14 @@ function stableId(...parts:string[]){return createHash('sha256').update(parts.jo
 @Controller('accounting')
 export class AccountingWorkspaceController{
  constructor(
-  private readonly platform:PlatformCoreApplicationService,
-  private readonly periods:PeriodControlApplicationService,
-  private readonly ledger:GeneralLedgerApplicationService,
-  private readonly billing:BillingSubledgersApplicationService,
-  private readonly treasury:TreasurySettlementApplicationService,
-  private readonly tax:TaxApplicationService,
-  private readonly controls:FinancialControlsApplicationService,
-  private readonly reporting:FinancialReportingApplicationService,
+  @Inject(PlatformCoreApplicationService) private readonly platform:PlatformCoreApplicationService,
+  @Inject(PeriodControlApplicationService) private readonly periods:PeriodControlApplicationService,
+  @Inject(GeneralLedgerApplicationService) private readonly ledger:GeneralLedgerApplicationService,
+  @Inject(BillingSubledgersApplicationService) private readonly billing:BillingSubledgersApplicationService,
+  @Inject(TreasurySettlementApplicationService) private readonly treasury:TreasurySettlementApplicationService,
+  @Inject(TaxApplicationService) private readonly tax:TaxApplicationService,
+  @Inject(FinancialControlsApplicationService) private readonly controls:FinancialControlsApplicationService,
+  @Inject(FinancialReportingApplicationService) private readonly reporting:FinancialReportingApplicationService,
  ){}
  private async context(headers:HeaderContext,permission:string):Promise<ExecutionContext>{
   if(!headers.authorization?.startsWith('Bearer ')||!headers.companyId||!headers.branchId)throw new UnauthorizedException('authenticated company and branch context required');
