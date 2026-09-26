@@ -31,6 +31,7 @@
     "docs/**",
     "PROJECT_STATE.md",
     ".github/workflows/**",
+    "eslint.config.mjs",
     "prisma/migrations/20260925200000_saas01_control_plane/migration.sql",
     "prisma/migrations/20260926020000_company_username_identity/**"
   ],
