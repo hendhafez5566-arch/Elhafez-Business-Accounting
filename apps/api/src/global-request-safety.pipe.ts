@@ -1,11 +1,11 @@
-import{BadRequestException,Injectable,type PipeTransform}from'@nestjs/common';
+import{BadRequestException,Injectable,type ArgumentMetadata,type PipeTransform}from'@nestjs/common';
 const BLOCKED_KEYS=new Set(['__proto__','prototype','constructor']);
 export interface RequestSafetyLimits{readonly maxDepth:number;readonly maxArrayItems:number;readonly maxObjectKeys:number;readonly maxStringLength:number}
 export const DEFAULT_REQUEST_SAFETY_LIMITS:RequestSafetyLimits=Object.freeze({maxDepth:24,maxArrayItems:10000,maxObjectKeys:5000,maxStringLength:2_000_000});
 @Injectable()
 export class GlobalRequestSafetyPipe implements PipeTransform{
  constructor(private readonly limits:RequestSafetyLimits=DEFAULT_REQUEST_SAFETY_LIMITS){}
- transform(value:unknown){this.validate(value,0);return value}
+ transform(value:unknown,metadata:ArgumentMetadata){void metadata;this.validate(value,0);return value}
  private validate(value:unknown,depth:number):void{
   if(depth>this.limits.maxDepth)throw new BadRequestException('request payload is too deeply nested');
   if(value===null||value===undefined||typeof value==='boolean')return;
