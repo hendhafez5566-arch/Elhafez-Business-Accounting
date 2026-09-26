@@ -5,6 +5,10 @@ import type { Expense, RecognitionSchedule, SchedulePart, CommissionClaim, Commi
 const S=10n**18n;function n(v:string){const [w,f='']=v.split('.');return BigInt(w+f.padEnd(18,'0'))}function d(v:bigint){const neg=v<0n,a=neg?-v:v,w=a/S,f=a%S,t=f?w+'.'+f.toString().padStart(18,'0').replace(/0+$/,''):w.toString();return (neg?'-':'')+t}
 export class InMemoryEcrRepository implements EcrRepository {
  expenses:Expense[]=[]; schedules:RecognitionSchedule[]=[]; claims:CommissionClaim[]=[]; accruals:Accrual[]=[]; supplierSettlements:SupplierAdvanceSettlement[]=[];
+ async listExpenses(c:CompanyId,branchId?:string){return this.expenses.filter(x=>x.companyId===c&&(!branchId||x.branchId===branchId))}
+ async listSchedules(c:CompanyId){return this.schedules.filter(x=>x.companyId===c)}
+ async listClaims(c:CompanyId,branchId?:string){return this.claims.filter(x=>x.companyId===c&&(!branchId||x.branchId===branchId))}
+ async listAccruals(c:CompanyId){return this.accruals.filter(x=>x.companyId===c)}
  private put<T extends{id:string;companyId:CompanyId}>(a:T[],v:T){const collision=a.find(x=>x.id===v.id&&x.companyId!==v.companyId);if(collision)throw new ContractValidationError('companyId','ID belongs to another company');const i=a.findIndex(x=>x.id===v.id&&x.companyId===v.companyId);if(i<0)a.push(v);else a[i]=v}
  async expense(c:CompanyId,id:string){return this.expenses.find(x=>x.companyId===c&&x.id===id)} async saveExpense(v:Expense){this.put(this.expenses,v)}
  async schedule(c:CompanyId,id:string){return this.schedules.find(x=>x.companyId===c&&x.id===id)}
