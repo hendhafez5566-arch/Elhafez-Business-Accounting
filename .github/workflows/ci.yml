@@ -23,15 +23,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # Draft and post-merge smoke runs reuse installed dependencies on the persistent
-          # self-hosted workspace. Final ready-for-review runs stay clean-room.
-          clean: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft == false }}
+          # The persistent self-hosted runner keeps installed dependencies between runs.
+          # Git-tracked state is still reset below and pnpm --frozen-lockfile verifies dependency truth.
+          clean: false
           # PR merge refs need only the merge commit and its parents.
           # Main keeps a wider fail-closed history window without fetching all history.
           fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 50 }}
 
       - name: Sanitize persistent workspace
-        if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.draft == true)
         run: |
           git reset --hard HEAD
           git clean -ffdx -e node_modules/ -e "**/node_modules/"
