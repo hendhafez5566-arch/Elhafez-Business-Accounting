@@ -618,7 +618,7 @@ export class BillingSubledgersApplicationService {
 
   /** AC-07 public settlement contract. Billing chooses and owns all economic allocations. */
   async settle(input: {
-    id: string; companyId: CompanyId; partyKind: PartyKind; partyId: string;
+    id: string; companyId: CompanyId; branchId?: string; partyKind: PartyKind; partyId: string;
     amount: DecimalAmount; settlementCurrency: string; settlementDate: string;
     explicitDraftInvoiceId?: string; explicitPostedInvoiceId?: string; restrictionSourceType?: string; restrictionSourceId?: string;
     prefundingAccountId?: string;
@@ -657,16 +657,16 @@ export class BillingSubledgersApplicationService {
       : input.explicitPostedInvoiceId
         ? [await this.requiredInvoice(input.companyId,input.explicitPostedInvoiceId)]
         : (await this.repo.invoices(input.companyId))
-          .filter((x) => x.partyId === input.partyId && expectedPartyKind(x.type) === input.partyKind && x.status === 'POSTED' && scaled18(x.outstanding) > 0n)
+          .filter((x) => x.partyId === input.partyId && expectedPartyKind(x.type) === input.partyKind && x.status === 'POSTED' && scaled18(x.outstanding) > 0n && (input.branchId===undefined||x.branchId===input.branchId))
           .sort((a, b) => {
             if (!a.dueDate || !b.dueDate) throw new ContractValidationError('dueDate', 'explicit due date evidence is required for settlement');
             return a.dueDate.localeCompare(b.dueDate) || a.postingDate.localeCompare(b.postingDate) || a.number.localeCompare(b.number) || a.id.localeCompare(b.id);
           });
-    if(input.explicitPostedInvoiceId){const invoice=candidates[0]!;if(invoice.status!=='POSTED'||invoice.partyId!==input.partyId||expectedPartyKind(invoice.type)!==input.partyKind)throw new ContractValidationError('invoiceId','explicit posted invoice must match the settlement party and be POSTED');}
+    if(input.explicitPostedInvoiceId){const invoice=candidates[0]!;if(invoice.status!=='POSTED'||invoice.partyId!==input.partyId||expectedPartyKind(invoice.type)!==input.partyKind||(input.branchId!==undefined&&invoice.branchId!==input.branchId))throw new ContractValidationError('invoiceId','explicit posted invoice must match the settlement party, branch and be POSTED');}
     const result: Allocation[] = [...existing];
     for (const invoice of candidates) {
       if (scaled18(remaining) <= 0n) break;
-      if (!invoice.dueDate) throw new ContractValidationError('dueDate', 'explicit due date evidence is required for settlement');
+      if (!invoice.dueDate && !input.explicitPostedInvoiceId && invoice.status==='POSTED') throw new ContractValidationError('dueDate', 'explicit due date evidence is required for FIFO settlement');
       let portion = invoice.status === 'DRAFT' ? remaining : minimum(remaining, invoice.outstanding);
       let settlementPortion = portion;
       if (invoice.status === 'POSTED' && invoice.currency === input.settlementCurrency && invoice.currency !== base.code) {
