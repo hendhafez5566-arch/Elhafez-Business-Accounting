@@ -17,6 +17,7 @@ import { ExecutiveDashboardPage, ManagementWorkCenterPage } from './management-c
 import { AppearanceSettingsPage } from './ui/appearance-settings-page.js';
 import { AccountingWorkspacePage } from './accounting-workspace-page.js';
 import { AccountSettingsPage } from './account-settings-page.js';
+import { AdvancedAccountingPage, ContractInventoryPage } from './advanced-operations-pages.js';
 import type { IconName } from './ui/icons.js';
 
 export interface AppRoute {
@@ -64,13 +65,22 @@ export const foundationRoutes = defineRoutes(
   { id: 'tourism-programs', path: '/tourism/programs', label: 'البرامج السياحية', group: 'السياحة والخدمات', icon: 'program', element: <TourismOperationsPage initialTab="programs" /> },
   { id: 'tourism-bookings', path: '/tourism/bookings', label: 'الحجوزات السياحية', group: 'السياحة والخدمات', icon: 'booking', element: <TourismOperationsPage initialTab="bookings" /> },
   { id: 'tourism-itinerary', path: '/tourism/itinerary', label: 'البرنامج اليومي', group: 'السياحة والخدمات', icon: 'calendar', element: <TourismOperationsPage initialTab="itinerary" /> },
+  { id: 'tourism-contract-inventory', path: '/tourism/contracts-inventory', label: 'التعاقدات والمخزون', group: 'السياحة والخدمات', icon: 'workspace', element: <ContractInventoryPage /> },
+  { id: 'tourism-travelers', path: '/tourism/travelers', label: 'المسافرون', group: 'السياحة والخدمات', icon: 'traveler', element: <TravelersPage /> },
 
   { id: 'accounting-workspace', path: '/accounting', label: 'المحاسبة والمالية', group: 'المحاسبة والمالية', icon: 'analytics', element: <AccountingWorkspacePage /> },
+  { id: 'accounting-currency-fx', path: '/accounting/currency-fx', label: 'العملات وأسعار الصرف', group: 'المحاسبة والمالية', icon: 'analytics', element: <AdvancedAccountingPage initialSection="currency" /> },
+  { id: 'accounting-cost-budget', path: '/accounting/cost-budget', label: 'مراكز التكلفة والموازنات', group: 'المحاسبة والمالية', icon: 'analytics', element: <AdvancedAccountingPage initialSection="cost" /> },
+  { id: 'accounting-party-netting', path: '/accounting/party-netting', label: 'حسابات الأطراف والمقاصة', group: 'المحاسبة والمالية', icon: 'customers', element: <AdvancedAccountingPage initialSection="party" /> },
+  { id: 'accounting-ecr', path: '/accounting/expenses-commissions', label: 'المصروفات والعمولات والاستحقاقات', group: 'المحاسبة والمالية', icon: 'quote', element: <AdvancedAccountingPage initialSection="ecr" /> },
+  { id: 'accounting-assets-financing', path: '/accounting/assets-financing', label: 'الأصول والتمويل', group: 'المحاسبة والمالية', icon: 'analytics', element: <AdvancedAccountingPage initialSection="assets" /> },
 
   { id: 'hajj-umrah-seasons', path: '/hajj-umrah/seasons', label: 'المواسم', group: 'الحج والعمرة', icon: 'calendar', element: <SeasonsPage /> },
   { id: 'hajj-umrah-programs', path: '/hajj-umrah/programs', label: 'برامج الحج والعمرة', group: 'الحج والعمرة', icon: 'program', element: <ProgramsPage /> },
   { id: 'hajj-umrah-program-workspace', path: '/hajj-umrah/program-workspace', label: 'مساحة عمل البرنامج', group: 'الحج والعمرة', icon: 'workspace', navigation: false, element: <ProgramWorkspacePage /> },
   { id: 'hajj-umrah-bookings', path: '/hajj-umrah/bookings', label: 'الحجوزات', group: 'الحج والعمرة', icon: 'booking', element: <BookingsPage /> },
+  { id: 'hajj-umrah-contract-inventory', path: '/hajj-umrah/contracts-inventory', label: 'التعاقدات والمخزون', group: 'الحج والعمرة', icon: 'workspace', element: <ContractInventoryPage /> },
+  { id: 'hajj-umrah-travelers', path: '/hajj-umrah/travelers', label: 'المسافرون', group: 'الحج والعمرة', icon: 'traveler', element: <TravelersPage /> },
   { id: 'hajj-umrah-rooming', path: '/hajj-umrah/rooming', label: 'تسكين الغرف', group: 'الحج والعمرة', icon: 'room', element: <RoomingPage /> },
   { id: 'hajj-umrah-visas', path: '/hajj-umrah/visas', label: 'التأشيرات', group: 'الحج والعمرة', icon: 'visa', element: <VisasPage /> },
   { id: 'hajj-umrah-ticketing', path: '/hajj-umrah/ticketing', label: 'التذاكر والطيران', group: 'الحج والعمرة', icon: 'ticket', element: <TicketingPage /> },

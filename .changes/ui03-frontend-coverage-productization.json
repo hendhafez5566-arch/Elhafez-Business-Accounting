@@ -1,0 +1,34 @@
+{
+  "id": "ui03-frontend-coverage-productization",
+  "summary": "Expose existing canonical contracts/inventory and advanced accounting capabilities through Arabic product UI without duplicating business truth.",
+  "type": "phase",
+  "allowedModules": [
+    "currency-fx",
+    "cost-budget-accounting",
+    "party-accounting",
+    "expense-commission-recognition",
+    "assets-financing",
+    "tourism-contract-inventory",
+    "traveler-management"
+  ],
+  "allowedPaths": [
+    "apps/api/src/advanced-operations.controller.ts",
+    "apps/api/src/advanced-operations.spec.ts",
+    "apps/api/src/app.module.ts",
+    "apps/web/src/advanced-operations-client.ts",
+    "apps/web/src/advanced-operations-pages.tsx",
+    "apps/web/src/advanced-operations.spec.ts",
+    "apps/web/src/routes.tsx"
+  ],
+  "protectedPaths": [
+    "apps/api/src/app.module.ts",
+    "apps/web/src/routes.tsx"
+  ],
+  "protectedReason": "Register composition-only API and presentation routes for already accepted canonical owners. No owner tables, migrations or business truth are duplicated.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": "",
+  "testEvidence": [
+    "apps/api/src/advanced-operations.spec.ts",
+    "apps/web/src/advanced-operations.spec.ts"
+  ]
+}
