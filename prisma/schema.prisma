@@ -421,6 +421,7 @@ model GlAccount {
 model GlJournal {
   id            String          @id
   companyId     String          @map("company_id")
+  branchId      String?         @map("branch_id")
   number        String
   postingDate   DateTime        @map("posting_date") @db.Date
   kind          String
@@ -438,7 +439,7 @@ model GlJournal {
   @@unique([companyId, number])
   @@unique([companyId, sourceType, sourceId])
   @@unique([companyId, id])
-  @@index([companyId, postingDate])
+  @@index([companyId, branchId, postingDate])
   @@map("gl_journals")
 }
 
