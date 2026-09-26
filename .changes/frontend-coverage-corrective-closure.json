@@ -1,0 +1,34 @@
+{
+  "id": "frontend-coverage-corrective-closure",
+  "summary": "Close remaining frontend coverage gaps on top of merged PR #84 by exposing existing canonical contract amendments/service inventory, ECR recognition/accrual, Assets allowances, and shared Hajj/Umrah access without duplicating business truth. Also restore Windows self-hosted API test execution by passing the runtime preload as a standards-compliant file URL.",
+  "type": "bugfix",
+  "allowedModules": [
+    "tourism-contract-inventory",
+    "expense-commission-recognition",
+    "assets-financing"
+  ],
+  "allowedPaths": [
+    ".changes/frontend-coverage-corrective-closure.json",
+    "apps/api/scripts/run-tests.mjs",
+    "apps/api/src/frontend-coverage.controller.ts",
+    "apps/api/src/frontend-coverage.spec.ts",
+    "apps/web/src/accounting-workspace-page.tsx",
+    "apps/web/src/advanced-accounting-client.ts",
+    "apps/web/src/advanced-accounting-corrective-sections.tsx",
+    "apps/web/src/frontend-coverage.spec.ts",
+    "apps/web/src/routes.tsx",
+    "apps/web/src/tourism-contract-inventory-client.ts",
+    "apps/web/src/tourism-contract-inventory-corrective-section.tsx",
+    "apps/web/src/tourism-contract-inventory-page.tsx"
+  ],
+  "protectedPaths": [
+    "apps/web/src/routes.tsx"
+  ],
+  "protectedReason": "Add a presentation-only Hajj & Umrah route to the same tourism-contract-inventory workspace so the shared canonical owner is reachable from both suites without duplicate code or data ownership.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": "",
+  "testEvidence": [
+    "apps/api/src/frontend-coverage.spec.ts",
+    "apps/web/src/frontend-coverage.spec.ts"
+  ]
+}

@@ -11,3 +11,12 @@ test('frontend coverage composition registers canonical owner boundaries', () =>
   assert.ok(controllers.includes(TourismContractInventoryController));
   assert.ok(imports.includes(CurrencyFxModule));
 });
+
+
+test('corrective coverage registers public-owner operations instead of parallel business logic', () => {
+  assert.equal(Reflect.getMetadata('path', AdvancedAccountingController.prototype.createRecognitionSchedule), 'recognition-schedules');
+  assert.equal(Reflect.getMetadata('path', AdvancedAccountingController.prototype.accrueRevenue), 'accruals');
+  assert.equal(Reflect.getMetadata('path', AdvancedAccountingController.prototype.recognizeAllowance), 'allowances');
+  assert.equal(Reflect.getMetadata('path', TourismContractInventoryController.prototype.amendContract), 'contracts/:id/amendments');
+  assert.equal(Reflect.getMetadata('path', TourismContractInventoryController.prototype.createServiceInventory), 'service-inventory');
+});
