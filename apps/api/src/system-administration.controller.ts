@@ -17,8 +17,6 @@ export class SystemAdministrationController{
   @Inject(SystemAdministrationDataExchangeBoundary) private readonly dataBoundary:SystemAdministrationDataExchangeBoundary
  ){}
 
- @Post('recovery/request') async requestRecovery(@Body()body:{email:string}){try{await this.platform.requestPasswordRecovery(body.email);}catch(error){void error;}return{accepted:true};}
- @Post('recovery/reset') async resetPassword(@Body()body:{token:string;password:string}){await this.platform.resetPassword(body.token,body.password);return{reset:true};}
  private h(a:string|undefined,c:string|undefined,b:string|undefined):Headers3{return{a,c,b};}
 
  @Get('users') async users(@Headers('authorization')a:string|undefined,@Headers('x-company-id')c:string|undefined,@Headers('x-branch-id')b:string|undefined):Promise<readonly CompanyUserProjection[]>{const x=await this.ctx(this.h(a,c,b),SYSTEM_ADMIN_PERMISSIONS.usersRead);return this.platform.listCompanyUsers(x.companyId);}
