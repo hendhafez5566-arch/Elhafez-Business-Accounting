@@ -53,7 +53,7 @@ test('blocked cancellation retains posting date and resumes with the same comman
 test('a service type cannot silently change its category',async()=>{const {service}=await seeded();await assert.rejects(service.manageServiceType({id:'hotel',companyId:companyId('c1'),code:'HOTEL',category:'VISA',nameAr:'تأشيرة',active:true}),/immutable/)});
 
 
-test('postgres repository resumes confirmation and cancellation after process restart', { skip: !process.env.DATABASE_URL }, async () => {
+test('postgres repository resumes confirmation and cancellation after process restart', { skip: process.env.RUN_DATABASE_INTEGRATION_TESTS !== '1' }, async () => {
   const db=new PrismaClient(),company=companyId('ts01-db-company'),branch='ts01-db-branch',serviceId='ts01-db-service',typeId='ts01-db-hotel';
   let commitAttempts=0,cancelAttempts=0;
   const owner:ConfirmationPort={
