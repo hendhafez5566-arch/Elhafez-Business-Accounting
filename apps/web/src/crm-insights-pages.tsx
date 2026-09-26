@@ -1,5 +1,5 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
-import { Badge, Button, Card, DataGrid, EmptyState, ErrorState, FormField, Input, LoadingState, Select } from './ui.js';
+import { Badge, Button, Card, DataGrid, EmptyState, ErrorState, FormField, Input, LoadingState, MetricCard, Select } from './ui.js';
 import { crmGet, crmPost } from './crm-core-client.js';
 
 type Party={id:string;displayName:string;phone:string|null;email:string|null;whatsappNumber:string|null};
@@ -14,9 +14,38 @@ type Customer360={customer:CustomerView;leads:Lead[];followups:Followup[];quotat
 type Agent360={agent:AgentView;customers:CustomerView[];leads:Lead[];quotations:Quote[]};
 type Dashboard={counts:{customers:number;agents:number;travelers:number;overdueFollowups:number};leadStages:Record<string,number>;quotationStatuses:Record<string,number>;quotationValueByCurrency:Array<{currency:string;total:string}>;attention:{overdueFollowups:Followup[];awaitingApproval:Quote[];awaitingConversion:Quote[];unresolvedCustomer:Quote[];expiringSoon:Quote[]}};
 const errorMessage=(e:unknown)=>e instanceof Error?e.message:'حدث خطأ غير متوقع';
+const leadStageLabel:Record<string,string>={NEW:'جديد',CONTACTED:'تم التواصل',QUALIFIED:'مؤهل',QUOTED:'تم عرض السعر',WON:'ناجح',LOST:'مفقود'};
+const quotationStatusLabel:Record<string,string>={DRAFT:'مسودة',SENT:'مرسل',ACCEPTED:'مقبول',REJECTED:'مرفوض',CONVERTED:'محوّل لفاتورة',EXPIRED:'منتهي'};
 function queryParam(name:string){return typeof window==='undefined'?'':new URLSearchParams(window.location.search).get(name)??'';}
 
-export function CrmSalesDashboardPage(){const[data,setData]=useState<Dashboard|null>(null),[error,setError]=useState('');useEffect(()=>{crmGet<Dashboard>('/crm/insights/dashboard').then(setData).catch(e=>setError(errorMessage(e)));},[]);if(error)return<ErrorState message={error}/>;if(!data)return<LoadingState label="جارٍ تحميل لوحة العملاء والمبيعات…"/>;return <section aria-label="لوحة العملاء والمبيعات"><Card title="ملخص التشغيل"><DataGrid columns={['العملاء','الوكلاء','المسافرون','متابعات متأخرة']}><tr><td>{data.counts.customers}</td><td>{data.counts.agents}</td><td>{data.counts.travelers}</td><td>{data.counts.overdueFollowups}</td></tr></DataGrid></Card><Card title="مراحل العملاء المحتملين"><DataGrid columns={['NEW','CONTACTED','QUALIFIED','QUOTED','WON','LOST']}><tr>{['NEW','CONTACTED','QUALIFIED','QUOTED','WON','LOST'].map(k=><td key={k}>{data.leadStages[k]??0}</td>)}</tr></DataGrid></Card><Card title="عروض الأسعار حسب الحالة"><DataGrid columns={['DRAFT','SENT','ACCEPTED','REJECTED','CONVERTED','EXPIRED']}><tr>{['DRAFT','SENT','ACCEPTED','REJECTED','CONVERTED','EXPIRED'].map(k=><td key={k}>{data.quotationStatuses[k]??0}</td>)}</tr></DataGrid></Card><Card title="قيمة عروض الأسعار حسب العملة">{!data.quotationValueByCurrency.length?<EmptyState/>:<DataGrid columns={['العملة','الإجمالي']}>{data.quotationValueByCurrency.map(v=><tr key={v.currency}><td>{v.currency}</td><td>{v.total}</td></tr>)}</DataGrid>}</Card><Card title="يحتاج انتباه"><p>بانتظار موافقة: {data.attention.awaitingApproval.length} | بانتظار تحويل: {data.attention.awaitingConversion.length} | عميل غير محسوم: {data.attention.unresolvedCustomer.length} | قرب انتهاء الصلاحية: {data.attention.expiringSoon.length}</p>{data.attention.overdueFollowups.length>0&&<DataGrid columns={['المتابعة','Lead','النوع','الموعد']}>{data.attention.overdueFollowups.map(v=><tr key={v.id}><td>{v.id}</td><td>{v.leadId}</td><td>{v.interactionType}</td><td>{new Date(v.scheduledAt).toLocaleString('ar-EG')}</td></tr>)}</DataGrid>}</Card></section>;}
+export function CrmSalesDashboardPage(){
+ const[data,setData]=useState<Dashboard|null>(null),[error,setError]=useState('');
+ useEffect(()=>{crmGet<Dashboard>('/crm/insights/dashboard').then(setData).catch(e=>setError(errorMessage(e)));},[]);
+ if(error)return<ErrorState message={error}/>;
+ if(!data)return<LoadingState label="جارٍ تحميل لوحة العملاء والمبيعات…"/>;
+ const stages=['NEW','CONTACTED','QUALIFIED','QUOTED','WON','LOST'];
+ const quoteStatuses=['DRAFT','SENT','ACCEPTED','REJECTED','CONVERTED','EXPIRED'];
+ return <section className="ui-dashboard" aria-label="لوحة العملاء والمبيعات">
+  <div className="ui-metric-grid" aria-label="مؤشرات العملاء والمبيعات">
+   <MetricCard label="العملاء" value={data.counts.customers}/>
+   <MetricCard label="الوكلاء" value={data.counts.agents}/>
+   <MetricCard label="المسافرون" value={data.counts.travelers}/>
+   <MetricCard label="متابعات متأخرة" value={data.counts.overdueFollowups} tone={data.counts.overdueFollowups?'warning':'neutral'}/>
+  </div>
+  <Card title="مسار العملاء المحتملين"><div className="ui-metric-grid">{stages.map(stage=><MetricCard key={stage} label={leadStageLabel[stage]??stage} value={data.leadStages[stage]??0} tone={stage==='WON'?'success':stage==='LOST'?'warning':'neutral'}/>)}</div></Card>
+  <Card title="عروض الأسعار حسب الحالة"><div className="ui-metric-grid">{quoteStatuses.map(status=><MetricCard key={status} label={quotationStatusLabel[status]??status} value={data.quotationStatuses[status]??0} tone={status==='CONVERTED'?'success':status==='REJECTED'||status==='EXPIRED'?'warning':'neutral'}/>)}</div></Card>
+  <Card title="قيمة عروض الأسعار حسب العملة">{!data.quotationValueByCurrency.length?<EmptyState/>:<div className="ui-metric-grid">{data.quotationValueByCurrency.map(v=><MetricCard key={v.currency} label={v.currency} value={v.total}/>)}</div>}</Card>
+  <Card title="يحتاج انتباه">
+   <div className="ui-metric-grid">
+    <MetricCard label="بانتظار موافقة" value={data.attention.awaitingApproval.length} tone={data.attention.awaitingApproval.length?'warning':'neutral'}/>
+    <MetricCard label="بانتظار تحويل" value={data.attention.awaitingConversion.length}/>
+    <MetricCard label="عميل غير محسوم" value={data.attention.unresolvedCustomer.length} tone={data.attention.unresolvedCustomer.length?'warning':'neutral'}/>
+    <MetricCard label="قرب انتهاء الصلاحية" value={data.attention.expiringSoon.length} tone={data.attention.expiringSoon.length?'warning':'neutral'}/>
+   </div>
+   {data.attention.overdueFollowups.length>0&&<DataGrid columns={['المتابعة','العميل المحتمل','النوع','الموعد']}>{data.attention.overdueFollowups.map(v=><tr key={v.id}><td>{v.id}</td><td>{v.leadId}</td><td>{v.interactionType}</td><td>{new Date(v.scheduledAt).toLocaleString('ar-EG')}</td></tr>)}</DataGrid>}
+  </Card>
+ </section>;
+}
 
 export function Customer360Page(){const[id,setId]=useState(()=>queryParam('customerId')),[data,setData]=useState<Customer360|null>(null),[error,setError]=useState('');async function load(){if(!id.trim())return;try{setData(await crmGet<Customer360>(`/crm/insights/customers/${encodeURIComponent(id.trim())}`));setError('');}catch(e){setError(errorMessage(e));}}useEffect(()=>{if(id)void load();},[]);return <section aria-label="ملف العميل 360 درجة"><Card title="ملف العميل 360°"><FormField label="معرّف العميل"><Input value={id} onChange={e=>setId(e.target.value)}/></FormField><Button onClick={load}>عرض الملف الموحد</Button></Card>{error&&<ErrorState message={error}/>} {data&&<><Card title={`${data.customer.customer.number} — ${data.customer.party.displayName}`}><p>{data.customer.party.phone??'—'} | {data.customer.party.email??'—'} | الحالة: <Badge>{data.customer.customer.status}</Badge></p></Card><Card title="إدارة علاقات العملاء"><p>العملاء المحتملون: {data.leads.length} | المتابعات: {data.followups.length} | عروض الأسعار: {data.quotations.length} | المسافرون: {data.travelers.length}</p></Card><Card title="المسافرون المرتبطون">{!data.travelers.length?<EmptyState/>:<DataGrid columns={['الاسم','الجنسية','الحالة']}>{data.travelers.map(t=><tr key={t.id}><td>{t.fullName}</td><td>{t.nationality??'—'}</td><td>{t.status}</td></tr>)}</DataGrid>}</Card><Card title="المراكز المالية المرتبطة بعروض الأسعار من الفوترة">{!data.quotationLinkedFinancialSummaryByCurrency.length?<EmptyState title="لا توجد فواتير محولة مرتبطة بعروض الأسعار"/>:<DataGrid columns={['العملة','إجمالي المستندات','المتبقي']}>{data.quotationLinkedFinancialSummaryByCurrency.map(v=><tr key={v.currency}><td>{v.currency}</td><td>{v.documentTotal}</td><td>{v.outstanding}</td></tr>)}</DataGrid>}</Card><Card title="عروض الأسعار">{!data.quotations.length?<EmptyState/>:<DataGrid columns={['الرقم','الحالة','العملة','فاتورة الفوترة']}>{data.quotations.map(q=><tr key={q.id}><td>{q.number}</td><td>{q.status}</td><td>{q.currency}</td><td>{q.billingInvoiceId??'—'}</td></tr>)}</DataGrid>}</Card></>}</section>;}
 
