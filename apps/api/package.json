@@ -65,6 +65,7 @@
     "prisma": "6.19.0",
     "@elhafez/custom-fields": "workspace:*",
     "@elhafez/document-numbering": "workspace:*",
-    "@elhafez/automation-workflow": "workspace:*"
+    "@elhafez/automation-workflow": "workspace:*",
+    "@elhafez/operational-reporting": "workspace:*"
   }
 }

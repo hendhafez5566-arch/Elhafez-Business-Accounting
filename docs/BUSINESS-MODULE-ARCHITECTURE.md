@@ -106,10 +106,10 @@ This suite is primarily composition/projection, not a second source of business 
 | Visible area | Canonical owner | Status | Rule |
 |---|---|---|---|
 | Work Center | API composition (`work-center` projection responsibility) | EXISTING / PROJECTION | rebuildable, non-persistent aggregation of actionable items from owner public APIs |
-| Operational reports | `operational-reporting` | PLANNED / PROJECTION | rebuildable read models, never owner truth |
+| Operational reports | `operational-reporting` | IMPLEMENTED / ERP PRODUCT COMPLETION / PROJECTION | owns saved-report and schedule configuration only; live metrics remain rebuildable projections from canonical owners |
 | Owner/management dashboard | web composition over reporting/work-center/financial-reporting | EXISTING UI | Arabic-first overview, filters and canonical-owner drill-down; no direct table reads across modules |
 | Alerts | `platform-core` notifications + owner events | EXISTING FOUNDATION | alert display does not own source state |
-| Approval Center | composition over approval owners | PLANNED UI | financial approvals remain `financial-controls`; generic approvals use platform capability when introduced |
+| Approval Center | composition over approval owners | IMPLEMENTED / ERP PRODUCT COMPLETION UI | financial approvals remain `financial-controls`; quotation approvals remain `quotations`; the center stores no decision truth |
 | Activity/Audit | `platform-core` | EXISTING | audit history remains platform-owned |
 
 ### G. System Administration
@@ -271,3 +271,8 @@ The platform-wide automation engine is a distinct orchestration owner. It owns w
 It does **not** own the business truth that caused a trigger. Domain modules publish approved events or expose public commands; the automation engine records only orchestration state and invokes public boundaries. It must never update another module's tables directly.
 
 Notifications remain `platform-core` capability truth unless a separately approved communication-delivery owner is introduced. Financial approvals remain `financial-controls`; the Automation engine may wait for or react to approval results but may not duplicate approval truth.
+
+
+### `operational-reporting` — IMPLEMENTED / ERP PRODUCT COMPLETION
+
+This projection/configuration owner stores saved-report definitions and report delivery schedule configuration. It does not copy balances, KPIs, approval state, bookings, supplier truth, or financial facts. Reporting pages compose live data from canonical public APIs such as `financial-reporting` and Management projections. Delivery execution remains the responsibility of approved automation/integration boundaries; a saved schedule is not proof that an external message was delivered.

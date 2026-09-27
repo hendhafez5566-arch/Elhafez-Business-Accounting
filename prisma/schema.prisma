@@ -3971,3 +3971,45 @@ model AwWorkflowExecutionLog {
   @@index([companyId, runId, occurredAt])
   @@map("aw_workflow_execution_logs")
 }
+
+
+// ERP Product Completion — operational reporting saved views and delivery schedules.
+// Canonical business values remain in their source owners; these tables store report configuration only.
+model OrSavedReport {
+  id           String   @id
+  companyId    String   @map("company_id")
+  ownerActorId String   @map("owner_actor_id")
+  name         String
+  reportKey    String   @map("report_key")
+  filtersJson  Json     @default("{}") @map("filters_json")
+  visibility   String   @default("PRIVATE")
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  schedules    OrReportSchedule[]
+
+  @@unique([companyId, id])
+  @@index([companyId, ownerActorId, active])
+  @@index([companyId, reportKey, active])
+  @@map("or_saved_reports")
+}
+
+model OrReportSchedule {
+  id            String        @id
+  companyId     String        @map("company_id")
+  savedReportId String        @map("saved_report_id")
+  cadence       String
+  hourUtc       Int           @map("hour_utc")
+  weekday       Int?
+  dayOfMonth    Int?          @map("day_of_month")
+  channel       String
+  recipient     String?
+  enabled       Boolean       @default(true)
+  createdBy     String        @map("created_by")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+  savedReport   OrSavedReport @relation(fields: [companyId, savedReportId], references: [companyId, id], onDelete: Restrict)
+
+  @@index([companyId, savedReportId, enabled])
+  @@map("or_report_schedules")
+}

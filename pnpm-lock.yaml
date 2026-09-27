@@ -122,6 +122,9 @@ importers:
       '@elhafez/hajj-umrah-visa-operations':
         specifier: workspace:*
         version: link:../../modules/hajj-umrah-visa-operations
+      '@elhafez/operational-reporting':
+        specifier: workspace:*
+        version: link:../../modules/operational-reporting
       '@elhafez/party-accounting':
         specifier: workspace:*
         version: link:../../modules/party-accounting
@@ -863,6 +866,21 @@ importers:
       '@elhafez/financial-controls':
         specifier: workspace:*
         version: link:../financial-controls
+      '@nestjs/common':
+        specifier: ^11.0.11
+        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@prisma/client':
+        specifier: 6.19.0
+        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
+
+  modules/operational-reporting:
+    dependencies:
+      '@elhafez/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@elhafez/platform-core':
+        specifier: workspace:*
+        version: link:../platform-core
       '@nestjs/common':
         specifier: ^11.0.11
         version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)

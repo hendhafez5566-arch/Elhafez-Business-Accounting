@@ -62,7 +62,7 @@ Before editing:
 | financial reports | **existing** `financial-reporting` |
 | tourism booking financial workflow | **existing** `tourism-finance-orchestration` |
 | work center / actionable cross-module queue | `work-center` projection |
-| operational reports | `operational-reporting` projection |
+| operational reports / saved reports / report schedules | `operational-reporting` projection/configuration owner |
 | users/roles/company/branch/session/audit/files/notifications/config | **existing** `platform-core` |
 | SaaS plan/subscription/payment/company-code/tenant commercial access, platform-owner control plane | **existing** `saas-control-plane` |
 | custom fields | `custom-fields` |

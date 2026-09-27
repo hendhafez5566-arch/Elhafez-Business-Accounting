@@ -168,6 +168,18 @@ export class AccountingWorkspaceController{
   return this.tax.configurePolicy({id:stableId(c.companyId,'TAX_POLICY',code,input.effectiveFrom),companyId:c.companyId,code,effectiveFrom:input.effectiveFrom,rate:decimalAmount(input.rate),outputAccountId:text(input.outputAccountId,'outputAccountId'),inputAccountId:text(input.inputAccountId,'inputAccountId')});
  }
 
+ @Get('controls/policies')
+ async approvalPolicies(@Headers('authorization')auth?:string,@Headers('x-company-id')company?:string,@Headers('x-branch-id')branch?:string){
+  const c=await this.context(this.headers(auth,company,branch),PLATFORM_CORE_PERMISSIONS.accountingFinanceRead);
+  return this.controls.listApprovalPolicies(c.companyId);
+ }
+
+ @Get('controls/approvals')
+ async approvalRequests(@Headers('authorization')auth?:string,@Headers('x-company-id')company?:string,@Headers('x-branch-id')branch?:string){
+  const c=await this.context(this.headers(auth,company,branch),PLATFORM_CORE_PERMISSIONS.accountingFinanceRead);
+  return this.controls.listApprovalRequests(c.companyId,c.branchId);
+ }
+
  @Post('controls/policies')
  async configureApprovalPolicy(@Headers('authorization')auth:string,@Headers('x-company-id')company:string,@Headers('x-branch-id')branch:string,
   @Body()input:{action:FinancialAction;threshold:string;active:boolean;forbidSelfApproval:boolean;requiredAuthority:string}){

@@ -1,0 +1,40 @@
+{
+  "id": "erp-product-completion-approval-reporting",
+  "summary": "Productize the canonical Financial Controls approvals into a dedicated Approval Center and introduce the planned Operational Reporting owner for saved report definitions/schedules and read-only reporting projections without duplicating source truth.",
+  "type": "phase",
+  "allowedModules": ["operational-reporting"],
+  "allowedPaths": [
+    ".changes/erp-product-completion-approval-reporting.json",
+    "apps/api/package.json",
+    "apps/api/src/app.module.ts",
+    "apps/api/src/accounting-workspace.controller.ts",
+    "apps/web/src/approval-center-client.ts",
+    "apps/web/src/approval-center-page.tsx",
+    "apps/web/src/approval-center.spec.ts",
+    "apps/web/src/routes.tsx",
+    "apps/web/src/reporting-center-client.ts",
+    "apps/web/src/reporting-center-page.tsx",
+    "apps/web/src/reporting-center.spec.ts",
+    "pnpm-lock.yaml",
+    "prisma/schema.prisma",
+    "prisma/migrations/20260927233000_operational_reporting/migration.sql",
+    "docs/BUSINESS-MODULE-ARCHITECTURE.md",
+    "docs/BUSINESS-MODULE-ROUTING.md"
+  ],
+  "protectedPaths": [
+    "modules/operational-reporting/module.json",
+    "apps/api/src/app.module.ts",
+    "apps/api/src/accounting-workspace.controller.ts",
+    "apps/web/src/routes.tsx",
+    "prisma/schema.prisma",
+    "prisma/migrations/20260927233000_operational_reporting/migration.sql"
+  ],
+  "protectedReason": "Approval Center is presentation/composition over canonical approval owners. Operational Reporting owns only saved report/schedule metadata and rebuildable projection evidence; financial and operational source truth remains in accepted owners.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": "",
+  "testEvidence": [
+    "apps/web/src/approval-center.spec.ts",
+    "apps/web/src/reporting-center.spec.ts",
+    "modules/operational-reporting/src/operational-reporting.spec.ts"
+  ]
+}

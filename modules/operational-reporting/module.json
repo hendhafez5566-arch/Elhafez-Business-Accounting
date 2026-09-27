@@ -1,0 +1,12 @@
+{
+  "name": "operational-reporting",
+  "publicApi": ["src/public/index.ts", "src/public/nest.ts"],
+  "ownedTables": ["or_saved_reports", "or_report_schedules"],
+  "allowedDependencies": ["@elhafez/contracts", "@elhafez/platform-core"],
+  "dataScope": "COMPANY",
+  "criticalInvariants": [
+    "Saved reports and schedules are company isolated and never store canonical business balances or operational truth.",
+    "Private saved reports are visible only to their owner actor; company reports are visible to authorized company users.",
+    "A schedule references one saved report in the same company and stores configuration only; delivery execution remains an integration/orchestration responsibility."
+  ]
+}
