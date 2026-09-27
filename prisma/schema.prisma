@@ -4013,3 +4013,153 @@ model OrReportSchedule {
   @@index([companyId, savedReportId, enabled])
   @@map("or_report_schedules")
 }
+
+
+// ERP Product Completion — pre-PO sourcing. Purchase Order truth remains procurement-finance.
+model PsNumberCounter {
+  companyId String @map("company_id")
+  branchId  String @map("branch_id")
+  kind      String
+  nextValue Int    @default(0) @map("next_value")
+
+  @@id([companyId, branchId, kind])
+  @@map("ps_number_counters")
+}
+
+model PsRequisition {
+  id             String              @id
+  companyId      String              @map("company_id")
+  branchId       String              @map("branch_id")
+  number         String
+  status         String
+  requestedBy    String              @map("requested_by")
+  needByDate     DateTime?           @map("need_by_date") @db.Date
+  currency       String?
+  notes          String?
+  approvedBy     String?             @map("approved_by")
+  approvedAt     DateTime?           @map("approved_at")
+  approvalReason String?             @map("approval_reason")
+  createdAt      DateTime            @default(now()) @map("created_at")
+  updatedAt      DateTime            @updatedAt @map("updated_at")
+  lines          PsRequisitionLine[]
+  rfqs           PsRfq[]
+  awards         PsAward[]
+
+  @@unique([companyId, branchId, id])
+  @@unique([companyId, branchId, number])
+  @@index([companyId, branchId, status, createdAt])
+  @@map("ps_requisitions")
+}
+
+model PsRequisitionLine {
+  id              String        @id
+  companyId       String        @map("company_id")
+  branchId        String        @map("branch_id")
+  requisitionId   String        @map("requisition_id")
+  itemReference   String        @map("item_reference")
+  description     String?
+  quantity        Decimal       @db.Decimal(30, 18)
+  targetUnitPrice Decimal?      @map("target_unit_price") @db.Decimal(30, 18)
+  requiredDate    DateTime?     @map("required_date") @db.Date
+  requisition     PsRequisition @relation(fields: [companyId, branchId, requisitionId], references: [companyId, branchId, id], onDelete: Restrict)
+
+  @@unique([companyId, branchId, requisitionId, id])
+  @@index([companyId, branchId, requisitionId])
+  @@map("ps_requisition_lines")
+}
+
+model PsRfq {
+  id               String          @id
+  companyId        String          @map("company_id")
+  branchId         String          @map("branch_id")
+  requisitionId    String          @map("requisition_id")
+  number           String
+  status           String
+  responseDeadline DateTime        @map("response_deadline") @db.Date
+  notes            String?
+  createdBy        String          @map("created_by")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  sentAt           DateTime?       @map("sent_at")
+  closedAt         DateTime?       @map("closed_at")
+  requisition      PsRequisition   @relation(fields: [companyId, branchId, requisitionId], references: [companyId, branchId, id], onDelete: Restrict)
+  suppliers        PsRfqSupplier[]
+  bids             PsSupplierBid[]
+  awards           PsAward[]
+
+  @@unique([companyId, branchId, id])
+  @@unique([companyId, branchId, number])
+  @@index([companyId, branchId, requisitionId, status])
+  @@map("ps_rfqs")
+}
+
+model PsRfqSupplier {
+  companyId       String @map("company_id")
+  branchId        String @map("branch_id")
+  rfqId           String @map("rfq_id")
+  supplierPartyId String @map("supplier_party_id")
+  rfq              PsRfq @relation(fields: [companyId, branchId, rfqId], references: [companyId, branchId, id], onDelete: Restrict)
+
+  @@id([companyId, branchId, rfqId, supplierPartyId])
+  @@index([companyId, branchId, supplierPartyId])
+  @@map("ps_rfq_suppliers")
+}
+
+model PsSupplierBid {
+  id              String              @id
+  companyId       String              @map("company_id")
+  branchId        String              @map("branch_id")
+  rfqId           String              @map("rfq_id")
+  supplierPartyId String              @map("supplier_party_id")
+  currency        String
+  validUntil      DateTime?           @map("valid_until") @db.Date
+  deliveryDate    DateTime?           @map("delivery_date") @db.Date
+  terms           String?
+  status          String
+  submittedAt     DateTime            @default(now()) @map("submitted_at")
+  rfq             PsRfq               @relation(fields: [companyId, branchId, rfqId], references: [companyId, branchId, id], onDelete: Restrict)
+  lines           PsSupplierBidLine[]
+  awards          PsAward[]
+
+  @@unique([companyId, branchId, id])
+  @@index([companyId, branchId, rfqId, status])
+  @@index([companyId, branchId, rfqId, supplierPartyId])
+  @@map("ps_supplier_bids")
+}
+
+model PsSupplierBidLine {
+  id                String        @id
+  companyId         String        @map("company_id")
+  branchId          String        @map("branch_id")
+  bidId             String        @map("bid_id")
+  requisitionLineId String        @map("requisition_line_id")
+  quantity          Decimal       @db.Decimal(30, 18)
+  unitPrice         Decimal       @map("unit_price") @db.Decimal(30, 18)
+  taxCode           String?       @map("tax_code")
+  bid               PsSupplierBid @relation(fields: [companyId, branchId, bidId], references: [companyId, branchId, id], onDelete: Restrict)
+
+  @@unique([companyId, branchId, bidId, id])
+  @@index([companyId, branchId, bidId])
+  @@map("ps_supplier_bid_lines")
+}
+
+model PsAward {
+  id              String        @id
+  companyId       String        @map("company_id")
+  branchId        String        @map("branch_id")
+  requisitionId   String        @map("requisition_id")
+  rfqId           String        @map("rfq_id")
+  bidId           String        @map("bid_id")
+  supplierPartyId String        @map("supplier_party_id")
+  reason          String
+  awardedBy       String        @map("awarded_by")
+  awardedAt       DateTime      @map("awarded_at")
+  purchaseOrderId String?       @map("purchase_order_id")
+  requisition     PsRequisition @relation(fields: [companyId, branchId, requisitionId], references: [companyId, branchId, id], onDelete: Restrict)
+  rfq             PsRfq         @relation(fields: [companyId, branchId, rfqId], references: [companyId, branchId, id], onDelete: Restrict)
+  bid             PsSupplierBid @relation(fields: [companyId, branchId, bidId], references: [companyId, branchId, id], onDelete: Restrict)
+
+  @@unique([companyId, branchId, id])
+  @@unique([companyId, branchId, rfqId])
+  @@index([companyId, branchId, requisitionId])
+  @@map("ps_awards")
+}
