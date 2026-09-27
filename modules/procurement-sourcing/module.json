@@ -1,0 +1,15 @@
+{
+  "name":"procurement-sourcing",
+  "publicApi":["src/public/index.ts","src/public/nest.ts"],
+  "ownedTables":["ps_number_counters","ps_requisitions","ps_requisition_lines","ps_rfqs","ps_rfq_suppliers","ps_supplier_bids","ps_supplier_bid_lines","ps_awards"],
+  "allowedDependencies":["@elhafez/contracts","@elhafez/platform-core","@elhafez/supplier-management","@elhafez/procurement-finance"],
+  "dataScope":"COMPANY_BRANCH",
+  "branchScopedTables":["ps_number_counters","ps_requisitions","ps_requisition_lines","ps_rfqs","ps_rfq_suppliers","ps_supplier_bids","ps_supplier_bid_lines","ps_awards"],
+  "criticalInvariants":[
+    "Sourcing never writes or duplicates Purchase Order, receipt, supplier invoice, payable, or payment truth.",
+    "RFQs may only originate from approved requisitions in the same company and branch.",
+    "Only approved active suppliers may be invited, bid, or receive an award.",
+    "Award selection is explicit and audited; lowest price is displayed for comparison but is never auto-awarded.",
+    "Award-to-PO conversion is idempotent and calls procurement-finance through its public application API."
+  ]
+}
