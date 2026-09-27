@@ -1,0 +1,13 @@
+{
+  "name": "automation-workflow",
+  "publicApi": ["src/public/index.ts", "src/public/nest.ts"],
+  "ownedTables": ["aw_workflow_definitions", "aw_workflow_runs", "aw_workflow_execution_logs"],
+  "allowedDependencies": ["@elhafez/contracts", "@elhafez/platform-core"],
+  "dataScope": "COMPANY",
+  "criticalInvariants": [
+    "Workflow orchestration state is company isolated and never becomes source truth for another business module.",
+    "A trigger correlation key creates at most one run per workflow.",
+    "Due work is leased before execution so concurrent workers cannot execute the same run simultaneously.",
+    "Failed actions retry only within the configured bound and then transition to dead-letter state."
+  ]
+}

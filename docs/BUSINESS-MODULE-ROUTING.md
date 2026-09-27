@@ -67,6 +67,7 @@ Before editing:
 | SaaS plan/subscription/payment/company-code/tenant commercial access, platform-owner control plane | **existing** `saas-control-plane` |
 | custom fields | `custom-fields` |
 | numbering | `document-numbering` |
+| automation, workflow, trigger/condition/action, scheduler, delayed action, retry, escalation | `automation-workflow` |
 | import/export | `data-exchange` |
 | backup/support jobs | `platform-operations` |
 

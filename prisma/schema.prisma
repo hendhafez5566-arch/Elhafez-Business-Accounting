@@ -189,12 +189,14 @@ model PcFile {
 model PcNotification {
   id        String    @id @default(uuid())
   userId    String    @map("user_id")
+  companyId String?   @map("company_id")
   type      String
   payload   Json      @default("{}")
   readAt    DateTime? @map("read_at")
   createdAt DateTime  @default(now()) @map("created_at")
 
   @@index([userId, readAt])
+  @@index([userId, companyId, readAt])
   @@map("pc_notifications")
 }
 
@@ -3831,4 +3833,141 @@ model TbkBookingHistory {
 
   @@index([companyId, branchId, bookingId, occurredAt])
   @@map("tbk_booking_history")
+}
+
+
+// ERP Product Completion — reusable company-scoped custom fields.
+model CufFieldDefinition {
+  id         String   @id
+  companyId  String   @map("company_id")
+  entityType String   @map("entity_type")
+  key        String
+  label      String
+  fieldType  String   @map("field_type")
+  required   Boolean  @default(false)
+  options    Json     @default("[]")
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  values     CufFieldValue[]
+
+  @@unique([companyId, id])
+  @@unique([companyId, entityType, key])
+  @@index([companyId, entityType, active])
+  @@map("cuf_field_definitions")
+}
+
+model CufFieldValue {
+  id           String             @id
+  companyId    String             @map("company_id")
+  definitionId String             @map("definition_id")
+  entityType   String             @map("entity_type")
+  entityId     String             @map("entity_id")
+  valueJson    Json               @map("value_json")
+  updatedBy    String             @map("updated_by")
+  updatedAt    DateTime           @updatedAt @map("updated_at")
+  definition   CufFieldDefinition @relation(fields: [companyId, definitionId], references: [companyId, id], onDelete: Restrict)
+
+  @@unique([companyId, definitionId, entityId])
+  @@index([companyId, entityType, entityId])
+  @@map("cuf_field_values")
+}
+
+// ERP Product Completion — canonical document numbering policies and atomic counters.
+model DnNumberingPolicy {
+  id             String               @id
+  companyId      String               @map("company_id")
+  documentType   String               @map("document_type")
+  branchScope    String               @map("branch_scope")
+  prefixTemplate String               @map("prefix_template")
+  padding        Int
+  resetPeriod    String               @map("reset_period")
+  active         Boolean              @default(true)
+  createdAt      DateTime             @default(now()) @map("created_at")
+  updatedAt      DateTime             @updatedAt @map("updated_at")
+  counters       DnNumberingCounter[]
+
+  @@unique([companyId, id])
+  @@unique([companyId, documentType, branchScope])
+  @@index([companyId, documentType, active])
+  @@map("dn_numbering_policies")
+}
+
+model DnNumberingCounter {
+  companyId   String            @map("company_id")
+  policyId    String            @map("policy_id")
+  periodKey   String            @map("period_key")
+  currentValue Int              @map("current_value")
+  policy      DnNumberingPolicy @relation(fields: [companyId, policyId], references: [companyId, id], onDelete: Restrict)
+
+  @@id([companyId, policyId, periodKey])
+  @@map("dn_numbering_counters")
+}
+
+
+// ERP Product Completion — platform-wide automation/workflow orchestration state.
+model AwWorkflowDefinition {
+  id           String   @id
+  companyId    String   @map("company_id")
+  code         String
+  name         String
+  triggerEvent String   @map("trigger_event")
+  status       String   @default("DRAFT")
+  version      Int      @default(1)
+  specJson     Json     @map("spec_json")
+  createdBy    String   @map("created_by")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  runs         AwWorkflowRun[]
+
+  @@unique([companyId, id])
+  @@unique([companyId, code])
+  @@index([companyId, triggerEvent, status])
+  @@map("aw_workflow_definitions")
+}
+
+model AwWorkflowRun {
+  id             String               @id
+  companyId      String               @map("company_id")
+  branchId       String?              @map("branch_id")
+  workflowId     String               @map("workflow_id")
+  workflowVersion Int                 @map("workflow_version")
+  triggerEvent   String               @map("trigger_event")
+  correlationKey String               @map("correlation_key")
+  payloadJson    Json                 @map("payload_json")
+  specSnapshotJson Json               @map("spec_snapshot_json")
+  status         String               @default("PENDING")
+  currentStep    Int                  @default(0) @map("current_step")
+  attemptCount   Int                  @default(0) @map("attempt_count")
+  nextRunAt      DateTime?            @map("next_run_at")
+  waitingSignal  String?              @map("waiting_signal")
+  lastError      String?              @map("last_error")
+  leaseToken     String?              @map("lease_token")
+  leaseExpiresAt DateTime?            @map("lease_expires_at")
+  createdAt      DateTime             @default(now()) @map("created_at")
+  updatedAt      DateTime             @updatedAt @map("updated_at")
+  completedAt    DateTime?            @map("completed_at")
+  workflow       AwWorkflowDefinition @relation(fields: [companyId, workflowId], references: [companyId, id], onDelete: Restrict)
+  logs           AwWorkflowExecutionLog[]
+
+  @@unique([companyId, id])
+  @@unique([companyId, workflowId, correlationKey])
+  @@index([status, nextRunAt, leaseExpiresAt])
+  @@index([companyId, createdAt])
+  @@map("aw_workflow_runs")
+}
+
+model AwWorkflowExecutionLog {
+  id         String        @id
+  companyId  String        @map("company_id")
+  runId      String        @map("run_id")
+  stepIndex  Int           @map("step_index")
+  kind       String
+  status     String
+  detailJson Json          @map("detail_json")
+  occurredAt DateTime      @map("occurred_at")
+  run        AwWorkflowRun @relation(fields: [companyId, runId], references: [companyId, id], onDelete: Restrict)
+
+  @@index([companyId, runId, occurredAt])
+  @@map("aw_workflow_execution_logs")
 }

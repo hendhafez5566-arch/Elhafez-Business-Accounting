@@ -10,6 +10,7 @@ import { BookingsPage, RoomingPage, VisasPage } from './hajj-umrah-operations-pr
 import { TicketingPage, TransportPage, TripOperationsPage } from './hajj-umrah-operations-secondary-pages.js';
 import { HajjUmrahReadinessPage } from './hajj-umrah-readiness-page.js';
 import { SystemAdministrationPage } from './system-administration-page.js';
+import { PlatformFoundationsPage } from './platform-foundations-page.js';
 import { TourismServicesPage } from './tourism-services-page.js';
 import { TourismOperationsPage } from './tourism-operations-page.js';
 import { TourismContractInventoryPage } from './tourism-contract-inventory-page.js';
@@ -18,6 +19,7 @@ import { ExecutiveDashboardPage, ManagementWorkCenterPage } from './management-c
 import { AppearanceSettingsPage } from './ui/appearance-settings-page.js';
 import { AccountingWorkspacePage } from './accounting-workspace-page.js';
 import { AccountSettingsPage } from './account-settings-page.js';
+import { NotificationCenterPage } from './notification-center-page.js';
 import type { IconName } from './ui/icons.js';
 
 export interface AppRoute {
@@ -45,7 +47,11 @@ export function defineRoutes(...routes: readonly AppRoute[]): readonly AppRoute[
 export const foundationRoutes = defineRoutes(
   { id: 'foundation', path: '/', label: 'الرئيسية', group: 'الإدارة والتحكم', icon: 'home', element: <ExecutiveDashboardPage /> },
   { id: 'management-exceptions', path: '/management/exceptions', label: 'مركز العمل والاستثناءات', group: 'الإدارة والتحكم', icon: 'tasks', element: <ManagementWorkCenterPage /> },
+  { id: 'notification-center', path: '/notifications', label: 'الإشعارات', group: 'الإدارة والتحكم', icon: 'bell', element: <NotificationCenterPage /> },
   { id: 'system-administration', path: '/system-administration', label: 'إدارة النظام', group: 'إدارة النظام', icon: 'settings', element: <SystemAdministrationPage /> },
+  { id: 'system-custom-fields', path: '/system-administration/custom-fields', label: 'الحقول المخصصة', group: 'إدارة النظام', icon: 'settings', element: <PlatformFoundationsPage initialTab="custom-fields" /> },
+  { id: 'system-document-numbering', path: '/system-administration/document-numbering', label: 'ترقيم المستندات', group: 'إدارة النظام', icon: 'settings', element: <PlatformFoundationsPage initialTab="numbering" /> },
+  { id: 'system-automation', path: '/system-administration/automation', label: 'الأتمتة وسير العمل', group: 'إدارة النظام', icon: 'tasks', element: <PlatformFoundationsPage initialTab="automation" /> },
 
   { id: 'crm-dashboard', path: '/crm/dashboard', label: 'لوحة العملاء والمبيعات', group: 'العملاء والمبيعات', icon: 'dashboard', element: <CrmSalesDashboardPage /> },
   { id: 'crm-customers', path: '/crm/customers', label: 'العملاء', group: 'العملاء والمبيعات', icon: 'customers', element: <CustomersPage /> },
