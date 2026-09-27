@@ -1,9 +1,9 @@
-import{Controller,Get,Headers,Param,Post,UnauthorizedException}from'@nestjs/common';
-import type{PlatformCoreApplicationService}from'@elhafez/platform-core';
+import{Controller,Get,Headers,Inject,Param,Post,UnauthorizedException}from'@nestjs/common';
+import{PlatformCoreApplicationService}from'@elhafez/platform-core';
 
 @Controller('notifications')
 export class UserNotificationsController{
- constructor(private readonly platform:PlatformCoreApplicationService){}
+ constructor(@Inject(PlatformCoreApplicationService)private readonly platform:PlatformCoreApplicationService){}
  @Get()async list(@Headers('authorization')authorization?:string,@Headers('x-company-id')companyId?:string,@Headers('x-branch-id')branchId?:string){
   const actorId=await this.actor(authorization,companyId,branchId);
   const items=await this.platform.listNotifications(actorId,companyId);
