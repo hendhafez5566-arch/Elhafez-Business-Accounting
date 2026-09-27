@@ -1,6 +1,6 @@
 import{useEffect,useMemo,useState,type FormEvent}from'react';
 import{ActionBar,Badge,Button,Card,DataGrid,DisclosureCard,EmptyState,ErrorState,FormField,Input,LoadingState,MetricCard,Select,Tabs,Toast}from'./ui.js';
-import{HttpReportingCenterClient,type ReportKey,type ReportSchedule,type ReportingCenterClient,type ReportingCenterData,type SavedReport}from'./reporting-center-client.js';
+import{HttpReportingCenterClient,type ReportKey,type ReportSchedule,type ReportingCenterClient,type ReportingCenterData}from'./reporting-center-client.js';
 import type{ReportRow}from'./accounting-client.js';
 
 type Tab='executive'|'financial'|'operations'|'saved';
@@ -22,7 +22,6 @@ const empty:ReportingCenterData={
  savedReports:[],schedules:[],
 };
 function errorMessage(error:unknown){return error instanceof Error?error.message:'تعذر تنفيذ العملية.';}
-function moneyRows(rows:readonly {currency:string;amount:string}[]){return rows.map(row=>[row.currency,row.amount]);}
 function reportRows(rows:readonly ReportRow[]){return rows.map(row=>[row.accountId??row.accountClass??'—',row.currency,row.amount]);}
 function csvValue(value:unknown){const text=String(value??'');return /[",\n]/.test(text)?'"'+text.replaceAll('"','""')+'"':text;}
 function downloadCsv(name:string,headers:readonly string[],rows:readonly (readonly unknown[])[]){const content='\uFEFF'+[headers,...rows].map(row=>row.map(csvValue).join(',')).join('\n');const url=URL.createObjectURL(new Blob([content],{type:'text/csv;charset=utf-8'}));const link=document.createElement('a');link.href=url;link.download=name+'.csv';link.click();URL.revokeObjectURL(url);}
