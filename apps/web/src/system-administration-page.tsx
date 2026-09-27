@@ -14,7 +14,7 @@ type DatasetOption={id:string;label:string;requiredFields:readonly string[];targ
 type DownloadPayload={fileName:string;contentType:string;contentBase64:string};
 type FilePayload={metadata:{id:string;contentType:string};contentBase64:string};
 
-function valueOf(value:unknown){if(value===null||value===undefined)return'—';if(typeof value==='boolean')return value?'نعم':'لا';if(typeof value==='object')return'بيانات محفوظة';return String(value);}
+function valueOf(value:unknown){if(value===null||value===undefined)return'—';if(typeof value==='boolean')return value?'نعم':'لا';if(typeof value==='object')return'بيانات محفوظة';const label:Record<string,string>={AVAILABLE:'متاح',UNAVAILABLE:'غير متاح',CURRENT:'متوافق',INCOMPLETE:'غير مكتمل'};return label[String(value)]??String(value);}
 function objectRecord(value:unknown):value is Record<string,unknown>{return Boolean(value)&&typeof value==='object'&&!Array.isArray(value);}
 function datasetOption(value:unknown):value is DatasetOption{return objectRecord(value)&&typeof value.id==='string'&&typeof value.label==='string'&&Array.isArray(value.requiredFields)&&Array.isArray(value.targetFields);}
 function downloadPayload(value:unknown):value is DownloadPayload{return objectRecord(value)&&typeof value.fileName==='string'&&typeof value.contentType==='string'&&typeof value.contentBase64==='string';}
