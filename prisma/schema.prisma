@@ -3933,6 +3933,7 @@ model AwWorkflowRun {
   triggerEvent   String               @map("trigger_event")
   correlationKey String               @map("correlation_key")
   payloadJson    Json                 @map("payload_json")
+  specSnapshotJson Json               @map("spec_snapshot_json")
   status         String               @default("PENDING")
   currentStep    Int                  @default(0) @map("current_step")
   attemptCount   Int                  @default(0) @map("attempt_count")
