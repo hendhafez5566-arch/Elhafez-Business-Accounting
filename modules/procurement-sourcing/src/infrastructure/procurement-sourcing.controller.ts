@@ -1,0 +1,28 @@
+import{Body,Controller,Get,Headers,Inject,Param,Patch,Post,UnauthorizedException}from'@nestjs/common';
+import{executionContext,type ExecutionContext}from'@elhafez/contracts';
+import{PlatformCoreApplicationService}from'@elhafez/platform-core';
+import{ProcurementSourcingApplicationService,type CreateRequisitionInput,type CreateRfqInput,type RecordSupplierBidInput,type UpdateRequisitionInput}from'../public/index.js';
+
+@Controller('procurement-sourcing')
+export class ProcurementSourcingController{
+ constructor(@Inject(ProcurementSourcingApplicationService)private readonly service:ProcurementSourcingApplicationService,@Inject(PlatformCoreApplicationService)private readonly platform:PlatformCoreApplicationService){}
+ @Get('requisitions')listRequisitions(@Headers('authorization')a?:string,@Headers('x-company-id')c?:string,@Headers('x-branch-id')b?:string){return this.service.listRequisitions(this.context(a,c,b));}
+ @Post('requisitions')createRequisition(@Headers('authorization')a:string|undefined,@Headers('x-company-id')c:string|undefined,@Headers('x-branch-id')b:string|undefined,@Body()input:CreateRequisitionInput){return this.service.createRequisition(this.context(a,c,b),input);}
+ @Get('requisitions/:id')getRequisition(@Headers('authorization')a:string|undefined,@Headers('x-company-id')c:string|undefined,@Headers('x-branch-id')b:string|undefined,@Param('id')id:string){return this.service.getRequisition(this.context(a,c,b),id);}
+ @Patch('requisitions/:id')updateRequisition(@Headers('authorization')a:string|undefined,@Headers('x-company-id')c:string|undefined,@Headers('x-branch-id')b:string|undefined,@Param('id')id:string,@Body()input:UpdateRequisitionInput){return this.service.updateDraftRequisition(this.context(a,c,b),id,input);}
+ @Post('requisitions/:id/submit')submit(@Headers('authorization')a:string|undefined,@Headers('x-company-id')c:string|undefined,@Headers('x-branch-id')b:string|undefined,@Param('id')id:string){return this.service.submitRequisition(this.context(a,c,b),id);}
+ @Post('requisitions/:id/decision')decision(@Headers('authorization')a:string|undefined,@Headers('x-company-id')c:string|undefined,@Headers('x-branch-id')b:string|undefined,@Param('id')id:string,@Body()input:{outcome:'APPROVED'|'REJECTED';reason:string}){return this.service.decideRequisition(this.context(a,c,b),id,input.outcome,input.reason);}
+ @Post('requisitions/:id/rfqs')createRfq(@Headers('authorization')a:string|undefined,@Headers('x-company-id')c:string|undefined,@Headers('x-branch-id')b:string|undefined,@Param('id')id:string,@Body()input:CreateRfqInput){return this.service.createRfq(this.context(a,c,b),id,input);}
+ @Get('rfqs')listRfqs(@Headers('authorization')a?:string,@Headers('x-company-id')c?:string,@Headers('x-branch-id')b?:string){return this.service.listRfqs(this.context(a,c,b));}
+ @Get('rfqs/:id')getRfq(@Headers('authorization')a:string|undefined,@Headers('x-company-id')c:string|undefined,@Headers('x-branch-id')b:string|undefined,@Param('id')id:string){return this.service.getRfq(this.context(a,c,b),id);}
+ @Post('rfqs/:id/suppliers')invite(@Headers('authorization')a:string|undefined,@Headers('x-company-id')c:string|undefined,@Headers('x-branch-id')b:string|undefined,@Param('id')id:string,@Body()input:{supplierReference:string}){return this.service.inviteSupplier(this.context(a,c,b),id,input.supplierReference);}
+ @Post('rfqs/:id/send')send(@Headers('authorization')a:string|undefined,@Headers('x-company-id')c:string|undefined,@Headers('x-branch-id')b:string|undefined,@Param('id')id:string){return this.service.sendRfq(this.context(a,c,b),id);}
+ @Post('rfqs/:id/bids')recordBid(@Headers('authorization')a:string|undefined,@Headers('x-company-id')c:string|undefined,@Headers('x-branch-id')b:string|undefined,@Param('id')id:string,@Body()input:RecordSupplierBidInput){return this.service.recordBid(this.context(a,c,b),id,input);}
+ @Get('rfqs/:id/bids')listBids(@Headers('authorization')a:string|undefined,@Headers('x-company-id')c:string|undefined,@Headers('x-branch-id')b:string|undefined,@Param('id')id:string){return this.service.listBids(this.context(a,c,b),id);}
+ @Post('rfqs/:id/bids/:bidId/withdraw')withdrawBid(@Headers('authorization')a:string|undefined,@Headers('x-company-id')c:string|undefined,@Headers('x-branch-id')b:string|undefined,@Param('id')id:string,@Param('bidId')bidId:string){return this.service.withdrawBid(this.context(a,c,b),id,bidId);}
+ @Get('rfqs/:id/comparison')compare(@Headers('authorization')a:string|undefined,@Headers('x-company-id')c:string|undefined,@Headers('x-branch-id')b:string|undefined,@Param('id')id:string){return this.service.compare(this.context(a,c,b),id);}
+ @Post('rfqs/:id/award')award(@Headers('authorization')a:string|undefined,@Headers('x-company-id')c:string|undefined,@Headers('x-branch-id')b:string|undefined,@Param('id')id:string,@Body()input:{bidId:string;reason:string}){return this.service.award(this.context(a,c,b),id,input.bidId,input.reason);}
+ @Get('awards')listAwards(@Headers('authorization')a?:string,@Headers('x-company-id')c?:string,@Headers('x-branch-id')b?:string){return this.service.listAwards(this.context(a,c,b));}
+ @Post('awards/:id/purchase-order')createPo(@Headers('authorization')a:string|undefined,@Headers('x-company-id')c:string|undefined,@Headers('x-branch-id')b:string|undefined,@Param('id')id:string){return this.service.createPurchaseOrderFromAward(this.context(a,c,b),id);}
+ private context(a?:string,c?:string,b?:string):ExecutionContext{if(!a?.startsWith('Bearer ')||!c||!b)throw new UnauthorizedException('authenticated company and branch context required');const token=a.slice(7);return executionContext(c,b,token);}
+}
