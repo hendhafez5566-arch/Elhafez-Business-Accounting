@@ -1,0 +1,17 @@
+import assert from'node:assert/strict';
+import test from'node:test';
+import type{OperationalReportingAccess}from'./application/operational-reporting.ports.js';
+import{OperationalReportingApplicationService}from'./application/operational-reporting.application-service.js';
+import{InMemoryOperationalReportingRepository}from'./infrastructure/in-memory-operational-reporting.repository.js';
+
+class Access implements OperationalReportingAccess{deny='';seen:string[]=[];async requirePermission(_context:{companyId:string;actorId:string},permission:string){this.seen.push(permission);if(permission===this.deny)throw new Error('permission denied');}async auditOnce(){}}
+const a={companyId:'company-a',actorId:'actor-a'},b={companyId:'company-a',actorId:'actor-b'};
+function setup(){let id=0;const repo=new InMemoryOperationalReportingRepository(),access=new Access(),service=new OperationalReportingApplicationService(repo,access,()=>new Date('2026-09-27T20:00:00Z'),()=>('id-'+(++id)));return{repo,access,service};}
+
+test('private saved reports stay private while company reports require manage permission',async()=>{const s=setup();const own=await s.service.createSavedReport(a,{name:'تحصيلاتي',reportKey:'AR_AGING',filters:{overdue:true}});assert.equal((await s.service.listSavedReports(b)).length,0);const company=await s.service.createSavedReport(a,{name:'مؤشرات الإدارة',reportKey:'EXECUTIVE_OVERVIEW',visibility:'COMPANY'});assert.equal((await s.service.listSavedReports(b)).some(row=>row.id===company.id),true);assert.ok(s.access.seen.includes('platform.configuration.manage'));assert.equal(own.visibility,'PRIVATE');});
+
+test('company isolation rejects cross-company saved-report access',async()=>{const s=setup();const saved=await s.service.createSavedReport(a,{name:'تقرير',reportKey:'TREASURY'});assert.equal((await s.service.listSavedReports({...a,companyId:'company-b'})).length,0);await assert.rejects(()=>s.service.updateSavedReport({...a,companyId:'company-b'},saved.id,{name:'x'}),/not found/);});
+
+test('schedules validate cadence fields and email recipient without owning delivery execution',async()=>{const s=setup();const saved=await s.service.createSavedReport(a,{name:'شهري',reportKey:'FINANCIAL_STATEMENTS'});await assert.rejects(()=>s.service.createSchedule(a,{savedReportId:saved.id,cadence:'WEEKLY',hourUtc:8,channel:'IN_APP'}),/weekday/);await assert.rejects(()=>s.service.createSchedule(a,{savedReportId:saved.id,cadence:'DAILY',hourUtc:8,channel:'EMAIL'}),/recipient/);const schedule=await s.service.createSchedule(a,{savedReportId:saved.id,cadence:'MONTHLY',hourUtc:7,dayOfMonth:5,channel:'EMAIL',recipient:'finance@example.test'});assert.equal(schedule.dayOfMonth,5);assert.equal(schedule.weekday,null);assert.equal((await s.service.listSchedules(a,saved.id)).length,1);});
+
+test('ordinary reporting readers cannot create company-visible reports or schedules',async()=>{const s=setup();s.access.deny='platform.configuration.manage';await assert.rejects(()=>s.service.createSavedReport(a,{name:'عام',reportKey:'CRM_SALES',visibility:'COMPANY'}),/permission denied/);const own=await s.service.createSavedReport(a,{name:'خاص',reportKey:'CRM_SALES'});await assert.rejects(()=>s.service.createSchedule(a,{savedReportId:own.id,cadence:'DAILY',hourUtc:8,channel:'IN_APP'}),/permission denied/);});
