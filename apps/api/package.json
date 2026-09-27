@@ -64,6 +64,7 @@
     "@nestjs/platform-express": "11.2.5",
     "prisma": "6.19.0",
     "@elhafez/custom-fields": "workspace:*",
-    "@elhafez/document-numbering": "workspace:*"
+    "@elhafez/document-numbering": "workspace:*",
+    "@elhafez/automation-workflow": "workspace:*"
   }
 }
