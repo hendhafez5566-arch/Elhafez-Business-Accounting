@@ -3,6 +3,8 @@ import { APP_GUARD } from '@nestjs/core';
 import { DataExchangeModule } from '@elhafez/data-exchange/nest';
 import { PlatformOperationsModule } from '@elhafez/platform-operations/nest';
 import { PlatformOperationsApplicationService } from '@elhafez/platform-operations';
+import { CustomFieldsModule } from '@elhafez/custom-fields/nest';
+import { DocumentNumberingModule } from '@elhafez/document-numbering/nest';
 import { PlatformCoreApplicationService, PlatformCoreModule } from '@elhafez/platform-core';
 import { CurrencyFxModule } from '@elhafez/currency-fx';
 import { PeriodControlModule } from '@elhafez/period-control';
@@ -88,7 +90,7 @@ import { AdvancedAccountingController, TourismContractInventoryController } from
 /** Composition root only. Business modules are registered here through public module APIs. */
 @Module({
   imports: [
-    PlatformCoreModule, DataExchangeModule, PlatformOperationsModule, PartyRegistryModule, AgentManagementModule, CustomerManagementModule, CrmLeadsModule, CrmFollowupsModule, QuotationsModule, SupplierManagementModule, SupplierEvaluationModule, SupplierDisputesModule, ProcurementFulfillmentModule, TravelerManagementModule,
+    PlatformCoreModule, DataExchangeModule, PlatformOperationsModule, CustomFieldsModule, DocumentNumberingModule, PartyRegistryModule, AgentManagementModule, CustomerManagementModule, CrmLeadsModule, CrmFollowupsModule, QuotationsModule, SupplierManagementModule, SupplierEvaluationModule, SupplierDisputesModule, ProcurementFulfillmentModule, TravelerManagementModule,
     CurrencyFxModule, PeriodControlModule, GeneralLedgerModule, FinancialControlsModule, TaxModule, BillingSubledgersModule, TreasurySettlementModule, PartyAccountingModule,
     ExpenseCommissionRecognitionModule, CostBudgetAccountingModule, AssetsFinancingModule, ProcurementFinanceModule, TourismContractInventoryModule,
     TourismFinanceOrchestrationModule, TourismProgramsModule, TourismItinerariesModule, TourismBookingsModule, StandaloneServicesModule, ServiceFulfillmentModule, ServiceVouchersModule, HajjUmrahSeasonsModule, HajjUmrahProgramsModule, HajjUmrahBookingsModule, HajjUmrahRoomingModule, HajjUmrahVisaOperationsModule, HajjUmrahTicketingModule, HajjUmrahTransportOperationsModule, HajjUmrahTripOperationsModule, HajjUmrahReadinessModule, FinancialReportingModule, SaasControlPlaneModule, Ac14MigrationModule,
