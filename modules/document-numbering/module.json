@@ -1,0 +1,12 @@
+{
+  "name": "document-numbering",
+  "publicApi": ["src/public/index.ts", "src/public/nest.ts"],
+  "ownedTables": ["dn_numbering_policies", "dn_numbering_counters"],
+  "allowedDependencies": ["@elhafez/contracts", "@elhafez/platform-core"],
+  "dataScope": "COMPANY",
+  "criticalInvariants": [
+    "Numbering policies and counters are strictly company-scoped.",
+    "At most one canonical policy exists for each company, document type and branch scope.",
+    "Sequence allocation is atomic and never produces duplicate numbers for the same policy and reset period."
+  ]
+}
