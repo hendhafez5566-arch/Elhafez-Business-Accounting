@@ -1,0 +1,26 @@
+{
+  "id": "erp-product-completion-automation",
+  "summary": "Implement the owner-approved Automation & Workflow Engine as a database-backed orchestration owner with trigger conditions, actions, delay, approval waiting signals, escalation actions, retry/backoff, dead-letter state and execution audit evidence.",
+  "type": "phase",
+  "allowedModules": ["automation-workflow"],
+  "allowedPaths": [
+    ".changes/erp-product-completion-automation.json",
+    "apps/api/package.json",
+    "apps/api/src/app.module.ts",
+    "pnpm-lock.yaml",
+    "prisma/schema.prisma",
+    "prisma/migrations/20260927210000_automation_workflow/migration.sql",
+    "docs/BUSINESS-MODULE-ARCHITECTURE.md",
+    "docs/BUSINESS-MODULE-ROUTING.md"
+  ],
+  "protectedPaths": [
+    "modules/automation-workflow/module.json",
+    "apps/api/src/app.module.ts",
+    "prisma/schema.prisma",
+    "prisma/migrations/20260927210000_automation_workflow/migration.sql"
+  ],
+  "protectedReason": "Automation is now explicitly routed to one canonical orchestration owner. The module stores workflow/orchestration state only and cannot mutate another owner's tables.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": "",
+  "testEvidence": ["modules/automation-workflow/src/automation-workflow.spec.ts"]
+}
