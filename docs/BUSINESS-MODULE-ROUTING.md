@@ -45,6 +45,7 @@ Before editing:
 | follow-up | `crm-followups` |
 | quotation | `quotations` |
 | مورد supplier operational profile/approval | `supplier-management` |
+| purchase requisition / PR / RFQ / supplier bid / quote comparison / sourcing award | `procurement-sourcing` |
 | purchase order / supplier commitment | **existing** `procurement-finance` |
 | receiving / procurement execution | `procurement-fulfillment` |
 | supplier evaluation | `supplier-evaluation` |
