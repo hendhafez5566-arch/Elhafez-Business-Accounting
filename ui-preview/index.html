@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ELHAFEZ UI Refresh Preview</title>
+<style>
+:root{
+  --font-family:Tahoma,Arial,sans-serif;--font-size-base:16px;--font-size-sm:.875rem;--font-size-lg:1.125rem;--font-size-xl:1.5rem;--line-height:1.65;
+  --space-1:.5rem;--space-2:1rem;--space-3:1.5rem;--space-4:2rem;--radius-sm:.375rem;--radius-md:.625rem;--radius-lg:.875rem;--radius-xl:1.5rem;
+  --canvas:#f6f4ee;--surface:#fff;--subtle:#f1ede2;--border:#e1dbc8;--text:#1c2b2e;--muted:#5c6e70;--primary:#0f6b63;--primary-strong:#0a4642;
+  --sidebar:#0b2e2c;--sidebar-hover:#123f3c;--accent:#c08a3e;--accent-soft:#f3e2c2;--danger:#b42318;--danger-soft:#fee4e2;--warning:#b54708;--warning-soft:#fef0c7;
+  --gradient:linear-gradient(155deg,#0b2e2c 0%,#0f6b63 62%,#16897d 100%);--shadow-sm:0 1px 3px rgba(11,34,33,.08);--shadow-card:0 2px 8px rgba(11,34,33,.06),0 16px 32px -12px rgba(11,34,33,.16);
+}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:var(--font-family);background:var(--canvas);color:var(--text);line-height:var(--line-height)}button,input{font:inherit}
+.preview-switch{position:fixed;z-index:100;inset-block-start:12px;inset-inline-start:12px;display:flex;gap:6px;padding:6px;border:1px solid var(--border);border-radius:999px;background:rgba(255,255,255,.95);box-shadow:var(--shadow-card)}
+.preview-switch button{border:0;border-radius:999px;padding:.45rem .8rem;cursor:pointer;background:transparent;color:var(--text);font-weight:700}
+.preview-switch button.active{background:var(--primary);color:#fff}
+.ui-button{min-height:2.45rem;border:1px solid transparent;border-radius:var(--radius-md);padding:.62rem .85rem;cursor:pointer;font-weight:700}.ui-button--primary{color:#fff;background:var(--primary)}.ui-button--ghost{background:transparent;color:inherit}
+.ui-input{width:100%;min-height:2.5rem;padding:.62rem .85rem;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--surface);color:var(--text)}
+.ui-field{display:grid;gap:.35rem}.ui-field__label{font-weight:700}.ui-card{padding:var(--space-3);border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--surface);box-shadow:var(--shadow-card)}.ui-card h2{margin-top:0;font-size:var(--font-size-lg)}
+.tenant-entry-shell{min-height:100vh;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);background:var(--canvas)}
+.tenant-entry-panel{position:relative;display:flex;flex-direction:column;justify-content:space-between;padding:clamp(2rem,5vw,4rem);color:#fbf8f0;background:var(--gradient);overflow:hidden}
+.tenant-entry-panel:before{content:'';position:absolute;inset:0;opacity:.16;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='none' stroke='%23f3e2c2' stroke-width='1'%3E%3Cpath d='M60 4 L92 30 92 90 60 116 28 90 28 30 Z'/%3E%3Cpath d='M60 4 L60 116 M28 30 L92 90 M92 30 L28 90'/%3E%3Ccircle cx='60' cy='60' r='16'/%3E%3C/g%3E%3C/svg%3E");background-size:120px 120px}
+.tenant-entry-panel:after{content:'';position:absolute;inset-inline-end:-18%;inset-block-end:-22%;width:26rem;height:26rem;border-radius:50%;background:radial-gradient(circle,rgba(192,138,62,.5),transparent 70%)}
+.tenant-entry-panel__top,.tenant-entry-panel__features{position:relative}.tenant-entry-panel__top{display:grid;gap:.4rem}.tenant-entry-panel__mark{width:3rem;height:3rem;display:grid;place-items:center;border:1px solid rgba(243,226,194,.7);border-radius:50%;color:var(--accent-soft);font-weight:800;font-size:1.15rem;margin-bottom:1rem}
+.tenant-entry-panel__eyebrow{letter-spacing:.16em;font-size:.875rem;color:#ead7b5}.tenant-entry-panel__title{margin:0;font-size:clamp(1.75rem,3vw,2.5rem);font-weight:800;line-height:1.25;max-width:16ch}.tenant-entry-panel__lede{margin:.75rem 0 0;max-width:34ch;color:#e7efed;font-size:1.125rem}
+.tenant-entry-panel__features{display:grid;gap:1rem;margin-top:2rem;padding:0;list-style:none}.tenant-entry-panel__feature{display:flex;align-items:flex-start;gap:.75rem;padding-top:1rem;border-top:1px solid rgba(255,255,255,.16)}.tenant-entry-panel__feature b{display:block}.tenant-entry-panel__feature div span{display:block;color:#c9d8d5;font-size:.875rem}.tenant-entry-panel__feature-index{color:var(--accent-soft);font-weight:800;min-width:1.5rem}
+.tenant-entry-form-side{display:grid;place-items:center;padding:2rem}.tenant-entry-card{width:min(100%,26rem);display:grid;gap:1.5rem;padding:clamp(1.5rem,4vw,2.5rem);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-xl);box-shadow:var(--shadow-card)}.tenant-entry-card h1,.tenant-entry-card p{margin:0}.tenant-entry-card h1{font-size:1.5rem}.tenant-entry-brand{font-weight:800;letter-spacing:.1em;color:var(--primary);font-size:.875rem}.tenant-entry-note{font-size:.875rem;color:var(--muted)}
+.app-shell{min-height:100vh;display:grid;grid-template-columns:minmax(0,1fr) 17rem;grid-template-rows:auto 1fr;grid-template-areas:'topbar sidebar' 'main sidebar';direction:ltr}.app-shell>*{direction:rtl}.app-sidebar{grid-area:sidebar;height:100vh;position:sticky;top:0;padding:1rem;background:var(--gradient);color:#fff;overflow:auto}.app-sidebar__brand{min-height:3rem;display:flex;align-items:center;gap:.5rem;margin-bottom:1rem}.app-sidebar__mark{width:2.25rem;height:2.25rem;display:grid;place-items:center;border:1px solid rgba(255,255,255,.35);border-radius:50%;font-weight:800}.app-sidebar__brand-text{font-weight:800;letter-spacing:.08em}
+.app-navigation{display:grid;gap:1rem}.nav-group{display:grid;gap:.2rem}.nav-label{margin:.25rem .5rem;color:rgba(255,255,255,.62);font-size:.875rem}.app-navigation a{display:flex;align-items:center;gap:.7rem;padding:.55rem .65rem;border-radius:var(--radius-md);color:#fff;text-decoration:none}.app-navigation a.active{background:var(--primary);box-shadow:inset 3px 0 0 var(--accent)}.app-navigation a:hover{background:var(--sidebar-hover)}
+.app-topbar{grid-area:topbar;display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.8rem 1.5rem;background:var(--surface);border-bottom:1px solid var(--border);box-shadow:var(--shadow-sm);position:sticky;top:0;z-index:10}.identity{display:flex;gap:.55rem;align-items:baseline}.identity span{color:var(--muted);font-size:.875rem}.app-main{grid-area:main;min-width:0}.app-content{max-width:96rem;margin:auto;padding:1.5rem}.page-header{margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:1px solid var(--border)}.page-header p{margin:0 0 .3rem;color:var(--primary-strong);font-weight:800;font-size:.875rem}.page-header p:before{content:'●';color:var(--accent);margin-left:.45rem}.page-header h1{margin:0;font-size:1.55rem}
+.metric-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}.metric{display:grid;gap:.35rem;padding:1.5rem;border:1px solid var(--border);border-inline-start:4px solid var(--primary);border-radius:var(--radius-lg);background:var(--surface);box-shadow:var(--shadow-card)}.metric.error{border-inline-start-color:var(--danger)}.metric.warn{border-inline-start-color:var(--warning)}.metric span{color:var(--muted);font-size:.875rem;font-weight:700}.metric strong{font-size:2rem;line-height:1.1}
+.dashboard-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.5rem;margin-top:1.5rem}.dash-stat{display:flex;justify-content:space-between;gap:1rem;padding:.5rem 0;border-bottom:1px solid var(--border)}.dash-stat:last-child{border-bottom:0}.dash-stat dt{color:var(--muted);font-size:.875rem}.dash-stat dd{margin:0;font-weight:800;text-align:end}.dash-link{display:inline-flex;margin-top:1rem;color:var(--primary-strong);font-weight:700;text-decoration:none}
+.table-card{margin-top:1.5rem}.table-wrap{overflow:auto;border:1px solid var(--border);border-radius:var(--radius-md)}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:.7rem 1rem;text-align:start;border-bottom:1px solid var(--border)}th{background:var(--subtle);color:var(--primary-strong);font-size:.875rem}.badge{display:inline-flex;border-radius:999px;padding:.25rem .65rem;font-size:.875rem;font-weight:700}.badge.critical{color:var(--danger);background:var(--danger-soft)}.badge.high{color:var(--warning);background:var(--warning-soft)}
+.hidden{display:none!important}
+@media(max-width:900px){.tenant-entry-shell{grid-template-columns:1fr}.tenant-entry-panel{padding:2.25rem 1.5rem;min-height:15rem}.tenant-entry-panel__features{display:none}.app-shell{grid-template-columns:1fr;grid-template-areas:'topbar' 'main'}.app-sidebar{display:none}.metric-grid,.dashboard-grid{grid-template-columns:1fr}.app-content{padding:1rem}.preview-switch{inset-block-start:auto;inset-block-end:12px}}
+</style>
+</head>
+<body>
+<div class="preview-switch" aria-label="اختيار المعاينة">
+  <button id="showLogin" class="active">شاشة الدخول</button>
+  <button id="showDashboard">الداشبورد</button>
+</div>
+
+<section id="loginPreview">
+<main class="tenant-entry-shell" dir="rtl">
+  <section class="tenant-entry-panel">
+    <div class="tenant-entry-panel__top">
+      <div class="tenant-entry-panel__mark">ح</div>
+      <span class="tenant-entry-panel__eyebrow">ELHAFEZ TECHNOLOGY</span>
+      <h2 class="tenant-entry-panel__title">منصة الحافظ لإدارة الأعمال</h2>
+      <p class="tenant-entry-panel__lede">نظام واحد يجمع المحاسبة، الحج والعمرة، السياحة، والمبيعات لإدارة شركتك من مكان واحد.</p>
+    </div>
+    <ul class="tenant-entry-panel__features">
+      <li class="tenant-entry-panel__feature"><span class="tenant-entry-panel__feature-index">01</span><div><b>محاسبة متكاملة</b><span>دفتر أستاذ، فروع، وتقارير مالية لحظية.</span></div></li>
+      <li class="tenant-entry-panel__feature"><span class="tenant-entry-panel__feature-index">02</span><div><b>عمليات الحج والعمرة</b><span>حجوزات، تراخيص، وإدارة المعتمرين في مكان واحد.</span></div></li>
+      <li class="tenant-entry-panel__feature"><span class="tenant-entry-panel__feature-index">03</span><div><b>مبيعات وعملاء</b><span>عروض أسعار ومتابعة عملاء بلا تشتت.</span></div></li>
+    </ul>
+  </section>
+  <section class="tenant-entry-form-side">
+    <form class="tenant-entry-card" onsubmit="return false">
+      <div class="tenant-entry-brand">تسجيل الدخول</div>
+      <h1>أهلًا بعودتك</h1>
+      <p>أدخل كود الشركة واسم المستخدم وكلمة المرور.</p>
+      <label class="ui-field"><span class="ui-field__label">كود الشركة *</span><input class="ui-input" placeholder="ELH-XXXX"></label>
+      <label class="ui-field"><span class="ui-field__label">اسم المستخدم *</span><input class="ui-input" placeholder="مثال: manager"></label>
+      <label class="ui-field"><span class="ui-field__label">كلمة المرور *</span><input class="ui-input" type="password" placeholder="••••••••••••"></label>
+      <button class="ui-button ui-button--primary">دخول</button>
+      <p class="tenant-entry-note">اسم المستخدم خاص بالشركة ويمكن تغييره لاحقًا من إعدادات الحساب.</p>
+    </form>
+  </section>
+</main>
+</section>
+
+<section id="dashboardPreview" class="hidden">
+<div class="app-shell" dir="rtl">
+  <aside class="app-sidebar">
+    <div class="app-sidebar__brand"><span class="app-sidebar__mark">ح</span><span class="app-sidebar__brand-text">ELHAFEZ</span></div>
+    <nav class="app-navigation">
+      <div class="nav-group"><div class="nav-label">الإدارة والتحكم</div><a class="active">◉ <span>لوحة الإدارة التنفيذية</span></a><a>◎ <span>مركز العمل والاستثناءات</span></a></div>
+      <div class="nav-group"><div class="nav-label">العملاء والمبيعات</div><a>◌ <span>العملاء</span></a><a>◌ <span>عروض الأسعار</span></a><a>◌ <span>المتابعات</span></a></div>
+      <div class="nav-group"><div class="nav-label">الحج والعمرة</div><a>◌ <span>البرامج</span></a><a>◌ <span>الحجوزات</span></a><a>◌ <span>الجاهزية</span></a></div>
+    </nav>
+  </aside>
+  <header class="app-topbar"><div class="identity"><strong>شركة الحافظ للسياحة</strong><span>الفرع الرئيسي</span></div><div><button class="ui-button ui-button--ghost">الإشعارات</button><button class="ui-button ui-button--ghost">الحساب</button></div></header>
+  <main class="app-main"><div class="app-content">
+    <header class="page-header"><p>الإدارة والتحكم</p><h1>لوحة الإدارة التنفيذية</h1></header>
+    <div class="metric-grid"><section class="metric"><span>بنود تحتاج انتباه الإدارة</span><strong>12</strong></section><section class="metric error"><span>حالات حرجة</span><strong>2</strong></section><section class="metric warn"><span>أولوية مرتفعة</span><strong>5</strong></section></div>
+    <section class="dashboard-grid">
+      <section class="ui-card"><h2>العملاء والمبيعات</h2><dl><div class="dash-stat"><dt>العملاء</dt><dd>184</dd></div><div class="dash-stat"><dt>الوكلاء</dt><dd>27</dd></div><div class="dash-stat"><dt>المسافرون</dt><dd>612</dd></div><div class="dash-stat"><dt>متابعات متأخرة</dt><dd>4</dd></div><div class="dash-stat"><dt>قيمة العروض</dt><dd>1,240,000 EGP</dd></div></dl><a class="dash-link">فتح لوحة العملاء والمبيعات ←</a></section>
+      <section class="ui-card"><h2>الموردون والمشتريات</h2><dl><div class="dash-stat"><dt>الموردون</dt><dd>43</dd></div><div class="dash-stat"><dt>النزاعات المفتوحة</dt><dd>3</dd></div><div class="dash-stat"><dt>الإيقافات النشطة</dt><dd>1</dd></div></dl><a class="dash-link">فتح متابعة الموردين ←</a></section>
+      <section class="ui-card"><h2>جاهزية الحج والعمرة</h2><dl><div class="dash-stat"><dt>البرامج النشطة</dt><dd>8</dd></div><div class="dash-stat"><dt>بنود الجاهزية</dt><dd>21</dd></div><div class="dash-stat"><dt>بنود حرجة</dt><dd>2</dd></div></dl><a class="dash-link">فتح مركز الجاهزية ←</a></section>
+      <section class="ui-card"><h2>المراكز المالية المستحقة</h2><dl><div class="dash-stat"><dt>المراكز المتأخرة</dt><dd>7</dd></div><div class="dash-stat"><dt>القيمة المتأخرة</dt><dd>325,000 EGP</dd></div></dl></section>
+    </section>
+    <section class="ui-card table-card"><h2>أولويات تتطلب المتابعة</h2><div class="table-wrap"><table><thead><tr><th>الأولوية</th><th>المجال</th><th>البند</th><th>الحالة</th></tr></thead><tbody><tr><td><span class="badge critical">حرج</span></td><td>الحج والعمرة</td><td>برنامج يحتاج مراجعة جاهزية</td><td>مفتوح</td></tr><tr><td><span class="badge high">مرتفع</span></td><td>الموردون والمشتريات</td><td>تسوية مورد متأخرة</td><td>متأخر</td></tr></tbody></table></div></section>
+  </div></main>
+</div>
+</section>
+<script>
+const login=document.getElementById('loginPreview'),dash=document.getElementById('dashboardPreview'),a=document.getElementById('showLogin'),b=document.getElementById('showDashboard');
+a.onclick=()=>{login.classList.remove('hidden');dash.classList.add('hidden');a.classList.add('active');b.classList.remove('active')};
+b.onclick=()=>{dash.classList.remove('hidden');login.classList.add('hidden');b.classList.add('active');a.classList.remove('active')};
+</script>
+</body>
+</html>
