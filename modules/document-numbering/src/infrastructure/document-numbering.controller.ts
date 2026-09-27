@@ -1,10 +1,11 @@
-import{Body,Controller,Get,Headers,Param,Patch,Post,Query,UnauthorizedException}from'@nestjs/common';
+import{Body,Controller,Get,Headers,Inject,Param,Patch,Post,Query,UnauthorizedException}from'@nestjs/common';
 import{PlatformCoreApplicationService}from'@elhafez/platform-core';
-import{DocumentNumberingApplicationService,type AllocateDocumentNumberInput,type CreateNumberingPolicyInput,type DocumentNumberingContext,type UpdateNumberingPolicyInput}from'../application/document-numbering.application-service.js';
+import{DocumentNumberingApplicationService}from'../application/document-numbering.application-service.js';
+import type{AllocateDocumentNumberInput,CreateNumberingPolicyInput,DocumentNumberingContext,UpdateNumberingPolicyInput}from'../application/document-numbering.application-service.js';
 
 @Controller('document-numbering')
 export class DocumentNumberingController{
- constructor(private readonly service:DocumentNumberingApplicationService,private readonly platform:PlatformCoreApplicationService){}
+ constructor(@Inject(DocumentNumberingApplicationService)private readonly service:DocumentNumberingApplicationService,@Inject(PlatformCoreApplicationService)private readonly platform:PlatformCoreApplicationService){}
  @Get()async list(@Headers('authorization')authorization:string|undefined,@Headers('x-company-id')companyId:string|undefined,@Query('documentType')documentType?:string){return this.service.listPolicies(await this.context(authorization,companyId),documentType);}
  @Post()async create(@Headers('authorization')authorization:string|undefined,@Headers('x-company-id')companyId:string|undefined,@Body()input:CreateNumberingPolicyInput){return this.service.createPolicy(await this.context(authorization,companyId),input);}
  @Patch(':policyId')async update(@Headers('authorization')authorization:string|undefined,@Headers('x-company-id')companyId:string|undefined,@Param('policyId')policyId:string,@Body()input:UpdateNumberingPolicyInput){return this.service.updatePolicy(await this.context(authorization,companyId),policyId,input);}
