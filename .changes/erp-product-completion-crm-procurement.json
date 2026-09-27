@@ -1,0 +1,36 @@
+{
+  "id": "erp-product-completion-crm-procurement",
+  "summary": "Complete the pre-PO procurement lifecycle through a canonical procurement-sourcing owner, then deepen CRM and quotations without duplicating accepted owners.",
+  "type": "phase",
+  "allowedModules": ["procurement-sourcing","crm-leads","quotations"],
+  "allowedPaths": [
+    ".changes/erp-product-completion-crm-procurement.json",
+    "docs/BUSINESS-MODULE-ARCHITECTURE.md",
+    "docs/BUSINESS-MODULE-ROUTING.md",
+    "modules/procurement-sourcing/**",
+    "apps/api/package.json",
+    "apps/api/src/app.module.ts",
+    "apps/web/src/procurement-sourcing-page.tsx",
+    "apps/web/src/procurement-sourcing.spec.ts",
+    "apps/web/src/routes.tsx",
+    "pnpm-lock.yaml",
+    "prisma/schema.prisma",
+    "prisma/migrations/20260928000000_procurement_sourcing/migration.sql"
+  ],
+  "protectedPaths": [
+    "modules/procurement-sourcing/module.json",
+    "docs/BUSINESS-MODULE-ARCHITECTURE.md",
+    "docs/BUSINESS-MODULE-ROUTING.md",
+    "apps/api/src/app.module.ts",
+    "apps/web/src/routes.tsx",
+    "prisma/schema.prisma",
+    "prisma/migrations/20260928000000_procurement_sourcing/migration.sql"
+  ],
+  "protectedReason": "Pre-PO requisition, RFQ, supplier bid, comparison and award state is a distinct sourcing lifecycle. Purchase Order economic truth remains procurement-finance and receiving remains procurement-fulfillment.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": "",
+  "testEvidence": [
+    "modules/procurement-sourcing/src/procurement-sourcing.spec.ts",
+    "apps/web/src/procurement-sourcing.spec.ts"
+  ]
+}
