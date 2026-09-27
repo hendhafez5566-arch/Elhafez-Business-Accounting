@@ -44,3 +44,18 @@ test('user can change own company username and password without changing user id
 
 
 test('company login session is cryptographically scoped to the company context even for a multi-company user',async()=>{const repo=new InMemoryPlatformRepository(),s=new PlatformCoreApplicationService(repo),user=await s.createUser({email:'multi@example.test',password:'multi-company-password',displayName:'Multi'}),a=await s.createCompany(user.id,'A'),b=await s.createCompany(user.id,'B'),stored=repo.users.get(user.id)!;await repo.updateCompanyLoginIdentity({companyId:a.id,userId:user.id,username:'manager',passwordHash:stored.passwordHash,mustChangePassword:false,createdAt:new Date(),updatedAt:new Date()});await repo.updateCompanyLoginIdentity({companyId:b.id,userId:user.id,username:'manager',passwordHash:stored.passwordHash,mustChangePassword:false,createdAt:new Date(),updatedAt:new Date()});const session=await s.loginCompany(a.id,'manager','multi-company-password');assert.equal((await s.currentCompanyUser(session.token,a.id)).id,user.id);await assert.rejects(s.currentCompanyUser(session.token,b.id),error=>error instanceof PlatformError&&error.code==='UNAUTHENTICATED');});
+
+test('notification center isolates company-scoped notices while allowing platform notices',async()=>{
+ const repo=new InMemoryPlatformRepository(),s=new PlatformCoreApplicationService(repo);
+ const user=await s.createUser({email:'notify@scope.test',password:'long-safe-password',displayName:'Notify'});
+ const companyA=await s.createCompany(user.id,'A'),companyB=await s.createCompany(user.id,'B');
+ const a=await s.notify(user.id,'invoice.due',{title:'A'},companyA.id);
+ const b=await s.notify(user.id,'booking.ready',{title:'B'},companyB.id);
+ const global=await s.notify(user.id,'platform.notice',{title:'Global'});
+ assert.deepEqual((await s.listNotifications(user.id,companyA.id)).map(x=>x.id),[global.id,a.id]);
+ assert.equal((await s.listNotifications(user.id,companyB.id)).some(x=>x.id===a.id),false);
+ await assert.rejects(()=>s.markNotificationRead(user.id,b.id,companyA.id),/not found/);
+ assert.equal(await s.markAllNotificationsRead(user.id,companyA.id),2);
+ assert.ok((await s.listNotifications(user.id,companyA.id)).every(x=>x.readAt));
+ assert.equal((await s.listNotifications(user.id,companyB.id)).find(x=>x.id===b.id)?.readAt,null);
+});
