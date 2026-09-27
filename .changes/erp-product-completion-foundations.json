@@ -1,0 +1,33 @@
+{
+  "id": "erp-product-completion-foundations",
+  "summary": "Begin the approved full ERP/SaaS product-completion program by implementing canonical Custom Fields and Document Numbering owners as reusable company-scoped platform capabilities, with durable persistence, authorization, audit, APIs and executable tests.",
+  "type": "phase",
+  "allowedModules": [
+    "custom-fields",
+    "document-numbering"
+  ],
+  "allowedPaths": [
+    ".changes/erp-product-completion-foundations.json",
+    "apps/api/package.json",
+    "apps/api/src/app.module.ts",
+    "pnpm-lock.yaml",
+    "prisma/schema.prisma",
+    "prisma/migrations/20260927203000_erp_product_completion_foundations/migration.sql",
+    "docs/BUSINESS-MODULE-ARCHITECTURE.md",
+    "docs/BUSINESS-MODULE-ROUTING.md"
+  ],
+  "protectedPaths": [
+    "modules/custom-fields/module.json",
+    "modules/document-numbering/module.json",
+    "apps/api/src/app.module.ts",
+    "prisma/schema.prisma",
+    "prisma/migrations/20260927203000_erp_product_completion_foundations/migration.sql"
+  ],
+  "protectedReason": "The owner explicitly approved implementing all product-completion additions. This first foundation slice activates two already-canonical PLANNED owners without moving or duplicating any existing business truth.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": "",
+  "testEvidence": [
+    "modules/custom-fields/src/custom-fields.spec.ts",
+    "modules/document-numbering/src/document-numbering.spec.ts"
+  ]
+}
