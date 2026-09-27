@@ -1,0 +1,21 @@
+import{ContractValidationError}from'@elhafez/contracts';
+import type{AutomationWorkflowRepository}from'../application/automation-workflow.repository.js';
+import type{ClaimedWorkflowRun,WorkflowExecutionEvidence}from'../application/automation-workflow.ports.js';
+import type{WorkflowDefinition,WorkflowExecutionLog,WorkflowRun}from'../domain/automation-workflow.js';
+
+export class InMemoryAutomationWorkflowRepository implements AutomationWorkflowRepository,WorkflowExecutionEvidence{
+ private definitions=new Map<string,WorkflowDefinition>();private runs=new Map<string,WorkflowRun>();private logs:WorkflowExecutionLog[]=[];private tail:Promise<void>=Promise.resolve();
+ private async atomic<T>(fn:()=>Promise<T>|T):Promise<T>{const prior=this.tail;let release!:()=>void;this.tail=new Promise<void>(resolve=>{release=resolve;});await prior;try{return await fn();}finally{release();}}
+ async createDefinition(input:WorkflowDefinition){if([...this.definitions.values()].some(v=>v.companyId===input.companyId&&v.code===input.code))throw new ContractValidationError('code','workflow code already exists');this.definitions.set(input.id,structuredClone(input));return structuredClone(input);}
+ async updateDefinition(companyId:string,id:string,input:Pick<WorkflowDefinition,'name'|'triggerEvent'|'status'|'version'|'spec'|'updatedAt'>){const current=await this.findDefinition(companyId,id);if(!current)throw new ContractValidationError('workflowId','workflow definition was not found');const next={...current,...structuredClone(input)};this.definitions.set(id,next);return structuredClone(next);}
+ async findDefinition(companyId:string,id:string){const value=this.definitions.get(id);return value?.companyId===companyId?structuredClone(value):undefined;}
+ async listDefinitions(companyId:string){return[...this.definitions.values()].filter(v=>v.companyId===companyId).map(v=>structuredClone(v));}
+ async listActiveByEvent(companyId:string,eventName:string){return[...this.definitions.values()].filter(v=>v.companyId===companyId&&v.status==='ACTIVE'&&v.triggerEvent===eventName).map(v=>structuredClone(v));}
+ async createRunIdempotent(input:{id:string;event:import('../domain/automation-workflow.js').WorkflowEvent;workflow:WorkflowDefinition;now:string}){return this.atomic(async()=>{const prior=[...this.runs.values()].find(v=>v.companyId===input.event.companyId&&v.workflowId===input.workflow.id&&v.correlationKey===input.event.correlationKey);if(prior)return structuredClone(prior);const run:WorkflowRun={id:input.id,companyId:input.event.companyId,branchId:input.event.branchId,workflowId:input.workflow.id,workflowVersion:input.workflow.version,triggerEvent:input.event.name,correlationKey:input.event.correlationKey,payload:structuredClone(input.event.payload),status:'PENDING',currentStep:0,attemptCount:0,nextRunAt:input.now,waitingSignal:null,lastError:null,leaseToken:null,leaseExpiresAt:null,createdAt:input.now,updatedAt:input.now,completedAt:null};this.runs.set(run.id,run);return structuredClone(run);});}
+ async findRun(companyId:string,id:string){const value=this.runs.get(id);return value?.companyId===companyId?structuredClone(value):undefined;}
+ async listRuns(companyId:string,status?:WorkflowRun['status']){return[...this.runs.values()].filter(v=>v.companyId===companyId&&(!status||v.status===status)).map(v=>structuredClone(v));}
+ async saveRun(run:WorkflowRun){const current=this.runs.get(run.id);if(!current||current.companyId!==run.companyId)throw new ContractValidationError('runId','workflow run was not found');this.runs.set(run.id,structuredClone(run));return structuredClone(run);}
+ async claimDue(now:string,limit:number,leaseToken:string,leaseExpiresAt:string){return this.atomic(async()=>{const due=[...this.runs.values()].filter(v=>(v.status==='PENDING'||v.status==='WAITING')&&Boolean(v.nextRunAt)&&String(v.nextRunAt)<=now&&(!v.leaseExpiresAt||v.leaseExpiresAt<=now)).sort((a,b)=>(a.nextRunAt??'').localeCompare(b.nextRunAt??'')).slice(0,limit);return due.map(v=>{v.leaseToken=leaseToken;v.leaseExpiresAt=leaseExpiresAt;this.runs.set(v.id,v);return structuredClone(v) as ClaimedWorkflowRun;});});}
+ async append(log:WorkflowExecutionLog){this.logs.push(structuredClone(log));}
+ async list(companyId:string,runId:string){return this.logs.filter(v=>v.companyId===companyId&&v.runId===runId).map(v=>structuredClone(v));}
+}
