@@ -3,7 +3,12 @@
   --font-family-system: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-family-tahoma: Tahoma, Arial, sans-serif;
   --font-family-arial: Arial, Tahoma, sans-serif;
-  --font-family: var(--font-family-tahoma);
+  /* No external webfont: the production CSP is style-src 'self' with no
+     allowance for fonts.googleapis.com, so a remote @import would silently
+     fail to load. This stack relies only on fonts already shipped with the
+     OS, prioritizing the modern Arabic-optimized system faces. */
+  --font-family-brand: "Segoe UI", system-ui, -apple-system, Tahoma, Arial, sans-serif;
+  --font-family: var(--font-family-brand);
   --font-size-base: 16px;
   --font-size-sm: .875rem;
   --font-size-lg: 1.125rem;
@@ -20,18 +25,20 @@
   --radius-sm: .375rem;
   --radius-md: .625rem;
   --radius-lg: .875rem;
+  --radius-xl: 1.5rem;
 
-  --color-canvas: #f5f7f9;
+  --color-canvas: #f6f4ee;
   --color-surface: #ffffff;
-  --color-surface-subtle: #eef3f5;
-  --color-border: #d7e0e5;
-  --color-text: #152b35;
-  --color-text-muted: #617681;
-  --color-primary: #176b78;
-  --color-primary-strong: #0b4651;
-  --color-sidebar: #0d3b46;
-  --color-sidebar-hover: #155765;
-  --color-accent: #b99245;
+  --color-surface-subtle: #f1ede2;
+  --color-border: #e1dbc8;
+  --color-text: #1c2b2e;
+  --color-text-muted: #5c6e70;
+  --color-primary: #0f6b63;
+  --color-primary-strong: #0a4642;
+  --color-sidebar: #0b2e2c;
+  --color-sidebar-hover: #123f3c;
+  --color-accent: #c08a3e;
+  --color-accent-soft: #f3e2c2;
   --color-danger: #b42318;
   --color-danger-soft: #fee4e2;
   --color-success: #067647;
@@ -40,11 +47,21 @@
   --color-warning-soft: #fef0c7;
   --color-info: #175cd3;
   --color-info-soft: #d1e9ff;
-  --color-focus: #d6a94d;
+  --color-focus: #c08a3e;
 
-  --shadow-sm: 0 1px 3px rgba(16, 42, 67, .08);
-  --shadow-md: 0 8px 24px rgba(16, 42, 67, .10);
-  --shadow-overlay: 0 16px 40px rgba(0, 27, 51, .18);
+  --gradient-brand: linear-gradient(155deg, #0b2e2c 0%, #0f6b63 62%, #16897d 100%);
+
+  /* Numeric/monetary presentation: shared so accounting and any other
+     numeric table column aligns and renders consistently instead of
+     each page choosing its own alignment. Presentation only — does not
+     reformat or alter the underlying value. */
+  --font-feature-numeric: "tnum" 1, "lnum" 1;
+
+  --shadow-sm: 0 1px 3px rgba(11, 34, 33, .08);
+  --shadow-md: 0 8px 24px rgba(11, 34, 33, .10);
+  --shadow-card: 0 2px 8px rgba(11, 34, 33, .06), 0 16px 32px -12px rgba(11, 34, 33, .16);
+  --shadow-overlay: 0 16px 40px rgba(0, 20, 19, .22);
+  --shadow-hero: 0 24px 64px -16px rgba(6, 20, 19, .45);
 
   --sidebar-width-expanded: 17rem;
   --sidebar-width-compact: 4.75rem;
@@ -55,6 +72,7 @@
 html[data-ui-font="system"] { --font-family: var(--font-family-system); }
 html[data-ui-font="tahoma"] { --font-family: var(--font-family-tahoma); }
 html[data-ui-font="arial"] { --font-family: var(--font-family-arial); }
+html[data-ui-font="brand"] { --font-family: var(--font-family-brand); }
 
 html[data-ui-font-scale="small"] { --font-size-base: 14px; }
 html[data-ui-font-scale="normal"] { --font-size-base: 16px; }
