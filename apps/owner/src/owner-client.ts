@@ -7,7 +7,7 @@ export interface OwnerCompany {
 }
 export interface OwnerBackup{id:string;status:'CREATING'|'CREATED'|'VERIFIED'|'FAILED';createdAt:string;manifest:Record<string,unknown>;checksum:string|null;providerRef:string|null;pinned:boolean;error?:string}
 export interface OwnerRestore{id:string;backupId:string;status:'PREFLIGHT'|'RESTORING'|'COMPLETED'|'FAILED';createdAt:string;error?:string}
-export interface OwnerOperationsDiagnostics{database:'AVAILABLE'|'UNAVAILABLE';backupProvider:'AVAILABLE'|'UNAVAILABLE';restoreReady:boolean;maintenance:boolean;schemaCompatibility:'UNKNOWN'|'UNAVAILABLE';runtimeVersion:string}
+export interface OwnerOperationsDiagnostics{database:'AVAILABLE'|'UNAVAILABLE';backupProvider:'AVAILABLE'|'UNAVAILABLE';restoreReady:boolean;maintenance:boolean;schemaCompatibility:'CURRENT'|'INCOMPLETE'|'UNAVAILABLE';runtimeVersion:string}
 export interface OwnerPlan {id:string;code:string;name:string;intervalMonths:number;priceMinor:number;currency:string;entitlements:readonly string[];active:boolean;createdAt:string}
 type Fetcher=typeof fetch;
 type RequestInput={method?:string;body?:unknown;mfaCode?:string;owner?:boolean;bootstrapToken?:string;recoveryToken?:string};

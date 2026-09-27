@@ -863,3 +863,20 @@ dialog form,
 .tenant-entry-brand{font-weight:800;letter-spacing:.08em;color:var(--color-primary)}
 .tenant-entry-note{font-size:var(--font-size-sm);color:var(--color-text-muted)}
 .app-topbar__branch select{max-width:13rem;border:1px solid var(--color-border);border-radius:var(--radius-sm);background:var(--color-surface);color:var(--color-text);padding:.3rem .55rem}
+
+
+@media print {
+  body * { visibility: hidden !important; }
+  .quotation-print,
+  .quotation-print * { visibility: visible !important; }
+  .quotation-print {
+    position: absolute;
+    inset: 0;
+    padding: 24px;
+    direction: rtl;
+    background: white;
+  }
+  .quotation-print table { width: 100%; border-collapse: collapse; }
+  .quotation-print th,
+  .quotation-print td { border: 1px solid #999; padding: 8px; }
+}

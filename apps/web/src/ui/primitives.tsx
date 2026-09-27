@@ -398,6 +398,68 @@ export function ConfirmationDialog({
   );
 }
 
+export interface PromptField {
+  readonly id: string;
+  readonly label: string;
+  readonly type?: 'text' | 'password' | 'date' | 'datetime-local';
+  readonly multiline?: boolean;
+  readonly required?: boolean;
+  readonly defaultValue?: string;
+}
+
+export function PromptDialog({
+  open,
+  title,
+  description,
+  fields,
+  confirmLabel = 'تأكيد',
+  onCancel,
+  onSubmit,
+}: {
+  readonly open: boolean;
+  readonly title: string;
+  readonly description?: string;
+  readonly fields: readonly PromptField[];
+  readonly confirmLabel?: string;
+  readonly onCancel: () => void;
+  readonly onSubmit: (values: Readonly<Record<string, string>>) => void;
+}) {
+  const [values, setValues] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (open) setValues(Object.fromEntries(fields.map((field) => [field.id, field.defaultValue ?? ''])));
+  }, [open]);
+
+  return (
+    <Dialog open={open} title={title} onClose={onCancel}>
+      <form onSubmit={(event) => { event.preventDefault(); onSubmit(values); }}>
+        {description && <p>{description}</p>}
+        {fields.map((field) => (
+          <FormField key={field.id} label={field.label} required={field.required}>
+            {field.multiline ? (
+              <Textarea
+                required={field.required}
+                value={values[field.id] ?? ''}
+                onChange={(event) => setValues((current) => ({ ...current, [field.id]: event.target.value }))}
+              />
+            ) : (
+              <Input
+                type={field.type ?? 'text'}
+                required={field.required}
+                value={values[field.id] ?? ''}
+                onChange={(event) => setValues((current) => ({ ...current, [field.id]: event.target.value }))}
+              />
+            )}
+          </FormField>
+        ))}
+        <footer className="ui-dialog__footer">
+          <Button type="button" variant="secondary" onClick={onCancel}>إلغاء</Button>
+          <Button type="submit">{confirmLabel}</Button>
+        </footer>
+      </form>
+    </Dialog>
+  );
+}
+
 export function Toast({
   tone = 'info',
   children,

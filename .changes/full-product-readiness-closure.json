@@ -1,0 +1,42 @@
+{
+  "id": "full-product-readiness-closure",
+  "summary": "Close confirmed commercial UI/UX product gaps without changing canonical business ownership: reusable named operational references, visual Hajj/Umrah program composition, multi-line quotations, actionable CRM 360/dashboard navigation, structured commercial dialogs, safer follow-up completion, clearer system-administration record selection, and login recovery guidance. Runtime accounting schema drift is handled by the existing forward migration rather than code workarounds. Diagnostics now report actual Prisma migration health as CURRENT/INCOMPLETE instead of a hard-coded UNKNOWN.",
+  "type": "phase",
+  "allowedModules": [
+    "platform-operations"
+  ],
+  "allowedPaths": [
+    ".changes/full-product-readiness-closure.json",
+    "apps/web/src/reference-data-client.ts",
+    "apps/web/src/reference-data-client.spec.ts",
+    "apps/web/src/product-readiness.spec.ts",
+    "apps/web/src/hajj-umrah-operations-primary-pages.tsx",
+    "apps/web/src/hajj-umrah-operations-secondary-pages.tsx",
+    "apps/web/src/hajj-umrah-pages.tsx",
+    "apps/web/src/tourism-operations-page.tsx",
+    "apps/web/src/crm-insights-pages.tsx",
+    "apps/web/src/crm-core-pages.tsx",
+    "apps/web/src/quotation-pages.tsx",
+    "apps/web/src/supplier-pages.tsx",
+    "apps/web/src/system-administration-page.tsx",
+    "apps/web/src/tenant-app.tsx",
+    "apps/web/src/ui/primitives.tsx",
+    "apps/web/src/styles.css",
+    "modules/platform-operations/src/application/platform-operations.application-service.ts",
+    "modules/platform-operations/src/infrastructure/prisma-operations.repository.ts",
+    "modules/platform-operations/src/platform-operations.spec.ts",
+    "apps/owner/src/owner-client.ts"
+  ],
+  "protectedPaths": [
+    "apps/web/src/ui/primitives.tsx",
+    "apps/web/src/styles.css"
+  ],
+  "protectedReason": "The closure adds one canonical reusable PromptDialog to the shared UI and moves the existing quotation print presentation out of page-local markup into the shared stylesheet. These shared changes prevent repeated page-specific prompt/print patches while preserving the accepted UI architecture.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": "",
+  "testEvidence": [
+    "apps/web/src/reference-data-client.spec.ts",
+    "apps/web/src/product-readiness.spec.ts",
+    "modules/platform-operations/src/platform-operations.spec.ts"
+  ]
+}
