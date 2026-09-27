@@ -27,5 +27,9 @@
   ],
   "protectedReason": "The closure adds one canonical reusable PromptDialog to the shared UI and moves the existing quotation print presentation out of page-local markup into the shared stylesheet. These shared changes prevent repeated page-specific prompt/print patches while preserving the accepted UI architecture.",
   "allowBreakingPublicApi": false,
-  "publicApiBreakingReason": ""
+  "publicApiBreakingReason": "",
+  "testEvidence": [
+    "apps/web/src/reference-data-client.spec.ts",
+    "apps/web/src/product-readiness.spec.ts"
+  ]
 }
