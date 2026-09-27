@@ -1,11 +1,12 @@
-import{Body,Controller,Get,Headers,Param,Patch,Post,Query,UnauthorizedException}from'@nestjs/common';
+import{Body,Controller,Get,Headers,Inject,Param,Patch,Post,Query,UnauthorizedException}from'@nestjs/common';
 import{PlatformCoreApplicationService}from'@elhafez/platform-core';
-import{AutomationWorkflowApplicationService,type AutomationWorkflowContext,type CreateWorkflowInput,type UpdateWorkflowInput}from'../application/automation-workflow.application-service.js';
+import{AutomationWorkflowApplicationService}from'../application/automation-workflow.application-service.js';
+import type{AutomationWorkflowContext,CreateWorkflowInput,UpdateWorkflowInput}from'../application/automation-workflow.application-service.js';
 import type{WorkflowEvent,WorkflowRun,WorkflowStatus}from'../domain/automation-workflow.js';
 
 @Controller('automation-workflows')
 export class AutomationWorkflowController{
- constructor(private readonly service:AutomationWorkflowApplicationService,private readonly platform:PlatformCoreApplicationService){}
+ constructor(@Inject(AutomationWorkflowApplicationService)private readonly service:AutomationWorkflowApplicationService,@Inject(PlatformCoreApplicationService)private readonly platform:PlatformCoreApplicationService){}
  @Get()async definitions(@Headers('authorization')authorization:string|undefined,@Headers('x-company-id')companyId:string|undefined){return this.service.listDefinitions(await this.context(authorization,companyId));}
  @Post()async create(@Headers('authorization')authorization:string|undefined,@Headers('x-company-id')companyId:string|undefined,@Body()input:CreateWorkflowInput){return this.service.createDefinition(await this.context(authorization,companyId),input);}
  @Patch(':workflowId')async update(@Headers('authorization')authorization:string|undefined,@Headers('x-company-id')companyId:string|undefined,@Param('workflowId')workflowId:string,@Body()input:UpdateWorkflowInput){return this.service.updateDefinition(await this.context(authorization,companyId),workflowId,input);}
