@@ -1,5 +1,5 @@
 import{useEffect,useState,type FormEvent}from'react';
-import{ActionBar,Badge,Button,Card,DataGrid,DisclosureCard,EmptyState,ErrorState,FormField,Input,LoadingState,Select,Tabs,Toast}from'./ui.js';
+import{ActionBar,Badge,Button,Card,Checkbox,DataGrid,DisclosureCard,EmptyState,ErrorState,FormField,Input,LoadingState,Select,Tabs,Toast}from'./ui.js';
 import{HttpPlatformFoundationsClient,type PlatformFoundationsClient}from'./platform-foundations-client.js';
 import{tenantApiContext}from'./tenant-session.js';
 
@@ -49,7 +49,7 @@ export function PlatformFoundationsPage({initialTab='custom-fields',client=new H
    <FormField label="الاسم الظاهر" required><Input required value={fieldForm.label} onChange={e=>setFieldForm({...fieldForm,label:e.target.value})}/></FormField>
    <FormField label="نوع الحقل"><Select value={fieldForm.fieldType} onChange={e=>setFieldForm({...fieldForm,fieldType:e.target.value})}><option value="TEXT">نص</option><option value="NUMBER">رقم</option><option value="BOOLEAN">نعم / لا</option><option value="DATE">تاريخ</option><option value="SELECT">قائمة اختيار</option></Select></FormField>
    {fieldForm.fieldType==='SELECT'?<FormField label="الاختيارات"><Input value={fieldForm.options} onChange={e=>setFieldForm({...fieldForm,options:e.target.value})} placeholder="VIP, Corporate, Retail"/></FormField>:null}
-   <label className="ui-checkbox-field"><input type="checkbox" checked={fieldForm.required} onChange={e=>setFieldForm({...fieldForm,required:e.target.checked})}/><span>حقل إلزامي</span></label><Button type="submit" disabled={loading}>إنشاء الحقل</Button>
+   <label className="ui-checkbox-field"><Checkbox checked={fieldForm.required} onChange={e=>setFieldForm({...fieldForm,required:e.target.checked})}/><span>حقل إلزامي</span></label><Button type="submit" disabled={loading}>إنشاء الحقل</Button>
   </form></DisclosureCard><Card title="الحقول الحالية">{!fieldRows.length?<EmptyState title="لا توجد حقول مخصصة"/>:<DataGrid columns={['السجل','الحقل','النوع','إلزامي','الحالة','إجراء']}>{fieldRows.map(row=><tr key={row.id}><td>{row.entityType}</td><td>{row.label}<small>{row.key}</small></td><td>{row.fieldType}</td><td>{row.required?'نعم':'لا'}</td><td><Badge tone={row.active?'success':'warning'}>{row.active?'نشط':'متوقف'}</Badge></td><td><Button type="button" variant="secondary" onClick={()=>void perform(row.active?'تم إيقاف الحقل.':'تم تفعيل الحقل.',()=>client.updateCustomField(context,row.id,{active:!row.active}))}>{row.active?'إيقاف':'تفعيل'}</Button></td></tr>)}</DataGrid>}</Card></>:null}
   {tab==='numbering'?<><DisclosureCard title="سياسة ترقيم جديدة" description="ترقيم مركزي آمن للمستندات على مستوى الشركة أو فرع محدد."><form onSubmit={createNumbering}>
    <FormField label="نوع المستند" required><Input required value={numberForm.documentType} onChange={e=>setNumberForm({...numberForm,documentType:e.target.value.toUpperCase()})} placeholder="INVOICE"/></FormField>
