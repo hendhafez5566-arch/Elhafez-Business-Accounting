@@ -28,7 +28,7 @@ function TenantLogin({client,busy,setBusy,error,setError,onSuccess}:{client:Tena
   <FormField label="كلمة المرور" required><Input required type="password" autoComplete="current-password" minLength={12} value={password} onChange={event=>setPassword(event.target.value)}/></FormField>
   {error?<Toast tone="error">{error}</Toast>:null}
   <Button type="submit" disabled={busy||!normalized}>{busy?'جارٍ التحقق…':'دخول'}</Button>
-  <p className="tenant-entry-note">اسم المستخدم خاص بالشركة ويمكن تغييره لاحقًا من إعدادات الحساب.</p>
+  <p className="tenant-entry-note">اسم المستخدم خاص بالشركة ويمكن تغييره لاحقًا من إعدادات الحساب. إذا فقدت بيانات الدخول، تواصل مع مسؤول الشركة لإعادة تعيينها بأمان من إدارة النظام.</p>
  </form></main>;
 }
 
