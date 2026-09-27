@@ -1,11 +1,12 @@
 {
   "id": "erp-product-completion-foundations",
-  "summary": "Begin the owner-approved full ERP/SaaS product-completion program with canonical Custom Fields, Document Numbering and Automation Workflow owners, including durable persistence, authorization, audit, trigger conditions, actions, delays, approval wait signals, retry/backoff, dead-letter handling and execution evidence.",
+  "summary": "Continue the owner-approved ERP/SaaS product-completion program with Custom Fields, Document Numbering, Automation Workflow and a tenant-safe in-app Notification Center, preserving canonical ownership and full audit/governance boundaries.",
   "type": "phase",
   "allowedModules": [
     "custom-fields",
     "document-numbering",
-    "automation-workflow"
+    "automation-workflow",
+    "platform-core"
   ],
   "allowedPaths": [
     ".changes/erp-product-completion-foundations.json",
@@ -20,7 +21,13 @@
     "apps/web/src/platform-foundations-client.ts",
     "apps/web/src/platform-foundations-page.tsx",
     "apps/web/src/platform-foundations.spec.ts",
-    "apps/web/src/routes.tsx"
+    "apps/web/src/routes.tsx",
+    "apps/api/src/user-notifications.controller.ts",
+    "apps/api/src/user-notifications.spec.ts",
+    "apps/web/src/notification-center-client.ts",
+    "apps/web/src/notification-center-page.tsx",
+    "apps/web/src/notification-center.spec.ts",
+    "prisma/migrations/20260927220000_notification_company_scope/migration.sql"
   ],
   "protectedPaths": [
     "modules/custom-fields/module.json",
@@ -30,7 +37,8 @@
     "prisma/schema.prisma",
     "prisma/migrations/20260927203000_erp_product_completion_foundations/migration.sql",
     "prisma/migrations/20260927210000_automation_workflow/migration.sql",
-    "apps/web/src/routes.tsx"
+    "apps/web/src/routes.tsx",
+    "prisma/migrations/20260927220000_notification_company_scope/migration.sql"
   ],
   "protectedReason": "The owner explicitly approved the complete product-completion program. This first implementation slice activates three canonical platform owners without moving or duplicating existing business truth; automation remains orchestration-only and calls other owners through public boundaries.",
   "allowBreakingPublicApi": false,
@@ -39,6 +47,9 @@
     "modules/custom-fields/src/custom-fields.spec.ts",
     "modules/document-numbering/src/document-numbering.spec.ts",
     "modules/automation-workflow/src/automation-workflow.spec.ts",
-    "apps/web/src/platform-foundations.spec.ts"
+    "apps/web/src/platform-foundations.spec.ts",
+    "modules/platform-core/src/platform-core.spec.ts",
+    "apps/api/src/user-notifications.spec.ts",
+    "apps/web/src/notification-center.spec.ts"
   ]
 }
