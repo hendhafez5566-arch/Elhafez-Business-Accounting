@@ -189,12 +189,14 @@ model PcFile {
 model PcNotification {
   id        String    @id @default(uuid())
   userId    String    @map("user_id")
+  companyId String?   @map("company_id")
   type      String
   payload   Json      @default("{}")
   readAt    DateTime? @map("read_at")
   createdAt DateTime  @default(now()) @map("created_at")
 
   @@index([userId, readAt])
+  @@index([userId, companyId, readAt])
   @@map("pc_notifications")
 }
 
