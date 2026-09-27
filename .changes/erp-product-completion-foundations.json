@@ -27,7 +27,8 @@
     "apps/web/src/notification-center-client.ts",
     "apps/web/src/notification-center-page.tsx",
     "apps/web/src/notification-center.spec.ts",
-    "prisma/migrations/20260927220000_notification_company_scope/migration.sql"
+    "prisma/migrations/20260927220000_notification_company_scope/migration.sql",
+    "apps/api/src/system-administration.controller.ts"
   ],
   "protectedPaths": [
     "modules/custom-fields/module.json",
