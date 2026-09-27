@@ -3832,3 +3832,72 @@ model TbkBookingHistory {
   @@index([companyId, branchId, bookingId, occurredAt])
   @@map("tbk_booking_history")
 }
+
+
+// ERP Product Completion — reusable company-scoped custom fields.
+model CufFieldDefinition {
+  id         String   @id
+  companyId  String   @map("company_id")
+  entityType String   @map("entity_type")
+  key        String
+  label      String
+  fieldType  String   @map("field_type")
+  required   Boolean  @default(false)
+  options    Json     @default("[]")
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  values     CufFieldValue[]
+
+  @@unique([companyId, id])
+  @@unique([companyId, entityType, key])
+  @@index([companyId, entityType, active])
+  @@map("cuf_field_definitions")
+}
+
+model CufFieldValue {
+  id           String             @id
+  companyId    String             @map("company_id")
+  definitionId String             @map("definition_id")
+  entityType   String             @map("entity_type")
+  entityId     String             @map("entity_id")
+  valueJson    Json               @map("value_json")
+  updatedBy    String             @map("updated_by")
+  updatedAt    DateTime           @updatedAt @map("updated_at")
+  definition   CufFieldDefinition @relation(fields: [companyId, definitionId], references: [companyId, id], onDelete: Restrict)
+
+  @@unique([companyId, definitionId, entityId])
+  @@index([companyId, entityType, entityId])
+  @@map("cuf_field_values")
+}
+
+// ERP Product Completion — canonical document numbering policies and atomic counters.
+model DnNumberingPolicy {
+  id             String               @id
+  companyId      String               @map("company_id")
+  documentType   String               @map("document_type")
+  branchScope    String               @map("branch_scope")
+  prefixTemplate String               @map("prefix_template")
+  padding        Int
+  resetPeriod    String               @map("reset_period")
+  active         Boolean              @default(true)
+  createdAt      DateTime             @default(now()) @map("created_at")
+  updatedAt      DateTime             @updatedAt @map("updated_at")
+  counters       DnNumberingCounter[]
+
+  @@unique([companyId, id])
+  @@unique([companyId, documentType, branchScope])
+  @@index([companyId, documentType, active])
+  @@map("dn_numbering_policies")
+}
+
+model DnNumberingCounter {
+  companyId   String            @map("company_id")
+  policyId    String            @map("policy_id")
+  periodKey   String            @map("period_key")
+  currentValue Int              @map("current_value")
+  policy      DnNumberingPolicy @relation(fields: [companyId, policyId], references: [companyId, id], onDelete: Restrict)
+
+  @@id([companyId, policyId, periodKey])
+  @@map("dn_numbering_counters")
+}
