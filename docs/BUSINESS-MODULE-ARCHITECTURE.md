@@ -82,6 +82,7 @@ Customer balances, invoices, advances, commissions, netting and other financial 
 |---|---|---|---|
 | Common party identity | `party-registry` | EXISTING / SHARED | canonical supplier party identity |
 | Suppliers | `supplier-management` | EXISTING / MERGED | supplier profile, approval-for-use, operational classification |
+| Purchase requisitions / RFQ / supplier bids / comparison / award | `procurement-sourcing` | IMPLEMENTED / ERP PRODUCT COMPLETION CANDIDATE | pre-PO sourcing lifecycle only; converts an awarded bid into the canonical PO through `procurement-finance` public API |
 | Supplier commitments / Purchase Orders | `procurement-finance` | EXISTING | canonical commitments/PO financial-economic record and invoice conversion |
 | Receiving / execution / fulfillment | `procurement-fulfillment` | EXISTING | operational receipt/service execution evidence referencing canonical PO |
 | Supplier evaluation | `supplier-evaluation` | EXISTING / MERGED | evaluation scorecards/history |
@@ -276,3 +277,8 @@ Notifications remain `platform-core` capability truth unless a separately approv
 ### `operational-reporting` — IMPLEMENTED / ERP PRODUCT COMPLETION
 
 This projection/configuration owner stores saved-report definitions and report delivery schedule configuration. It does not copy balances, KPIs, approval state, bookings, supplier truth, or financial facts. Reporting pages compose live data from canonical public APIs such as `financial-reporting` and Management projections. Delivery execution remains the responsibility of approved automation/integration boundaries; a saved schedule is not proof that an external message was delivered.
+
+
+### `procurement-sourcing` — ERP PRODUCT COMPLETION CANDIDATE
+
+This owner is the single pre-PO procurement source of truth for purchase requisitions, RFQs, supplier invitations, supplier bid snapshots, comparison/award evidence, and the immutable reference that links an award to the resulting Purchase Order. It must never own Purchase Order economics, receipt quantities, supplier invoices, payables, or payments. Award conversion calls `procurement-finance` through its public application API; receipt/execution remains `procurement-fulfillment`, supplier invoice/payable truth remains Billing, and settlement remains Treasury.
