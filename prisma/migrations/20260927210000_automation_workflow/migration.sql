@@ -25,6 +25,7 @@ CREATE TABLE "aw_workflow_runs" (
     "trigger_event" TEXT NOT NULL,
     "correlation_key" TEXT NOT NULL,
     "payload_json" JSONB NOT NULL,
+    "spec_snapshot_json" JSONB NOT NULL,
     "status" TEXT NOT NULL DEFAULT 'PENDING',
     "current_step" INTEGER NOT NULL DEFAULT 0,
     "attempt_count" INTEGER NOT NULL DEFAULT 0,
