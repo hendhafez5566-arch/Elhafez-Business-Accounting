@@ -1,4 +1,5 @@
-import{Inject,Injectable,Logger,OnModuleDestroy,OnModuleInit}from'@nestjs/common';
+import{Inject,Injectable,Logger}from'@nestjs/common';
+import type{OnModuleDestroy,OnModuleInit}from'@nestjs/common';
 import{AutomationWorkflowApplicationService}from'../application/automation-workflow.application-service.js';
 @Injectable()
 export class AutomationWorkflowWorker implements OnModuleInit,OnModuleDestroy{
