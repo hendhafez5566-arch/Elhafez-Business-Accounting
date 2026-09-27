@@ -133,7 +133,7 @@ Administration features remain separate only when they acquire a distinct data/b
 |---|---|
 | Custom fields | `custom-fields` — IMPLEMENTED / ERP PRODUCT COMPLETION |
 | Document numbering policies | `document-numbering` — IMPLEMENTED / ERP PRODUCT COMPLETION |
-| Automation / workflow rules, delayed actions, retries and escalations | `automation-workflow` — PLANNED / ERP PRODUCT COMPLETION |
+| Automation / workflow rules, delayed actions, retries and escalations | `automation-workflow` — IMPLEMENTED / ERP PRODUCT COMPLETION |
 | Import/export jobs and mappings | `data-exchange` — EXISTING / MERGED |
 | Backup/support operational jobs | `platform-operations` — EXISTING / MERGED; production backup provider still requires deployment wiring |
 
