@@ -1,5 +1,5 @@
 import{Controller,Get,Headers,Param,Post,UnauthorizedException}from'@nestjs/common';
-import{PlatformCoreApplicationService}from'@elhafez/platform-core';
+import type{PlatformCoreApplicationService}from'@elhafez/platform-core';
 
 @Controller('notifications')
 export class UserNotificationsController{
