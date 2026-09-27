@@ -16,7 +16,11 @@
     "prisma/migrations/20260927203000_erp_product_completion_foundations/migration.sql",
     "prisma/migrations/20260927210000_automation_workflow/migration.sql",
     "docs/BUSINESS-MODULE-ARCHITECTURE.md",
-    "docs/BUSINESS-MODULE-ROUTING.md"
+    "docs/BUSINESS-MODULE-ROUTING.md",
+    "apps/web/src/platform-foundations-client.ts",
+    "apps/web/src/platform-foundations-page.tsx",
+    "apps/web/src/platform-foundations.spec.ts",
+    "apps/web/src/routes.tsx"
   ],
   "protectedPaths": [
     "modules/custom-fields/module.json",
@@ -25,7 +29,8 @@
     "apps/api/src/app.module.ts",
     "prisma/schema.prisma",
     "prisma/migrations/20260927203000_erp_product_completion_foundations/migration.sql",
-    "prisma/migrations/20260927210000_automation_workflow/migration.sql"
+    "prisma/migrations/20260927210000_automation_workflow/migration.sql",
+    "apps/web/src/routes.tsx"
   ],
   "protectedReason": "The owner explicitly approved the complete product-completion program. This first implementation slice activates three canonical platform owners without moving or duplicating existing business truth; automation remains orchestration-only and calls other owners through public boundaries.",
   "allowBreakingPublicApi": false,
@@ -33,6 +38,7 @@
   "testEvidence": [
     "modules/custom-fields/src/custom-fields.spec.ts",
     "modules/document-numbering/src/document-numbering.spec.ts",
-    "modules/automation-workflow/src/automation-workflow.spec.ts"
+    "modules/automation-workflow/src/automation-workflow.spec.ts",
+    "apps/web/src/platform-foundations.spec.ts"
   ]
 }
