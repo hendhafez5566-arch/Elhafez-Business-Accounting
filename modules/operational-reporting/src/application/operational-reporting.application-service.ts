@@ -2,7 +2,7 @@ import{randomUUID}from'node:crypto';
 import{ContractValidationError}from'@elhafez/contracts';
 import type{OperationalReportingAccess}from'./operational-reporting.ports.js';
 import type{OperationalReportingRepository}from'./operational-reporting.repository.js';
-import{REPORT_KEYS,type OperationalReportKey,type OperationalReportSchedule,type ReportDeliveryChannel,type ReportScheduleCadence,type SavedOperationalReport,type SavedReportVisibility}from'../domain/operational-reporting.js';
+import{REPORT_KEYS,type OperationalReportKey,type ReportDeliveryChannel,type ReportScheduleCadence,type SavedOperationalReport,type SavedReportVisibility}from'../domain/operational-reporting.js';
 
 export const OPERATIONAL_REPORTING_PERMISSIONS=Object.freeze({read:'management.control.read',manage:'platform.configuration.manage'}as const);
 export interface OperationalReportingContext{readonly companyId:string;readonly actorId:string}
