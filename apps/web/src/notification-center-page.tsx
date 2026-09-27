@@ -12,7 +12,7 @@ export function NotificationCenterPage({client=new HttpNotificationCenterClient(
  const context=tenantApiContext(),[items,setItems]=useState<readonly NotificationItem[]>([]),[unreadCount,setUnreadCount]=useState(0),[filter,setFilter]=useState<Filter>('all'),[loading,setLoading]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
  async function load(){if(!context.token)return;setLoading(true);setError('');try{const data=await client.list(context);setItems(data.items);setUnreadCount(data.unreadCount);}catch(e){setError(e instanceof Error?e.message:'تعذر تحميل الإشعارات.');}finally{setLoading(false);}}
  useEffect(()=>{void load();},[context.token,context.companyId,context.branchId]);
- const visible=useMemo(()=>items.filter(item=>filter==='all'||filter==='unread'?!item.readAt:Boolean(item.readAt)),[items,filter]);
+ const visible=useMemo(()=>items.filter(item=>filter==='all'||(filter==='unread'?!item.readAt:Boolean(item.readAt))),[items,filter]);
  async function read(item:NotificationItem){if(item.readAt)return;try{await client.read(context,item.id);await load();}catch(e){setError(e instanceof Error?e.message:'تعذر تحديث الإشعار.');}}
  async function readAll(){try{const result=await client.readAll(context);setNotice(result.updated?'تم تحديد '+result.updated+' إشعار كمقروء.':'لا توجد إشعارات غير مقروءة.');await load();}catch(e){setError(e instanceof Error?e.message:'تعذر تحديث الإشعارات.');}}
  return <section dir="rtl" className="ui-page-stack" aria-label="مركز الإشعارات">
