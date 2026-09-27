@@ -131,8 +131,9 @@ Administration features remain separate only when they acquire a distinct data/b
 
 | Feature | Canonical owner / status |
 |---|---|
-| Custom fields | `custom-fields` |
-| Document numbering policies | `document-numbering` |
+| Custom fields | `custom-fields` — IMPLEMENTED / ERP PRODUCT COMPLETION |
+| Document numbering policies | `document-numbering` — IMPLEMENTED / ERP PRODUCT COMPLETION |
+| Automation / workflow rules, delayed actions, retries and escalations | `automation-workflow` — PLANNED / ERP PRODUCT COMPLETION |
 | Import/export jobs and mappings | `data-exchange` — EXISTING / MERGED |
 | Backup/support operational jobs | `platform-operations` — EXISTING / MERGED; production backup provider still requires deployment wiring |
 
@@ -259,3 +260,14 @@ Owner decision: the commercial SaaS lifecycle is a distinct platform truth owned
 ## Final system closure note — 2026-09-25
 
 Canonical implementation status labels above were refreshed during the owner-authorized closure audit. This status refresh does **not** declare product Go-Live. General-tourism `tourism-programs`, `tourism-bookings`, and `tourism-itineraries` are implemented in PR #82 as an unmerged candidate and are not accepted until the final closure gates pass; Egyptian Umrah Barcode remains a UI shell. Product/deployment closure blockers are tracked in `docs/FINAL-SYSTEM-CLOSURE-AUDIT.md`.
+
+
+## ERP Product Completion — cross-cutting automation ownership
+
+### `automation-workflow` — PLANNED / OWNER APPROVED
+
+The platform-wide automation engine is a distinct orchestration owner. It owns workflow definitions, trigger subscriptions, condition/action orchestration state, delayed execution, retry policy, escalation state and execution evidence.
+
+It does **not** own the business truth that caused a trigger. Domain modules publish approved events or expose public commands; the automation engine records only orchestration state and invokes public boundaries. It must never update another module's tables directly.
+
+Notifications remain `platform-core` capability truth unless a separately approved communication-delivery owner is introduced. Financial approvals remain `financial-controls`; the Automation engine may wait for or react to approval results but may not duplicate approval truth.
