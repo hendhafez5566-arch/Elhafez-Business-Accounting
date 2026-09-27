@@ -3901,3 +3901,70 @@ model DnNumberingCounter {
   @@id([companyId, policyId, periodKey])
   @@map("dn_numbering_counters")
 }
+
+
+// ERP Product Completion — platform-wide automation/workflow orchestration state.
+model AwWorkflowDefinition {
+  id           String   @id
+  companyId    String   @map("company_id")
+  code         String
+  name         String
+  triggerEvent String   @map("trigger_event")
+  status       String   @default("DRAFT")
+  version      Int      @default(1)
+  specJson     Json     @map("spec_json")
+  createdBy    String   @map("created_by")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  runs         AwWorkflowRun[]
+
+  @@unique([companyId, id])
+  @@unique([companyId, code])
+  @@index([companyId, triggerEvent, status])
+  @@map("aw_workflow_definitions")
+}
+
+model AwWorkflowRun {
+  id             String               @id
+  companyId      String               @map("company_id")
+  branchId       String?              @map("branch_id")
+  workflowId     String               @map("workflow_id")
+  workflowVersion Int                 @map("workflow_version")
+  triggerEvent   String               @map("trigger_event")
+  correlationKey String               @map("correlation_key")
+  payloadJson    Json                 @map("payload_json")
+  status         String               @default("PENDING")
+  currentStep    Int                  @default(0) @map("current_step")
+  attemptCount   Int                  @default(0) @map("attempt_count")
+  nextRunAt      DateTime?            @map("next_run_at")
+  waitingSignal  String?              @map("waiting_signal")
+  lastError      String?              @map("last_error")
+  leaseToken     String?              @map("lease_token")
+  leaseExpiresAt DateTime?            @map("lease_expires_at")
+  createdAt      DateTime             @default(now()) @map("created_at")
+  updatedAt      DateTime             @updatedAt @map("updated_at")
+  completedAt    DateTime?            @map("completed_at")
+  workflow       AwWorkflowDefinition @relation(fields: [companyId, workflowId], references: [companyId, id], onDelete: Restrict)
+  logs           AwWorkflowExecutionLog[]
+
+  @@unique([companyId, id])
+  @@unique([companyId, workflowId, correlationKey])
+  @@index([status, nextRunAt, leaseExpiresAt])
+  @@index([companyId, createdAt])
+  @@map("aw_workflow_runs")
+}
+
+model AwWorkflowExecutionLog {
+  id         String        @id
+  companyId  String        @map("company_id")
+  runId      String        @map("run_id")
+  stepIndex  Int           @map("step_index")
+  kind       String
+  status     String
+  detailJson Json          @map("detail_json")
+  occurredAt DateTime      @map("occurred_at")
+  run        AwWorkflowRun @relation(fields: [companyId, runId], references: [companyId, id], onDelete: Restrict)
+
+  @@index([companyId, runId, occurredAt])
+  @@map("aw_workflow_execution_logs")
+}
