@@ -1,0 +1,12 @@
+{
+  "name": "custom-fields",
+  "publicApi": ["src/public/index.ts", "src/public/nest.ts"],
+  "ownedTables": ["cuf_field_definitions", "cuf_field_values"],
+  "allowedDependencies": ["@elhafez/contracts", "@elhafez/platform-core"],
+  "dataScope": "COMPANY",
+  "criticalInvariants": [
+    "A custom-field definition and every stored value are isolated by company.",
+    "Field keys are unique per company and entity type, and a field type cannot be mutated in place.",
+    "Stored values are validated against the active canonical definition before persistence."
+  ]
+}
