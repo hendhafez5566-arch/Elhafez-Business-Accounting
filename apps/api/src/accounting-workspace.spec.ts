@@ -3,7 +3,7 @@ import test from'node:test';
 import{AccountingWorkspaceController}from'./accounting-workspace.controller.js';
 
 function fixture(positionBranch='branch-a'){
- const calls:{ledgerBranch?:string;requestBranch?:string;issueBranch?:string;posted?:Record<string,unknown>}={};
+ const calls:{ledgerBranch?:string;requestBranch?:string;issueBranch?:string;posted?:Record<string,unknown>;cheque?:Record<string,unknown>;transition?:string}={};
  const platform={currentUser:async()=>({id:'user-a'}),requireBranchAccess:async()=>{},authorize:async()=>{}};
  const periods={listFiscalYears:async()=>[],listPeriods:async()=>[]};
  const ledger={listAccounts:async()=>[],activity:async(_company:string,branch?:string)=>{calls.ledgerBranch=branch;return[{id:'ja',branchId:'branch-a'},{id:'legacy'}];}};
@@ -15,9 +15,13 @@ function fixture(positionBranch='branch-a'){
  };
  const treasury={
   listTreasuries:async()=>[],
-  listVouchers:async()=>[{id:'va',branchId:'branch-a'},{id:'vb',branchId:'branch-b'},{id:'legacy'}],
+  listVouchers:async()=>[{id:'va',branchId:'branch-a',status:'POSTED',kind:'RECEIPT',amount:'50',currency:'EGP'},{id:'vb',branchId:'branch-b',status:'POSTED',kind:'PAYMENT',amount:'10',currency:'EGP'},{id:'legacy'}],
   postVoucher:async(input:Record<string,unknown>)=>{calls.posted=input;return input;},
   voidVoucher:async()=>{throw new Error('must not reverse cross-branch voucher');},
+  listCheques:async()=>[{id:'ca',voucherId:'va',status:'ISSUED'},{id:'cb',voucherId:'vb',status:'ISSUED'},{id:'cl',voucherId:'legacy',status:'ISSUED'}],
+  getCheque:async(_company:string,id:string)=>({id,voucherId:id==='ca'?'va':id==='cb'?'vb':'legacy',status:'ISSUED'}),
+  issueCheque:async(input:Record<string,unknown>)=>{calls.cheque=input;return input;},
+  transitionCheque:async(_company:string,id:string)=>{calls.transition=id;return{id};},
  };
  const tax={listPolicies:async()=>[]};
  const controls={
@@ -54,4 +58,24 @@ test('Accounting Workspace rejects cross-branch financial mutation targets',asyn
  await assert.rejects(()=>f.controller.cancelInvoice('Bearer token','company-a','branch-a','invoice-b',{postingDate:'2026-09-26',number:'C-1'}),/current branch/);
  await assert.rejects(()=>f.controller.reverseVoucher('Bearer token','company-a','branch-a','vb',{postingDate:'2026-09-26',number:'V-1'}),/current branch/);
  await assert.rejects(()=>f.controller.decideApproval('Bearer token','company-a','branch-a','approval-b',{outcome:'APPROVED'}),/current branch/);
+});
+
+
+test('cheque lifecycle is bound to the originating voucher branch',async()=>{
+ const f=fixture();
+ assert.deepEqual((await f.controller.cheques('Bearer token','company-a','branch-a')).map(x=>x.id),['ca']);
+ await assert.rejects(()=>f.controller.cheque('Bearer token','company-a','branch-a','cb'),/current branch/);
+ await assert.rejects(()=>f.controller.issueCheque('Bearer token','company-a','branch-a',{commandKey:'key-b',voucherId:'vb',direction:'INCOMING',number:'C-2',issueDate:'2026-09-26'}),/current branch/);
+ await assert.rejects(()=>f.controller.transitionCheque('Bearer token','company-a','branch-a','cb',{status:'CLEARED'}),/current branch/);
+ assert.equal(f.calls.cheque,undefined);assert.equal(f.calls.transition,undefined);
+});
+
+test('cheque issuance uses voucher amount and stable command identity',async()=>{
+ const f=fixture();
+ // A posted receipt from the current branch is the only source for the cheque amount and direction.
+ const row=await f.controller.issueCheque('Bearer token','company-a','branch-a',{commandKey:'key-a',voucherId:'va',direction:'INCOMING',number:'C-1',issueDate:'2026-09-26'});
+ assert.equal(row.voucherId,'va');assert.equal(row.direction,'INCOMING');
+ const replay=await f.controller.issueCheque('Bearer token','company-a','branch-a',{commandKey:'key-a',voucherId:'va',direction:'INCOMING',number:'C-1',issueDate:'2026-09-26'});
+ assert.equal(row.id,replay.id);
+ await assert.rejects(()=>f.controller.issueCheque('Bearer token','company-a','branch-a',{commandKey:'key-a',voucherId:'va',direction:'OUTGOING',number:'C-1',issueDate:'2026-09-26'}),/direction/);
 });

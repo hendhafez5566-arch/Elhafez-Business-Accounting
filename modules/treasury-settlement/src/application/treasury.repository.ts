@@ -34,6 +34,7 @@ export interface TreasuryRepository {
   createCheque(value: Cheque): Promise<void>;
   saveCheque(value: Cheque): Promise<void>;
   cheque(companyId: string, id: string): Promise<Cheque | undefined>;
+  listCheques(companyId: string): Promise<Cheque[]>;
 
   cashCount(companyId: string, id: string): Promise<CashCount | undefined>;
   cashCounts(companyId: string, treasuryId?: string): Promise<CashCount[]>;

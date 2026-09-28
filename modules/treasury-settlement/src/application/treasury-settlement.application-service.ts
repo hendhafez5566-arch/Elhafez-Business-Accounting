@@ -555,6 +555,12 @@ export class TreasurySettlementApplicationService {
     await this.repo.saveTransfer(value);
     return value;
   }
+  async listCheques(companyId: CompanyId): Promise<Cheque[]> {
+    return this.repo.listCheques(companyId);
+  }
+  async getCheque(companyId: CompanyId, id: string): Promise<Cheque | undefined> {
+    return this.repo.cheque(companyId, id);
+  }
   async issueCheque(input: Omit<Cheque, "status" | "history">) {
     pos(input.amount);
     const voucher = await this.repo.voucher(input.companyId, input.voucherId);
