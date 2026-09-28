@@ -1,7 +1,7 @@
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient, Prisma } from '@prisma/client';
 import type { BranchId, CompanyId, DecimalAmount } from '@elhafez/contracts';
 import type { QuotationsRepository } from '../application/quotations.repository.js';
-import { quotationId, type Quotation, type QuotationCommunication, type QuotationHistory, type QuotationRevision } from '../domain/quotation.js';
+import { quotationId, type Quotation, type QuotationCommunication, type QuotationHistory, type QuotationRevision, type QuotationTemplate, type LineInput } from '../domain/quotation.js';
 
 type Tx = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
 type QuotationRow = {
@@ -65,6 +65,12 @@ export class PrismaQuotationsRepository implements QuotationsRepository {
     const rows = await this.db.qtCommunication.findMany({ where:{companyId,branchId,quotationId:quotationId_}, orderBy:{occurredAt:'asc'} });
     return rows.map(mapCommunication);
   }
+  async saveTemplate(v:QuotationTemplate){
+    const row=await this.db.qtTemplate.upsert({where:{companyId_branchId_id:{companyId:v.companyId,branchId:v.branchId,id:v.id}},create:{id:v.id,companyId:v.companyId,branchId:v.branchId,code:v.code,name:v.name,currency:v.currency,defaultValidityDays:v.defaultValidityDays,terms:v.terms,notes:v.notes,lines:v.lines as unknown as Prisma.InputJsonValue,active:v.active,createdAt:new Date(v.createdAt),updatedAt:new Date(v.updatedAt)},update:{code:v.code,name:v.name,currency:v.currency,defaultValidityDays:v.defaultValidityDays,terms:v.terms,notes:v.notes,lines:v.lines as unknown as Prisma.InputJsonValue,active:v.active,updatedAt:new Date(v.updatedAt)}});
+    return mapTemplate(row);
+  }
+  async template(companyId:CompanyId,branchId:BranchId,id:string){const row=await this.db.qtTemplate.findUnique({where:{companyId_branchId_id:{companyId,branchId,id}}});return row?mapTemplate(row):undefined;}
+  async listTemplates(companyId:CompanyId,branchId:BranchId){return(await this.db.qtTemplate.findMany({where:{companyId,branchId},orderBy:[{active:'desc'},{name:'asc'}]})).map(mapTemplate);}
 }
 
 function header(value: Quotation) {
@@ -75,3 +81,5 @@ async function createRevision(tx: Tx, value: QuotationRevision) { await tx.qtRev
 function event(value: QuotationHistory) { return { id:value.id,companyId:value.companyId,branchId:value.branchId,quotationId:value.quotationId,kind:value.kind,revisionId:value.revisionId,actorId:value.actorId,detail:value.detail,occurredAt:new Date(value.occurredAt) }; }
 function map(row: QuotationRow): Quotation { return { id:quotationId(row.id),companyId:row.companyId as CompanyId,branchId:row.branchId as BranchId,number:row.number,sourceLeadId:row.sourceLeadId,customerId:row.customerId,customerSnapshot:{displayName:row.customerDisplayName,contactName:row.customerContactName,phone:row.customerPhone,email:row.customerEmail},currency:row.currency,status:row.status as Quotation['status'],approvalStatus:row.approvalStatus as Quotation['approvalStatus'],approvalActorId:row.approvalActorId,approvalAt:row.approvalAt?.toISOString()??null,approvalReason:row.approvalReason,currentRevisionId:row.currentRevisionId,acceptedRevisionId:row.acceptedRevisionId,rejectedRevisionId:row.rejectedRevisionId,rejectionReason:row.rejectionReason,billingInvoiceId:row.billingInvoiceId,createdAt:row.createdAt.toISOString(),updatedAt:row.updatedAt.toISOString(),revisions:row.revisions.map((revision)=>({id:revision.id,quotationId:quotationId(revision.quotationId),number:revision.number,validityDate:revision.validityDate.toISOString().slice(0,10),notes:revision.notes,terms:revision.terms,subtotal:String(revision.subtotal) as DecimalAmount,discountTotal:String(revision.discountTotal) as DecimalAmount,total:String(revision.total) as DecimalAmount,createdAt:revision.createdAt.toISOString(),sentAt:revision.sentAt?.toISOString()??null,lines:revision.lines.map((line)=>({id:line.id,description:line.description,quantity:String(line.quantity) as DecimalAmount,unitPrice:String(line.unitPrice) as DecimalAmount,discount:String(line.discount) as DecimalAmount,taxCode:line.taxCode,total:String(line.total) as DecimalAmount,manualPriceOverride:line.manualPriceOverride,discountRequiresApproval:line.discountRequiresApproval}))})) }; }
 function mapCommunication(row: CommunicationRow): QuotationCommunication { return { id:row.id,companyId:row.companyId as CompanyId,branchId:row.branchId as BranchId,quotationId:quotationId(row.quotationId),revisionId:row.revisionId,channel:row.channel as QuotationCommunication['channel'],outcome:row.outcome as QuotationCommunication['outcome'],recipientSnapshot:row.recipientSnapshot,actorId:row.actorId,externalReference:row.externalReference,occurredAt:row.occurredAt.toISOString() }; }
+
+function mapTemplate(row:{id:string;companyId:string;branchId:string;code:string;name:string;currency:string;defaultValidityDays:number;terms:string|null;notes:string|null;lines:unknown;active:boolean;createdAt:Date;updatedAt:Date}):QuotationTemplate{return{id:row.id,companyId:row.companyId as CompanyId,branchId:row.branchId as BranchId,code:row.code,name:row.name,currency:row.currency,defaultValidityDays:row.defaultValidityDays,terms:row.terms,notes:row.notes,lines:Array.isArray(row.lines)?row.lines as unknown as LineInput[]:[],active:row.active,createdAt:row.createdAt.toISOString(),updatedAt:row.updatedAt.toISOString()};}
