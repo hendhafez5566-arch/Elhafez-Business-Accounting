@@ -802,6 +802,8 @@ export class PrismaProcurementRepository implements ProcurementRepository {
     return row ? this.conversionValue(row) : undefined;
   }
 
+  async listConversions(companyIdValue:CompanyId,purchaseOrderId:string){return(await this.db.procInvoiceConversion.findMany({where:{companyId:companyIdValue,purchaseOrderId},orderBy:{createdAt:'asc'}})).map(row=>this.conversionValue(row));}
+
   async reserveConversion(value: InvoiceConversion) {
     return this.db.$transaction(
       async (tx) => {
