@@ -133,7 +133,7 @@ export class BillingSubledgersApplicationService {
     invoiceId: string; companyId: CompanyId; branchId?: string; partyKind: PartyKind; partyId: string;
     invoiceType: InvoiceType; currency: string; documentTotal: DecimalAmount;
     outstanding: DecimalAmount; baseTotal: DecimalAmount;
-    controlAccountId: string; status: Invoice['status']; postingDate: string; deferred: boolean;
+    controlAccountId: string; status: Invoice['status']; postingDate: string; dueDate?: string; deferred: boolean;
   }> {
     const invoice = await this.requiredInvoice(companyId, invoiceId);
     const documentTotal = add(
@@ -144,7 +144,7 @@ export class BillingSubledgersApplicationService {
       invoiceType: invoice.type, currency: invoice.currency, documentTotal,
       outstanding: invoice.outstanding, baseTotal: invoice.baseTotal,
       controlAccountId: invoice.controlAccountId,
-      status: invoice.status, postingDate: invoice.postingDate, deferred: invoice.deferred === true };
+      status: invoice.status, postingDate: invoice.postingDate, ...(invoice.dueDate?{dueDate:invoice.dueDate}:{}), deferred: invoice.deferred === true };
   }
 
   /** Billing-owned cancellation evidence; consumers must not infer history from outstanding alone. */
