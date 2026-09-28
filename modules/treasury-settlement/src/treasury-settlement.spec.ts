@@ -107,3 +107,15 @@ test('AC-08 owner payment rejects a currency different from the selected Treasur
     carryingBaseAmount:amount('10'),settlementBaseAmount:amount('10'),liabilityAccountId:'expense'
   }), /must match selected Treasury currency/);
 });
+
+test('legacy parity read surfaces expose canonical treasury history without duplicating ownership',async()=>{
+ const f=await setup();
+ await f.service.postVoucher(receipt('history-receipt'));
+ const transfer=await f.service.transfer({id:'history-transfer',companyId:company,sourceTreasuryId:'cash',destinationTreasuryId:'bank',amount:amount('10'),postingDate:'2026-09-18',sourceType:'TEST',sourceId:'history-transfer',number:'TR-HISTORY'});
+ const cheque=await f.service.issueCheque({id:'history-cheque',companyId:company,voucherId:'history-receipt',direction:'INCOMING',bankTreasuryId:'bank',number:'CH-HISTORY',amount:amount('100'),currency:'EGP',issueDate:'2026-09-18'});
+ const count=await f.service.recordCashCount({id:'history-count',companyId:company,treasuryId:'cash',countedAmount:await f.service.balance(company,'cash'),countDate:'2026-09-18'});
+ assert.equal((await f.service.listTransfers(company)).find(x=>x.id===transfer.id)?.number,'TR-HISTORY');
+ assert.equal((await f.service.listCashCounts(company,'cash')).find(x=>x.id===count.id)?.id,count.id);
+ assert.equal((await f.service.getCheque(company,cheque.id)).number,'CH-HISTORY');
+ await assert.rejects(f.service.getCheque(company,'missing'),/not found/);
+});
