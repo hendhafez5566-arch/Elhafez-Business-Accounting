@@ -12,6 +12,7 @@ import type {
   ProcurementPort,
 } from './application/inventory.application-service.js';
 import { PrismaTourismInventoryRepository } from './infrastructure/prisma-inventory.repository.js';
+import { TourismInventoryReferenceQuery } from './infrastructure/tourism-inventory-reference.query.js';
 import {
   TOURISM_INVENTORY_REPOSITORY,
   type TourismInventoryRepository,
@@ -73,6 +74,11 @@ import { PrismaHistoricalImportRepository } from './infrastructure/prisma-histor
   providers: [{ provide: HISTORICAL_IMPORT_REPOSITORY, useFactory: (p: PrismaClient) => new PrismaHistoricalImportRepository(p), inject: [PrismaClient] }, { provide: HistoricalImportApplicationService, useFactory: (r: HistoricalImportRepository) => new HistoricalImportApplicationService(r), inject: [HISTORICAL_IMPORT_REPOSITORY] },
     PrismaClient,
     {
+      provide: TourismInventoryReferenceQuery,
+      useFactory: (prisma: PrismaClient) => new TourismInventoryReferenceQuery(prisma),
+      inject: [PrismaClient],
+    },
+    {
       provide: TOURISM_INVENTORY_REPOSITORY,
       useFactory: (prisma: PrismaClient) => new PrismaTourismInventoryRepository(prisma),
       inject: [PrismaClient],
@@ -96,6 +102,6 @@ import { PrismaHistoricalImportRepository } from './infrastructure/prisma-histor
       ],
     },
   ],
-  exports: [HistoricalImportApplicationService, TOURISM_CONTRACT_INVENTORY_SERVICE],
+  exports: [HistoricalImportApplicationService, TOURISM_CONTRACT_INVENTORY_SERVICE, TourismInventoryReferenceQuery],
 })
 export class TourismContractInventoryModule {}
