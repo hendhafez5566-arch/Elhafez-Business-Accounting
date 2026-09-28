@@ -1,0 +1,45 @@
+{
+  "id": "crm-full-legacy-parity-20260929",
+  "summary": "Rebuild the complete CRM & Sales product surface from the legacy functional reference while preserving canonical ownership, owner-backed financial/service integrations, rich lead/follow-up workflows, quotation selectors, 360 read composition, and dashboard attention without duplicate business truth.",
+  "type": "phase",
+  "allowedModules": [
+    "party-registry",
+    "customer-management",
+    "agent-management",
+    "crm-leads",
+    "crm-followups",
+    "quotations",
+    "traveler-management",
+    "billing-subledgers",
+    "expense-commission-recognition",
+    "tourism-services"
+  ],
+  "allowedPaths": [
+    ".changes/20260929-crm-full-legacy-parity.json",
+    "apps/api/src/app.module.ts",
+    "apps/api/src/crm-sales-read-model.controller.ts",
+    "apps/api/src/crm-sales-read-model.service.ts",
+    "apps/web/src/accounting-workspace-page.tsx",
+    "apps/web/src/crm-360-parity-pages.tsx",
+    "apps/web/src/crm-core-pages.tsx",
+    "apps/web/src/crm-lead-followup-parity-pages.tsx",
+    "apps/web/src/crm-party-pages.tsx",
+    "apps/web/src/crm-insights-pages.tsx",
+    "apps/web/src/quotation-pages.tsx",
+    "apps/web/src/routes.tsx",
+    "apps/web/src/tourism-services-page.tsx",
+    "docs/crm/CRM-LEGACY-PARITY-EXECUTION.md",
+    "modules/billing-subledgers/src/application/billing-subledgers.application-service.ts",
+    "modules/expense-commission-recognition/src/application/ecr.application-service.ts",
+    "modules/expense-commission-recognition/src/application/ecr.repository.ts",
+    "modules/expense-commission-recognition/src/infrastructure/in-memory-ecr.repository.ts",
+    "modules/expense-commission-recognition/src/infrastructure/prisma-ecr.repository.ts"
+  ],
+  "protectedPaths": [
+    "apps/api/src/app.module.ts",
+    "apps/web/src/routes.tsx"
+  ],
+  "protectedReason": "CRM parity requires composition-root read wiring and route replacement while all business truth remains owned by existing canonical modules.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": ""
+}
