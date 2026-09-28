@@ -20,6 +20,7 @@ export type {
   ProtectAllocationCoverageInput,
   ReleaseAllocationCoverageInput,
   AvailabilityResult,
+  InventoryResourceOption,
   AllocationResult,
   StandaloneSupplyRequest,
   StandaloneSupplyPlanLine,
