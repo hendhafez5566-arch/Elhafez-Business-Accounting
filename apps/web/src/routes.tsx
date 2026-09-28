@@ -24,6 +24,12 @@ import { NotificationCenterPage } from './notification-center-page.js';
 import { ApprovalCenterPage } from './approval-center-page.js';
 import { ReportingCenterPage } from './reporting-center-page.js';
 import { GlobalSearchPage } from './global-search-page.js';
+import { CustomerServicePage } from './customer-service-page.js';
+import { CollectionsPage } from './collections-page.js';
+import { DocumentManagementPage } from './document-management-page.js';
+import { IntegrationCenterPage } from './integration-center-page.js';
+import { CommunicationCenterPage } from './communication-center-page.js';
+import { HrPayrollPage } from './hr-payroll-page.js';
 import type { IconName } from './ui/icons.js';
 
 export interface AppRoute {
@@ -59,6 +65,9 @@ export const foundationRoutes = defineRoutes(
   { id: 'system-custom-fields', path: '/system-administration/custom-fields', label: 'الحقول المخصصة', group: 'إدارة النظام', icon: 'settings', element: <PlatformFoundationsPage initialTab="custom-fields" /> },
   { id: 'system-document-numbering', path: '/system-administration/document-numbering', label: 'ترقيم المستندات', group: 'إدارة النظام', icon: 'settings', element: <PlatformFoundationsPage initialTab="numbering" /> },
   { id: 'system-automation', path: '/system-administration/automation', label: 'الأتمتة وسير العمل', group: 'إدارة النظام', icon: 'tasks', element: <PlatformFoundationsPage initialTab="automation" /> },
+  { id: 'document-management', path: '/documents', label: 'إدارة المستندات', group: 'إدارة النظام', icon: 'workspace', element: <DocumentManagementPage /> },
+  { id: 'communication-center', path: '/communications', label: 'مركز الاتصالات', group: 'إدارة النظام', icon: 'bell', element: <CommunicationCenterPage /> },
+  { id: 'integration-center', path: '/integrations', label: 'مركز التكاملات و API', group: 'إدارة النظام', icon: 'settings', element: <IntegrationCenterPage /> },
 
   { id: 'crm-dashboard', path: '/crm/dashboard', label: 'لوحة العملاء والمبيعات', group: 'العملاء والمبيعات', icon: 'dashboard', element: <CrmSalesDashboardPage /> },
   { id: 'crm-customers', path: '/crm/customers', label: 'العملاء', group: 'العملاء والمبيعات', icon: 'customers', element: <CustomersPage /> },
@@ -68,6 +77,7 @@ export const foundationRoutes = defineRoutes(
   { id: 'crm-leads', path: '/crm/leads', label: 'العملاء المحتملون', group: 'العملاء والمبيعات', icon: 'leads', element: <LeadsPage /> },
   { id: 'crm-quotations', path: '/crm/quotations', label: 'عروض الأسعار', group: 'العملاء والمبيعات', icon: 'quote', element: <QuotationsPage /> },
   { id: 'crm-followups', path: '/crm/followups', label: 'المتابعات', group: 'العملاء والمبيعات', icon: 'followup', element: <FollowupsPage /> },
+  { id: 'crm-customer-service', path: '/crm/customer-service', label: 'خدمة العملاء والشكاوى', group: 'العملاء والمبيعات', icon: 'followup', element: <CustomerServicePage /> },
   { id: 'crm-travelers', path: '/crm/travelers', label: 'المسافرون', group: 'العملاء والمبيعات', icon: 'traveler', element: <TravelersPage /> },
 
   { id: 'supplier-management', path: '/procurement/suppliers', label: 'الموردون', group: 'المشتريات والموردون', icon: 'supplier', element: <SuppliersPage /> },
@@ -82,6 +92,9 @@ export const foundationRoutes = defineRoutes(
   { id: 'tourism-contract-inventory', path: '/tourism/contracts-inventory', label: 'التعاقدات والمخزون', group: 'السياحة والخدمات', icon: 'workspace', element: <TourismContractInventoryPage /> },
 
   { id: 'accounting-workspace', path: '/accounting', label: 'المحاسبة والمالية', group: 'المحاسبة والمالية', icon: 'analytics', element: <AccountingWorkspacePage /> },
+  { id: 'accounting-collections', path: '/accounting/collections', label: 'التحصيل والائتمان', group: 'المحاسبة والمالية', icon: 'tasks', element: <CollectionsPage /> },
+
+  { id: 'hr-payroll', path: '/hr', label: 'الموارد البشرية والرواتب', group: 'الموارد البشرية', icon: 'customers', element: <HrPayrollPage /> },
 
   { id: 'hajj-umrah-seasons', path: '/hajj-umrah/seasons', label: 'المواسم', group: 'الحج والعمرة', icon: 'calendar', element: <SeasonsPage /> },
   { id: 'hajj-umrah-contract-inventory', path: '/hajj-umrah/contracts-inventory', label: 'التعاقدات والمخزون', group: 'الحج والعمرة', icon: 'workspace', element: <TourismContractInventoryPage /> },
