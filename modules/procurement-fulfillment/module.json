@@ -5,7 +5,8 @@
     "src/public/nest.ts"
   ],
   "ownedTables": [
-    "pf_fulfillment_records"
+    "pf_fulfillment_records",
+    "pf_supplier_confirmations"
   ],
   "allowedDependencies": [
     "@elhafez/contracts",
