@@ -382,6 +382,8 @@ export class InMemoryProcurementRepository implements ProcurementRepository {
     return this.conversions.get(this.key(companyId, id));
   }
 
+  async listConversions(companyId:CompanyId,purchaseOrderId:string){return[...this.conversions.values()].filter(value=>value.companyId===companyId&&value.purchaseOrderId===purchaseOrderId).sort((a,b)=>a.createdAt.localeCompare(b.createdAt));}
+
   async reserveConversion(value: InvoiceConversion) {
     return this.atomic(async () => {
       const old = await this.conversion(value.companyId, value.id);
