@@ -3,6 +3,7 @@ import {
   Badge,
   Button,
   Card,
+  Checkbox,
   DataGrid,
   Dialog,
   EmptyState,
@@ -288,6 +289,13 @@ export function ProgramsView({
   </DataGrid>;
 }
 
+const requirementOptions:readonly [Requirement,string][]= [
+ ['HOTEL','الإقامة والفنادق'],['FLIGHT','الطيران'],['TRANSPORT','النقل'],['VISA','التأشيرات'],['MEAL','الإعاشة'],['VISIT','الزيارات'],['GUIDE','المشرف / المرشد'],['RAWDA','الروضة'],['INSURANCE','التأمين'],['HEALTH','المتطلبات الصحية'],['CAMP','المخيمات'],['PERMIT','التصاريح'],
+];
+const componentTypeLabels:Record<ProgramComponent['type'],string>={HOTEL:'فندق / إقامة',FLIGHT:'طيران',TRANSPORT:'نقل',VISA:'تأشيرة',MEAL:'إعاشة',VISIT:'زيارة',GUIDE:'مرشد',RAWDA:'روضة',INSURANCE:'تأمين',HEALTH:'صحي',CAMP:'مخيم',PERMIT:'تصريح',MEETING:'تجمع / مقابلة',CUSTOM:'مكوّن آخر'};
+const componentTypes=Object.keys(componentTypeLabels) as ProgramComponent['type'][];
+const defaultRequirements=(type:Program['type']):Requirement[]=>type==='HAJJ'?['HOTEL','FLIGHT','TRANSPORT','CAMP','PERMIT']:['HOTEL','FLIGHT','TRANSPORT'];
+
 function ProgramForm({
   value,
   onChange,
@@ -301,40 +309,75 @@ function ProgramForm({
   readonly onSubmit: (event: FormEvent) => void;
   readonly seasons: readonly Season[];
 }) {
-  const [requirements, setRequirements] = useState((value.requirements ?? []).join(','));
-  const [components, setComponents] = useState(JSON.stringify(value.components ?? [], null, 2));
-  useEffect(() => {
-    setRequirements((value.requirements ?? []).join(','));
-    setComponents(JSON.stringify(value.components ?? [], null, 2));
-  }, [value]);
-
-  function syncStructured(nextRequirements = requirements, nextComponents = components) {
-    let parsedComponents: ProgramComponent[] = [];
-    try { parsedComponents = JSON.parse(nextComponents) as ProgramComponent[]; } catch { parsedComponents = value.components ?? []; }
-    const parsedRequirements = nextRequirements.split(',').map((item) => item.trim()).filter(Boolean) as Requirement[];
-    onChange({
-      ...value,
-      ...(parsedRequirements.length ? { requirements: parsedRequirements } : {}),
-      components: parsedComponents,
-    });
-  }
-
+  const requirements=value.requirements??defaultRequirements(value.type);
+  const components=value.components??[];
+  const setPrice=(key:keyof Program['snapshot']['prices'],amount:string)=>onChange({...value,prices:{...value.prices,[key]:amount||undefined}});
+  const toggleRequirement=(requirement:Requirement,checked:boolean)=>{
+    const next=checked?[...requirements,requirement]:requirements.filter(item=>item!==requirement);
+    onChange({...value,requirements:[...new Set(next)]});
+  };
+  const addComponent=()=>{
+    const sequence=components.reduce((max,item)=>Math.max(max,item.sequence),0)+1;
+    onChange({...value,components:[...components,{type:'CUSTOM',title:'',sequence}]});
+  };
+  const updateComponent=(index:number,change:Partial<ProgramComponent>)=>onChange({...value,components:components.map((item,i)=>i===index?{...item,...change}:item)});
+  const removeComponent=(index:number)=>onChange({...value,components:components.filter((_item,i)=>i!==index).map((item,i)=>({...item,sequence:i+1}))});
   return <form onSubmit={onSubmit}>
-    <FormField label="الكود" required><Input required value={value.code} onChange={(event) => onChange({ ...value, code: event.target.value })} /></FormField>
-    <FormField label="النوع" required><Select value={value.type} onChange={(event) => onChange({ ...value, type: event.target.value as Program['type'] })}><option value="UMRAH">عمرة</option><option value="HAJJ">حج</option></Select></FormField>
-    <FormField label="الموسم" required><Select required value={value.seasonId} onChange={(event) => onChange({ ...value, seasonId: event.target.value })}><option value="">اختر الموسم</option>{seasons.filter(season=>season.status==='ACTIVE').map(season=><option key={season.id} value={season.id}>{season.code} — {season.arabicName}</option>)}</Select></FormField>
-    <FormField label="الاسم العربي" required><Input required value={value.arabicName} onChange={(event) => onChange({ ...value, arabicName: event.target.value })} /></FormField>
-    <FormField label="الاسم الإنجليزي"><Input value={value.englishName ?? ''} onChange={(event) => onChange({ ...value, englishName: event.target.value })} /></FormField>
-    <FormField label="تاريخ السفر" required><Input required type="date" value={value.departureDate} onChange={(event) => onChange({ ...value, departureDate: event.target.value })} /></FormField>
-    <FormField label="تاريخ العودة" required><Input required type="date" value={value.returnDate} onChange={(event) => onChange({ ...value, returnDate: event.target.value })} /></FormField>
-    <FormField label="بداية البيع" required><Input required type="date" value={value.salesStart} onChange={(event) => onChange({ ...value, salesStart: event.target.value })} /></FormField>
-    <FormField label="إغلاق البيع" required><Input required type="date" value={value.salesClose} onChange={(event) => onChange({ ...value, salesClose: event.target.value })} /></FormField>
-    <FormField label="السعة" required><Input required inputMode="decimal" value={value.capacity} onChange={(event) => onChange({ ...value, capacity: event.target.value })} /></FormField>
-    <FormField label="العملة" required><Input required value={value.currency} onChange={(event) => onChange({ ...value, currency: event.target.value.toUpperCase() })} /></FormField>
-    <FormField label="سعر الثنائي"><Input inputMode="decimal" value={value.prices.double ?? ''} onChange={(event) => onChange({ ...value, prices: { ...value.prices, double: event.target.value || undefined } })} /></FormField>
-    <FormField label="المتطلبات (مفصولة بفاصلة)"><Input value={requirements} onChange={(event) => { setRequirements(event.target.value); syncStructured(event.target.value, components); }} placeholder="HOTEL,FLIGHT,TRANSPORT" /></FormField>
-    <FormField label="المكونات JSON"><Textarea value={components} onChange={(event) => { setComponents(event.target.value); syncStructured(requirements, event.target.value); }} /></FormField>
-    <FormField label="ملاحظات"><Textarea value={value.notes ?? ''} onChange={(event) => onChange({ ...value, notes: event.target.value })} /></FormField>
+    <Card title="بيانات البرنامج">
+      <FormField label="الكود" required><Input required value={value.code} onChange={(event) => onChange({ ...value, code: event.target.value })} /></FormField>
+      <FormField label="النوع" required><Select value={value.type} onChange={(event) => {const type=event.target.value as Program['type'];onChange({ ...value, type, requirements:defaultRequirements(type) });}}><option value="UMRAH">عمرة</option><option value="HAJJ">حج</option></Select></FormField>
+      <FormField label="الموسم" required><Select required value={value.seasonId} onChange={(event) => onChange({ ...value, seasonId: event.target.value })}><option value="">اختر الموسم</option>{seasons.filter(season=>season.status==='ACTIVE').map(season=><option key={season.id} value={season.id}>{season.code} — {season.arabicName}</option>)}</Select></FormField>
+      <FormField label="الاسم العربي" required><Input required value={value.arabicName} onChange={(event) => onChange({ ...value, arabicName: event.target.value })} /></FormField>
+      <FormField label="الاسم الإنجليزي"><Input value={value.englishName ?? ''} onChange={(event) => onChange({ ...value, englishName: event.target.value })} /></FormField>
+      <FormField label="رقم المجموعة / الفوج"><Input value={value.groupNumber ?? ''} onChange={(event)=>onChange({...value,groupNumber:event.target.value||undefined})}/></FormField>
+      <FormField label="وصف المجموعة"><Input value={value.groupDescription ?? ''} onChange={(event)=>onChange({...value,groupDescription:event.target.value||undefined})}/></FormField>
+    </Card>
+    <Card title="التواريخ والسياسات">
+      <FormField label="تاريخ السفر" required><Input required type="date" value={value.departureDate} onChange={(event) => onChange({ ...value, departureDate: event.target.value })} /></FormField>
+      <FormField label="تاريخ العودة" required><Input required type="date" value={value.returnDate} onChange={(event) => onChange({ ...value, returnDate: event.target.value })} /></FormField>
+      <FormField label="بداية البيع" required><Input required type="date" value={value.salesStart} onChange={(event) => onChange({ ...value, salesStart: event.target.value })} /></FormField>
+      <FormField label="إغلاق البيع" required><Input required type="date" value={value.salesClose} onChange={(event) => onChange({ ...value, salesClose: event.target.value })} /></FormField>
+      <FormField label="السعة" required><Input required inputMode="decimal" value={value.capacity} onChange={(event) => onChange({ ...value, capacity: event.target.value })} /></FormField>
+      <FormField label="مدة الحجز المؤقت بالدقائق"><Input inputMode="numeric" value={String(value.temporaryHoldMinutes??15)} onChange={(event)=>onChange({...value,temporaryHoldMinutes:Number(event.target.value||15)})}/></FormField>
+      <FormField label="سياسة الحد الأدنى للعربون"><Input value={value.minimumDepositPolicy??''} onChange={(event)=>onChange({...value,minimumDepositPolicy:event.target.value||undefined})}/></FormField>
+      <FormField label="سياسة الإلغاء"><Textarea value={value.cancellationPolicy??''} onChange={(event)=>onChange({...value,cancellationPolicy:event.target.value||undefined})}/></FormField>
+    </Card>
+    <Card title="أسعار البيع للفرد">
+      <FormField label="العملة" required><Input required value={value.currency} onChange={(event) => onChange({ ...value, currency: event.target.value.toUpperCase() })} /></FormField>
+      <FormField label="فردي"><Input inputMode="decimal" value={value.prices.single ?? ''} onChange={(event)=>setPrice('single',event.target.value)}/></FormField>
+      <FormField label="ثنائي"><Input inputMode="decimal" value={value.prices.double ?? ''} onChange={(event)=>setPrice('double',event.target.value)}/></FormField>
+      <FormField label="ثلاثي"><Input inputMode="decimal" value={value.prices.triple ?? ''} onChange={(event)=>setPrice('triple',event.target.value)}/></FormField>
+      <FormField label="رباعي"><Input inputMode="decimal" value={value.prices.quad ?? ''} onChange={(event)=>setPrice('quad',event.target.value)}/></FormField>
+      <FormField label="خماسي"><Input inputMode="decimal" value={value.prices.quint ?? ''} onChange={(event)=>setPrice('quint',event.target.value)}/></FormField>
+      <FormField label="طفل بسرير"><Input inputMode="decimal" value={value.prices.childWithBed ?? ''} onChange={(event)=>setPrice('childWithBed',event.target.value)}/></FormField>
+      <FormField label="طفل بدون سرير"><Input inputMode="decimal" value={value.prices.childWithoutBed ?? ''} onChange={(event)=>setPrice('childWithoutBed',event.target.value)}/></FormField>
+      <FormField label="رضيع"><Input inputMode="decimal" value={value.prices.infant ?? ''} onChange={(event)=>setPrice('infant',event.target.value)}/></FormField>
+    </Card>
+    <Card title="مكونات الباقة المطلوبة">
+      <p>حدد ما يبيعه البرنامج فعليًا. الجاهزية لن تطلب خدمة غير محددة هنا.</p>
+      <div className="ui-filter-grid">{requirementOptions.map(([id,label])=><label className="ui-checkbox-field" key={id}><Checkbox checked={requirements.includes(id)} onChange={event=>toggleRequirement(id,event.target.checked)}/><span>{label}</span></label>)}</div>
+    </Card>
+    <Card title="خط سير البرنامج والخدمات">
+      <p>بديل منظم عن إدخال JSON يدويًا. أضف الإقامات والطيران والنقل والمناسك والخدمات بالترتيب الفعلي.</p>
+      {components.length?<DataGrid columns={['#','النوع','العنوان','من','إلى','المدينة / المسار','مرجع المخزون','إجراء']}>{components.map((item,index)=><tr key={index}>
+        <td>{index+1}</td>
+        <td><Select aria-label={`نوع المكون ${index+1}`} value={item.type} onChange={event=>updateComponent(index,{type:event.target.value as ProgramComponent['type']})}>{componentTypes.map(type=><option key={type} value={type}>{componentTypeLabels[type]}</option>)}</Select></td>
+        <td><Input aria-label={`عنوان المكون ${index+1}`} required value={item.title} onChange={event=>updateComponent(index,{title:event.target.value})}/></td>
+        <td><Input aria-label={`بداية المكون ${index+1}`} type="date" value={item.start??''} onChange={event=>updateComponent(index,{start:event.target.value||undefined})}/></td>
+        <td><Input aria-label={`نهاية المكون ${index+1}`} type="date" value={item.end??''} onChange={event=>updateComponent(index,{end:event.target.value||undefined})}/></td>
+        <td><Input aria-label={`الموقع أو المسار ${index+1}`} value={item.city??item.route??''} onChange={event=>updateComponent(index,{city:event.target.value||undefined,route:event.target.value||undefined})}/></td>
+        <td><Input aria-label={`مرجع المخزون ${index+1}`} value={item.inventoryReference??''} onChange={event=>updateComponent(index,{inventoryReference:event.target.value||undefined})}/></td>
+        <td><Button type="button" variant="danger" onClick={()=>removeComponent(index)}>حذف</Button></td>
+      </tr>)}</DataGrid>:<EmptyState title="لم تتم إضافة مكونات بعد" />}
+      <Button type="button" onClick={addComponent}>+ إضافة محطة / خدمة</Button>
+    </Card>
+    <Card title="فريق تشغيل الفوج">
+      <FormField label="مسؤول التشغيل"><Input value={value.operationsManager??''} onChange={event=>onChange({...value,operationsManager:event.target.value||undefined})}/></FormField>
+      <FormField label="قائد المجموعة"><Input value={value.groupLeader??''} onChange={event=>onChange({...value,groupLeader:event.target.value||undefined})}/></FormField>
+      <FormField label="المشرف / المرشد"><Input value={value.guide??''} onChange={event=>onChange({...value,guide:event.target.value||undefined})}/></FormField>
+      <FormField label="بيانات التواصل"><Input value={value.contact??''} onChange={event=>onChange({...value,contact:event.target.value||undefined})}/></FormField>
+      <FormField label="ملاحظات"><Textarea value={value.notes ?? ''} onChange={(event) => onChange({ ...value, notes: event.target.value })} /></FormField>
+    </Card>
     <Button type="submit">{submitLabel}</Button>
   </form>;
 }
