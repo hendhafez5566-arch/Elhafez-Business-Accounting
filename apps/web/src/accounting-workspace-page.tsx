@@ -17,8 +17,8 @@ const tabs=[
  {id:'tax',label:'الضرائب'},{id:'controls',label:'الرقابة والاعتمادات'},{id:'reports',label:'التقارير'},
 ];
 
-export function AccountingWorkspacePage(){
- const[data,setData]=useState<AccountingOverview>(emptyOverview),[cap,setCap]=useState<AccountingCapabilities>({read:false,operate:false}),[tab,setTab]=useState('overview'),[loading,setLoading]=useState(true),[error,setError]=useState(''),[notice,setNotice]=useState('');
+export function AccountingWorkspacePage({initialTab='overview'}:{readonly initialTab?:string}={}){
+ const[data,setData]=useState<AccountingOverview>(emptyOverview),[cap,setCap]=useState<AccountingCapabilities>({read:false,operate:false}),[tab,setTab]=useState(initialTab),[loading,setLoading]=useState(true),[error,setError]=useState(''),[notice,setNotice]=useState('');
  async function reload(){setLoading(true);setError('');try{const[c,o]=await Promise.all([accountingApi.capabilities(),accountingApi.overview()]);setCap(c);setData(o);}catch(value){setError(value instanceof Error?value.message:'تعذر تحميل المحاسبة.');}finally{setLoading(false);}}
  async function done(message:string){setNotice(message);await reload();}
  useEffect(()=>{void reload();},[]);
