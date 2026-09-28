@@ -11,6 +11,7 @@ import type {
 
 export interface CostCenterRepository {
   save(value: CostCenter): Promise<void>;
+  list(companyId: CompanyId): Promise<CostCenter[]>;
   find(companyId: CompanyId, id: CostCenterId): Promise<CostCenter | undefined>;
   findByCode(companyId: CompanyId, code: string): Promise<CostCenter | undefined>;
   saveAssociation(value: ProgramCostCenterAssociation): Promise<void>;
