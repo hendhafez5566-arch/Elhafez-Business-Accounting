@@ -882,6 +882,9 @@ function costFixture() {
     async save(value) {
       centers.set(key(value.companyId, value.id), value);
     },
+    async list(companyId) {
+      return [...centers.values()].filter((value) => value.companyId === companyId);
+    },
     async find(companyId, id) {
       return centers.get(key(companyId, id));
     },

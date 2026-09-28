@@ -2,7 +2,7 @@
   "id": "full-legacy-parity-20260928",
   "summary": "Continue the single-branch legacy parity effort through canonical owners, business selectors, launch readiness, documents, and structured program entry.",
   "type": "phase",
-  "allowedModules": ["cost-budget-accounting", "tourism-contract-inventory"],
+  "allowedModules": ["cost-budget-accounting", "tourism-contract-inventory", "tourism-finance-orchestration"],
   "allowedPaths": [
     "apps/api/src/app.module.ts",
     "apps/api/src/ac13-financial-integration.spec.ts",
