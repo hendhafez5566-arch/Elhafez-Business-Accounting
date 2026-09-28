@@ -158,6 +158,19 @@ model PcCompanyLoginIdentity {
   @@map("pc_company_login_identities")
 }
 
+
+model PcCompanyUserMfa {
+  companyId    String   @map("company_id")
+  userId       String   @map("user_id")
+  secretCipher String   @map("secret_cipher")
+  confirmed    Boolean  @default(false)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@id([companyId, userId])
+  @@map("pc_company_user_mfa")
+}
+
 model PcAuditLog {
   id         String   @id @default(uuid())
   actorId    String?  @map("actor_id")
