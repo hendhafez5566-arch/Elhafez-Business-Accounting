@@ -31,6 +31,8 @@ import { IntegrationCenterPage } from './integration-center-page.js';
 import { CommunicationCenterPage } from './communication-center-page.js';
 import { HrPayrollPage } from './hr-payroll-page.js';
 import { ProductSettingsPage } from './product-settings-page.js';
+import { CrmConfigurationPage } from './crm-configuration-page.js';
+import { QuotationTemplatesPage } from './quotation-templates-page.js';
 import type { IconName } from './ui/icons.js';
 
 export interface AppRoute {
@@ -78,6 +80,8 @@ export const foundationRoutes = defineRoutes(
   { id: 'crm-agent-360', path: '/crm/agent-360', label: 'ملف الوكيل 360°', group: 'العملاء والمبيعات', icon: 'profile', navigation: false, element: <Agent360Page /> },
   { id: 'crm-leads', path: '/crm/leads', label: 'العملاء المحتملون', group: 'العملاء والمبيعات', icon: 'leads', element: <LeadsPage /> },
   { id: 'crm-quotations', path: '/crm/quotations', label: 'عروض الأسعار', group: 'العملاء والمبيعات', icon: 'quote', element: <QuotationsPage /> },
+  { id: 'crm-quotation-templates', path: '/crm/quotation-templates', label: 'قوالب عروض الأسعار', group: 'العملاء والمبيعات', icon: 'quote', element: <QuotationTemplatesPage /> },
+  { id: 'crm-configuration', path: '/crm/configuration', label: 'إعداد CRM', group: 'العملاء والمبيعات', icon: 'settings', element: <CrmConfigurationPage /> },
   { id: 'crm-followups', path: '/crm/followups', label: 'المتابعات', group: 'العملاء والمبيعات', icon: 'followup', element: <FollowupsPage /> },
   { id: 'crm-customer-service', path: '/crm/customer-service', label: 'خدمة العملاء والشكاوى', group: 'العملاء والمبيعات', icon: 'followup', element: <CustomerServicePage /> },
   { id: 'crm-travelers', path: '/crm/travelers', label: 'المسافرون', group: 'العملاء والمبيعات', icon: 'traveler', element: <TravelersPage /> },
