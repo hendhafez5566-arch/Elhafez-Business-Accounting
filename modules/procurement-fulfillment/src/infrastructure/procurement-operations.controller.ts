@@ -8,6 +8,7 @@ import{
  type CreateDirectPurchaseOperationalInput,
  type CreateManualPurchaseOrderInput,
  type RecordFulfillmentInput,
+ type RecordSupplierConfirmationInput,
  type UpdateManualPurchaseOrderInput,
 }from'../application/procurement-fulfillment.application-service.js';
 
@@ -45,6 +46,12 @@ export class ProcurementOperationsController{
  async cancel(@Headers('authorization')a:string|undefined,@Headers('x-company-id')c:string|undefined,@Headers('x-branch-id')b:string|undefined,@Param('id')id:string,@Body()input:{reason:string}){
   return this.service.cancelPurchaseOrder(await this.context(a,c,b),id,input.reason);
  }
+
+ @Get('purchase-orders/:id/supplier-confirmations')
+ async supplierConfirmations(@Headers('authorization')a:string|undefined,@Headers('x-company-id')c:string|undefined,@Headers('x-branch-id')b:string|undefined,@Param('id')id:string){return this.service.listSupplierConfirmations(await this.context(a,c,b),id)}
+
+ @Post('purchase-orders/:id/supplier-confirmations')
+ async supplierConfirmation(@Headers('authorization')a:string|undefined,@Headers('x-company-id')c:string|undefined,@Headers('x-branch-id')b:string|undefined,@Param('id')id:string,@Body()input:Omit<RecordSupplierConfirmationInput,'purchaseOrderId'>){return this.service.recordSupplierConfirmation(await this.context(a,c,b),{...input,purchaseOrderId:id})}
 
  @Post('purchase-orders/:id/fulfillments')
  async fulfill(@Headers('authorization')a:string|undefined,@Headers('x-company-id')c:string|undefined,@Headers('x-branch-id')b:string|undefined,@Param('id')id:string,@Body()input:Omit<RecordFulfillmentInput,'purchaseOrderId'>){
