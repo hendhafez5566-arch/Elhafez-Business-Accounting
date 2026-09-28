@@ -5,7 +5,7 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "tsx --test src/**/*.spec.ts",
+    "test": "tsx --test src/**/*.spec.ts && node --test ../../deploy/railway/static-proxy.spec.mjs",
     "build:types": "tsc -p tsconfig.json",
     "preview:prod": "node scripts/serve.mjs"
   },
@@ -16,6 +16,6 @@
   },
   "dependencies": {
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.3"
   }
 }
