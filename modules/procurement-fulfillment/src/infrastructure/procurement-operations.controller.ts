@@ -61,6 +61,9 @@ export class ProcurementOperationsController{
   return this.service.convertPurchaseOrderLineToSupplierInvoice(await this.context(a,c,b),{...input,purchaseOrderId:id,lineId});
  }
 
+ @Get('purchase-orders/:id/reconciliation')
+ async reconciliation(@Headers('authorization')a:string|undefined,@Headers('x-company-id')c:string|undefined,@Headers('x-branch-id')b:string|undefined,@Param('id')id:string){return this.service.reconciliation(await this.context(a,c,b),id)}
+
  @Get('purchase-orders/:id/fulfillments')
  async fulfillments(@Headers('authorization')a:string|undefined,@Headers('x-company-id')c:string|undefined,@Headers('x-branch-id')b:string|undefined,@Param('id')id:string){
   return this.service.listFulfillment(await this.context(a,c,b),id);
