@@ -11,15 +11,15 @@ export interface Lead {
  readonly source:string; readonly requestedService:string|null; readonly expectedValue:string|null; readonly currency:string|null;
  readonly status:LeadStatus; readonly responsibleUserId:string|null; readonly referralAgentId:string|null; readonly notes:string|null;
  readonly lostReason:string|null; readonly preLostStatus:Exclude<LeadStatus,'LOST'>|null; readonly quotationReference:string|null;
- readonly convertedCustomerId:string|null; readonly createdAt:string; readonly updatedAt:string;
+ readonly convertedCustomerId:string|null; readonly campaignId?:string|null; readonly pipelineStage?:string|null; readonly score?:number; readonly tags?:readonly string[]; readonly slaDueAt?:string|null; readonly createdAt:string; readonly updatedAt:string;
 }
 export type LeadHistoryKind='CREATED'|'UPDATED'|'STATUS_CHANGED'|'LOST'|'REOPENED'|'QUOTED'|'CONVERTED';
 export interface LeadHistory { readonly id:string; readonly companyId:CompanyId; readonly branchId:BranchId; readonly leadId:LeadId; readonly kind:LeadHistoryKind; readonly fromStatus:LeadStatus|null; readonly toStatus:LeadStatus|null; readonly detail:string|null; readonly actorId:string; readonly occurredAt:string; }
 export interface CreateLeadInput {
  readonly partyKind:'PERSON'|'ORGANIZATION'; readonly displayName:string; readonly legalName?:string; readonly phone?:string; readonly whatsappNumber?:string; readonly email?:string; readonly address?:string; readonly nationalIdentity?:string; readonly taxIdentity?:string;
- readonly source:string; readonly requestedService?:string; readonly expectedValue?:string; readonly currency?:string; readonly responsibleUserId?:string; readonly referralAgentId?:string; readonly notes?:string;
+ readonly source:string; readonly campaignId?:string; readonly requestedService?:string; readonly expectedValue?:string; readonly currency?:string; readonly responsibleUserId?:string; readonly referralAgentId?:string; readonly tags?:readonly string[]; readonly notes?:string;
 }
-export interface UpdateLeadInput { readonly displayName?:string; readonly legalName?:string|null; readonly phone?:string|null; readonly whatsappNumber?:string|null; readonly email?:string|null; readonly address?:string|null; readonly source?:string; readonly requestedService?:string|null; readonly expectedValue?:string|null; readonly currency?:string|null; readonly responsibleUserId?:string|null; readonly referralAgentId?:string|null; readonly notes?:string|null; }
+export interface UpdateLeadInput { readonly displayName?:string; readonly legalName?:string|null; readonly phone?:string|null; readonly whatsappNumber?:string|null; readonly email?:string|null; readonly address?:string|null; readonly source?:string; readonly campaignId?:string|null; readonly requestedService?:string|null; readonly expectedValue?:string|null; readonly currency?:string|null; readonly responsibleUserId?:string|null; readonly referralAgentId?:string|null; readonly tags?:readonly string[]; readonly pipelineStage?:string|null; readonly notes?:string|null; }
 export const leadId=(value:string):LeadId=>{const x=value.trim();if(!x)throw new ContractValidationError('leadId','is required');return x as LeadId;};
 export const requiredText=(value:string,field:string):string=>{const x=value.trim().replace(/\s+/g,' ');if(!x)throw new ContractValidationError(field,'is required');return x;};
 export function optionalText(value:string|undefined|null):string|null{return value?.trim()||null;}
