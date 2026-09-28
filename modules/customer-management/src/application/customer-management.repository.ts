@@ -1,5 +1,5 @@
 import type { CompanyId } from '@elhafez/contracts';
-import type { Customer, CustomerId, CustomerReference } from '../domain/customer.js';
+import type { Customer, CustomerCommercialProfile, CustomerId, CustomerReference } from '../domain/customer.js';
 
 export interface CustomerManagementRepository {
   nextNumber(companyId:CompanyId):Promise<number>;
@@ -12,5 +12,7 @@ export interface CustomerManagementRepository {
   addReference(value:CustomerReference):Promise<void>;
   removeReference(companyId:CompanyId,id:CustomerId,sourceType:string,sourceId:string):Promise<void>;
   referenceCount(companyId:CompanyId,id:CustomerId):Promise<number>;
+  commercialProfile(companyId:CompanyId,id:CustomerId):Promise<CustomerCommercialProfile|undefined>;
+  saveCommercialProfile(value:CustomerCommercialProfile):Promise<CustomerCommercialProfile>;
 }
 export const CUSTOMER_MANAGEMENT_REPOSITORY=Symbol('CUSTOMER_MANAGEMENT_REPOSITORY');
