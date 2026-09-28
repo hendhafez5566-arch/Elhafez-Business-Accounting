@@ -174,6 +174,16 @@ export interface AvailabilityResult {
   readonly blockerReason?: string;
 }
 
+export interface InventoryResourceOption {
+  readonly id: string;
+  readonly contractId: string;
+  readonly type: ContractType;
+  readonly label: string;
+  readonly serviceDate: string;
+  readonly periodEnd?: string;
+  readonly availableQuantity: DecimalAmount;
+}
+
 export interface AllocationResult {
   readonly allocation?: Allocation;
   readonly procurementRequest?: ProcurementRequest;
@@ -294,6 +304,9 @@ export interface StandaloneSupplyCommit {
 }
 
 export interface TourismContractInventoryApplicationService {
+  listContracts(companyId: CompanyId): Promise<TourismContract[]>;
+  listResources(companyId: CompanyId, contractId?: string): Promise<InventoryResourceOption[]>;
+  listAllocations(companyId: CompanyId): Promise<Allocation[]>;
   createContract(input: CreateTourismContractInput, key?: string): Promise<TourismContract>;
   amendContract(input: AmendContractInput, key?: string): Promise<ContractVersion>;
   getContract(companyId: CompanyId, id: string): Promise<TourismContract | null>;
