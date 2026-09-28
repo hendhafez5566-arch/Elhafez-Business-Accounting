@@ -51,6 +51,14 @@ export interface CorrectFulfillmentInput{
  readonly attachmentIds?:readonly string[];
 }
 
+export interface RecordSupplierConfirmationInput{
+ readonly id:string;
+ readonly purchaseOrderId:string;
+ readonly outcome:'CONFIRMED'|'DECLINED';
+ readonly externalReference?:string;
+ readonly confirmedDeliveryDate?:string;
+ readonly note?:string;
+}
 export interface SupplierFulfillmentTimingMetrics{readonly fulfillmentCorrectionCount:number;readonly onTimeCompletedCount:number;readonly lateCompletedCount:number;readonly unclassifiedTimingCount:number;}
 export class ProcurementFulfillmentApplicationService{
  constructor(
@@ -98,6 +106,28 @@ export class ProcurementFulfillmentApplicationService{
   const value=await this.procurement.cancelPurchaseOrderWithReason(c.companyId,id,why);
   await this.access.audit(c,'procurement.po.cancelled','purchase-order',id,{reason:why});
   return value;
+ }
+
+ async recordSupplierConfirmation(c:ExecutionContext,input:RecordSupplierConfirmationInput){
+  await this.permission(c,PROCUREMENT_OPERATIONS_PERMISSIONS.fulfillmentManage);
+  const po=await this.procurement.getPurchaseOrderForBranch(c.companyId,c.branchId,input.purchaseOrderId);
+  if(['DRAFT','CANCELLED','DISPOSED'].includes(po.status))throw new ContractValidationError('purchaseOrder','approved active purchase order required');
+  if(input.outcome!=='CONFIRMED'&&input.outcome!=='DECLINED')throw new ContractValidationError('outcome','must be CONFIRMED or DECLINED');
+  const externalReference=input.externalReference?.trim()||null;
+  if(input.outcome==='CONFIRMED'&&!externalReference)throw new ContractValidationError('externalReference','supplier confirmation reference is required');
+  const confirmedDeliveryDate=input.confirmedDeliveryDate?.trim()||null;
+  if(confirmedDeliveryDate&&(!/^\d{4}-\d{2}-\d{2}$/.test(confirmedDeliveryDate)||Number.isNaN(Date.parse(confirmedDeliveryDate+'T00:00:00Z'))))throw new ContractValidationError('confirmedDeliveryDate','must be a valid ISO date');
+  const normalized={id:required(input.id,'id'),purchaseOrderId:po.id,outcome:input.outcome,externalReference,confirmedDeliveryDate,note:input.note?.trim()||null,companyId:c.companyId,branchId:c.branchId,supplierId:po.supplierId,actorId:c.actorId};
+  const requestHash=hash(normalized),prior=await this.repo.supplierConfirmation(c.companyId,normalized.id);
+  if(prior){if(prior.requestHash!==requestHash)throw new ContractValidationError('id','conflicting supplier confirmation replay');return prior;}
+  const value=await this.repo.saveSupplierConfirmation({...normalized,requestHash,occurredAt:this.now().toISOString()});
+  await this.access.audit(c,'procurement.supplier-confirmation.recorded','supplier-confirmation',value.id,{purchaseOrderId:po.id,outcome:value.outcome,externalReference:value.externalReference});
+  return value;
+ }
+ async listSupplierConfirmations(c:ExecutionContext,purchaseOrderId:string){
+  await this.permission(c,PROCUREMENT_OPERATIONS_PERMISSIONS.fulfillmentRead);
+  await this.procurement.getPurchaseOrderForBranch(c.companyId,c.branchId,purchaseOrderId);
+  return this.repo.listSupplierConfirmations(c.companyId,c.branchId,purchaseOrderId);
  }
 
  async createDirectPurchase(c:ExecutionContext,input:CreateDirectPurchaseOperationalInput){
@@ -218,8 +248,8 @@ export class ProcurementFulfillmentApplicationService{
  async reconciliation(c:ExecutionContext,purchaseOrderId:string){
   await this.permission(c,PROCUREMENT_OPERATIONS_PERMISSIONS.read);
   const purchaseOrder=await this.procurement.getPurchaseOrderForBranch(c.companyId,c.branchId,purchaseOrderId);
-  const[fulfillments,conversions]=await Promise.all([this.repo.listForPurchaseOrder(c.companyId,c.branchId,purchaseOrderId),this.procurement.listInvoiceConversionsForPurchaseOrder(c.companyId,purchaseOrderId)]);
-  return{purchaseOrder,fulfillments,conversions,lines:purchaseOrder.lines.map(line=>({lineId:line.id,itemReference:line.itemReference,orderedQuantity:line.orderedQuantity,receivedQuantity:line.receivedQuantity,invoicedQuantity:line.invoicedQuantity,matchStatus:scaled(line.invoicedQuantity)===scaled(line.receivedQuantity)?'MATCHED':scaled(line.invoicedQuantity)<scaled(line.receivedQuantity)?'RECEIVED_UNINVOICED':'INVOICE_CONFLICT'}))};
+  const[fulfillments,conversions,confirmations]=await Promise.all([this.repo.listForPurchaseOrder(c.companyId,c.branchId,purchaseOrderId),this.procurement.listInvoiceConversionsForPurchaseOrder(c.companyId,purchaseOrderId),this.repo.listSupplierConfirmations(c.companyId,c.branchId,purchaseOrderId)]);
+  return{purchaseOrder,fulfillments,conversions,confirmations,lines:purchaseOrder.lines.map(line=>({lineId:line.id,itemReference:line.itemReference,orderedQuantity:line.orderedQuantity,receivedQuantity:line.receivedQuantity,invoicedQuantity:line.invoicedQuantity,matchStatus:scaled(line.invoicedQuantity)===scaled(line.receivedQuantity)?'MATCHED':scaled(line.invoicedQuantity)<scaled(line.receivedQuantity)?'RECEIVED_UNINVOICED':'INVOICE_CONFLICT'}))};
  }
  async listFulfillment(c:ExecutionContext,purchaseOrderId:string){
   await this.permission(c,PROCUREMENT_OPERATIONS_PERMISSIONS.fulfillmentRead);
