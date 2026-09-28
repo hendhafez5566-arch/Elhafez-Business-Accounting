@@ -1,9 +1,10 @@
 {
   "id": "20260928-railway-proxy-content-encoding",
-  "summary": "Fix the Railway static API proxy so decoded upstream responses are not served with stale compression metadata, preventing browser content-decoding failures in tenant and owner flows.",
+  "summary": "Fix the Railway static API proxy so decoded upstream responses are not served with stale compression metadata, preventing browser content-decoding failures in tenant and owner flows, and ensure the regression test runs in the web workspace test suite.",
   "type": "bugfix",
   "allowedModules": [],
   "allowedPaths": [
+    "apps/web/package.json",
     "deploy/railway/static-proxy.mjs",
     "deploy/railway/static-proxy.spec.mjs"
   ],
