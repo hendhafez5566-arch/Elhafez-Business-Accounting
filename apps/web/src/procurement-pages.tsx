@@ -14,6 +14,7 @@ import {
   Textarea,
 } from './ui.js';
 import { procurementGet, procurementPatch, procurementPost } from './procurement-client.js';
+import { ProcurementReconciliationPanel } from './procurement-reconciliation-panel.js';
 
 type SupplierView = {
   supplier: { id:string; supplierCode:string; status:string; approvalStatus:string };
@@ -542,6 +543,7 @@ export function ProcurementOperationsPage() {
               ))}
             </DataGrid>
           )}
+          <ProcurementReconciliationPanel purchaseOrderId={selected.id}/>
         </Card>
       )}
 
