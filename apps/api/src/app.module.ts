@@ -102,6 +102,7 @@ import { HealthController } from './health.controller.js';
 import { UserNotificationsController } from './user-notifications.controller.js';
 import { GlobalSearchController } from './global-search.controller.js';
 import { PublicApiV1Controller } from './public-api-v1.controller.js';
+import { AccountingDepthController } from './accounting-depth.controller.js';
 import { AdvancedAccountingController, TourismContractInventoryController } from './frontend-coverage.controller.js';
 
 /** Composition root only. Business modules are registered here through public module APIs. */
@@ -112,7 +113,7 @@ import { AdvancedAccountingController, TourismContractInventoryController } from
     ExpenseCommissionRecognitionModule, CostBudgetAccountingModule, AssetsFinancingModule, ProcurementFinanceModule, TourismContractInventoryModule,
     TourismFinanceOrchestrationModule, TourismProgramsModule, TourismItinerariesModule, TourismBookingsModule, StandaloneServicesModule, ServiceFulfillmentModule, ServiceVouchersModule, HajjUmrahSeasonsModule, HajjUmrahProgramsModule, HajjUmrahBookingsModule, HajjUmrahRoomingModule, HajjUmrahVisaOperationsModule, HajjUmrahTicketingModule, HajjUmrahTransportOperationsModule, HajjUmrahTripOperationsModule, HajjUmrahReadinessModule, FinancialReportingModule, SaasControlPlaneModule, Ac14MigrationModule,
   ],
-  controllers: [HealthController, UserNotificationsController, GlobalSearchController, PublicApiV1Controller, AdvancedAccountingController, TourismContractInventoryController, SaasOwnerController, PlatformOwnerOperationsController, SaasTenantController, AccountingWorkspaceController, SystemAdministrationController, CrmSalesReadModelController, SupplierIntelligenceReadModelController, HajjUmrahController, HajjUmrahOperationsController, HajjUmrahReadinessController, ManagementControlController, TourismServicesController, TourismOperationsController],
+  controllers: [HealthController, UserNotificationsController, GlobalSearchController, PublicApiV1Controller, AccountingDepthController, AdvancedAccountingController, TourismContractInventoryController, SaasOwnerController, PlatformOwnerOperationsController, SaasTenantController, AccountingWorkspaceController, SystemAdministrationController, CrmSalesReadModelController, SupplierIntelligenceReadModelController, HajjUmrahController, HajjUmrahOperationsController, HajjUmrahReadinessController, ManagementControlController, TourismServicesController, TourismOperationsController],
   providers: [
     FinancialReportingEvidenceAdapter,
     { provide: APP_GUARD, useFactory: (saas:SaasControlPlaneApplicationService,platform:PlatformCoreApplicationService,operations:PlatformOperationsApplicationService) => new SaasSubscriptionGuard(saas,platform,operations), inject: [SaasControlPlaneApplicationService,PlatformCoreApplicationService,PlatformOperationsApplicationService] },
