@@ -1,7 +1,7 @@
 import type { PrismaClient } from '@prisma/client';
 import type { CompanyId } from '@elhafez/contracts';
 import type { CustomerManagementRepository } from '../application/customer-management.repository.js';
-import { customerId, type Customer, type CustomerId, type CustomerReference } from '../domain/customer.js';
+import { customerId, type Customer, type CustomerCommercialProfile, type CustomerId, type CustomerReference } from '../domain/customer.js';
 
 export class PrismaCustomerManagementRepository implements CustomerManagementRepository {
   constructor(private readonly db:PrismaClient){}
@@ -29,5 +29,7 @@ export class PrismaCustomerManagementRepository implements CustomerManagementRep
   async addReference(v:CustomerReference){await this.db.cmCustomerReference.upsert({where:{companyId_customerId_sourceType_sourceId:{companyId:v.companyId,customerId:v.customerId,sourceType:v.sourceType,sourceId:v.sourceId}},create:{companyId:v.companyId,customerId:v.customerId,sourceType:v.sourceType,sourceId:v.sourceId,createdAt:new Date(v.createdAt)},update:{}});}
   async removeReference(c:CompanyId,i:CustomerId,t:string,s:string){await this.db.cmCustomerReference.deleteMany({where:{companyId:c,customerId:i,sourceType:t,sourceId:s}});}
   async referenceCount(c:CompanyId,i:CustomerId){return this.db.cmCustomerReference.count({where:{companyId:c,customerId:i}});}
+  async commercialProfile(c:CompanyId,i:CustomerId){const r=await this.db.cmCustomerCommercialProfile.findUnique({where:{companyId_customerId:{companyId:c,customerId:i}}});return r?{companyId:r.companyId as CompanyId,customerId:customerId(r.customerId),groupCode:r.groupCode,loyaltyTier:r.loyaltyTier,loyaltyPoints:r.loyaltyPoints,tags:Array.isArray(r.tags)?r.tags.filter((x:unknown):x is string=>typeof x==='string'):[],creditNotes:r.creditNotes,updatedAt:r.updatedAt.toISOString()}:undefined;}
+  async saveCommercialProfile(v:CustomerCommercialProfile){const r=await this.db.cmCustomerCommercialProfile.upsert({where:{companyId_customerId:{companyId:v.companyId,customerId:v.customerId}},create:{companyId:v.companyId,customerId:v.customerId,groupCode:v.groupCode,loyaltyTier:v.loyaltyTier,loyaltyPoints:v.loyaltyPoints,tags:[...v.tags],creditNotes:v.creditNotes,updatedAt:new Date(v.updatedAt)},update:{groupCode:v.groupCode,loyaltyTier:v.loyaltyTier,loyaltyPoints:v.loyaltyPoints,tags:[...v.tags],creditNotes:v.creditNotes,updatedAt:new Date(v.updatedAt)}});return{companyId:r.companyId as CompanyId,customerId:customerId(r.customerId),groupCode:r.groupCode,loyaltyTier:r.loyaltyTier,loyaltyPoints:r.loyaltyPoints,tags:Array.isArray(r.tags)?r.tags.filter((x:unknown):x is string=>typeof x==='string'):[],creditNotes:r.creditNotes,updatedAt:r.updatedAt.toISOString()};}
 }
 function map(r:{id:string;companyId:string;partyId:string;number:string;status:string;assignedAgentId:string|null;commercialNotes:string|null;createdAt:Date;updatedAt:Date}):Customer{return{id:customerId(r.id),companyId:r.companyId as CompanyId,partyId:r.partyId,number:r.number,status:r.status as Customer['status'],assignedAgentId:r.assignedAgentId,commercialNotes:r.commercialNotes,createdAt:r.createdAt.toISOString(),updatedAt:r.updatedAt.toISOString()};}
