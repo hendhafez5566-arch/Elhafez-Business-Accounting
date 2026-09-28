@@ -143,7 +143,8 @@ export function Topbar({
           : <span>{branchLabel}</span>}
       </div>
       <div className="topbar-actions">
-        <Button variant="ghost" aria-label="الإشعارات" title="الإشعارات">
+        <Button variant="ghost" aria-label="البحث الشامل" title="البحث الشامل" onClick={()=>{window.location.href='/search';}}><Icon name="search" /></Button>
+        <Button variant="ghost" aria-label="الإشعارات" title="الإشعارات" onClick={()=>{window.location.href='/notifications';}}>
           <Icon name="bell" />
         </Button>
         <Dropdown label="الحساب">
