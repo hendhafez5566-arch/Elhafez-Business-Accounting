@@ -2,9 +2,9 @@ import{useEffect,useMemo,useState}from'react';
 import{crmGet}from'./crm-core-client.js';
 import{Checkbox,FormField,Input,LoadingState,Select}from'./ui.js';
 
-export type EntityPickerKind='CUSTOMER'|'CUSTOMER_PARTY'|'AGENT'|'AGENT_PARTY'|'SUPPLIER'|'SUPPLIER_PARTY'|'TRAVELER'|'TRAVELER_PARTY'|'LEAD'|'HAJJ_PROGRAM'|'TOURISM_PROGRAM'|'ACCOUNT'|'USER'|'BRANCH'|'ROLE'|'PERMISSION';
+export type EntityPickerKind='CUSTOMER'|'CUSTOMER_PARTY'|'AGENT'|'AGENT_PARTY'|'SUPPLIER'|'SUPPLIER_PARTY'|'TRAVELER'|'TRAVELER_PARTY'|'LEAD'|'HAJJ_PROGRAM'|'TOURISM_PROGRAM'|'HAJJ_BOOKING'|'TOURISM_BOOKING'|'TCI_ALLOCATION'|'ACCOUNT'|'USER'|'BRANCH'|'ROLE'|'PERMISSION';
 export interface EntityOption{readonly id:string;readonly label:string;readonly detail?:string}
-const endpoint:Record<EntityPickerKind,string>={CUSTOMER:'/crm/customers',CUSTOMER_PARTY:'/crm/customers',AGENT:'/crm/agents',AGENT_PARTY:'/crm/agents',SUPPLIER:'/suppliers',SUPPLIER_PARTY:'/suppliers',TRAVELER:'/crm/travelers',TRAVELER_PARTY:'/crm/travelers',LEAD:'/crm/leads',HAJJ_PROGRAM:'/hajj-umrah/programs',TOURISM_PROGRAM:'/tourism/programs',ACCOUNT:'/accounting/overview',USER:'/system-administration/users',BRANCH:'/system-administration/branches',ROLE:'/system-administration/roles',PERMISSION:'/system-administration/permissions'};
+const endpoint:Record<EntityPickerKind,string>={CUSTOMER:'/crm/customers',CUSTOMER_PARTY:'/crm/customers',AGENT:'/crm/agents',AGENT_PARTY:'/crm/agents',SUPPLIER:'/suppliers',SUPPLIER_PARTY:'/suppliers',TRAVELER:'/crm/travelers',TRAVELER_PARTY:'/crm/travelers',LEAD:'/crm/leads',HAJJ_PROGRAM:'/hajj-umrah/programs',TOURISM_PROGRAM:'/tourism/programs',HAJJ_BOOKING:'/hajj-umrah/operations/bookings',TOURISM_BOOKING:'/tourism/bookings',TCI_ALLOCATION:'/tourism/contracts-inventory/allocations',ACCOUNT:'/accounting/overview',USER:'/system-administration/users',BRANCH:'/system-administration/branches',ROLE:'/system-administration/roles',PERMISSION:'/system-administration/permissions'};
 function record(value:unknown):value is Record<string,unknown>{return Boolean(value)&&typeof value==='object'&&!Array.isArray(value);}
 function text(value:unknown){return typeof value==='string'?value:'';}
 function nested(row:Record<string,unknown>,key:string){const value=row[key];return record(value)?value:null;}
@@ -17,6 +17,8 @@ function option(kind:EntityPickerKind,value:unknown):EntityOption|null{
  if(kind==='LEAD'){const id=text(value.id);if(!id)return null;return{id,label:[text(value.number),text(value.displayName)].filter(Boolean).join(' — '),detail:[text(value.requestedService),text(value.status)].filter(Boolean).join(' · ')};}
  if(kind==='HAJJ_PROGRAM'){const id=text(value.id);if(!id)return null;return{id,label:[text(value.code),text(value.arabicName)].filter(Boolean).join(' — '),detail:text(value.status)};}
  if(kind==='TOURISM_PROGRAM'){const id=text(value.id);if(!id)return null;return{id,label:[text(value.code),text(value.nameAr)].filter(Boolean).join(' — '),detail:text(value.status)};}
+ if(kind==='HAJJ_BOOKING'||kind==='TOURISM_BOOKING'){const id=text(value.id);if(!id)return null;return{id,label:[text(value.code),text(value.status)].filter(Boolean).join(' — '),detail:text(value.financialState)};}
+ if(kind==='TCI_ALLOCATION'){const id=text(value.id);if(!id)return null;return{id,label:[text(value.resourceType),text(value.serviceDate).slice(0,10),text(value.quantity)].filter(Boolean).join(' — '),detail:text(value.status)};}
  if(kind==='ACCOUNT'){const id=text(value.id);if(!id||value.active===false||value.postable===false)return null;return{id,label:[text(value.code),text(value.name)].filter(Boolean).join(' — '),detail:text(value.classification)};}
  if(kind==='BRANCH'){const id=text(value.id);if(!id||value.active===false)return null;return{id,label:text(value.name)||id,detail:'فرع نشط'};}
  const id=text(value.id);if(!id)return null;return{id,label:text(value.displayName)||text(value.username)||text(value.name)||id,detail:text(value.username)};
