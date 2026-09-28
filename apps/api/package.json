@@ -67,6 +67,13 @@
     "@elhafez/document-numbering": "workspace:*",
     "@elhafez/automation-workflow": "workspace:*",
     "@elhafez/operational-reporting": "workspace:*",
-    "@elhafez/procurement-sourcing": "workspace:*"
+    "@elhafez/procurement-sourcing": "workspace:*",
+    "@elhafez/integration-hub": "workspace:*",
+    "@elhafez/communication-center": "workspace:*",
+    "@elhafez/document-management": "workspace:*",
+    "@elhafez/collections-credit-control": "workspace:*",
+    "@elhafez/customer-service": "workspace:*",
+    "@elhafez/hr-payroll": "workspace:*",
+    "@elhafez/hajj-umrah-barcode": "workspace:*"
   }
 }
