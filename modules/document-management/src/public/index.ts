@@ -1,0 +1,1 @@
+export{DocumentManagementApplicationService,DOCUMENT_PERMISSIONS}from'../application/document-management.application-service.js';export type{DocumentRequirement,BusinessDocument,DocumentVersion}from'../domain/document-management.js';
