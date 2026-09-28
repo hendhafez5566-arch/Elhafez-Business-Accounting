@@ -2210,6 +2210,25 @@ model PfFulfillmentRecord {
  @@map("pf_fulfillment_records")
 }
 
+model PfSupplierConfirmation {
+ id String @id
+ companyId String @map("company_id")
+ branchId String @map("branch_id")
+ purchaseOrderId String @map("purchase_order_id")
+ supplierId String @map("supplier_id")
+ outcome String
+ externalReference String? @map("external_reference")
+ confirmedDeliveryDate DateTime? @map("confirmed_delivery_date") @db.Date
+ note String?
+ actorId String @map("actor_id")
+ requestHash String @map("request_hash")
+ occurredAt DateTime @map("occurred_at")
+ @@unique([companyId,id])
+ @@index([companyId,branchId,purchaseOrderId,occurredAt])
+ @@index([companyId,supplierId,occurredAt])
+ @@map("pf_supplier_confirmations")
+}
+
 model ProcurementFinanceHistoricalImport {
  id String @id
  runId String @map("run_id")
