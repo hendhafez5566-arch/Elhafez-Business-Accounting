@@ -146,6 +146,9 @@ importers:
       '@elhafez/procurement-fulfillment':
         specifier: workspace:*
         version: link:../../modules/procurement-fulfillment
+      '@elhafez/procurement-sourcing':
+        specifier: workspace:*
+        version: link:../../modules/procurement-sourcing
       '@elhafez/quotations':
         specifier: workspace:*
         version: link:../../modules/quotations
@@ -761,6 +764,27 @@ importers:
       '@elhafez/procurement-finance':
         specifier: workspace:*
         version: link:../procurement-finance
+      '@nestjs/common':
+        specifier: ^11.0.11
+        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@prisma/client':
+        specifier: 6.19.0
+        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
+
+  modules/procurement-sourcing:
+    dependencies:
+      '@elhafez/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@elhafez/platform-core':
+        specifier: workspace:*
+        version: link:../platform-core
+      '@elhafez/procurement-finance':
+        specifier: workspace:*
+        version: link:../procurement-finance
+      '@elhafez/supplier-management':
+        specifier: workspace:*
+        version: link:../supplier-management
       '@nestjs/common':
         specifier: ^11.0.11
         version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)

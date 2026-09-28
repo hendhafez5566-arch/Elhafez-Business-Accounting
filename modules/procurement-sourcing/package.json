@@ -1,0 +1,15 @@
+{
+  "name":"@elhafez/procurement-sourcing",
+  "private":true,
+  "type":"module",
+  "exports":{".":"./src/public/index.ts","./nest":"./src/public/nest.ts"},
+  "dependencies":{
+    "@elhafez/contracts":"workspace:*",
+    "@elhafez/platform-core":"workspace:*",
+    "@elhafez/supplier-management":"workspace:*",
+    "@elhafez/procurement-finance":"workspace:*",
+    "@nestjs/common":"^11.0.11",
+    "@prisma/client":"6.19.0"
+  },
+  "scripts":{"build":"tsc -p tsconfig.json","typecheck":"tsc --noEmit -p tsconfig.json","test":"tsx --tsconfig tsconfig.json --test src/*.spec.ts src/**/*.spec.ts"}
+}

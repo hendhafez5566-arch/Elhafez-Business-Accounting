@@ -66,6 +66,7 @@
     "@elhafez/custom-fields": "workspace:*",
     "@elhafez/document-numbering": "workspace:*",
     "@elhafez/automation-workflow": "workspace:*",
-    "@elhafez/operational-reporting": "workspace:*"
+    "@elhafez/operational-reporting": "workspace:*",
+    "@elhafez/procurement-sourcing": "workspace:*"
   }
 }

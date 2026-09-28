@@ -4,6 +4,7 @@ import { Agent360Page, CrmSalesDashboardPage, Customer360Page, TravelersPage } f
 import { QuotationsPage } from './quotation-pages.js';
 import { SuppliersPage } from './supplier-pages.js';
 import { ProcurementOperationsPage } from './procurement-pages.js';
+import { ProcurementSourcingPage } from './procurement-sourcing-page.js';
 import { SupplierIntelligencePage } from './supplier-intelligence-page.js';
 import { ProgramWorkspacePage, ProgramsPage, SeasonsPage } from './hajj-umrah-pages.js';
 import { BookingsPage, RoomingPage, VisasPage } from './hajj-umrah-operations-primary-pages.js';
@@ -69,6 +70,7 @@ export const foundationRoutes = defineRoutes(
 
   { id: 'supplier-management', path: '/procurement/suppliers', label: 'الموردون', group: 'المشتريات والموردون', icon: 'supplier', element: <SuppliersPage /> },
   { id: 'supplier-intelligence', path: '/procurement/supplier-intelligence', label: 'تقييم ومتابعة الموردين', group: 'المشتريات والموردون', icon: 'analytics', element: <SupplierIntelligencePage /> },
+  { id: 'procurement-sourcing', path: '/procurement/sourcing', label: 'طلبات الشراء والتوريد', group: 'المشتريات والموردون', icon: 'purchase', element: <ProcurementSourcingPage /> },
   { id: 'procurement-operations', path: '/procurement/purchase-orders', label: 'أوامر الشراء', group: 'المشتريات والموردون', icon: 'purchase', element: <ProcurementOperationsPage /> },
 
   { id: 'tourism-services', path: '/tourism/services', label: 'السياحة والخدمات', group: 'السياحة والخدمات', icon: 'tourism', element: <TourismServicesPage /> },

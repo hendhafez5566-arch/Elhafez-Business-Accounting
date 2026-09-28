@@ -55,6 +55,7 @@ import { SupplierDisputesApplicationService } from '@elhafez/supplier-disputes';
 import { SupplierDisputesModule } from '@elhafez/supplier-disputes/nest';
 import { ProcurementFulfillmentApplicationService } from '@elhafez/procurement-fulfillment';
 import { ProcurementFulfillmentModule } from '@elhafez/procurement-fulfillment/nest';
+import { ProcurementSourcingModule } from '@elhafez/procurement-sourcing/nest';
 import { TravelerManagementApplicationService } from '@elhafez/traveler-management';
 import { TravelerManagementModule } from '@elhafez/traveler-management/nest';
 import { FinancialReportingEvidenceAdapter } from './financial-reporting-evidence.adapter.js';
@@ -93,7 +94,7 @@ import { AdvancedAccountingController, TourismContractInventoryController } from
 /** Composition root only. Business modules are registered here through public module APIs. */
 @Module({
   imports: [
-    PlatformCoreModule, DataExchangeModule, PlatformOperationsModule, CustomFieldsModule, DocumentNumberingModule, AutomationWorkflowModule, OperationalReportingModule, PartyRegistryModule, AgentManagementModule, CustomerManagementModule, CrmLeadsModule, CrmFollowupsModule, QuotationsModule, SupplierManagementModule, SupplierEvaluationModule, SupplierDisputesModule, ProcurementFulfillmentModule, TravelerManagementModule,
+    PlatformCoreModule, DataExchangeModule, PlatformOperationsModule, CustomFieldsModule, DocumentNumberingModule, AutomationWorkflowModule, OperationalReportingModule, PartyRegistryModule, AgentManagementModule, CustomerManagementModule, CrmLeadsModule, CrmFollowupsModule, QuotationsModule, SupplierManagementModule, SupplierEvaluationModule, SupplierDisputesModule, ProcurementFulfillmentModule, ProcurementSourcingModule, TravelerManagementModule,
     CurrencyFxModule, PeriodControlModule, GeneralLedgerModule, FinancialControlsModule, TaxModule, BillingSubledgersModule, TreasurySettlementModule, PartyAccountingModule,
     ExpenseCommissionRecognitionModule, CostBudgetAccountingModule, AssetsFinancingModule, ProcurementFinanceModule, TourismContractInventoryModule,
     TourismFinanceOrchestrationModule, TourismProgramsModule, TourismItinerariesModule, TourismBookingsModule, StandaloneServicesModule, ServiceFulfillmentModule, ServiceVouchersModule, HajjUmrahSeasonsModule, HajjUmrahProgramsModule, HajjUmrahBookingsModule, HajjUmrahRoomingModule, HajjUmrahVisaOperationsModule, HajjUmrahTicketingModule, HajjUmrahTransportOperationsModule, HajjUmrahTripOperationsModule, HajjUmrahReadinessModule, FinancialReportingModule, SaasControlPlaneModule, Ac14MigrationModule,
