@@ -4,6 +4,9 @@
   "type": "phase",
   "allowedModules": ["cost-budget-accounting", "tourism-contract-inventory", "tourism-finance-orchestration"],
   "allowedPaths": [
+    "apps/web/src/accounting-workspace-page.tsx",
+    "apps/web/src/advanced-accounting-sections.tsx",
+    "apps/web/src/frontend-coverage.spec.ts",
     "apps/api/src/app.module.ts",
     "apps/api/src/ac13-financial-integration.spec.ts",
     "apps/api/src/business-reference.controller.ts",

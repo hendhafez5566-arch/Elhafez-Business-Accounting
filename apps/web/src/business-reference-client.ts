@@ -6,6 +6,7 @@ export interface CustomerReference{customer:{id:string;number:string;status:stri
 export interface AgentReference{agent:{id:string;number:string;status:string};party:{displayName:string}}
 export interface TravelerReference{id:string;fullName:string;nationality:string|null;status:string;customerId:string|null}
 export interface UserReference{id:string;displayName?:string;name?:string;username?:string;active?:boolean}
+export interface CostCenterReference{id:string;code:string;name:string;status:'ACTIVE'|'INACTIVE';parentId?:string}
 
 export const businessReferenceApi={
  programs:()=>hajjUmrahApi.listPrograms(),
@@ -14,6 +15,7 @@ export const businessReferenceApi={
  travelers:()=>crmGet<TravelerReference[]>('/crm/travelers?status=ACTIVE'),
  users:()=>crmGet<UserReference[]>('/system-administration/users'),
  accounts:()=>accountingApi.overview().then(value=>value.accounts),
+ costCenters:()=>crmGet<CostCenterReference[]>('/business-references/cost-centers'),
 };
 
 export function programOption(program:Program){return{id:program.id,code:program.code,label:program.arabicName,description:program.status};}

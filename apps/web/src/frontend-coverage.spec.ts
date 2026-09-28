@@ -25,13 +25,27 @@ test('advanced accounting capabilities have real product surfaces', () => {
     PartyAccountingSection,
     ExpenseCommissionSection,
     AssetsFinancingSection,
-  ].map(component => renderToStaticMarkup(createElement(component))).join('\n');
+  ].map(component => renderToStaticMarkup(createElement(component, {}))).join('\n');
   assert.match(html, /أسعار الصرف/);
   assert.match(html, /مراكز التكلفة/);
   assert.match(html, /المقاصة الرسمية/);
   assert.match(html, /العمولات/);
   assert.match(html, /الأصول الثابتة/);
   assert.match(html, /القروض والتمويل/);
+});
+
+test('advanced accounting selects canonical accounts, invoices and treasuries by business label', () => {
+  const accounts = [{ id:'account-1', code:'5000', name:'مصروف التشغيل', classification:'EXPENSE' as const, active:true, postable:true }];
+  const treasuries = [{ id:'treasury-1', code:'CASH-01', name:'الخزنة الرئيسية', type:'CASH' as const, currency:'EGP', glAccountId:'account-1', active:true }];
+  const invoices = [{ id:'invoice-1', type:'SUPPLIER' as const, status:'POSTED', partyId:'supplier-1', number:'SUP-12', postingDate:'2026-09-28', currency:'EGP', baseTotal:'100', outstanding:'100', controlAccountId:'account-1' }];
+  const expense = renderToStaticMarkup(createElement(ExpenseCommissionSection,{accounts,invoices,treasuries}));
+  const assets = renderToStaticMarkup(createElement(AssetsFinancingSection,{accounts,treasuries}));
+  for (const html of [expense,assets]) {
+    assert.match(html,/5000 — مصروف التشغيل/);
+    assert.match(html,/CASH-01 — الخزنة الرئيسية/);
+    assert.doesNotMatch(html,/placeholder="(?:معرّف الحساب|معرّف الخزينة)"/);
+  }
+  assert.match(expense,/SUP-12 — 100 EGP/);
 });
 
 

@@ -36,9 +36,9 @@ export function AccountingWorkspacePage(){
   {tab==='currency-fx'?(cap.operate?<CurrencyFxSection/>:<EmptyState title="صلاحية قراءة فقط">هذه المساحة تحتوي عمليات مالية وتحتاج صلاحية تشغيل المحاسبة.</EmptyState>):null}
   {tab==='cost-budget'?(cap.operate?<CostBudgetSection/>:<EmptyState title="صلاحية قراءة فقط">هذه المساحة تحتوي عمليات مالية وتحتاج صلاحية تشغيل المحاسبة.</EmptyState>):null}
   {tab==='party-accounting'?(cap.operate?<PartyAccountingSection/>:<EmptyState title="صلاحية قراءة فقط">هذه المساحة تحتوي عمليات مالية وتحتاج صلاحية تشغيل المحاسبة.</EmptyState>):null}
-  {tab==='expense-commission'?(cap.operate?<ExpenseCommissionSection/>:<EmptyState title="صلاحية قراءة فقط">هذه المساحة تحتوي عمليات مالية وتحتاج صلاحية تشغيل المحاسبة.</EmptyState>):null}
+  {tab==='expense-commission'?(cap.operate?<ExpenseCommissionSection accounts={data.accounts} invoices={data.invoices} treasuries={data.treasuries}/>:<EmptyState title="صلاحية قراءة فقط">هذه المساحة تحتوي عمليات مالية وتحتاج صلاحية تشغيل المحاسبة.</EmptyState>):null}
   {tab==='recognition-accrual'?(cap.operate?<RecognitionAccrualSection accounts={data.accounts} invoices={data.invoices}/>:<EmptyState title="صلاحية قراءة فقط">هذه المساحة تحتوي عمليات مالية وتحتاج صلاحية تشغيل المحاسبة.</EmptyState>):null}
-  {tab==='assets-financing'?(cap.operate?<AssetsFinancingSection/>:<EmptyState title="صلاحية قراءة فقط">هذه المساحة تحتوي عمليات مالية وتحتاج صلاحية تشغيل المحاسبة.</EmptyState>):null}
+  {tab==='assets-financing'?(cap.operate?<AssetsFinancingSection accounts={data.accounts} treasuries={data.treasuries}/>:<EmptyState title="صلاحية قراءة فقط">هذه المساحة تحتوي عمليات مالية وتحتاج صلاحية تشغيل المحاسبة.</EmptyState>):null}
   {tab==='allowances'?(cap.operate?<AllowancesSection accounts={data.accounts} invoices={data.invoices}/>:<EmptyState title="صلاحية قراءة فقط">هذه المساحة تحتوي عمليات مالية وتحتاج صلاحية تشغيل المحاسبة.</EmptyState>):null}
   {tab==='tax'?<Tax data={data} operate={cap.operate} done={done}/>:null}
   {tab==='controls'?<Controls data={data} operate={cap.operate} done={done}/>:null}
