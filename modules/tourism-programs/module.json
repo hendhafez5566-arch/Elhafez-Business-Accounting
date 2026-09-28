@@ -6,7 +6,8 @@
   ],
   "ownedTables": [
     "tpr_programs",
-    "tpr_program_history"
+    "tpr_program_history",
+    "tpr_program_commercial"
   ],
   "allowedDependencies": [
     "@elhafez/contracts",
@@ -17,7 +18,8 @@
   "dataScope": "COMPANY_BRANCH",
   "branchScopedTables": [
     "tpr_programs",
-    "tpr_program_history"
+    "tpr_program_history",
+    "tpr_program_commercial"
   ],
   "criticalInvariants": [
     "Program records and lifecycle history are isolated by company and branch.",
