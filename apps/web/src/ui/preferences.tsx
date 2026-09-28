@@ -12,17 +12,20 @@ export const SIDEBAR_MODES = ['fixed', 'compact', 'auto'] as const;
 export const FONT_SCALES = ['small', 'normal', 'large', 'xlarge'] as const;
 export const FONT_FAMILIES = ['tahoma', 'system', 'arial'] as const;
 export const UI_DENSITIES = ['comfortable', 'balanced', 'compact'] as const;
+export const UI_THEMES = ['premium', 'classic'] as const;
 
 export type SidebarMode = (typeof SIDEBAR_MODES)[number];
 export type FontScale = (typeof FONT_SCALES)[number];
 export type FontFamily = (typeof FONT_FAMILIES)[number];
 export type UiDensity = (typeof UI_DENSITIES)[number];
+export type UiTheme = (typeof UI_THEMES)[number];
 
 export interface UiPreferences {
   readonly sidebarMode: SidebarMode;
   readonly fontScale: FontScale;
   readonly fontFamily: FontFamily;
   readonly density: UiDensity;
+  readonly theme: UiTheme;
 }
 
 export const DEFAULT_UI_PREFERENCES: UiPreferences = Object.freeze({
@@ -30,6 +33,7 @@ export const DEFAULT_UI_PREFERENCES: UiPreferences = Object.freeze({
   fontScale: 'normal',
   fontFamily: 'tahoma',
   density: 'comfortable',
+  theme: 'premium',
 });
 
 export interface PreferenceStorage {
@@ -56,6 +60,9 @@ export function normalizeUiPreferences(value: unknown): UiPreferences {
     density: isOneOf(UI_DENSITIES, candidate.density)
       ? candidate.density
       : DEFAULT_UI_PREFERENCES.density,
+    theme: isOneOf(UI_THEMES, candidate.theme)
+      ? candidate.theme
+      : DEFAULT_UI_PREFERENCES.theme,
   };
 }
 
@@ -104,6 +111,7 @@ export function applyUiPreferences(preferences: UiPreferences): void {
   root.dataset.uiFont = preferences.fontFamily;
   root.dataset.uiFontScale = preferences.fontScale;
   root.dataset.uiDensity = preferences.density;
+  root.dataset.uiTheme = preferences.theme;
 }
 
 interface UiPreferencesContextValue {
