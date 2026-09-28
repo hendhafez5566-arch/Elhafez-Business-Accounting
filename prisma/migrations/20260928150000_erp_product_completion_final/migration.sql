@@ -248,6 +248,26 @@ CREATE TABLE "pc_company_user_mfa"(
 );
 
 
+
+CREATE TABLE "pf_supplier_confirmations"(
+ "id" TEXT NOT NULL,
+ "company_id" TEXT NOT NULL,
+ "branch_id" TEXT NOT NULL,
+ "purchase_order_id" TEXT NOT NULL,
+ "supplier_id" TEXT NOT NULL,
+ "outcome" TEXT NOT NULL,
+ "external_reference" TEXT,
+ "confirmed_delivery_date" DATE,
+ "note" TEXT,
+ "actor_id" TEXT NOT NULL,
+ "request_hash" TEXT NOT NULL,
+ "occurred_at" TIMESTAMP(3) NOT NULL,
+ CONSTRAINT "pf_supplier_confirmations_pkey" PRIMARY KEY("id")
+);
+CREATE UNIQUE INDEX "pf_supplier_confirmations_company_id_id_key" ON "pf_supplier_confirmations"("company_id","id");
+CREATE INDEX "pf_supplier_confirmations_company_id_branch_id_purchase_order_id_occurred_at_idx" ON "pf_supplier_confirmations"("company_id","branch_id","purchase_order_id","occurred_at");
+CREATE INDEX "pf_supplier_confirmations_company_id_supplier_id_occurred_at_idx" ON "pf_supplier_confirmations"("company_id","supplier_id","occurred_at");
+
 -- Register only the new capabilities introduced by ERP Product Completion.
 -- Existing company administrators receive them inside companies where that role
 -- is already assigned; no other role is broadened and no cross-company grant is used.
