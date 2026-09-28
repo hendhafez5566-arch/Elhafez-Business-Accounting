@@ -11,6 +11,7 @@ import { BookingsPage, RoomingPage, VisasPage } from './hajj-umrah-operations-pr
 import { TicketingPage, TransportPage, TripOperationsPage } from './hajj-umrah-operations-secondary-pages.js';
 import { HajjUmrahReadinessPage } from './hajj-umrah-readiness-page.js';
 import { SystemAdministrationPage } from './system-administration-page.js';
+import { SystemReadinessPage } from './system-readiness-page.js';
 import { PlatformFoundationsPage } from './platform-foundations-page.js';
 import { TourismServicesPage } from './tourism-services-page.js';
 import { TourismOperationsPage } from './tourism-operations-page.js';
@@ -53,6 +54,7 @@ export const foundationRoutes = defineRoutes(
   { id: 'management-approvals', path: '/management/approvals', label: 'مركز الموافقات', group: 'الإدارة والتحكم', icon: 'tasks', element: <ApprovalCenterPage /> },
   { id: 'management-reports', path: '/management/reports', label: 'مركز التقارير', group: 'الإدارة والتحكم', icon: 'analytics', element: <ReportingCenterPage /> },
   { id: 'notification-center', path: '/notifications', label: 'الإشعارات', group: 'الإدارة والتحكم', icon: 'bell', element: <NotificationCenterPage /> },
+  { id: 'system-readiness', path: '/system/readiness', label: 'الإعداد والتشغيل', group: 'إدارة النظام', icon: 'readiness', element: <SystemReadinessPage /> },
   { id: 'system-administration', path: '/system-administration', label: 'إدارة النظام', group: 'إدارة النظام', icon: 'settings', element: <SystemAdministrationPage /> },
   { id: 'system-custom-fields', path: '/system-administration/custom-fields', label: 'الحقول المخصصة', group: 'إدارة النظام', icon: 'settings', element: <PlatformFoundationsPage initialTab="custom-fields" /> },
   { id: 'system-document-numbering', path: '/system-administration/document-numbering', label: 'ترقيم المستندات', group: 'إدارة النظام', icon: 'settings', element: <PlatformFoundationsPage initialTab="numbering" /> },
