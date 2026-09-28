@@ -56,6 +56,27 @@ importers:
       '@elhafez/billing-subledgers':
         specifier: workspace:*
         version: link:../../modules/billing-subledgers
+      '@elhafez/communication-center':
+        specifier: workspace:*
+        version: link:../../modules/communication-center
+      '@elhafez/collections-credit-control':
+        specifier: workspace:*
+        version: link:../../modules/collections-credit-control
+      '@elhafez/customer-service':
+        specifier: workspace:*
+        version: link:../../modules/customer-service
+      '@elhafez/document-management':
+        specifier: workspace:*
+        version: link:../../modules/document-management
+      '@elhafez/hajj-umrah-barcode':
+        specifier: workspace:*
+        version: link:../../modules/hajj-umrah-barcode
+      '@elhafez/hr-payroll':
+        specifier: workspace:*
+        version: link:../../modules/hr-payroll
+      '@elhafez/integration-hub':
+        specifier: workspace:*
+        version: link:../../modules/integration-hub
       '@elhafez/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
@@ -890,6 +911,132 @@ importers:
       '@elhafez/financial-controls':
         specifier: workspace:*
         version: link:../financial-controls
+      '@nestjs/common':
+        specifier: ^11.0.11
+        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@prisma/client':
+        specifier: 6.19.0
+        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
+
+  modules/communication-center:
+    dependencies:
+      '@elhafez/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@elhafez/platform-core':
+        specifier: workspace:*
+        version: link:../platform-core
+      '@elhafez/integration-hub':
+        specifier: workspace:*
+        version: link:../integration-hub
+      '@nestjs/common':
+        specifier: ^11.0.11
+        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@prisma/client':
+        specifier: 6.19.0
+        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
+
+  modules/collections-credit-control:
+    dependencies:
+      '@elhafez/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@elhafez/platform-core':
+        specifier: workspace:*
+        version: link:../platform-core
+      '@elhafez/billing-subledgers':
+        specifier: workspace:*
+        version: link:../billing-subledgers
+      '@nestjs/common':
+        specifier: ^11.0.11
+        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@prisma/client':
+        specifier: 6.19.0
+        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
+
+  modules/customer-service:
+    dependencies:
+      '@elhafez/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@elhafez/customer-management':
+        specifier: workspace:*
+        version: link:../customer-management
+      '@elhafez/platform-core':
+        specifier: workspace:*
+        version: link:../platform-core
+      '@nestjs/common':
+        specifier: ^11.0.11
+        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@prisma/client':
+        specifier: 6.19.0
+        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
+
+  modules/document-management:
+    dependencies:
+      '@elhafez/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@elhafez/platform-core':
+        specifier: workspace:*
+        version: link:../platform-core
+      '@nestjs/common':
+        specifier: ^11.0.11
+        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@prisma/client':
+        specifier: 6.19.0
+        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
+
+  modules/integration-hub:
+    dependencies:
+      '@elhafez/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@elhafez/platform-core':
+        specifier: workspace:*
+        version: link:../platform-core
+      '@nestjs/common':
+        specifier: ^11.0.11
+        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@prisma/client':
+        specifier: 6.19.0
+        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
+
+  modules/hr-payroll:
+    dependencies:
+      '@elhafez/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@elhafez/platform-core':
+        specifier: workspace:*
+        version: link:../platform-core
+      '@elhafez/assets-financing':
+        specifier: workspace:*
+        version: link:../assets-financing
+      '@nestjs/common':
+        specifier: ^11.0.11
+        version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@prisma/client':
+        specifier: 6.19.0
+        version: 6.19.0(prisma@6.19.0(magicast@0.5.5)(typescript@5.9.3))(typescript@5.9.3)
+
+  modules/hajj-umrah-barcode:
+    dependencies:
+      '@elhafez/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@elhafez/platform-core':
+        specifier: workspace:*
+        version: link:../platform-core
+      '@elhafez/hajj-umrah-bookings':
+        specifier: workspace:*
+        version: link:../hajj-umrah-bookings
+      '@elhafez/traveler-management':
+        specifier: workspace:*
+        version: link:../traveler-management
+      '@elhafez/integration-hub':
+        specifier: workspace:*
+        version: link:../integration-hub
       '@nestjs/common':
         specifier: ^11.0.11
         version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
