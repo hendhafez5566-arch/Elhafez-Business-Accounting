@@ -1,5 +1,5 @@
 import type { BranchId, CompanyId } from '@elhafez/contracts';
-import type { Quotation, QuotationCommunication, QuotationHistory, QuotationId } from '../domain/quotation.js';
+import type { Quotation, QuotationCommunication, QuotationHistory, QuotationId, QuotationTemplate } from '../domain/quotation.js';
 export interface QuotationsRepository {
   nextNumber(companyId:CompanyId,branchId:BranchId):Promise<number>;
   create(value:Quotation,history:QuotationHistory):Promise<void>;
@@ -9,5 +9,8 @@ export interface QuotationsRepository {
   list(companyId:CompanyId,branchId:BranchId,query?:string):Promise<Quotation[]>;
   addCommunication(value:QuotationCommunication):Promise<void>;
   communications(companyId:CompanyId,branchId:BranchId,quotationId:QuotationId):Promise<QuotationCommunication[]>;
+  saveTemplate(value:QuotationTemplate):Promise<QuotationTemplate>;
+  template(companyId:CompanyId,branchId:BranchId,id:string):Promise<QuotationTemplate|undefined>;
+  listTemplates(companyId:CompanyId,branchId:BranchId):Promise<QuotationTemplate[]>;
 }
 export const QUOTATIONS_REPOSITORY=Symbol('QUOTATIONS_REPOSITORY');
