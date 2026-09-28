@@ -42,7 +42,7 @@ export function CommercialReadinessPage({mode='readiness'}:{readonly mode?:'read
    ['4 — العملاء والموردون','أدخل الأطراف الأساسية أو استخدم الاستيراد المنظم.','/crm/customers'],
    ['5 — المشتريات والخدمات','راجع الموردين والتعاقدات والتوريد قبل التشغيل.','/procurement/suppliers'],
    ['6 — الحج والعمرة والسياحة','أنشئ برنامجًا تجريبيًا، مكوناته، المسافرين ثم أول حجز.','/hajj-umrah/programs'],
-   ['7 — دورة مالية تجريبية','أنشئ مستندًا ماليًا وراجع القيود والخزينة والتقارير.','/accounting/reports'],
+   ['7 — دورة مالية تجريبية','أنشئ مستندًا ماليًا وراجع القيود والخزينة والتقارير.','/accounting/trial-reports'],
    ['8 — التشخيص والنسخ','راجع التشخيص؛ النسخ والاستعادة على مستوى المنصة من مركز المالك.','/system-administration/diagnostics'],
   ].map(([title,detail,href])=><Card key={title} title={title}><p>{detail}</p><Button type="button" onClick={()=>go(href)}>فتح</Button></Card>)}
  </div><Card title="فحص الجاهزية"><Button type="button" onClick={()=>go('/system/readiness')}>تشغيل فحص الجاهزية الآن</Button></Card></section>;
