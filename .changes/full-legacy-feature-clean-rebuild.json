@@ -15,7 +15,8 @@
     "apps/web/src/**",
     "prisma/schema.prisma",
     "prisma/migrations/20260928170000_full_legacy_feature_parity/migration.sql",
-    "modules/treasury-settlement/**"
+    "modules/treasury-settlement/**",
+    "apps/api/src/frontend-coverage.controller.ts"
   ],
   "protectedPaths": [
     "apps/web/src/routes.tsx",
