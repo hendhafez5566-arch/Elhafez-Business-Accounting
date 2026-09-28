@@ -57,7 +57,7 @@ export class ProcurementFulfillmentApplicationService{
   private readonly repo:ProcurementFulfillmentRepository,
   private readonly procurement:Pick<ProcurementFinanceApplicationService,
    'createPurchaseOrder'|'updateDraftPurchaseOrder'|'approvePurchaseOrder'|'cancelPurchaseOrderWithReason'|
-   'getPurchaseOrderForBranch'|'listPurchaseOrders'|'purchaseOrdersForSupplierMetricsForIntegration'|'receivePurchaseOrderWithOutcome'|'adjustReceivedPurchaseOrderWithOutcome'|'createDirectPurchase'|'convertToSupplierInvoice'>,
+   'getPurchaseOrderForBranch'|'listPurchaseOrders'|'listInvoiceConversionsForPurchaseOrder'|'purchaseOrdersForSupplierMetricsForIntegration'|'receivePurchaseOrderWithOutcome'|'adjustReceivedPurchaseOrderWithOutcome'|'createDirectPurchase'|'convertToSupplierInvoice'>,
   private readonly access:ProcurementAccess,
   private readonly now:()=>Date=()=>new Date(),
  ){}
@@ -215,6 +215,12 @@ export class ProcurementFulfillmentApplicationService{
   return{fulfillmentCorrectionCount:correctionCount,onTimeCompletedCount:onTime,lateCompletedCount:late,unclassifiedTimingCount:unclassified};
  }
 
+ async reconciliation(c:ExecutionContext,purchaseOrderId:string){
+  await this.permission(c,PROCUREMENT_OPERATIONS_PERMISSIONS.read);
+  const purchaseOrder=await this.procurement.getPurchaseOrderForBranch(c.companyId,c.branchId,purchaseOrderId);
+  const[fulfillments,conversions]=await Promise.all([this.repo.listForPurchaseOrder(c.companyId,c.branchId,purchaseOrderId),this.procurement.listInvoiceConversionsForPurchaseOrder(c.companyId,purchaseOrderId)]);
+  return{purchaseOrder,fulfillments,conversions,lines:purchaseOrder.lines.map(line=>({lineId:line.id,itemReference:line.itemReference,orderedQuantity:line.orderedQuantity,receivedQuantity:line.receivedQuantity,invoicedQuantity:line.invoicedQuantity,matchStatus:scaled(line.invoicedQuantity)===scaled(line.receivedQuantity)?'MATCHED':scaled(line.invoicedQuantity)<scaled(line.receivedQuantity)?'RECEIVED_UNINVOICED':'INVOICE_CONFLICT'}))};
+ }
  async listFulfillment(c:ExecutionContext,purchaseOrderId:string){
   await this.permission(c,PROCUREMENT_OPERATIONS_PERMISSIONS.fulfillmentRead);
   await this.procurement.getPurchaseOrderForBranch(c.companyId,c.branchId,purchaseOrderId);
