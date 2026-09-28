@@ -2,9 +2,9 @@ import{useEffect,useMemo,useState}from'react';
 import{crmGet}from'./crm-core-client.js';
 import{Checkbox,FormField,Input,LoadingState,Select}from'./ui.js';
 
-export type EntityPickerKind='CUSTOMER'|'AGENT'|'SUPPLIER'|'TRAVELER'|'HAJJ_PROGRAM'|'TOURISM_PROGRAM';
+export type EntityPickerKind='CUSTOMER'|'AGENT'|'SUPPLIER'|'TRAVELER'|'LEAD'|'HAJJ_PROGRAM'|'TOURISM_PROGRAM';
 export interface EntityOption{readonly id:string;readonly label:string;readonly detail?:string}
-const endpoint:Record<EntityPickerKind,string>={CUSTOMER:'/crm/customers',AGENT:'/crm/agents',SUPPLIER:'/suppliers',TRAVELER:'/crm/travelers',HAJJ_PROGRAM:'/hajj-umrah/programs',TOURISM_PROGRAM:'/tourism/programs'};
+const endpoint:Record<EntityPickerKind,string>={CUSTOMER:'/crm/customers',AGENT:'/crm/agents',SUPPLIER:'/suppliers',TRAVELER:'/crm/travelers',LEAD:'/crm/leads',HAJJ_PROGRAM:'/hajj-umrah/programs',TOURISM_PROGRAM:'/tourism/programs'};
 function record(value:unknown):value is Record<string,unknown>{return Boolean(value)&&typeof value==='object'&&!Array.isArray(value);}
 function text(value:unknown){return typeof value==='string'?value:'';}
 function nested(row:Record<string,unknown>,key:string){const value=row[key];return record(value)?value:null;}
@@ -14,6 +14,7 @@ function option(kind:EntityPickerKind,value:unknown):EntityOption|null{
  if(kind==='AGENT'){const agent=nested(value,'agent'),party=nested(value,'party');if(!agent||!party)return null;const id=text(agent.id);if(!id)return null;return{id,label:[text(agent.number),text(party.displayName)].filter(Boolean).join(' — '),detail:text(agent.status)};}
  if(kind==='SUPPLIER'){const supplier=nested(value,'supplier'),party=nested(value,'party');if(!supplier||!party)return null;const id=text(supplier.id);if(!id)return null;return{id,label:[text(supplier.supplierCode),text(party.displayName)].filter(Boolean).join(' — '),detail:text(supplier.status)};}
  if(kind==='TRAVELER'){const id=text(value.id);if(!id)return null;return{id,label:text(value.fullName)||id,detail:[text(value.nationality),text(value.status)].filter(Boolean).join(' · ')};}
+ if(kind==='LEAD'){const id=text(value.id);if(!id)return null;return{id,label:[text(value.number),text(value.displayName)].filter(Boolean).join(' — '),detail:[text(value.requestedService),text(value.status)].filter(Boolean).join(' · ')};}
  if(kind==='HAJJ_PROGRAM'){const id=text(value.id);if(!id)return null;return{id,label:[text(value.code),text(value.arabicName)].filter(Boolean).join(' — '),detail:text(value.status)};}
  const id=text(value.id);if(!id)return null;return{id,label:[text(value.code),text(value.nameAr)].filter(Boolean).join(' — '),detail:text(value.status)};
 }
