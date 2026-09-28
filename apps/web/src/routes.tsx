@@ -23,6 +23,7 @@ import { AccountSettingsPage } from './account-settings-page.js';
 import { NotificationCenterPage } from './notification-center-page.js';
 import { ApprovalCenterPage } from './approval-center-page.js';
 import { ReportingCenterPage } from './reporting-center-page.js';
+import{CommercialReadinessPage,PeriodArchivePage}from'./legacy-readiness-page.js';
 import type { IconName } from './ui/icons.js';
 
 export interface AppRoute {
@@ -65,6 +66,9 @@ export const foundationRoutes = defineRoutes(
   { id: 'system-audit', path: '/system-administration/audit', label: 'سجل النشاط', group: 'إدارة النظام', icon: 'operations', element: <SystemAdministrationPage initialTab="audit" /> },
   { id: 'system-diagnostics', path: '/system-administration/diagnostics', label: 'الدعم وحالة النظام', group: 'إدارة النظام', icon: 'readiness', element: <SystemAdministrationPage initialTab="operations/diagnostics" /> },
   { id: 'system-company-settings', path: '/system-administration/company-settings', label: 'إعدادات الشركة', group: 'إدارة النظام', icon: 'settings', element: <SystemAdministrationPage initialTab="configuration/locale" /> },
+  { id: 'system-readiness', path: '/system/readiness', label: 'جاهزية البيع والتشغيل', group: 'إدارة النظام', icon: 'readiness', element: <CommercialReadinessPage /> },
+  { id: 'system-quick-start', path: '/system/quick-start', label: 'دليل البدء السريع', group: 'إدارة النظام', icon: 'tasks', element: <CommercialReadinessPage mode="guide" /> },
+  { id: 'system-period-archive', path: '/system/period-archive', label: 'الأرشفة المالية', group: 'إدارة النظام', icon: 'calendar', element: <PeriodArchivePage /> },
 
   { id: 'crm-dashboard', path: '/crm/dashboard', label: 'لوحة العملاء والمبيعات', group: 'العملاء والمبيعات', icon: 'dashboard', element: <CrmSalesDashboardPage /> },
   { id: 'crm-customers', path: '/crm/customers', label: 'العملاء', group: 'العملاء والمبيعات', icon: 'customers', element: <CustomersPage /> },
