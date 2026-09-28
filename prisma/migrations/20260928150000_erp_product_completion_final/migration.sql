@@ -235,3 +235,14 @@ CREATE TABLE "hr_payroll_lines"(
 );
 CREATE INDEX "hr_payroll_lines_company_id_branch_id_run_id_idx" ON "hr_payroll_lines"("company_id","branch_id","run_id");
 CREATE INDEX "hr_payroll_lines_company_id_branch_id_employee_id_idx" ON "hr_payroll_lines"("company_id","branch_id","employee_id");
+
+
+CREATE TABLE "pc_company_user_mfa"(
+ "company_id" TEXT NOT NULL,
+ "user_id" TEXT NOT NULL,
+ "secret_cipher" TEXT NOT NULL,
+ "confirmed" BOOLEAN NOT NULL DEFAULT false,
+ "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ "updated_at" TIMESTAMP(3) NOT NULL,
+ CONSTRAINT "pc_company_user_mfa_pkey" PRIMARY KEY("company_id","user_id")
+);
