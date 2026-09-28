@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import type { CompanyId } from '@elhafez/contracts';
+import type { SourceReference } from '@elhafez/contracts';
 
 export interface TourismContractReference {
   readonly id:string;
@@ -30,6 +31,6 @@ export class TourismInventoryReferenceQuery {
   }
   async allocations(companyId:CompanyId):Promise<TourismAllocationReference[]>{
     const rows=await this.db.tciAllocation.findMany({where:{companyId},orderBy:{createdAt:'desc'}});
-    return rows.map(row=>({id:row.id,contractId:row.contractId,resourceType:row.resourceType,resourceId:row.resourceId,programSourceType:row.programSourceType,programSourceId:row.programSourceId,serviceDate:row.serviceDate.toISOString().slice(0,10),periodEnd:row.periodEnd?.toISOString().slice(0,10)??null,quantity:String(row.quantity),status:row.status}));
+    return rows.map(row=>{const program=row.program as unknown as SourceReference;return{id:row.id,contractId:row.contractId,resourceType:row.resourceType,resourceId:row.resourceId,programSourceType:program.sourceType,programSourceId:program.sourceId,serviceDate:row.serviceDate.toISOString().slice(0,10),periodEnd:row.periodEnd?.toISOString().slice(0,10)??null,quantity:String(row.quantity),status:row.status};});
   }
 }
