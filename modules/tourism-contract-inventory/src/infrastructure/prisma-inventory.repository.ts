@@ -40,6 +40,7 @@ import type {
   CreateVisaQuotaInput,
   CreateGenericServiceInput,
   InternalFirstFulfillmentInput,
+  InventoryResourceOption,
   ProtectAllocationCoverageInput,
   ProgramSupplyEvidence,
   ProgramSupplyEvidenceInput,
@@ -163,6 +164,32 @@ function sameSource(left: SourceReference, right: SourceReference): boolean {
 
 export class PrismaTourismInventoryRepository implements TourismInventoryRepository {
   constructor(private readonly db: PrismaClient) {}
+
+  async contracts(companyId: CompanyId): Promise<TourismContract[]> {
+    return (await this.db.tciContract.findMany({ where: { companyId }, orderBy: { createdAt: 'desc' } })).map(contract);
+  }
+
+  async resources(companyId: CompanyId, contractId?: string): Promise<InventoryResourceOption[]> {
+    const where = { companyId, ...(contractId ? { contractId } : {}) };
+    const [hotels, flights, transport, visas, services] = await Promise.all([
+      this.db.tciHotelInventory.findMany({ where, orderBy: { serviceDate: 'desc' } }),
+      this.db.tciFlightBlock.findMany({ where, orderBy: { departureDate: 'desc' } }),
+      this.db.tciTransportCapacity.findMany({ where, orderBy: { periodStart: 'desc' } }),
+      this.db.tciVisaQuota.findMany({ where, orderBy: { effectiveFrom: 'desc' } }),
+      this.db.tciServiceInventory.findMany({ where, orderBy: { serviceStart: 'desc' } }),
+    ]);
+    return [
+      ...hotels.map(row=>({id:row.id,contractId:row.contractId,type:'HOTEL' as const,label:[row.hotelId,row.roomId].filter(Boolean).join(' — '),serviceDate:iso(row.serviceDate),availableQuantity:amount(row.availableQuantity)})),
+      ...flights.map(row=>({id:row.id,contractId:row.contractId,type:'FLIGHT_BLOCK' as const,label:[row.flightNumber,row.origin+' → '+row.destination].filter(Boolean).join(' — '),serviceDate:iso(row.departureDate),availableQuantity:amount(row.availableSeats)})),
+      ...transport.map(row=>({id:row.id,contractId:row.contractId,type:'TRANSPORT' as const,label:row.vehicleId,serviceDate:iso(row.periodStart),periodEnd:iso(row.periodEnd),availableQuantity:amount(new Prisma.Decimal(row.capacityUnits).minus(row.consumedUnits))})),
+      ...visas.map(row=>({id:row.id,contractId:row.contractId,type:'VISA' as const,label:[row.visaType,row.nationality].filter(Boolean).join(' — '),serviceDate:iso(row.effectiveFrom),periodEnd:iso(row.effectiveTo),availableQuantity:amount(row.quotaRemaining)})),
+      ...services.map(row=>({id:row.id,contractId:row.contractId,type:'SERVICE' as const,label:[row.name,row.category].filter(Boolean).join(' — '),serviceDate:iso(row.serviceStart),periodEnd:iso(row.serviceEnd),availableQuantity:amount(row.availableQuantity)})),
+    ];
+  }
+
+  async allocations(companyId: CompanyId): Promise<Allocation[]> {
+    return (await this.db.tciAllocation.findMany({ where: { companyId }, orderBy: { createdAt: 'desc' } })).map(row=>allocation(row as AllocationRow));
+  }
 
   async planStandaloneSupply(input: PlanStandaloneSupplyInput): Promise<StandaloneSupplyPlan> {
     if (!input.branchId.trim() || !input.service.sourceId.trim() || !Number.isInteger(input.serviceRevision) || input.serviceRevision < 1 || input.requests.length === 0) {
