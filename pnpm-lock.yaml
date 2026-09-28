@@ -301,9 +301,6 @@ importers:
       '@elhafez/platform-core':
         specifier: workspace:*
         version: link:../platform-core
-      '@elhafez/integration-hub':
-        specifier: workspace:*
-        version: link:../integration-hub
       '@nestjs/common':
         specifier: ^11.0.11
         version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -1214,6 +1211,9 @@ importers:
       '@elhafez/platform-core':
         specifier: workspace:*
         version: link:../platform-core
+      '@elhafez/integration-hub':
+        specifier: workspace:*
+        version: link:../integration-hub
       '@nestjs/common':
         specifier: ^11.0.11
         version: 11.2.5(reflect-metadata@0.2.2)(rxjs@7.8.2)
