@@ -31,7 +31,7 @@ Before editing:
 | bus run, transport assignment | `hajj-umrah-transport-operations` |
 | تشغيل فوج, tasks, incidents | `hajj-umrah-trip-operations` |
 | جاهزية حج/عمرة | `hajj-umrah-readiness` |
-| باركود العمرة المصري, Egyptian Umrah barcode | `hajj-umrah-barcode` (PLANNED; current UI shell only until functional implementation is explicitly started) |
+| باركود العمرة المصري, Egyptian Umrah barcode | `hajj-umrah-barcode` |
 | برنامج/رحلة سياحة عامة | `tourism-programs` |
 | حجز سياحة عامة | `tourism-bookings` |
 | برنامج يومي / itinerary | `tourism-itineraries` |
@@ -46,6 +46,13 @@ Before editing:
 | quotation | `quotations` |
 | مورد supplier operational profile/approval | `supplier-management` |
 | purchase requisition / PR / RFQ / supplier bid / quote comparison / sourcing award | `procurement-sourcing` |
+| customer complaint / support ticket / service case | `customer-service` |
+| collection case / promise to pay / collector / overdue escalation | `collections-credit-control` |
+| business document / record attachment / document requirement / expiry | `document-management` |
+| email / WhatsApp / SMS template, preference, delivery, retry | `communication-center` |
+| provider integration / API key / OAuth / webhook / external connection | `integration-hub` |
+| employee / attendance / leave / payroll calculation | `hr-payroll` |
+| global search / quick action | API/web composition over canonical owners (no persistent owner) |
 | purchase order / supplier commitment | **existing** `procurement-finance` |
 | receiving / procurement execution | `procurement-fulfillment` |
 | supplier evaluation | `supplier-evaluation` |
