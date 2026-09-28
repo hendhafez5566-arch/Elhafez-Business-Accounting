@@ -1,0 +1,18 @@
+{
+  "id": "update-repository-references",
+  "summary": "Update stale repository references after transfer to the new GitHub account.",
+  "type": "governance",
+  "allowedModules": [],
+  "allowedPaths": [
+    "PROJECT_MANAGER_HANDOFF.md",
+    "PROJECT_STATE.md"
+  ],
+  "protectedPaths": [
+    "PROJECT_MANAGER_HANDOFF.md",
+    "PROJECT_STATE.md"
+  ],
+  "protectedReason": "These governance documents still reference the repository's previous owner and must be updated to the current canonical GitHub location after the repository transfer.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": "",
+  "testEvidence": []
+}

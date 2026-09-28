@@ -4,7 +4,7 @@ Last verified: 2026-09-25
 
 ## Repository
 
-- Repository: `mhafez300300-byte/Elhafez-Business-Accounting`
+- Repository: `hendhafez5566-arch/Elhafez-Business-Accounting`
 - Source of Truth: GitHub
 - Current live `main` HEAD audited on 2026-09-25: `eeb5220e5641b44aeb055a700091bb39be2921cd` (PR #81 — SAAS-01 Secure SaaS Subscription Control Plane)
 - Last accepted Accounting implementation baseline SHA (AC-14 merge): `350ba7dfc5e9e46e355a805a2c3dada1420ca53b`
