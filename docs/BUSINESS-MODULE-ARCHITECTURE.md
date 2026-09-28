@@ -46,7 +46,7 @@ This is a large operational system composed of independent modules.
 | Transport operations | `hajj-umrah-transport-operations` | EXISTING / MERGED | buses/runs/assignments/routes; references transport capacity |
 | Trip operations | `hajj-umrah-trip-operations` | EXISTING / MERGED | trip tasks, execution, incidents, operational checklists |
 | Readiness | `hajj-umrah-readiness` | EXISTING / MERGED | aggregate operational readiness projection/orchestration |
-| Egyptian Umrah Barcode | `hajj-umrah-barcode` | PLANNED / UI SHELL | future Egypt-specific Umrah barcode request/status/evidence lifecycle. The current web page is presentation-only and owns no business data; financial effects must stay with accepted accounting owners. |
+| Egyptian Umrah Barcode | `hajj-umrah-barcode` | ERP PRODUCT COMPLETION / IMPLEMENTATION AUTHORIZED | Egypt-specific request/status/evidence lifecycle; external ministry/provider transport stays behind an integration port and no external response is invented. Financial effects stay with accepted accounting owners. |
 
 Financial effects from these modules are delegated to accepted accounting owners, especially `tourism-finance-orchestration`, Billing, Treasury, Cost, Procurement Finance, and Financial Controls. Operational modules must not reproduce financial truth.
 
@@ -82,7 +82,7 @@ Customer balances, invoices, advances, commissions, netting and other financial 
 |---|---|---|---|
 | Common party identity | `party-registry` | EXISTING / SHARED | canonical supplier party identity |
 | Suppliers | `supplier-management` | EXISTING / MERGED | supplier profile, approval-for-use, operational classification |
-| Purchase requisitions / RFQ / supplier bids / comparison / award | `procurement-sourcing` | IMPLEMENTED / ERP PRODUCT COMPLETION CANDIDATE | pre-PO sourcing lifecycle only; converts an awarded bid into the canonical PO through `procurement-finance` public API |
+| Purchase requisitions / RFQ / supplier bids / comparison / award | `procurement-sourcing` | IMPLEMENTED / MERGED | pre-PO sourcing lifecycle only; converts an awarded bid into the canonical PO through `procurement-finance` public API |
 | Supplier commitments / Purchase Orders | `procurement-finance` | EXISTING | canonical commitments/PO financial-economic record and invoice conversion |
 | Receiving / execution / fulfillment | `procurement-fulfillment` | EXISTING | operational receipt/service execution evidence referencing canonical PO |
 | Supplier evaluation | `supplier-evaluation` | EXISTING / MERGED | evaluation scorecards/history |
@@ -153,6 +153,30 @@ The Management & System Administration program is complete for the owner-approve
 Final MC-SA-02 merge to `main`: PR #73, merge commit `70e5adf17471e64c3fc5ae65c304abfbd6809c2c`.
 
 Future work must treat these phases as an accepted baseline. Do not restart, duplicate, or redesign them merely to add a feature. Extend the canonical owners and public boundaries defined in this document. Any genuinely new capability must be scoped as new work and must preserve the ownership and dependency rules above.
+
+
+## 3.2 Final ERP Product Completion ownership additions
+
+The final product-completion delivery is one consolidated product change, but it still preserves single-owner truth. The following owners are authorized because each has a distinct lifecycle that is not already owned elsewhere:
+
+| Capability | Canonical owner | Ownership boundary |
+|---|---|---|
+| Outbound communication templates, preferences, schedules, delivery attempts and retry evidence | `communication-center` | in-app notification truth remains `platform-core`; provider credentials/connections remain `integration-hub` |
+| Business document metadata, record links, requirements, versions, tags and expiry | `document-management` | file bytes/checksum/storage metadata remain `platform-core` |
+| Collection cases, collector assignment, promises-to-pay, stages and escalation evidence | `collections-credit-control` | invoice/outstanding/settlement truth remains Billing/Treasury |
+| Provider connections, API credentials, API keys, OAuth metadata, webhook subscriptions and delivery logs | `integration-hub` | never owns customer, booking, accounting or other domain truth |
+| Employee/attendance/leave/pay rules and payroll calculation | `hr-payroll` | payroll accounting/posting remains `assets-financing` + GL/Treasury public boundaries |
+| Customer complaints and support cases | `customer-service` | customer identity/profile remains `customer-management`; financial disputes remain canonical finance owners |
+| Egyptian Umrah barcode requests/status/evidence | `hajj-umrah-barcode` | traveler/booking/program truth stays in existing Hajj & Umrah owners; external provider calls use `integration-hub` |
+
+Additional product-depth rules:
+- lead sources, campaigns, configurable sub-stages, assignment/scoring/SLA metadata extend `crm-leads`;
+- customer groups/tags/loyalty/commercial notes extend `customer-management`, while credit exposure remains Billing-owned;
+- quotation templates, validity/discount/pricing policy, clone/revision comparison and pre-sale profitability snapshots extend `quotations`;
+- program commercial package/pricing/capacity configuration extends `tourism-programs`; booking amendment/waitlist/payment-plan operational state extends `tourism-bookings`;
+- Global Search and Quick Actions are API/web composition projections and own no persistent business truth;
+- Public API v1 controllers call canonical owner public APIs and authenticate through `integration-hub`;
+- approval inbox/reporting/dashboard surfaces remain compositions and never become alternate source truths.
 
 ## 4. Shared reusable owners
 
@@ -265,7 +289,7 @@ Canonical implementation status labels above were refreshed during the owner-aut
 
 ## ERP Product Completion — cross-cutting automation ownership
 
-### `automation-workflow` — PLANNED / OWNER APPROVED
+### `automation-workflow` — IMPLEMENTED / ERP PRODUCT COMPLETION
 
 The platform-wide automation engine is a distinct orchestration owner. It owns workflow definitions, trigger subscriptions, condition/action orchestration state, delayed execution, retry policy, escalation state and execution evidence.
 
