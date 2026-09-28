@@ -23,8 +23,8 @@ function fileAsBase64(file:File):Promise<string>{return new Promise((resolve,rej
 function configValue(text:string):unknown{try{return JSON.parse(text);}catch{return text;}}
 function triggerDownload(payload:DownloadPayload){const binary=atob(payload.contentBase64);const bytes=new Uint8Array(binary.length);for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);const url=URL.createObjectURL(new Blob([bytes],{type:payload.contentType}));const anchor=document.createElement('a');anchor.href=url;anchor.download=payload.fileName;anchor.click();URL.revokeObjectURL(url);}
 
-export function SystemAdministrationPage({client=new HttpAdministrationClient(),context}:{client?:AdministrationClient;context?:AdministrationContext}={}){
- const [selected,setSelected]=useState('users');
+export function SystemAdministrationPage({client=new HttpAdministrationClient(),context,initialTab='users'}:{client?:AdministrationClient;context?:AdministrationContext;initialTab?:string}={}){
+ const [selected,setSelected]=useState(initialTab);
  const [rows,setRows]=useState<readonly unknown[]>([]);
  const [datasets,setDatasets]=useState<readonly DatasetOption[]>([]);
  const [sourceFields,setSourceFields]=useState<readonly string[]>([]);
