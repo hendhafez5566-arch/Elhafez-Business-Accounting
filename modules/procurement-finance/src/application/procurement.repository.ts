@@ -75,6 +75,7 @@ export interface ProcurementRepository {
   ): Promise<ProcurementQuantityMutationOutcome>;
 
   conversion(companyId: CompanyId, id: string): Promise<InvoiceConversion | undefined>;
+  listConversions(companyId:CompanyId,purchaseOrderId:string):Promise<InvoiceConversion[]>;
   reserveConversion(value: InvoiceConversion): Promise<InvoiceConversion>;
   completeConversion(
     companyId: CompanyId,
