@@ -4,7 +4,8 @@
   "type": "phase",
   "allowedModules": [
     "customer-management",
-    "treasury-settlement"
+    "treasury-settlement",
+    "tourism-contract-inventory"
   ],
   "allowedPaths": [
     ".changes/full-legacy-feature-clean-rebuild.json",
