@@ -57,6 +57,18 @@ export class TourismContractInventoryApplicationServiceImpl
     private readonly procurement: ProcurementPort,
   ) {}
 
+  listContracts(companyId: CompanyId) {
+    return this.repo.contracts(companyId);
+  }
+
+  listResources(companyId: CompanyId, contractId?: string) {
+    return this.repo.resources(companyId, contractId);
+  }
+
+  listAllocations(companyId: CompanyId) {
+    return this.repo.allocations(companyId);
+  }
+
   planStandaloneSupply(input: PlanStandaloneSupplyInput) {
     return this.repo.planStandaloneSupply(input);
   }
