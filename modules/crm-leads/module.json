@@ -1,6 +1,19 @@
 {
   "name": "crm-leads",
-  "publicApi": ["src/public/index.ts"],
-  "ownedTables": ["cl_leads", "cl_lead_history", "cl_number_counters"],
-  "allowedDependencies": ["@elhafez/contracts", "@elhafez/core", "@elhafez/platform-core", "@elhafez/customer-management", "@elhafez/agent-management"]
+  "publicApi": [
+    "src/public/index.ts"
+  ],
+  "ownedTables": [
+    "cl_leads",
+    "cl_lead_history",
+    "cl_number_counters",
+    "cl_lead_configuration"
+  ],
+  "allowedDependencies": [
+    "@elhafez/contracts",
+    "@elhafez/core",
+    "@elhafez/platform-core",
+    "@elhafez/customer-management",
+    "@elhafez/agent-management"
+  ]
 }
