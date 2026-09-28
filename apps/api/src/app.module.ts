@@ -16,7 +16,7 @@ import { TaxModule } from '@elhafez/tax';
 import { BillingSubledgersApplicationService, BillingSubledgersModule } from '@elhafez/billing-subledgers';
 import { TreasurySettlementModule } from '@elhafez/treasury-settlement';
 import { PartyAccountingModule } from '@elhafez/party-accounting';
-import { ExpenseCommissionRecognitionModule } from '@elhafez/expense-commission-recognition';
+import { CommissionReadApplicationService, ExpenseCommissionRecognitionModule } from '@elhafez/expense-commission-recognition';
 import { AssetsFinancingModule } from '@elhafez/assets-financing';
 import { CostBudgetAccountingModule } from '@elhafez/cost-budget-accounting';
 import { ProcurementFinanceApplicationService } from '@elhafez/procurement-finance';
@@ -124,8 +124,9 @@ import { AdvancedAccountingController, TourismContractInventoryController } from
         quotations: QuotationsApplicationService,
         travelers: TravelerManagementApplicationService,
         billing: BillingSubledgersApplicationService,
-      ) => new CrmSalesReadModelService(customers, agents, leads, followups, quotations, travelers, billing),
-      inject: [CustomerManagementApplicationService, AgentManagementApplicationService, CrmLeadsApplicationService, CrmFollowupsApplicationService, QuotationsApplicationService, TravelerManagementApplicationService, BillingSubledgersApplicationService],
+        commissions: CommissionReadApplicationService,
+      ) => new CrmSalesReadModelService(customers, agents, leads, followups, quotations, travelers, billing, commissions),
+      inject: [CustomerManagementApplicationService, AgentManagementApplicationService, CrmLeadsApplicationService, CrmFollowupsApplicationService, QuotationsApplicationService, TravelerManagementApplicationService, BillingSubledgersApplicationService, CommissionReadApplicationService],
     },
     {
       provide: ManagementControlService,
