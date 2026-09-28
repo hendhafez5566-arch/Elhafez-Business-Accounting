@@ -2366,6 +2366,9 @@ model CmCustomer {
   number            String
   status            String                @default("ACTIVE")
   assignedAgentId   String?               @map("assigned_agent_id")
+  creditLimit       Decimal?              @map("credit_limit") @db.Decimal(24, 6)
+  creditDays        Int                   @default(0) @map("credit_days")
+  paymentTerms      String?               @map("payment_terms")
   commercialNotes   String?               @map("commercial_notes")
   createdAt         DateTime              @default(now()) @map("created_at")
   updatedAt         DateTime              @updatedAt @map("updated_at")
