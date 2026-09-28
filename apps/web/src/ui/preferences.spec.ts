@@ -22,9 +22,15 @@ test('UI preferences normalize invalid values to stable defaults', () => {
       fontScale: 'huge',
       fontFamily: 'comic',
       density: 'dense',
+      theme: 'neon',
     }),
     DEFAULT_UI_PREFERENCES,
   );
+});
+
+test('UI preferences preserve an explicitly selected classic theme', () => {
+  assert.equal(normalizeUiPreferences({ theme: 'classic' }).theme, 'classic');
+  assert.equal(normalizeUiPreferences({ theme: 'premium' }).theme, 'premium');
 });
 
 test('UI preferences persist independently by scope for future authenticated user IDs', () => {
@@ -34,17 +40,21 @@ test('UI preferences persist independently by scope for future authenticated use
     fontScale: 'large',
     fontFamily: 'system',
     density: 'compact',
+    theme: 'premium',
   }, storage);
   saveUiPreferences('user-b', {
     sidebarMode: 'fixed',
     fontScale: 'normal',
     fontFamily: 'tahoma',
     density: 'comfortable',
+    theme: 'classic',
   }, storage);
 
   assert.equal(loadUiPreferences('user-a', storage).sidebarMode, 'auto');
   assert.equal(loadUiPreferences('user-a', storage).fontScale, 'large');
+  assert.equal(loadUiPreferences('user-a', storage).theme, 'premium');
   assert.equal(loadUiPreferences('user-b', storage).sidebarMode, 'fixed');
+  assert.equal(loadUiPreferences('user-b', storage).theme, 'classic');
   assert.notEqual(preferenceStorageKey('user-a'), preferenceStorageKey('user-b'));
 });
 
