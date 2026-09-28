@@ -33,6 +33,7 @@ import { HrPayrollPage } from './hr-payroll-page.js';
 import { ProductSettingsPage } from './product-settings-page.js';
 import { CrmConfigurationPage } from './crm-configuration-page.js';
 import { QuotationTemplatesPage } from './quotation-templates-page.js';
+import { Customer360CompletePage } from './customer-360-complete-page.js';
 import type { IconName } from './ui/icons.js';
 
 export interface AppRoute {
@@ -75,7 +76,7 @@ export const foundationRoutes = defineRoutes(
 
   { id: 'crm-dashboard', path: '/crm/dashboard', label: 'لوحة العملاء والمبيعات', group: 'العملاء والمبيعات', icon: 'dashboard', element: <CrmSalesDashboardPage /> },
   { id: 'crm-customers', path: '/crm/customers', label: 'العملاء', group: 'العملاء والمبيعات', icon: 'customers', element: <CustomersPage /> },
-  { id: 'crm-customer-360', path: '/crm/customer-360', label: 'ملف العميل 360°', group: 'العملاء والمبيعات', icon: 'profile', navigation: false, element: <Customer360Page /> },
+  { id: 'crm-customer-360', path: '/crm/customer-360', label: 'ملف العميل 360°', group: 'العملاء والمبيعات', icon: 'profile', navigation: false, element: <Customer360CompletePage /> },
   { id: 'crm-agents', path: '/crm/agents', label: 'الوكلاء', group: 'العملاء والمبيعات', icon: 'agents', element: <AgentsPage /> },
   { id: 'crm-agent-360', path: '/crm/agent-360', label: 'ملف الوكيل 360°', group: 'العملاء والمبيعات', icon: 'profile', navigation: false, element: <Agent360Page /> },
   { id: 'crm-leads', path: '/crm/leads', label: 'العملاء المحتملون', group: 'العملاء والمبيعات', icon: 'leads', element: <LeadsPage /> },
