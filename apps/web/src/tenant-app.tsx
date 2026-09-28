@@ -18,14 +18,15 @@ export function TenantApplication({client=new TenantAuthClient()}:{client?:Tenan
 }
 
 function TenantLogin({client,busy,setBusy,error,setError,onSuccess}:{client:TenantAuthClient;busy:boolean;setBusy:(value:boolean)=>void;error:string;setError:(value:string)=>void;onSuccess:(value:TenantSession)=>void}){
- const[companyCode,setCompanyCode]=useState(''),[username,setUsername]=useState(''),[password,setPassword]=useState('');
+ const[companyCode,setCompanyCode]=useState(''),[username,setUsername]=useState(''),[password,setPassword]=useState(''),[mfaCode,setMfaCode]=useState('');
  const normalized=useMemo(()=>companyCode.trim().toUpperCase(),[companyCode]);
- async function submit(event:FormEvent){event.preventDefault();setBusy(true);setError('');try{onSuccess(await client.login({companyCode:normalized,username:username.trim(),password}));setPassword('');}catch(value){setError(value instanceof Error?value.message:'تعذر تسجيل الدخول.');}finally{setBusy(false);}}
+ async function submit(event:FormEvent){event.preventDefault();setBusy(true);setError('');try{onSuccess(await client.login({companyCode:normalized,username:username.trim(),password,...mfaCode.trim()?{mfaCode:mfaCode.trim()}:{} }));setPassword('');}catch(value){setError(value instanceof Error?value.message:'تعذر تسجيل الدخول.');}finally{setBusy(false);}}
  return <main className="tenant-entry-shell" dir="rtl"><form className="tenant-entry-card" onSubmit={submit}>
   <div className="tenant-entry-brand">ELHAFEZ TECHNOLOGY</div><h1>منصة الحافظ لإدارة الأعمال</h1><p>أدخل كود الشركة واسم المستخدم وكلمة المرور.</p>
   <FormField label="كود الشركة" required><Input required autoCapitalize="characters" autoComplete="organization" value={companyCode} onChange={event=>setCompanyCode(event.target.value.toUpperCase())} placeholder="ELH-XXXX"/></FormField>
   <FormField label="اسم المستخدم" required><Input required autoCapitalize="none" autoComplete="username" minLength={3} maxLength={40} value={username} onChange={event=>setUsername(event.target.value)} placeholder="مثال: manager"/></FormField>
   <FormField label="كلمة المرور" required><Input required type="password" autoComplete="current-password" minLength={12} value={password} onChange={event=>setPassword(event.target.value)}/></FormField>
+  <FormField label="رمز التحقق MFA" hint="أدخله فقط إذا كان التحقق الثنائي مفعّلًا"><Input inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} value={mfaCode} onChange={event=>setMfaCode(event.target.value.replace(/\D/g,'').slice(0,6))}/></FormField>
   {error?<Toast tone="error">{error}</Toast>:null}
   <Button type="submit" disabled={busy||!normalized}>{busy?'جارٍ التحقق…':'دخول'}</Button>
   <p className="tenant-entry-note">اسم المستخدم خاص بالشركة ويمكن تغييره لاحقًا من إعدادات الحساب.</p>
