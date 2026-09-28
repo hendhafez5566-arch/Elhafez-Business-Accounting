@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { AgentsPage, CustomersPage, FollowupsPage, LeadsPage } from './crm-core-pages.js';
+import { FollowupsPage, LeadsPage } from './crm-core-pages.js';
+import { AgentsPage, CustomersPage } from './crm-party-pages.js';
 import { Agent360Page, CrmSalesDashboardPage, Customer360Page, TravelersPage } from './crm-insights-pages.js';
 import { QuotationsPage } from './quotation-pages.js';
 import { SuppliersPage } from './supplier-pages.js';
@@ -58,15 +59,15 @@ export const foundationRoutes = defineRoutes(
   { id: 'system-document-numbering', path: '/system-administration/document-numbering', label: 'ترقيم المستندات', group: 'إدارة النظام', icon: 'settings', element: <PlatformFoundationsPage initialTab="numbering" /> },
   { id: 'system-automation', path: '/system-administration/automation', label: 'الأتمتة وسير العمل', group: 'إدارة النظام', icon: 'tasks', element: <PlatformFoundationsPage initialTab="automation" /> },
 
-  { id: 'crm-dashboard', path: '/crm/dashboard', label: 'لوحة العملاء والمبيعات', group: 'العملاء والمبيعات', icon: 'dashboard', element: <CrmSalesDashboardPage /> },
-  { id: 'crm-customers', path: '/crm/customers', label: 'العملاء', group: 'العملاء والمبيعات', icon: 'customers', element: <CustomersPage /> },
-  { id: 'crm-customer-360', path: '/crm/customer-360', label: 'ملف العميل 360°', group: 'العملاء والمبيعات', icon: 'profile', navigation: false, element: <Customer360Page /> },
-  { id: 'crm-agents', path: '/crm/agents', label: 'الوكلاء', group: 'العملاء والمبيعات', icon: 'agents', element: <AgentsPage /> },
-  { id: 'crm-agent-360', path: '/crm/agent-360', label: 'ملف الوكيل 360°', group: 'العملاء والمبيعات', icon: 'profile', navigation: false, element: <Agent360Page /> },
-  { id: 'crm-leads', path: '/crm/leads', label: 'العملاء المحتملون', group: 'العملاء والمبيعات', icon: 'leads', element: <LeadsPage /> },
-  { id: 'crm-quotations', path: '/crm/quotations', label: 'عروض الأسعار', group: 'العملاء والمبيعات', icon: 'quote', element: <QuotationsPage /> },
-  { id: 'crm-followups', path: '/crm/followups', label: 'المتابعات', group: 'العملاء والمبيعات', icon: 'followup', element: <FollowupsPage /> },
-  { id: 'crm-travelers', path: '/crm/travelers', label: 'المسافرون', group: 'العملاء والمبيعات', icon: 'traveler', element: <TravelersPage /> },
+  { id: 'crm-dashboard', path: '/crm/dashboard', label: 'لوحة المبيعات والعملاء', group: 'المبيعات والعملاء CRM', icon: 'dashboard', element: <CrmSalesDashboardPage /> },
+  { id: 'crm-leads', path: '/crm/leads', label: 'العملاء المحتملون والمتابعة', group: 'المبيعات والعملاء CRM', icon: 'leads', element: <LeadsPage /> },
+  { id: 'crm-followups', path: '/crm/followups', label: 'المتابعات', group: 'المبيعات والعملاء CRM', icon: 'followup', element: <FollowupsPage /> },
+  { id: 'crm-customers', path: '/crm/customers', label: 'العملاء', group: 'المبيعات والعملاء CRM', icon: 'customers', element: <CustomersPage /> },
+  { id: 'crm-customer-360', path: '/crm/customer-360', label: 'ملف العميل 360°', group: 'المبيعات والعملاء CRM', icon: 'profile', navigation: false, element: <Customer360Page /> },
+  { id: 'crm-agents', path: '/crm/agents', label: 'المندوبون', group: 'المبيعات والعملاء CRM', icon: 'agents', element: <AgentsPage /> },
+  { id: 'crm-agent-360', path: '/crm/agent-360', label: 'ملف المندوب 360°', group: 'المبيعات والعملاء CRM', icon: 'profile', navigation: false, element: <Agent360Page /> },
+  { id: 'crm-quotations', path: '/crm/quotations', label: 'عروض الأسعار', group: 'المبيعات والعملاء CRM', icon: 'quote', element: <QuotationsPage /> },
+  { id: 'crm-travelers', path: '/crm/travelers', label: 'المسافرون', group: 'المبيعات والعملاء CRM', icon: 'traveler', element: <TravelersPage /> },
 
   { id: 'supplier-management', path: '/procurement/suppliers', label: 'الموردون', group: 'المشتريات والموردون', icon: 'supplier', element: <SuppliersPage /> },
   { id: 'supplier-intelligence', path: '/procurement/supplier-intelligence', label: 'تقييم ومتابعة الموردين', group: 'المشتريات والموردون', icon: 'analytics', element: <SupplierIntelligencePage /> },
