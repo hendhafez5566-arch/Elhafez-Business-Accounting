@@ -136,7 +136,7 @@ CREATE TABLE "ih_connections"(
 CREATE UNIQUE INDEX "ih_connections_company_id_id_key" ON "ih_connections"("company_id","id");
 CREATE INDEX "ih_connections_company_id_kind_enabled_idx" ON "ih_connections"("company_id","kind","enabled");
 CREATE TABLE "ih_api_keys"(
- "id" TEXT NOT NULL,"company_id" TEXT NOT NULL,"name" TEXT NOT NULL,"key_prefix" TEXT NOT NULL,"secret_hash" TEXT NOT NULL,"scopes" JSONB NOT NULL DEFAULT '[]'::jsonb,
+ "id" TEXT NOT NULL,"company_id" TEXT NOT NULL,"actor_user_id" TEXT NOT NULL,"name" TEXT NOT NULL,"key_prefix" TEXT NOT NULL,"secret_hash" TEXT NOT NULL,"scopes" JSONB NOT NULL DEFAULT '[]'::jsonb,
  "rate_limit_per_minute" INTEGER NOT NULL DEFAULT 60,"window_started_at" TIMESTAMP(3) NOT NULL,"window_count" INTEGER NOT NULL DEFAULT 0,
  "expires_at" TIMESTAMP(3),"revoked_at" TIMESTAMP(3),"created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
  CONSTRAINT "ih_api_keys_pkey" PRIMARY KEY("id")
