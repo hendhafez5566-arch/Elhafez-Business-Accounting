@@ -4,6 +4,8 @@ import { CustomersPage } from './crm-party-pages.js';
 import { Customer360Page } from './crm-360-parity-pages.js';
 import { AgentsPage, Agent360Page } from './crm-agent-parity-pages.js';
 import { CrmSalesDashboardPage } from './crm-dashboard-parity-page.js';
+import { CrmFinancialActionPage } from './crm-financial-action-page.js';
+import { CrmAwareTourismServicesPage } from './crm-tourism-service-entry-page.js';
 import { TravelersPage } from './crm-insights-pages.js';
 import { QuotationsPage } from './quotation-pages.js';
 import { SuppliersPage } from './supplier-pages.js';
@@ -16,7 +18,6 @@ import { TicketingPage, TransportPage, TripOperationsPage } from './hajj-umrah-o
 import { HajjUmrahReadinessPage } from './hajj-umrah-readiness-page.js';
 import { SystemAdministrationPage } from './system-administration-page.js';
 import { PlatformFoundationsPage } from './platform-foundations-page.js';
-import { TourismServicesPage } from './tourism-services-page.js';
 import { TourismOperationsPage } from './tourism-operations-page.js';
 import { TourismContractInventoryPage } from './tourism-contract-inventory-page.js';
 import { UmrahBarcodePage } from './hajj-umrah-barcode-page.js';
@@ -67,6 +68,7 @@ export const foundationRoutes = defineRoutes(
   { id: 'crm-followups', path: '/crm/followups', label: 'المتابعات', group: 'المبيعات والعملاء CRM', icon: 'followup', element: <FollowupsPage /> },
   { id: 'crm-customers', path: '/crm/customers', label: 'العملاء', group: 'المبيعات والعملاء CRM', icon: 'customers', element: <CustomersPage /> },
   { id: 'crm-customer-360', path: '/crm/customer-360', label: 'ملف العميل 360°', group: 'المبيعات والعملاء CRM', icon: 'profile', navigation: false, element: <Customer360Page /> },
+  { id: 'crm-financial-action', path: '/crm/financial-action', label: 'إجراء مالي للعميل', group: 'المبيعات والعملاء CRM', icon: 'analytics', navigation: false, element: <CrmFinancialActionPage /> },
   { id: 'crm-agents', path: '/crm/agents', label: 'المندوبون', group: 'المبيعات والعملاء CRM', icon: 'agents', element: <AgentsPage /> },
   { id: 'crm-agent-360', path: '/crm/agent-360', label: 'ملف المندوب 360°', group: 'المبيعات والعملاء CRM', icon: 'profile', navigation: false, element: <Agent360Page /> },
   { id: 'crm-quotations', path: '/crm/quotations', label: 'عروض الأسعار', group: 'المبيعات والعملاء CRM', icon: 'quote', element: <QuotationsPage /> },
@@ -77,7 +79,7 @@ export const foundationRoutes = defineRoutes(
   { id: 'procurement-sourcing', path: '/procurement/sourcing', label: 'طلبات الشراء والتوريد', group: 'المشتريات والموردون', icon: 'purchase', element: <ProcurementSourcingPage /> },
   { id: 'procurement-operations', path: '/procurement/purchase-orders', label: 'أوامر الشراء', group: 'المشتريات والموردون', icon: 'purchase', element: <ProcurementOperationsPage /> },
 
-  { id: 'tourism-services', path: '/tourism/services', label: 'السياحة والخدمات', group: 'السياحة والخدمات', icon: 'tourism', element: <TourismServicesPage /> },
+  { id: 'tourism-services', path: '/tourism/services', label: 'السياحة والخدمات', group: 'السياحة والخدمات', icon: 'tourism', element: <CrmAwareTourismServicesPage /> },
   { id: 'tourism-programs', path: '/tourism/programs', label: 'البرامج السياحية', group: 'السياحة والخدمات', icon: 'program', element: <TourismOperationsPage initialTab="programs" /> },
   { id: 'tourism-bookings', path: '/tourism/bookings', label: 'الحجوزات السياحية', group: 'السياحة والخدمات', icon: 'booking', element: <TourismOperationsPage initialTab="bookings" /> },
   { id: 'tourism-itinerary', path: '/tourism/itinerary', label: 'البرنامج اليومي', group: 'السياحة والخدمات', icon: 'calendar', element: <TourismOperationsPage initialTab="itinerary" /> },
