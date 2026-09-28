@@ -41,6 +41,10 @@ export class PrismaCostCenterRepository implements CostCenterRepository {
     });
   }
 
+  async list(companyId: CompanyId): Promise<CostCenter[]> {
+    return (await this.db.cbaCostCenter.findMany({ where: { companyId }, orderBy: { code: 'asc' } })) as CostCenter[];
+  }
+
   async find(companyId: CompanyId, id: CostCenterId): Promise<CostCenter | undefined> {
     return (await this.db.cbaCostCenter.findUnique({
       where: { companyId_id: { companyId, id } },
