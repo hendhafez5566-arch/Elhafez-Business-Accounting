@@ -3,7 +3,10 @@
   "summary": "Update stale repository references after transfer to the new GitHub account.",
   "type": "governance",
   "allowedModules": [],
-  "allowedPaths": [],
+  "allowedPaths": [
+    "PROJECT_MANAGER_HANDOFF.md",
+    "PROJECT_STATE.md"
+  ],
   "protectedPaths": [
     "PROJECT_MANAGER_HANDOFF.md",
     "PROJECT_STATE.md"
