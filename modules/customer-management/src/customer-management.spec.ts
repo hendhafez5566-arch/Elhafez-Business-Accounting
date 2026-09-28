@@ -47,3 +47,16 @@ test('customer search includes Party display name, phone and email through the p
   assert.equal((await customers.list(ctx,undefined,created.value.customer.number)).length,1);
   assert.equal((await customers.list(ctx,undefined,'corporate')).length,1);
 });
+
+test('customer commercial terms preserve legacy business meaning in the canonical customer owner',async()=>{
+ const{customers}=fixture();
+ const created=await customers.create(ctx,{party:{kind:'PERSON',displayName:'Credit Customer'},creditLimit:'25000.50',creditDays:45,paymentTerms:'50% مقدم والباقي قبل السفر'});
+ if(created.status==='REVIEW_REQUIRED')assert.fail('customer should be created');
+ assert.equal(created.value.customer.creditLimit,'25000.50');
+ assert.equal(created.value.customer.creditDays,45);
+ assert.equal(created.value.customer.paymentTerms,'50% مقدم والباقي قبل السفر');
+ const updated=await customers.update(ctx,created.value.customer.id,{creditLimit:'30000',creditDays:60,paymentTerms:'سداد خلال 60 يومًا'});
+ assert.equal(updated.customer.creditLimit,'30000');
+ assert.equal(updated.customer.creditDays,60);
+ await assert.rejects(()=>customers.update(ctx,created.value.customer.id,{creditLimit:'-1'}),/creditLimit/);
+});
