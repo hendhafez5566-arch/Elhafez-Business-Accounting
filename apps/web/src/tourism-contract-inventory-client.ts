@@ -3,8 +3,15 @@ import { crmGet, crmPost } from './crm-core-client.js';
 const base='/tourism/contracts-inventory';
 const enc=encodeURIComponent;
 export type InventoryResult=Record<string,unknown>;
+export interface TourismContractRow{id:string;type:'HOTEL'|'FLIGHT_BLOCK'|'TRANSPORT'|'VISA'|'SERVICE';status:string;supplierId?:string;effectiveFrom:string;effectiveTo:string}
+export interface InventoryResourceRow{id:string;contractId:string;type:'HOTEL'|'FLIGHT_BLOCK'|'TRANSPORT'|'VISA'|'SERVICE';label:string;serviceDate:string;periodEnd?:string;availableQuantity:string}
+export interface InventoryAllocationRow{id:string;contractId:string;resourceType:string;resourceId:string;program:{sourceType:string;sourceId:string};serviceDate:string;periodEnd?:string;quantity:string;status:string}
+
 
 export const tourismContractInventoryApi={
+ contracts:()=>crmGet<TourismContractRow[]>(base+'/contracts'),
+ resources:(contractId?:string)=>crmGet<InventoryResourceRow[]>(base+'/resources'+(contractId?'?contractId='+enc(contractId):'')),
+ allocations:()=>crmGet<InventoryAllocationRow[]>(base+'/allocations'),
  createContract:(input:{type:'HOTEL'|'FLIGHT_BLOCK'|'TRANSPORT'|'VISA'|'SERVICE';supplierId?:string;effectiveFrom:string;effectiveTo:string;commandKey?:string})=>crmPost<InventoryResult>(base+'/contracts',input),
  contract:(id:string)=>crmGet<InventoryResult|null>(base+'/contracts/'+enc(id)),
  versions:(id:string)=>crmGet<InventoryResult[]>(base+'/contracts/'+enc(id)+'/versions'),
