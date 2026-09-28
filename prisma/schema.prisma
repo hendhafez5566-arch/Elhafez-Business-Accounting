@@ -4485,6 +4485,7 @@ model IhConnection {
 model IhApiKey {
   id                 String   @id
   companyId          String   @map("company_id")
+  actorUserId        String   @map("actor_user_id")
   name               String
   keyPrefix          String   @map("key_prefix")
   secretHash         String   @unique @map("secret_hash")
