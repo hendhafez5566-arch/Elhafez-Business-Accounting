@@ -2,22 +2,23 @@ import{useEffect,useMemo,useState}from'react';
 import{crmGet}from'./crm-core-client.js';
 import{Checkbox,FormField,Input,LoadingState,Select}from'./ui.js';
 
-export type EntityPickerKind='CUSTOMER'|'AGENT'|'SUPPLIER'|'TRAVELER'|'LEAD'|'HAJJ_PROGRAM'|'TOURISM_PROGRAM'|'ACCOUNT'|'USER';
+export type EntityPickerKind='CUSTOMER'|'CUSTOMER_PARTY'|'AGENT'|'AGENT_PARTY'|'SUPPLIER'|'SUPPLIER_PARTY'|'TRAVELER'|'TRAVELER_PARTY'|'LEAD'|'HAJJ_PROGRAM'|'TOURISM_PROGRAM'|'ACCOUNT'|'USER'|'BRANCH';
 export interface EntityOption{readonly id:string;readonly label:string;readonly detail?:string}
-const endpoint:Record<EntityPickerKind,string>={CUSTOMER:'/crm/customers',AGENT:'/crm/agents',SUPPLIER:'/suppliers',TRAVELER:'/crm/travelers',LEAD:'/crm/leads',HAJJ_PROGRAM:'/hajj-umrah/programs',TOURISM_PROGRAM:'/tourism/programs',ACCOUNT:'/accounting/overview',USER:'/system-administration/users'};
+const endpoint:Record<EntityPickerKind,string>={CUSTOMER:'/crm/customers',CUSTOMER_PARTY:'/crm/customers',AGENT:'/crm/agents',AGENT_PARTY:'/crm/agents',SUPPLIER:'/suppliers',SUPPLIER_PARTY:'/suppliers',TRAVELER:'/crm/travelers',TRAVELER_PARTY:'/crm/travelers',LEAD:'/crm/leads',HAJJ_PROGRAM:'/hajj-umrah/programs',TOURISM_PROGRAM:'/tourism/programs',ACCOUNT:'/accounting/overview',USER:'/system-administration/users',BRANCH:'/system-administration/branches'};
 function record(value:unknown):value is Record<string,unknown>{return Boolean(value)&&typeof value==='object'&&!Array.isArray(value);}
 function text(value:unknown){return typeof value==='string'?value:'';}
 function nested(row:Record<string,unknown>,key:string){const value=row[key];return record(value)?value:null;}
 function option(kind:EntityPickerKind,value:unknown):EntityOption|null{
  if(!record(value))return null;
- if(kind==='CUSTOMER'){const customer=nested(value,'customer'),party=nested(value,'party');if(!customer||!party)return null;const id=text(customer.id);if(!id)return null;return{id,label:[text(customer.number),text(party.displayName)].filter(Boolean).join(' — '),detail:text(customer.status)};}
- if(kind==='AGENT'){const agent=nested(value,'agent'),party=nested(value,'party');if(!agent||!party)return null;const id=text(agent.id);if(!id)return null;return{id,label:[text(agent.number),text(party.displayName)].filter(Boolean).join(' — '),detail:text(agent.status)};}
- if(kind==='SUPPLIER'){const supplier=nested(value,'supplier'),party=nested(value,'party');if(!supplier||!party)return null;const id=text(supplier.id);if(!id)return null;return{id,label:[text(supplier.supplierCode),text(party.displayName)].filter(Boolean).join(' — '),detail:text(supplier.status)};}
- if(kind==='TRAVELER'){const id=text(value.id);if(!id)return null;return{id,label:text(value.fullName)||id,detail:[text(value.nationality),text(value.status)].filter(Boolean).join(' · ')};}
+ if(kind==='CUSTOMER'||kind==='CUSTOMER_PARTY'){const customer=nested(value,'customer'),party=nested(value,'party');if(!customer||!party)return null;const id=text(kind==='CUSTOMER'?customer.id:party.id);if(!id)return null;return{id,label:[text(customer.number),text(party.displayName)].filter(Boolean).join(' — '),detail:text(customer.status)};}
+ if(kind==='AGENT'||kind==='AGENT_PARTY'){const agent=nested(value,'agent'),party=nested(value,'party');if(!agent||!party)return null;const id=text(kind==='AGENT'?agent.id:party.id);if(!id)return null;return{id,label:[text(agent.number),text(party.displayName)].filter(Boolean).join(' — '),detail:text(agent.status)};}
+ if(kind==='SUPPLIER'||kind==='SUPPLIER_PARTY'){const supplier=nested(value,'supplier'),party=nested(value,'party');if(!supplier||!party)return null;const id=text(kind==='SUPPLIER'?supplier.id:party.id);if(!id)return null;return{id,label:[text(supplier.supplierCode),text(party.displayName)].filter(Boolean).join(' — '),detail:text(supplier.status)};}
+ if(kind==='TRAVELER'||kind==='TRAVELER_PARTY'){const id=text(kind==='TRAVELER'?value.id:value.partyId);if(!id)return null;return{id,label:text(value.fullName)||id,detail:[text(value.nationality),text(value.status)].filter(Boolean).join(' · ')};}
  if(kind==='LEAD'){const id=text(value.id);if(!id)return null;return{id,label:[text(value.number),text(value.displayName)].filter(Boolean).join(' — '),detail:[text(value.requestedService),text(value.status)].filter(Boolean).join(' · ')};}
  if(kind==='HAJJ_PROGRAM'){const id=text(value.id);if(!id)return null;return{id,label:[text(value.code),text(value.arabicName)].filter(Boolean).join(' — '),detail:text(value.status)};}
  if(kind==='TOURISM_PROGRAM'){const id=text(value.id);if(!id)return null;return{id,label:[text(value.code),text(value.nameAr)].filter(Boolean).join(' — '),detail:text(value.status)};}
  if(kind==='ACCOUNT'){const id=text(value.id);if(!id||value.active===false||value.postable===false)return null;return{id,label:[text(value.code),text(value.name)].filter(Boolean).join(' — '),detail:text(value.classification)};}
+ if(kind==='BRANCH'){const id=text(value.id);if(!id||value.active===false)return null;return{id,label:text(value.name)||id,detail:'فرع نشط'};}
  const id=text(value.id);if(!id)return null;return{id,label:text(value.displayName)||text(value.username)||text(value.name)||id,detail:text(value.username)};
 }
 export async function loadEntityOptions(kind:EntityPickerKind):Promise<EntityOption[]>{
