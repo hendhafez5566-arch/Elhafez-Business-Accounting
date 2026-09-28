@@ -2,8 +2,9 @@ import{useEffect,useMemo,useState,type FormEvent}from'react';
 import{ActionBar,Badge,Button,Card,DataGrid,DisclosureCard,EmptyState,ErrorState,FormField,Input,LoadingState,MetricCard,Select,Tabs,Toast}from'./ui.js';
 import{HttpReportingCenterClient,type ReportKey,type ReportSchedule,type ReportingCenterClient,type ReportingCenterData}from'./reporting-center-client.js';
 import type{ReportRow}from'./accounting-client.js';
+import{AgingReportingPanel,ProgramProfitabilityReportingPanel,SupplierFinancialReportingPanel}from'./reporting-depth-panels.js';
 
-type Tab='executive'|'financial'|'operations'|'saved';
+type Tab='executive'|'financial'|'aging'|'suppliers'|'profitability'|'operations'|'saved';
 const reportLabels:Record<ReportKey,string>={
  EXECUTIVE_OVERVIEW:'الملخص التنفيذي',
  FINANCIAL_STATEMENTS:'القوائم المالية',
@@ -40,11 +41,14 @@ export function ReportingCenterPage({client=new HttpReportingCenterClient()}:{cl
  const critical=data.management.totals.critical,high=data.management.totals.high;
  function exportCurrent(){if(tab==='financial'){downloadCsv('financial-report',['البند','العملة','القيمة'],reportRows(data.accounting.reports.trialBalance.rows));return;}if(tab==='operations'){downloadCsv('operational-exceptions',['المجال','العنوان','التفاصيل','الأولوية','الحالة'],data.management.items.map(row=>[row.sourceDomain,row.title,row.summary,row.severity,row.status]));return;}downloadCsv('executive-summary',['المؤشر','القيمة'],[['الاستثناءات',data.management.totals.attention],['حرج',critical],['مرتفع',high],['عملاء',data.management.summary.crmSales.customers],['موردون',data.management.summary.suppliers.total],['برامج حج وعمرة نشطة',data.management.summary.hajjUmrah.activePrograms],['ذمم عملاء متأخرة',data.management.summary.finance.overduePositions]]);}
  return <section dir="rtl" className="ui-page-stack" aria-label="مركز التقارير">
-  <Card title="مركز التقارير"><p>قراءة موحدة للتقارير المالية والتشغيلية من أصحاب البيانات الأصليين، مع حفظ طرق العرض وجدولتها بدون نسخ الحقيقة المحاسبية أو التشغيلية.</p><ActionBar><Button type="button" variant="secondary" onClick={()=>void load()} disabled={loading}>تحديث</Button>{tab!=='saved'?<><Button type="button" variant="secondary" onClick={()=>window.print()}>طباعة / PDF</Button><Button type="button" variant="secondary" onClick={exportCurrent}>تصدير CSV لفتح Excel</Button></>:null}</ActionBar></Card>
-  <Tabs tabs={[{id:'executive',label:'ملخص تنفيذي'},{id:'financial',label:'تقارير مالية'},{id:'operations',label:'تقارير تشغيلية'},{id:'saved',label:'التقارير المحفوظة والجدولة'}]} active={tab} onChange={id=>setTab(id as Tab)}/>
+  <Card title="مركز التقارير"><p>قراءة موحدة للتقارير المالية والتشغيلية من أصحاب البيانات الأصليين، مع حفظ طرق العرض وجدولتها بدون نسخ الحقيقة المحاسبية أو التشغيلية.</p><ActionBar><Button type="button" variant="secondary" onClick={()=>void load()} disabled={loading}>تحديث</Button>{!['saved','aging','suppliers','profitability'].includes(tab)?<><Button type="button" variant="secondary" onClick={()=>window.print()}>طباعة / PDF</Button><Button type="button" variant="secondary" onClick={exportCurrent}>تصدير CSV لفتح Excel</Button></>:null}</ActionBar></Card>
+  <Tabs tabs={[{id:'executive',label:'ملخص تنفيذي'},{id:'financial',label:'القوائم المالية'},{id:'aging',label:'AR / AP Aging'},{id:'suppliers',label:'تقرير الموردين'},{id:'profitability',label:'ربحية البرامج'},{id:'operations',label:'تقارير تشغيلية'},{id:'saved',label:'التقارير المحفوظة والجدولة'}]} active={tab} onChange={id=>setTab(id as Tab)}/>
   {notice?<Toast tone="success">{notice}</Toast>:null}{error?<ErrorState message={error}/>:null}{loading?<LoadingState/>:null}
   {tab==='executive'?<Executive data={data}/>:null}
   {tab==='financial'?<Financial data={data}/>:null}
+  {tab==='aging'?<AgingReportingPanel/>:null}
+  {tab==='suppliers'?<SupplierFinancialReportingPanel/>:null}
+  {tab==='profitability'?<ProgramProfitabilityReportingPanel/>:null}
   {tab==='operations'?<Operations data={data}/>:null}
   {tab==='saved'?<section className="ui-page-stack">
    <DisclosureCard title="حفظ تقرير" description="يحفظ اسم التقرير ونوعه والفلاتر فقط؛ الأرقام تُقرأ دائمًا من المصدر عند الفتح."><form onSubmit={createSaved}><FormField label="اسم التقرير" required><Input required value={savedForm.name} onChange={e=>setSavedForm({...savedForm,name:e.target.value})}/></FormField><FormField label="نوع التقرير"><Select value={savedForm.reportKey} onChange={e=>setSavedForm({...savedForm,reportKey:e.target.value as ReportKey})}>{Object.entries(reportLabels).map(([key,label])=><option key={key} value={key}>{label}</option>)}</Select></FormField><FormField label="الرؤية"><Select value={savedForm.visibility} onChange={e=>setSavedForm({...savedForm,visibility:e.target.value as 'PRIVATE'|'COMPANY'})}><option value="PRIVATE">خاص بي</option><option value="COMPANY">مشترك للشركة</option></Select></FormField><Button type="submit" disabled={loading}>حفظ التقرير</Button></form></DisclosureCard>
