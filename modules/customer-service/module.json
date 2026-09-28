@@ -1,0 +1,13 @@
+{
+  "name":"customer-service",
+  "publicApi":["src/public/index.ts","src/public/nest.ts"],
+  "ownedTables":["cs_service_cases","cs_case_notes","cs_case_history","cs_number_counters"],
+  "allowedDependencies":["@elhafez/contracts","@elhafez/customer-management","@elhafez/platform-core"],
+  "dataScope":"COMPANY_BRANCH",
+  "branchScopedTables":["cs_service_cases","cs_case_notes","cs_case_history"],
+  "criticalInvariants":[
+    "Every service case is company/branch isolated and references an active customer through the customer-management public boundary.",
+    "Case lifecycle is monotonic after CLOSED; resolution and closure timestamps are immutable evidence.",
+    "Notes and status history are append-only case evidence and never mutate customer or financial truth."
+  ]
+}
