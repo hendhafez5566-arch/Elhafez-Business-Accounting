@@ -1,9 +1,10 @@
 import{ContractValidationError,type CompanyId,type DecimalAmount}from'@elhafez/contracts';
 import type{ProcurementFulfillmentRepository}from'../application/procurement-fulfillment.repository.js';
-import type{ProcurementFulfillmentRecord}from'../domain/fulfillment.js';
+import type{ProcurementFulfillmentRecord,SupplierConfirmationEvidence}from'../domain/fulfillment.js';
 
 export class InMemoryProcurementFulfillmentRepository implements ProcurementFulfillmentRepository{
  private rows=new Map<string,ProcurementFulfillmentRecord>();
+ private confirmations=new Map<string,SupplierConfirmationEvidence>();
  private key(c:CompanyId,id:string){return `${c}|${id}`;}
  async reserve(v:ProcurementFulfillmentRecord){
   const same=this.rows.get(this.key(v.companyId,v.id));
@@ -20,4 +21,7 @@ export class InMemoryProcurementFulfillmentRepository implements ProcurementFulf
  }
  async find(c:CompanyId,id:string){return this.rows.get(this.key(c,id));}
  async listForPurchaseOrder(c:CompanyId,b:string,po:string){return[...this.rows.values()].filter((x)=>x.companyId===c&&x.branchId===b&&x.purchaseOrderId===po).sort((a,z)=>a.createdAt.localeCompare(z.createdAt));}
+ async saveSupplierConfirmation(v:SupplierConfirmationEvidence){const key=this.key(v.companyId,v.id),old=this.confirmations.get(key);if(old){if(old.requestHash!==v.requestHash)throw new ContractValidationError('id','conflicting supplier confirmation replay');return old;}const collision=[...this.confirmations.values()].find(x=>x.id===v.id&&x.companyId!==v.companyId);if(collision)throw new ContractValidationError('id','cross-company supplier confirmation id collision');this.confirmations.set(key,v);return v;}
+ async supplierConfirmation(c:CompanyId,id:string){return this.confirmations.get(this.key(c,id));}
+ async listSupplierConfirmations(c:CompanyId,b:string,po:string){return[...this.confirmations.values()].filter(x=>x.companyId===c&&x.branchId===b&&x.purchaseOrderId===po).sort((a,z)=>a.occurredAt.localeCompare(z.occurredAt));}
 }
