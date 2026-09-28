@@ -5,3 +5,22 @@ export type ReportScheduleCadence='DAILY'|'WEEKLY'|'MONTHLY';
 export type ReportDeliveryChannel='IN_APP'|'EMAIL';
 export interface SavedOperationalReport{readonly id:string;readonly companyId:string;readonly ownerActorId:string;readonly name:string;readonly reportKey:OperationalReportKey;readonly filters:Readonly<Record<string,unknown>>;readonly visibility:SavedReportVisibility;readonly active:boolean;readonly createdAt:string;readonly updatedAt:string}
 export interface OperationalReportSchedule{readonly id:string;readonly companyId:string;readonly savedReportId:string;readonly cadence:ReportScheduleCadence;readonly hourUtc:number;readonly weekday:number|null;readonly dayOfMonth:number|null;readonly channel:ReportDeliveryChannel;readonly recipient:string|null;readonly enabled:boolean;readonly createdBy:string;readonly createdAt:string;readonly updatedAt:string}
+
+export type OperationalReportDeliveryStatus='PENDING'|'SENDING'|'SENT'|'RETRY'|'DEAD_LETTER';
+export interface OperationalReportDelivery{
+ readonly id:string;
+ readonly companyId:string;
+ readonly scheduleId:string;
+ readonly savedReportId:string;
+ readonly scheduledFor:string;
+ readonly channel:ReportDeliveryChannel;
+ readonly recipient:string|null;
+ readonly status:OperationalReportDeliveryStatus;
+ readonly attempt:number;
+ readonly maxAttempts:number;
+ readonly nextAttemptAt:string;
+ readonly providerReference:string|null;
+ readonly lastError:string|null;
+ readonly createdAt:string;
+ readonly updatedAt:string;
+}
