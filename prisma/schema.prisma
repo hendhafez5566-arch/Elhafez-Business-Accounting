@@ -2536,6 +2536,11 @@ model ClLead {
   preLostStatus           String?         @map("pre_lost_status")
   quotationReference      String?         @map("quotation_reference")
   convertedCustomerId     String?         @map("converted_customer_id")
+  campaignId              String?         @map("campaign_id")
+  pipelineStage           String?         @map("pipeline_stage")
+  score                   Int             @default(0)
+  tags                    Json            @default("[]")
+  slaDueAt                DateTime?       @map("sla_due_at")
   createdAt               DateTime        @default(now()) @map("created_at")
   updatedAt               DateTime        @updatedAt @map("updated_at")
   history                 ClLeadHistory[]
@@ -4162,4 +4167,572 @@ model PsAward {
   @@unique([companyId, branchId, rfqId])
   @@index([companyId, branchId, requisitionId])
   @@map("ps_awards")
+}
+
+
+model ClLeadConfiguration {
+  companyId         String   @map("company_id")
+  branchId          String   @map("branch_id")
+  sources           Json     @default("[]")
+  campaigns         Json     @default("[]")
+  pipelineStages    Json     @default("[]") @map("pipeline_stages")
+  assignmentRules   Json     @default("[]") @map("assignment_rules")
+  scoringRules      Json     @default("[]") @map("scoring_rules")
+  contactSlaMinutes Int      @default(0) @map("contact_sla_minutes")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@id([companyId, branchId])
+  @@map("cl_lead_configuration")
+}
+
+model CmCustomerCommercialProfile {
+  companyId     String   @map("company_id")
+  customerId    String   @map("customer_id")
+  groupCode     String?  @map("group_code")
+  loyaltyTier   String?  @map("loyalty_tier")
+  loyaltyPoints Int      @default(0) @map("loyalty_points")
+  tags          Json     @default("[]")
+  creditNotes   String?  @map("credit_notes")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@id([companyId, customerId])
+  @@index([companyId, groupCode])
+  @@map("cm_customer_commercial_profiles")
+}
+
+model QtTemplate {
+  id                  String   @id
+  companyId           String   @map("company_id")
+  branchId            String   @map("branch_id")
+  code                String
+  name                String
+  currency            String
+  defaultValidityDays Int      @map("default_validity_days")
+  terms               String?
+  notes               String?
+  lines               Json
+  active              Boolean  @default(true)
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  @@unique([companyId, branchId, id])
+  @@unique([companyId, branchId, code])
+  @@index([companyId, branchId, active])
+  @@map("qt_templates")
+}
+
+model TprProgramCommercial {
+  companyId       String   @map("company_id")
+  branchId        String   @map("branch_id")
+  programId       String   @map("program_id")
+  totalCapacity   Int?     @map("total_capacity")
+  waitlistEnabled Boolean  @default(false) @map("waitlist_enabled")
+  priceTiers      Json     @default("[]") @map("price_tiers")
+  addOnServiceIds Json     @default("[]") @map("add_on_service_ids")
+  discountPolicy  Json     @default("{}") @map("discount_policy")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@id([companyId, branchId, programId])
+  @@map("tpr_program_commercial")
+}
+
+model TbkBookingExtension {
+  companyId         String    @map("company_id")
+  branchId          String    @map("branch_id")
+  bookingId         String    @map("booking_id")
+  salesState        String    @default("BOOKED") @map("sales_state")
+  priceTierCode     String?   @map("price_tier_code")
+  specialRequests   String?   @map("special_requests")
+  voucherNumber     String?   @map("voucher_number")
+  travelPackIssuedAt DateTime? @map("travel_pack_issued_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  @@id([companyId, branchId, bookingId])
+  @@index([companyId, branchId, salesState])
+  @@map("tbk_booking_extensions")
+}
+
+model TbkBookingAmendment {
+  id               String   @id
+  companyId        String   @map("company_id")
+  branchId         String   @map("branch_id")
+  bookingId        String   @map("booking_id")
+  kind             String
+  reason           String
+  detail           String
+  financeReference String?  @map("finance_reference")
+  actorId          String   @map("actor_id")
+  occurredAt       DateTime @map("occurred_at")
+
+  @@index([companyId, branchId, bookingId, occurredAt])
+  @@map("tbk_booking_amendments")
+}
+
+model TbkPaymentPlanItem {
+  id                String   @id
+  companyId         String   @map("company_id")
+  branchId          String   @map("branch_id")
+  bookingId         String   @map("booking_id")
+  dueDate           DateTime @map("due_date") @db.Date
+  amount            Decimal  @db.Decimal(24, 6)
+  status            String   @default("PLANNED")
+  evidenceReference String?  @map("evidence_reference")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@index([companyId, branchId, bookingId, dueDate])
+  @@map("tbk_payment_plan_items")
+}
+
+model CsNumberCounter {
+  companyId String @map("company_id")
+  branchId  String @map("branch_id")
+  nextValue Int    @default(0) @map("next_value")
+
+  @@id([companyId, branchId])
+  @@map("cs_number_counters")
+}
+
+model CsServiceCase {
+  id             String   @id
+  companyId      String   @map("company_id")
+  branchId       String   @map("branch_id")
+  number         String
+  customerId     String   @map("customer_id")
+  category       String
+  priority       String
+  subject        String
+  description    String
+  status         String
+  assigneeUserId String?  @map("assignee_user_id")
+  slaDueAt       DateTime? @map("sla_due_at")
+  resolvedAt     DateTime? @map("resolved_at")
+  closedAt       DateTime? @map("closed_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@unique([companyId, branchId, id])
+  @@unique([companyId, branchId, number])
+  @@index([companyId, branchId, status, updatedAt])
+  @@index([companyId, branchId, customerId])
+  @@map("cs_service_cases")
+}
+
+model CsCaseNote {
+  id         String   @id
+  companyId  String   @map("company_id")
+  branchId   String   @map("branch_id")
+  caseId     String   @map("case_id")
+  authorId   String   @map("author_id")
+  visibility String
+  body       String
+  createdAt  DateTime @map("created_at")
+
+  @@index([companyId, branchId, caseId, createdAt])
+  @@map("cs_case_notes")
+}
+
+model CsCaseHistory {
+  id         String   @id
+  companyId  String   @map("company_id")
+  branchId   String   @map("branch_id")
+  caseId     String   @map("case_id")
+  action     String
+  actorId    String   @map("actor_id")
+  detail     String?
+  occurredAt DateTime @map("occurred_at")
+
+  @@index([companyId, branchId, caseId, occurredAt])
+  @@map("cs_case_history")
+}
+
+model DmDocumentRequirement {
+  id             String   @id
+  companyId      String   @map("company_id")
+  entityType     String   @map("entity_type")
+  documentType   String   @map("document_type")
+  label          String
+  required       Boolean
+  expiryRequired Boolean  @map("expiry_required")
+  warningDays    Int      @default(30) @map("warning_days")
+  active         Boolean  @default(true)
+
+  @@unique([companyId, entityType, documentType])
+  @@map("dm_document_requirements")
+}
+
+model DmBusinessDocument {
+  id             String   @id
+  companyId      String   @map("company_id")
+  entityType     String   @map("entity_type")
+  entityId       String   @map("entity_id")
+  documentType   String   @map("document_type")
+  title          String
+  ownerUserId    String?  @map("owner_user_id")
+  issueDate      DateTime? @map("issue_date") @db.Date
+  expiryDate     DateTime? @map("expiry_date") @db.Date
+  tags           Json     @default("[]")
+  required       Boolean  @default(false)
+  currentVersion Int      @default(1) @map("current_version")
+  status         String   @default("ACTIVE")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@unique([companyId, id])
+  @@index([companyId, entityType, entityId])
+  @@index([companyId, expiryDate, status])
+  @@map("dm_business_documents")
+}
+
+model DmDocumentVersion {
+  id         String   @id
+  companyId  String   @map("company_id")
+  documentId String   @map("document_id")
+  version    Int
+  fileId     String   @map("file_id")
+  note       String?
+  actorId    String   @map("actor_id")
+  createdAt  DateTime @map("created_at")
+
+  @@unique([companyId, documentId, version])
+  @@index([companyId, fileId])
+  @@map("dm_document_versions")
+}
+
+model CccCollectionPolicy {
+  id                       String  @id
+  companyId                String  @unique @map("company_id")
+  reminderDaysBeforeDue    Int     @map("reminder_days_before_due")
+  collectorDaysOverdue     Int     @map("collector_days_overdue")
+  supervisorDaysOverdue    Int     @map("supervisor_days_overdue")
+  creditHoldDaysOverdue    Int     @map("credit_hold_days_overdue")
+  legalDaysOverdue         Int     @map("legal_days_overdue")
+  active                   Boolean @default(true)
+
+  @@map("ccc_collection_policies")
+}
+
+model CccCollectionCase {
+  id                String   @id
+  companyId         String   @map("company_id")
+  branchId          String   @map("branch_id")
+  invoiceId         String   @map("invoice_id")
+  customerPartyId   String   @map("customer_party_id")
+  currency          String
+  dueDate           DateTime? @map("due_date") @db.Date
+  collectorUserId   String?  @map("collector_user_id")
+  status            String
+  stage             String
+  openedAt          DateTime @map("opened_at")
+  resolvedAt        DateTime? @map("resolved_at")
+  lastOutstanding   Decimal  @map("last_outstanding") @db.Decimal(24, 6)
+  lastRefreshedAt   DateTime @map("last_refreshed_at")
+  disputeReason     String?  @map("dispute_reason")
+
+  @@unique([companyId, branchId, id])
+  @@index([companyId, branchId, invoiceId])
+  @@index([companyId, branchId, status, stage])
+  @@map("ccc_collection_cases")
+}
+
+model CccPromiseToPay {
+  id             String   @id
+  companyId      String   @map("company_id")
+  branchId       String   @map("branch_id")
+  caseId         String   @map("case_id")
+  promisedDate   DateTime @map("promised_date") @db.Date
+  amount         Decimal  @db.Decimal(24, 6)
+  status         String
+  note           String?
+  actorId        String   @map("actor_id")
+  createdAt      DateTime @map("created_at")
+  resolvedAt     DateTime? @map("resolved_at")
+
+  @@index([companyId, branchId, caseId, status])
+  @@map("ccc_promises_to_pay")
+}
+
+model CccCollectionActivity {
+  id         String   @id
+  companyId  String   @map("company_id")
+  branchId   String   @map("branch_id")
+  caseId     String   @map("case_id")
+  kind       String
+  detail     String
+  actorId    String   @map("actor_id")
+  occurredAt DateTime @map("occurred_at")
+
+  @@index([companyId, branchId, caseId, occurredAt])
+  @@map("ccc_collection_activities")
+}
+
+model IhConnection {
+  id            String   @id
+  companyId     String   @map("company_id")
+  kind          String
+  name          String
+  enabled       Boolean  @default(true)
+  endpoint      String?
+  credentialRef String?  @map("credential_ref")
+  config        Json     @default("{}")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@unique([companyId, id])
+  @@index([companyId, kind, enabled])
+  @@map("ih_connections")
+}
+
+model IhApiKey {
+  id                 String   @id
+  companyId          String   @map("company_id")
+  name               String
+  keyPrefix          String   @map("key_prefix")
+  secretHash         String   @unique @map("secret_hash")
+  scopes             Json     @default("[]")
+  rateLimitPerMinute Int      @default(60) @map("rate_limit_per_minute")
+  windowStartedAt    DateTime @map("window_started_at")
+  windowCount        Int      @default(0) @map("window_count")
+  expiresAt          DateTime? @map("expires_at")
+  revokedAt          DateTime? @map("revoked_at")
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  @@index([companyId, revokedAt])
+  @@map("ih_api_keys")
+}
+
+model IhWebhookSubscription {
+  id        String   @id
+  companyId String   @map("company_id")
+  event     String
+  url       String
+  secretRef String?  @map("secret_ref")
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([companyId, id])
+  @@index([companyId, event, active])
+  @@map("ih_webhook_subscriptions")
+}
+
+model IhWebhookDelivery {
+  id             String   @id
+  companyId      String   @map("company_id")
+  subscriptionId String   @map("subscription_id")
+  event          String
+  payload        Json
+  status         String
+  attempt        Int      @default(0)
+  maxAttempts    Int      @default(5) @map("max_attempts")
+  nextAttemptAt  DateTime @map("next_attempt_at")
+  responseCode   Int?     @map("response_code")
+  lastError      String?  @map("last_error")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@index([companyId, subscriptionId, createdAt])
+  @@index([status, nextAttemptAt])
+  @@map("ih_webhook_deliveries")
+}
+
+model CcTemplate {
+  id        String   @id
+  companyId String   @map("company_id")
+  code      String
+  channel   String
+  language  String
+  subject   String?
+  body      String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([companyId, code, channel, language])
+  @@map("cc_templates")
+}
+
+model CcPreference {
+  companyId String   @map("company_id")
+  userId    String   @map("user_id")
+  channel   String
+  enabled   Boolean  @default(true)
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@id([companyId, userId, channel])
+  @@map("cc_preferences")
+}
+
+model CcDelivery {
+  id                String   @id
+  companyId         String   @map("company_id")
+  branchId          String?  @map("branch_id")
+  templateId        String?  @map("template_id")
+  channel           String
+  userId            String?  @map("user_id")
+  recipient         String
+  language          String
+  variables         Json     @default("{}")
+  subject           String?
+  body              String
+  status            String
+  scheduledAt       DateTime @map("scheduled_at")
+  attempt           Int      @default(0)
+  maxAttempts       Int      @default(5) @map("max_attempts")
+  providerReference String?  @map("provider_reference")
+  lastError         String?  @map("last_error")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@index([companyId, status, scheduledAt])
+  @@index([companyId, userId, createdAt])
+  @@map("cc_deliveries")
+}
+
+model HubcBarcodeRequest {
+  id                 String   @id
+  companyId          String   @map("company_id")
+  branchId           String   @map("branch_id")
+  bookingId          String   @map("booking_id")
+  travelerId         String   @map("traveler_id")
+  passportDocumentId String   @map("passport_document_id")
+  status             String
+  externalReference  String?  @map("external_reference")
+  barcodeValue       String?  @map("barcode_value")
+  rejectionReason    String?  @map("rejection_reason")
+  attempt            Int      @default(0)
+  submittedAt        DateTime? @map("submitted_at")
+  issuedAt           DateTime? @map("issued_at")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  @@unique([companyId, branchId, id])
+  @@index([companyId, branchId, bookingId, travelerId])
+  @@index([companyId, branchId, status])
+  @@map("hubc_barcode_requests")
+}
+
+model HubcBarcodeHistory {
+  id         String   @id
+  companyId  String   @map("company_id")
+  branchId   String   @map("branch_id")
+  requestId  String   @map("request_id")
+  action     String
+  fromStatus String?  @map("from_status")
+  toStatus   String   @map("to_status")
+  detail     String?
+  actorId    String   @map("actor_id")
+  occurredAt DateTime @map("occurred_at")
+
+  @@index([companyId, branchId, requestId, occurredAt])
+  @@map("hubc_barcode_history")
+}
+
+model HrEmployee {
+  id                  String   @id
+  companyId           String   @map("company_id")
+  branchId            String   @map("branch_id")
+  employeeNumber      String   @map("employee_number")
+  displayName         String   @map("display_name")
+  status              String   @default("ACTIVE")
+  hireDate            DateTime @map("hire_date") @db.Date
+  terminationDate     DateTime? @map("termination_date") @db.Date
+  department          String?
+  costCenterId        String?  @map("cost_center_id")
+  currency            String
+  baseSalary          Decimal  @map("base_salary") @db.Decimal(24, 6)
+  netPayableAccountId String   @map("net_payable_account_id")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  @@unique([companyId, branchId, id])
+  @@unique([companyId, branchId, employeeNumber])
+  @@index([companyId, branchId, status])
+  @@map("hr_employees")
+}
+
+model HrAttendance {
+  id              String @id @default(uuid())
+  companyId       String @map("company_id")
+  branchId        String @map("branch_id")
+  employeeId      String @map("employee_id")
+  workDate        DateTime @map("work_date") @db.Date
+  status          String
+  workedMinutes   Int @default(0) @map("worked_minutes")
+  overtimeMinutes Int @default(0) @map("overtime_minutes")
+  note            String?
+
+  @@unique([companyId, branchId, employeeId, workDate])
+  @@index([companyId, branchId, workDate])
+  @@map("hr_attendance")
+}
+
+model HrLeaveRequest {
+  id         String   @id
+  companyId  String   @map("company_id")
+  branchId   String   @map("branch_id")
+  employeeId String   @map("employee_id")
+  type       String
+  startDate  DateTime @map("start_date") @db.Date
+  endDate    DateTime @map("end_date") @db.Date
+  status     String
+  reason     String?
+  decidedBy  String?  @map("decided_by")
+  decidedAt  DateTime? @map("decided_at")
+
+  @@index([companyId, branchId, employeeId, status])
+  @@map("hr_leave_requests")
+}
+
+model HrPayComponent {
+  id                 String  @id
+  companyId          String  @map("company_id")
+  branchId           String  @map("branch_id")
+  employeeId         String  @map("employee_id")
+  code               String
+  kind               String
+  amount             Decimal @db.Decimal(24, 6)
+  liabilityAccountId String? @map("liability_account_id")
+  active             Boolean @default(true)
+
+  @@index([companyId, branchId, employeeId, active])
+  @@map("hr_pay_components")
+}
+
+model HrPayrollRun {
+  id                  String   @id
+  companyId           String   @map("company_id")
+  branchId            String   @map("branch_id")
+  period              String
+  postingDate         DateTime @map("posting_date") @db.Date
+  currency            String
+  status              String
+  expenseAccountId    String   @map("expense_account_id")
+  netPayableAccountId String   @map("net_payable_account_id")
+  totalGross          Decimal  @map("total_gross") @db.Decimal(24, 6)
+  totalDeductions     Decimal  @map("total_deductions") @db.Decimal(24, 6)
+  totalNet            Decimal  @map("total_net") @db.Decimal(24, 6)
+  accountingRunId     String?  @map("accounting_run_id")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  @@unique([companyId, branchId, id])
+  @@unique([companyId, branchId, period])
+  @@index([companyId, branchId, status])
+  @@map("hr_payroll_runs")
+}
+
+model HrPayrollLine {
+  id         String  @id
+  companyId  String  @map("company_id")
+  branchId   String  @map("branch_id")
+  runId      String  @map("run_id")
+  employeeId String  @map("employee_id")
+  gross      Decimal @db.Decimal(24, 6)
+  deductions Decimal @db.Decimal(24, 6)
+  net        Decimal @db.Decimal(24, 6)
+  details    Json    @default("[]")
+
+  @@index([companyId, branchId, runId])
+  @@index([companyId, branchId, employeeId])
+  @@map("hr_payroll_lines")
 }
