@@ -17,8 +17,7 @@ preferences.
 - `apps/web/src/ui/navigation.tsx` — sidebar/topbar/navigation composition.
 - `apps/web/src/ui/preferences.tsx` — typed presentation preferences and persistence adapter.
 - `apps/web/src/ui/design-tokens.css` — colors, typography, density, spacing, radius, shadows and layout tokens.
-- `apps/web/src/ui/themes/elhafez-premium.css` — optional premium presentation layer, gated by `data-ui-theme="premium"`.
-- `apps/web/src/styles.css` — canonical shell/component rules consuming the design tokens.
+- `apps/web/src/styles.css` — canonical shell/component rules and all shared visual-theme sections consuming the design tokens.
 - `apps/web/src/app-shell.tsx` — one application shell for every route.
 
 ## Rules for future work
@@ -36,25 +35,25 @@ preferences.
 
 ## Replaceable visual themes
 
-The canonical functional baseline remains `apps/web/src/styles.css`. A visual theme may only refine presentation on top of that baseline and must never own business behavior, data access, routing, validation or workflow logic.
+The canonical functional baseline remains the unscoped rules in `apps/web/src/styles.css`. A visual theme may only refine presentation on top of that baseline and must never own business behavior, data access, routing, validation or workflow logic.
 
 The current theme registry is intentionally small:
 
 - `premium` — the ELHAFEZ premium commercial appearance and the default for new/unauthenticated entry.
 - `classic` — the canonical UI-02 baseline with no premium overrides.
 
-Theme selection is part of `UiPreferences` and is applied through `html[data-ui-theme]`. The premium stylesheet is fully scoped under `html[data-ui-theme='premium']`, so selecting `classic` immediately disables the premium layer without changing application code or data.
+Theme selection is part of `UiPreferences` and is applied through `html[data-ui-theme]`. The premium rules live in one clearly marked section inside the canonical `styles.css` file and every rule is scoped under `html[data-ui-theme='premium']`. Selecting `classic` therefore disables the premium appearance immediately without changing application code, data or business behavior.
 
-The theme can therefore be evaluated or removed safely:
+The theme can be evaluated or removed safely:
 
 1. For an immediate user-level rollback, select **الشكل الأساسي** from **المظهر والتنقل**.
 2. For a product-wide rollback, change the default `theme` in `DEFAULT_UI_PREFERENCES` to `classic`.
-3. For complete removal, delete `apps/web/src/ui/themes/elhafez-premium.css`, remove its single import from `apps/web/src/index.tsx`, and remove the `premium` registry option. No business module should require changes.
+3. For complete removal, delete only the block between `BEGIN ELHAFEZ PREMIUM THEME` and `END ELHAFEZ PREMIUM THEME` in `apps/web/src/styles.css`, then remove the `premium` registry option. No business module should require changes.
 
 Rules for future themes:
 
-- Keep each optional visual theme inside `apps/web/src/ui/themes/`.
-- Gate every theme rule behind its own `data-ui-theme` value.
+- Keep shared theme rules in a clearly marked section inside the canonical `apps/web/src/styles.css`; do not create parallel page/module CSS files.
+- Gate every optional theme rule behind its own `data-ui-theme` value.
 - Style the existing shell/primitives; do not duplicate components or create theme-specific business pages.
 - Keep the login/tenant-entry surface on the same shared controls and tokens as the authenticated application.
 - Do not make a theme a prerequisite for layout correctness, accessibility or functional behavior; the `classic` baseline must remain usable on its own.
