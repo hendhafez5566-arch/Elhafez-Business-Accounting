@@ -2,9 +2,9 @@ import{useEffect,useMemo,useState}from'react';
 import{crmGet}from'./crm-core-client.js';
 import{Checkbox,FormField,Input,LoadingState,Select}from'./ui.js';
 
-export type EntityPickerKind='CUSTOMER'|'CUSTOMER_PARTY'|'AGENT'|'AGENT_PARTY'|'SUPPLIER'|'SUPPLIER_PARTY'|'TRAVELER'|'TRAVELER_PARTY'|'LEAD'|'HAJJ_PROGRAM'|'TOURISM_PROGRAM'|'ACCOUNT'|'USER'|'BRANCH';
+export type EntityPickerKind='CUSTOMER'|'CUSTOMER_PARTY'|'AGENT'|'AGENT_PARTY'|'SUPPLIER'|'SUPPLIER_PARTY'|'TRAVELER'|'TRAVELER_PARTY'|'LEAD'|'HAJJ_PROGRAM'|'TOURISM_PROGRAM'|'ACCOUNT'|'USER'|'BRANCH'|'ROLE'|'PERMISSION';
 export interface EntityOption{readonly id:string;readonly label:string;readonly detail?:string}
-const endpoint:Record<EntityPickerKind,string>={CUSTOMER:'/crm/customers',CUSTOMER_PARTY:'/crm/customers',AGENT:'/crm/agents',AGENT_PARTY:'/crm/agents',SUPPLIER:'/suppliers',SUPPLIER_PARTY:'/suppliers',TRAVELER:'/crm/travelers',TRAVELER_PARTY:'/crm/travelers',LEAD:'/crm/leads',HAJJ_PROGRAM:'/hajj-umrah/programs',TOURISM_PROGRAM:'/tourism/programs',ACCOUNT:'/accounting/overview',USER:'/system-administration/users',BRANCH:'/system-administration/branches'};
+const endpoint:Record<EntityPickerKind,string>={CUSTOMER:'/crm/customers',CUSTOMER_PARTY:'/crm/customers',AGENT:'/crm/agents',AGENT_PARTY:'/crm/agents',SUPPLIER:'/suppliers',SUPPLIER_PARTY:'/suppliers',TRAVELER:'/crm/travelers',TRAVELER_PARTY:'/crm/travelers',LEAD:'/crm/leads',HAJJ_PROGRAM:'/hajj-umrah/programs',TOURISM_PROGRAM:'/tourism/programs',ACCOUNT:'/accounting/overview',USER:'/system-administration/users',BRANCH:'/system-administration/branches',ROLE:'/system-administration/roles',PERMISSION:'/system-administration/permissions'};
 function record(value:unknown):value is Record<string,unknown>{return Boolean(value)&&typeof value==='object'&&!Array.isArray(value);}
 function text(value:unknown){return typeof value==='string'?value:'';}
 function nested(row:Record<string,unknown>,key:string){const value=row[key];return record(value)?value:null;}
