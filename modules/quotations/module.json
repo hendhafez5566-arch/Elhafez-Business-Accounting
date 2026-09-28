@@ -10,7 +10,8 @@
     "qt_revision_lines",
     "qt_history",
     "qt_number_counters",
-    "qt_communications"
+    "qt_communications",
+    "qt_templates"
   ],
   "allowedDependencies": [
     "@elhafez/contracts",
