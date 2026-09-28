@@ -6,7 +6,10 @@
   ],
   "ownedTables": [
     "tbk_bookings",
-    "tbk_booking_history"
+    "tbk_booking_history",
+    "tbk_booking_extensions",
+    "tbk_booking_amendments",
+    "tbk_payment_plan_items"
   ],
   "allowedDependencies": [
     "@elhafez/contracts",
@@ -20,7 +23,10 @@
   "dataScope": "COMPANY_BRANCH",
   "branchScopedTables": [
     "tbk_bookings",
-    "tbk_booking_history"
+    "tbk_booking_history",
+    "tbk_booking_extensions",
+    "tbk_booking_amendments",
+    "tbk_payment_plan_items"
   ],
   "criticalInvariants": [
     "Booking records and lifecycle history are isolated by company and branch.",
