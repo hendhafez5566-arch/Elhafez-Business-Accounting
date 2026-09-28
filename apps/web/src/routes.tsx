@@ -30,6 +30,7 @@ import { DocumentManagementPage } from './document-management-page.js';
 import { IntegrationCenterPage } from './integration-center-page.js';
 import { CommunicationCenterPage } from './communication-center-page.js';
 import { HrPayrollPage } from './hr-payroll-page.js';
+import { ProductSettingsPage } from './product-settings-page.js';
 import type { IconName } from './ui/icons.js';
 
 export interface AppRoute {
@@ -65,6 +66,7 @@ export const foundationRoutes = defineRoutes(
   { id: 'system-custom-fields', path: '/system-administration/custom-fields', label: 'الحقول المخصصة', group: 'إدارة النظام', icon: 'settings', element: <PlatformFoundationsPage initialTab="custom-fields" /> },
   { id: 'system-document-numbering', path: '/system-administration/document-numbering', label: 'ترقيم المستندات', group: 'إدارة النظام', icon: 'settings', element: <PlatformFoundationsPage initialTab="numbering" /> },
   { id: 'system-automation', path: '/system-administration/automation', label: 'الأتمتة وسير العمل', group: 'إدارة النظام', icon: 'tasks', element: <PlatformFoundationsPage initialTab="automation" /> },
+  { id: 'product-settings', path: '/system-administration/product-settings', label: 'إعدادات المنتج', group: 'إدارة النظام', icon: 'settings', element: <ProductSettingsPage /> },
   { id: 'document-management', path: '/documents', label: 'إدارة المستندات', group: 'إدارة النظام', icon: 'workspace', element: <DocumentManagementPage /> },
   { id: 'communication-center', path: '/communications', label: 'مركز الاتصالات', group: 'إدارة النظام', icon: 'bell', element: <CommunicationCenterPage /> },
   { id: 'integration-center', path: '/integrations', label: 'مركز التكاملات و API', group: 'إدارة النظام', icon: 'settings', element: <IntegrationCenterPage /> },
