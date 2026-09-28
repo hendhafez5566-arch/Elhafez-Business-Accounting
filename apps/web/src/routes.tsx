@@ -34,6 +34,7 @@ import { ProductSettingsPage } from './product-settings-page.js';
 import { CrmConfigurationPage } from './crm-configuration-page.js';
 import { QuotationTemplatesPage } from './quotation-templates-page.js';
 import { Customer360CompletePage } from './customer-360-complete-page.js';
+import { TourismCommercialPage } from './tourism-commercial-page.js';
 import type { IconName } from './ui/icons.js';
 
 export interface AppRoute {
@@ -95,6 +96,7 @@ export const foundationRoutes = defineRoutes(
   { id: 'tourism-services', path: '/tourism/services', label: 'السياحة والخدمات', group: 'السياحة والخدمات', icon: 'tourism', element: <TourismServicesPage /> },
   { id: 'tourism-programs', path: '/tourism/programs', label: 'البرامج السياحية', group: 'السياحة والخدمات', icon: 'program', element: <TourismOperationsPage initialTab="programs" /> },
   { id: 'tourism-bookings', path: '/tourism/bookings', label: 'الحجوزات السياحية', group: 'السياحة والخدمات', icon: 'booking', element: <TourismOperationsPage initialTab="bookings" /> },
+  { id: 'tourism-commercial', path: '/tourism/commercial', label: 'التسعير والسعة والسداد', group: 'السياحة والخدمات', icon: 'analytics', element: <TourismCommercialPage /> },
   { id: 'tourism-itinerary', path: '/tourism/itinerary', label: 'البرنامج اليومي', group: 'السياحة والخدمات', icon: 'calendar', element: <TourismOperationsPage initialTab="itinerary" /> },
   { id: 'tourism-contract-inventory', path: '/tourism/contracts-inventory', label: 'التعاقدات والمخزون', group: 'السياحة والخدمات', icon: 'workspace', element: <TourismContractInventoryPage /> },
 
