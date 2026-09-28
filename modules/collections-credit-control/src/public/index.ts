@@ -1,0 +1,1 @@
+export{CollectionsApplicationService,COLLECTIONS_PERMISSIONS}from'../application/collections.application-service.js';export type{CollectionPolicy,CollectionCase,PromiseToPay,CollectionActivity,CollectionStage,CollectionCaseStatus}from'../domain/collections.js';
