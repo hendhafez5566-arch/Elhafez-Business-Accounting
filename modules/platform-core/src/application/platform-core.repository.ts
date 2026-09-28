@@ -1,11 +1,11 @@
-import type { AuditEntry, Branch, Company, CompanyLoginIdentity, Id, Notification, Permission, Role, Session, StoredFile, User } from '../domain/platform.types.js';
+import type { AuditEntry, Branch, Company, CompanyLoginIdentity, CompanyUserMfa, Id, Notification, Permission, Role, Session, StoredFile, User } from '../domain/platform.types.js';
 
 /** Module-private persistence port; infrastructure adapters implement it. */
 export interface PlatformCoreRepository {
   transaction<T>(work: () => Promise<T>): Promise<T>;
   findUserById(id: Id): Promise<User | undefined>; findUserByEmail(email: string): Promise<User | undefined>; createUser(user: User): Promise<User>; updateUser(user: User): Promise<User>;
   listUsers(companyId: Id): Promise<readonly User[]>;
-  findCompanyLoginIdentity(companyId:Id,username:string):Promise<CompanyLoginIdentity|undefined>; findCompanyLoginIdentityForUser(companyId:Id,userId:Id):Promise<CompanyLoginIdentity|undefined>; listCompanyLoginIdentities(companyId:Id):Promise<readonly CompanyLoginIdentity[]>; updateCompanyLoginIdentity(identity:CompanyLoginIdentity):Promise<CompanyLoginIdentity>; findCompanyAdministratorUserId(companyId:Id,roleName:string):Promise<Id|undefined>;
+  findCompanyLoginIdentity(companyId:Id,username:string):Promise<CompanyLoginIdentity|undefined>; findCompanyLoginIdentityForUser(companyId:Id,userId:Id):Promise<CompanyLoginIdentity|undefined>; listCompanyLoginIdentities(companyId:Id):Promise<readonly CompanyLoginIdentity[]>; updateCompanyLoginIdentity(identity:CompanyLoginIdentity):Promise<CompanyLoginIdentity>; findCompanyUserMfa(companyId:Id,userId:Id):Promise<CompanyUserMfa|undefined>; saveCompanyUserMfa(value:CompanyUserMfa):Promise<CompanyUserMfa>; deleteCompanyUserMfa(companyId:Id,userId:Id):Promise<void>; findCompanyAdministratorUserId(companyId:Id,roleName:string):Promise<Id|undefined>;
   provisionCompanyWithAdministrator(input:{company:Company;branch:Branch;administrator:User;identity:CompanyLoginIdentity;administratorRoleId:Id;administratorRoleName:string}):Promise<{company:Company;branch:Branch;administratorRoleId:Id}>;
   createCompanyUser(input:{user:User;identity:CompanyLoginIdentity;branchId:Id;roleId?:Id}):Promise<User>;
   createSession(session: Session): Promise<void>; findSessionByTokenHash(hash: string): Promise<Session | undefined>; findSessionById(id:Id):Promise<Session|undefined>; revokeSession(id: Id, revokedAt: Date): Promise<void>; revokeUserSessions(userId: Id, revokedAt: Date): Promise<void>; revokeUserCompanySessions(userId:Id,companyId:Id,revokedAt:Date):Promise<void>; revokeCompanySessions(companyId:Id,revokedAt:Date):Promise<void>; revokeAllSessions(revokedAt:Date):Promise<void>; listSessions(userId: Id): Promise<readonly Session[]>;
