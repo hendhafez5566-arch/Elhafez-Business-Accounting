@@ -16,7 +16,7 @@ test('CS-01 registers only CRM Core routes and keeps Arabic-first labels', () =>
 test('customer and agent pages expose lifecycle/edit controls without financial ownership fields', () => {
   const customers=renderToStaticMarkup(createElement(CustomersPage));
   const agents=renderToStaticMarkup(createElement(AgentsPage));
-  assert.match(customers,/إضافة عميل/); assert.match(customers,/ملاحظات تجارية/); assert.doesNotMatch(customers,/حد ائتماني|رصيد حساب|فاتورة/);
+  assert.match(customers,/إضافة عميل/); assert.match(customers,/ملاحظات تجارية/); assert.match(customers,/حد الائتمان/); assert.match(customers,/أيام الائتمان/); assert.match(customers,/شروط الدفع/); assert.doesNotMatch(customers,/رصيد حساب|فاتورة/);
   assert.match(agents,/العمولة الافتراضية/); assert.doesNotMatch(agents,/مطالبات عمولة|دفع العمولة/);
 });
 test('lead and follow-up pages expose CRM Core lifecycle without a quotation implementation', () => {
