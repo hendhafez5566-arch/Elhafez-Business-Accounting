@@ -1,0 +1,1 @@
+export{CommunicationCenterApplicationService,COMMUNICATION_PERMISSIONS}from'../application/communication-center.application-service.js';export type{CommunicationTemplate,CommunicationPreference,CommunicationDelivery,CommunicationChannel}from'../domain/communication.js';
