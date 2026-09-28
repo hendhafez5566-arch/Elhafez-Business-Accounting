@@ -1,11 +1,30 @@
-import{Card,EmptyState}from'./ui.js';
+import{type FormEvent,useEffect,useMemo,useState}from'react';
+import{crmGet,crmPost}from'./crm-core-client.js';
+import{ActionBar,Badge,Button,Card,DataGrid,DisclosureCard,EmptyState,ErrorState,FormField,Select,Textarea,Toast}from'./ui.js';
+
+type Booking={id:string;code:string;programId:string;travelerIds:string[];status:string};
+type Traveler={id:string;fullName:string;status:string};
+type BarcodeStatus='DRAFT'|'SUBMITTED'|'PROCESSING'|'ISSUED'|'REJECTED'|'CANCELLED';
+type Barcode={id:string;bookingId:string;travelerId:string;passportDocumentId:string;status:BarcodeStatus;externalReference:string|null;barcodeValue:string|null;rejectionReason:string|null;attempt:number;submittedAt:string|null;issuedAt:string|null;createdAt:string;updatedAt:string};
+type History={id:string;action:string;fromStatus:BarcodeStatus|null;toStatus:BarcodeStatus;detail:string|null;actorId:string;occurredAt:string};
+const labels:Record<BarcodeStatus,string>={DRAFT:'مسودة',SUBMITTED:'تم الإرسال',PROCESSING:'قيد المعالجة',ISSUED:'صدر الباركود',REJECTED:'مرفوض',CANCELLED:'ملغي'};
+function msg(e:unknown){return e instanceof Error?e.message:'تعذر تنفيذ العملية.';}
 
 export function UmrahBarcodePage(){
- return <div dir="rtl">
-  <Card title="باركود العمرة">
-   <EmptyState title="قريبًا">
-    هذا القسم مخصص لباركود العمرة المصري، وسيتم إضافة وظائفه التشغيلية هنا بشكل منظم عند بدء التنفيذ.
-   </EmptyState>
-  </Card>
- </div>;
+ const[requests,setRequests]=useState<Barcode[]>([]),[bookings,setBookings]=useState<Booking[]>([]),[travelers,setTravelers]=useState<Traveler[]>([]),[bookingId,setBookingId]=useState(''),[travelerId,setTravelerId]=useState(''),[selected,setSelected]=useState<Barcode|null>(null),[history,setHistory]=useState<History[]>([]),[cancelReason,setCancelReason]=useState(''),[notice,setNotice]=useState(''),[error,setError]=useState('');
+ async function load(){try{const[r,b,t]=await Promise.all([crmGet<Barcode[]>('/hajj-umrah/barcode'),crmGet<Booking[]>('/hajj-umrah/operations/bookings'),crmGet<Traveler[]>('/crm/travelers?status=ACTIVE')]);setRequests(r);setBookings(b);setTravelers(t);setError('');}catch(e){setError(msg(e));}}
+ useEffect(()=>{void load();},[]);
+ const booking=bookings.find(b=>b.id===bookingId);
+ const eligible=useMemo(()=>travelers.filter(t=>booking?.travelerIds.includes(t.id)),[travelers,booking]);
+ async function create(event:FormEvent){event.preventDefault();try{const row=await crmPost<Barcode>('/hajj-umrah/barcode',{bookingId,travelerId});setNotice('تم إنشاء طلب الباركود وربطه بالجواز الحالي للمسافر.');setSelected(row);await load();await choose(row);}catch(e){setNotice(msg(e));}}
+ async function choose(row:Barcode){setSelected(row);setCancelReason('');try{setHistory(await crmGet<History[]>('/hajj-umrah/barcode/'+row.id+'/history'));}catch(e){setNotice(msg(e));}}
+ async function submit(row:Barcode){try{const updated=await crmPost<Barcode>('/hajj-umrah/barcode/'+row.id+'/submit',{});setNotice('تم إرسال طلب الباركود إلى التكامل الحكومي المهيأ.');await load();await choose(updated);}catch(e){setNotice(msg(e));}}
+ async function cancel(){if(!selected)return;try{const updated=await crmPost<Barcode>('/hajj-umrah/barcode/'+selected.id+'/cancel',{reason:cancelReason});setNotice('تم إلغاء الطلب مع الاحتفاظ بالسجل التاريخي.');await load();await choose(updated);}catch(e){setNotice(msg(e));}}
+ return <section dir="rtl" className="ui-page-stack" aria-label="باركود العمرة">
+  {notice?<Toast tone="success">{notice}</Toast>:null}{error?<ErrorState message={error}/>:null}
+  <Card title="باركود العمرة"><p>إدارة طلبات باركود العمرة المصري وربطها بالحجز والمسافر والجواز الحالي. الاتصال الخارجي يتم فقط من خلال مركز التكاملات؛ لا يتم اختلاق نجاح إذا لم توجد قناة حكومية مهيأة.</p></Card>
+  <DisclosureCard title="طلب باركود جديد" description="يمكن إنشاء الطلب فقط لمسافر داخل الحجز ولديه جواز حالي صالح."><form onSubmit={create}><FormField label="الحجز" required><Select required value={bookingId} onChange={e=>{setBookingId(e.target.value);setTravelerId('');}}><option value="">اختر الحجز</option>{bookings.filter(b=>!['CANCELLED','COMPLETED'].includes(b.status)).map(b=><option key={b.id} value={b.id}>{b.code} — {b.status}</option>)}</Select></FormField><FormField label="المسافر" required><Select required value={travelerId} onChange={e=>setTravelerId(e.target.value)} disabled={!bookingId}><option value="">اختر المسافر</option>{eligible.map(t=><option key={t.id} value={t.id}>{t.fullName}</option>)}</Select></FormField><Button type="submit">إنشاء الطلب</Button></form></DisclosureCard>
+  <Card title="طلبات الباركود">{!requests.length?<EmptyState title="لا توجد طلبات باركود"/>:<DataGrid columns={['الحجز','المسافر','الحالة','المحاولات','المرجع الخارجي','الباركود','فتح']}>{requests.map(row=><tr key={row.id}><td>{bookings.find(b=>b.id===row.bookingId)?.code??row.bookingId}</td><td>{travelers.find(t=>t.id===row.travelerId)?.fullName??row.travelerId}</td><td><Badge tone={row.status==='ISSUED'?'success':row.status==='REJECTED'?'warning':'info'}>{labels[row.status]}</Badge></td><td>{row.attempt}</td><td>{row.externalReference??'—'}</td><td>{row.barcodeValue??'—'}</td><td><Button type="button" variant="secondary" onClick={()=>void choose(row)}>التفاصيل</Button></td></tr>)}</DataGrid>}</Card>
+  {selected?<><Card title="تفاصيل الطلب"><p>الحالة: <strong>{labels[selected.status]}</strong></p><p>الجواز المرجعي: {selected.passportDocumentId}</p>{selected.rejectionReason?<p>سبب الرفض: {selected.rejectionReason}</p>:null}{selected.barcodeValue?<p>الباركود: <strong>{selected.barcodeValue}</strong></p>:null}<ActionBar>{['DRAFT','REJECTED'].includes(selected.status)?<Button type="button" onClick={()=>void submit(selected)}>إرسال للجهة المهيأة</Button>:null}</ActionBar>{!['ISSUED','CANCELLED'].includes(selected.status)?<><FormField label="سبب الإلغاء"><Textarea value={cancelReason} onChange={e=>setCancelReason(e.target.value)}/></FormField><Button type="button" variant="secondary" disabled={!cancelReason.trim()} onClick={()=>void cancel()}>إلغاء الطلب</Button></>:null}</Card><Card title="السجل التاريخي">{!history.length?<EmptyState/>:<DataGrid columns={['الحدث','من','إلى','التفاصيل','الوقت']}>{history.map(h=><tr key={h.id}><td>{h.action}</td><td>{h.fromStatus?labels[h.fromStatus]:'—'}</td><td>{labels[h.toStatus]}</td><td>{h.detail??'—'}</td><td>{new Date(h.occurredAt).toLocaleString('ar-EG')}</td></tr>)}</DataGrid>}</Card></>:null}
+ </section>;
 }
