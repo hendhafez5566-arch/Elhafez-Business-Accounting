@@ -23,7 +23,7 @@ export async function loadVisas(api:HajjUmrahOperationsApi){return api.listVisas
 
 export function makeOperationCommandKey(operation:string,entityId:string,qualifier:string=''){return ['hu02',operation,entityId,qualifier].map(value=>encodeURIComponent(value)).join(':');}
 type InventoryRowForm={allocationId:string;contractId:string;resourceType:string;resourceId:string;serviceDate:string;periodEnd:string;quantity:string;flightSegmentSourceType:string;flightSegmentSourceId:string;visaBatchSourceType:string;visaBatchSourceId:string;};
-const emptyInventoryRow=():InventoryRowForm=>({allocationId:'',contractId:'',resourceType:'HOTEL',resourceId:'',serviceDate:'',periodEnd:'',quantity:'1',flightSegmentSourceType:'',flightSegmentSourceId:'',visaBatchSourceType:'',visaBatchSourceId:''});
+const emptyInventoryRow=():InventoryRowForm=>({allocationId:crypto.randomUUID(),contractId:'',resourceType:'HOTEL',resourceId:'',serviceDate:'',periodEnd:'',quantity:'1',flightSegmentSourceType:'',flightSegmentSourceId:'',visaBatchSourceType:'',visaBatchSourceId:''});
 function inventoryRequest(row:InventoryRowForm):BookingInventoryRequest{return{allocationId:row.allocationId,contractId:row.contractId,resourceType:row.resourceType,resourceId:row.resourceId,serviceDate:row.serviceDate,quantity:row.quantity,...(row.periodEnd?{periodEnd:row.periodEnd}:{}),...(row.flightSegmentSourceType&&row.flightSegmentSourceId?{flightSegmentReference:{sourceType:row.flightSegmentSourceType,sourceId:row.flightSegmentSourceId}}:{}),...(row.visaBatchSourceType&&row.visaBatchSourceId?{visaBatchReference:{sourceType:row.visaBatchSourceType,sourceId:row.visaBatchSourceId}}:{})};}
 
 export function BookingLifecycleState({booking}:{readonly booking:Booking}){return <span data-state-kind="booking-lifecycle"><Badge tone={bookingTone(booking.status)}>{bookingLifecycleLabels[booking.status]}</Badge></span>;}
@@ -76,7 +76,6 @@ export function BookingsPage({api=hajjUmrahOperationsApi}:{readonly api?:HajjUmr
       <FormField label="تاريخ الاستحقاق" required><Input required type="date" value={confirm.dueDate} onChange={e=>setConfirm({...confirm,dueDate:e.target.value})}/></FormField>
       <FormField label="رقم الفاتورة" required><Input required value={confirm.invoiceNumber} onChange={e=>setConfirm({...confirm,invoiceNumber:e.target.value})}/></FormField>
       <Card title="طلبات المخزون والتخصيص">{inventories.map((row,index)=><section key={index} aria-label={`طلب مخزون ${index+1}`}>
-        <FormField label="معرّف التخصيص" required><Input required value={row.allocationId} onChange={e=>updateInventory(index,{allocationId:e.target.value})}/></FormField>
         <FormField label="العقد" required><Input required value={row.contractId} onChange={e=>updateInventory(index,{contractId:e.target.value})}/></FormField>
         <FormField label="نوع المورد"><Select value={row.resourceType} onChange={e=>updateInventory(index,{resourceType:e.target.value})}><option value="HOTEL">فندق</option><option value="FLIGHT_BLOCK">طيران</option><option value="TRANSPORT">نقل</option><option value="VISA">تأشيرة</option><option value="SERVICE">خدمة</option></Select></FormField>
         <FormField label="المورد" required><Input required value={row.resourceId} onChange={e=>updateInventory(index,{resourceId:e.target.value})}/></FormField>
