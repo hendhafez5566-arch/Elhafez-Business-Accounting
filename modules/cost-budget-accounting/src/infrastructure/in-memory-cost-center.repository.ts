@@ -32,6 +32,12 @@ export class InMemoryCostCenterRepository implements CostCenterRepository {
     this.centers.set(`${value.companyId}:${value.id}`, value);
   }
 
+  async list(companyId: CompanyId) {
+    return [...this.centers.values()]
+      .filter((value) => value.companyId === companyId)
+      .sort((left, right) => left.code.localeCompare(right.code));
+  }
+
   async find(companyId: CompanyId, id: CostCenterId) {
     return this.centers.get(`${companyId}:${id}`);
   }
