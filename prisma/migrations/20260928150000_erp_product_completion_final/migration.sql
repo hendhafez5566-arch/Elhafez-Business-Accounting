@@ -246,3 +246,57 @@ CREATE TABLE "pc_company_user_mfa"(
  "updated_at" TIMESTAMP(3) NOT NULL,
  CONSTRAINT "pc_company_user_mfa_pkey" PRIMARY KEY("company_id","user_id")
 );
+
+
+-- Register only the new capabilities introduced by ERP Product Completion.
+-- Existing company administrators receive them inside companies where that role
+-- is already assigned; no other role is broadened and no cross-company grant is used.
+WITH "erp_product_completion_permissions"("id","name") AS (
+  VALUES
+    ('8f5ebba1-823d-4e24-9801-000000000001'::uuid,'crm.lead.configure'),
+    ('8f5ebba1-823d-4e24-9801-000000000002'::uuid,'crm.customer.commercial.manage'),
+    ('8f5ebba1-823d-4e24-9801-000000000003'::uuid,'crm.quotation.templates.manage'),
+    ('8f5ebba1-823d-4e24-9801-000000000004'::uuid,'tourism.programs.commercial.manage'),
+    ('8f5ebba1-823d-4e24-9801-000000000005'::uuid,'tourism.bookings.commercial.manage'),
+    ('8f5ebba1-823d-4e24-9801-000000000006'::uuid,'crm.service.read'),
+    ('8f5ebba1-823d-4e24-9801-000000000007'::uuid,'crm.service.manage'),
+    ('8f5ebba1-823d-4e24-9801-000000000008'::uuid,'crm.service.assign'),
+    ('8f5ebba1-823d-4e24-9801-000000000009'::uuid,'crm.service.resolve'),
+    ('8f5ebba1-823d-4e24-9801-000000000010'::uuid,'documents.read'),
+    ('8f5ebba1-823d-4e24-9801-000000000011'::uuid,'documents.manage'),
+    ('8f5ebba1-823d-4e24-9801-000000000012'::uuid,'documents.requirements.manage'),
+    ('8f5ebba1-823d-4e24-9801-000000000013'::uuid,'collections.read'),
+    ('8f5ebba1-823d-4e24-9801-000000000014'::uuid,'collections.manage'),
+    ('8f5ebba1-823d-4e24-9801-000000000015'::uuid,'collections.policy.manage'),
+    ('8f5ebba1-823d-4e24-9801-000000000016'::uuid,'integrations.read'),
+    ('8f5ebba1-823d-4e24-9801-000000000017'::uuid,'integrations.manage'),
+    ('8f5ebba1-823d-4e24-9801-000000000018'::uuid,'integrations.api-keys.manage'),
+    ('8f5ebba1-823d-4e24-9801-000000000019'::uuid,'integrations.webhooks.manage'),
+    ('8f5ebba1-823d-4e24-9801-000000000020'::uuid,'communications.read'),
+    ('8f5ebba1-823d-4e24-9801-000000000021'::uuid,'communications.manage'),
+    ('8f5ebba1-823d-4e24-9801-000000000022'::uuid,'communications.templates.manage'),
+    ('8f5ebba1-823d-4e24-9801-000000000023'::uuid,'hr.read'),
+    ('8f5ebba1-823d-4e24-9801-000000000024'::uuid,'hr.manage'),
+    ('8f5ebba1-823d-4e24-9801-000000000025'::uuid,'hr.payroll.approve'),
+    ('8f5ebba1-823d-4e24-9801-000000000026'::uuid,'hr.payroll.post'),
+    ('8f5ebba1-823d-4e24-9801-000000000027'::uuid,'hajj_umrah.barcode.read'),
+    ('8f5ebba1-823d-4e24-9801-000000000028'::uuid,'hajj_umrah.barcode.manage'),
+    ('8f5ebba1-823d-4e24-9801-000000000029'::uuid,'hajj_umrah.barcode.provider')
+),
+"upserted_permissions" AS (
+  INSERT INTO "pc_permissions" ("id","name")
+  SELECT "id","name" FROM "erp_product_completion_permissions"
+  ON CONFLICT ("name") DO UPDATE SET "name"=EXCLUDED."name"
+  RETURNING "id","name"
+),
+"company_administrators" AS (
+  SELECT DISTINCT ur."company_id",ur."role_id"
+  FROM "pc_user_roles" ur
+  JOIN "pc_roles" role ON role."id"=ur."role_id"
+  WHERE role."name"='company-administrator'
+)
+INSERT INTO "pc_company_role_permissions" ("company_id","role_id","permission_id")
+SELECT ca."company_id",ca."role_id",p."id"
+FROM "company_administrators" ca
+JOIN "upserted_permissions" p ON TRUE
+ON CONFLICT ("company_id","role_id","permission_id") DO NOTHING;
