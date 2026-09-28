@@ -24,3 +24,19 @@ export interface ProcurementFulfillmentRecord{
  readonly createdAt:string;
  readonly appliedAt?:string;
 }
+
+export type SupplierConfirmationOutcome='CONFIRMED'|'DECLINED';
+export interface SupplierConfirmationEvidence{
+ readonly id:string;
+ readonly companyId:CompanyId;
+ readonly branchId:string;
+ readonly purchaseOrderId:string;
+ readonly supplierId:string;
+ readonly outcome:SupplierConfirmationOutcome;
+ readonly externalReference:string|null;
+ readonly confirmedDeliveryDate:string|null;
+ readonly note:string|null;
+ readonly actorId:string;
+ readonly requestHash:string;
+ readonly occurredAt:string;
+}
