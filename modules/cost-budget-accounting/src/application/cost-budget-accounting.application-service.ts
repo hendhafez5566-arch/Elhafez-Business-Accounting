@@ -31,6 +31,10 @@ export class CostBudgetAccountingApplicationService {
     return value;
   }
 
+  list(companyId: CompanyId): Promise<CostCenter[]> {
+    return this.repository.list(companyId);
+  }
+
   async get(companyId: CompanyId, id: CostCenterId): Promise<CostCenter> {
     const value = await this.repository.find(companyId, id);
     if (!value) throw new ContractValidationError('costCenterId', 'not found for company');
@@ -134,7 +138,6 @@ export class CostBudgetAccountingApplicationService {
     };
   }
 
-  /** Public Cost-owned BR-061 operation. It is idempotent by effect id and never fabricates GL evidence. */
   async recordProgramAllocationCostEffect(input: {
     id: string;
     companyId: CompanyId;
@@ -206,18 +209,14 @@ export class CostBudgetAccountingApplicationService {
       await this.repository.saveTourismServiceActualization(value);
       return (await this.repository.tourismServiceActualization(input.companyId, input.id)) ?? value;
     } catch (error) {
-      // Check if this is a unique constraint violation (concurrency race)
       if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
-        // Same ID but different payload = conflict
         const existing = await this.repository.tourismServiceActualization(input.companyId, input.id);
         if (!existing) throw error;
         if (existing.requestHash !== requestHash) {
           throw new ContractValidationError('tourismActualization', 'conflicting replay');
         }
-        // Same request converged
         return existing;
       }
-      // Non-unique error - rethrow original
       throw error;
     }
   }

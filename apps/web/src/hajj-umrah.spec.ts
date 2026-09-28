@@ -9,8 +9,10 @@ import {
   loadPrograms,
   loadSeasons,
   ProgramsView,
+  ProgramForm,
   ProgramWorkspaceView,
   SeasonsView,
+  updateProgramComponent,
 } from './hajj-umrah-pages.js';
 import {
   emptyCapabilities,
@@ -147,6 +149,28 @@ test('seasons are loaded from the API boundary and rendered from returned data',
   const html = renderToStaticMarkup(createElement(SeasonsView, { rows, capabilities: fullCapabilities }));
   assert.match(html, /موسم العمرة 1448/);
   assert.match(html, /1448/);
+});
+
+test('structured program component editing preserves existing business details and updates only the selected row', () => {
+  const input: ProgramInput = {
+    code: 'UM-2', type: 'UMRAH', seasonId: season.id, arabicName: 'عمرة شعبان',
+    departureDate: '2027-02-01', returnDate: '2027-02-10', salesStart: '2026-10-01',
+    salesClose: '2027-01-20', capacity: '30', currency: 'EGP', prices: { triple: '28000' },
+    requirements: ['HOTEL', 'FLIGHT'],
+    components: [
+      { type: 'HOTEL', title: 'فندق مكة', sequence: 1, city: 'مكة', inventoryReference: 'hotel-1', metadata: { nights: 5 } },
+      { type: 'FLIGHT', title: 'رحلة الذهاب', sequence: 2, route: 'القاهرة - جدة' },
+    ],
+  };
+  const updated = updateProgramComponent(input, 1, { route: 'القاهرة - المدينة', start: '2027-02-01' });
+  assert.deepEqual(updated.components?.[0], input.components?.[0]);
+  assert.deepEqual(updated.components?.[1], { type: 'FLIGHT', title: 'رحلة الذهاب', sequence: 2, route: 'القاهرة - المدينة', start: '2027-02-01' });
+  assert.deepEqual(updated.prices, { triple: '28000' });
+  assert.deepEqual(updated.requirements, ['HOTEL', 'FLIGHT']);
+  assert.deepEqual(input.components?.[1], { type: 'FLIGHT', title: 'رحلة الذهاب', sequence: 2, route: 'القاهرة - جدة' });
+  const html = renderToStaticMarkup(createElement(ProgramForm, { value: input, onChange: () => {}, submitLabel: 'حفظ', onSubmit: () => {}, seasons: [season] }));
+  for (const label of ['سعر الفردي', 'سعر الثلاثي', 'سعر الطفل بسرير', 'الخدمات المطلوبة', 'مكونات البرنامج وخط السير', 'خط السير', 'سياسة الإلغاء']) assert.ok(html.includes(label), label);
+  assert.ok(!html.includes('المكونات JSON'));
 });
 
 test('season creation invokes persistence then reloads and the resulting UI includes the created season', async () => {

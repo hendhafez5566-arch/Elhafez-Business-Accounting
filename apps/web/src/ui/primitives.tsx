@@ -3,6 +3,7 @@ import {
   type InputHTMLAttributes,
   type ReactNode,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -48,6 +49,40 @@ export function Select({
       {children}
     </select>
   );
+}
+
+export interface EntityPickerOption {
+  readonly id: string;
+  readonly label: string;
+  readonly code?: string;
+  readonly description?: string;
+  readonly disabled?: boolean;
+}
+
+export function EntityPicker({
+  value,
+  options,
+  onChange,
+  placeholder='اختر من القائمة',
+  disabled=false,
+  required=false,
+  allowClear=true,
+  emptyLabel='لا توجد عناصر متاحة',
+}:{
+  readonly value:string;
+  readonly options:readonly EntityPickerOption[];
+  readonly onChange:(id:string)=>void;
+  readonly placeholder?:string;
+  readonly disabled?:boolean;
+  readonly required?:boolean;
+  readonly allowClear?:boolean;
+  readonly emptyLabel?:string;
+}) {
+  const ordered=useMemo(()=>[...options].sort((a,b)=>a.label.localeCompare(b.label,'ar')),[options]);
+  return <Select value={value} disabled={disabled} required={required} onChange={event=>onChange(event.target.value)}>
+    {allowClear&&<option value="">{ordered.length?placeholder:emptyLabel}</option>}
+    {ordered.map(option=><option key={option.id} value={option.id} disabled={option.disabled}>{option.code?`${option.code} — `:''}{option.label}{option.description?` — ${option.description}`:''}</option>)}
+  </Select>;
 }
 
 export function Textarea({

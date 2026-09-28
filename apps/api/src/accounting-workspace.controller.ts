@@ -153,6 +153,49 @@ export class AccountingWorkspaceController{
    ...(input.realizedFxLossAccountId?.trim()?{realizedFxLossAccountId:input.realizedFxLossAccountId.trim()}:{}),...(input.approvalRequestId?.trim()?{approvalRequestId:input.approvalRequestId.trim()}:{})});
  }
 
+ @Post('cheques')
+ async issueCheque(@Headers('authorization')auth:string,@Headers('x-company-id')company:string,@Headers('x-branch-id')branch:string,
+  @Body()input:{commandKey:string;voucherId:string;direction:'INCOMING'|'OUTGOING';bankTreasuryId?:string;number:string;issueDate:string;dueDate?:string}){
+  const c=await this.context(this.headers(auth,company,branch),PLATFORM_CORE_PERMISSIONS.accountingFinanceOperate);
+  const voucher=(await this.treasury.listVouchers(c.companyId)).find(value=>value.id===text(input.voucherId,'voucherId'));
+  if(!voucher||voucher.branchId!==c.branchId)throw new BadRequestException('voucher not found in current branch');
+  if(voucher.status!=='POSTED')throw new BadRequestException('posted voucher required');
+  if(input.direction!=='INCOMING'&&input.direction!=='OUTGOING')throw new BadRequestException('invalid cheque direction');
+  if(input.direction!==(voucher.kind==='RECEIPT'?'INCOMING':'OUTGOING'))throw new BadRequestException('cheque direction does not match voucher');
+  const commandKey=text(input.commandKey,'commandKey');
+  return this.treasury.issueCheque({id:stableId(c.companyId,'MANUAL_CHEQUE',commandKey),companyId:c.companyId,voucherId:voucher.id,direction:input.direction,
+   ...(input.bankTreasuryId?.trim()?{bankTreasuryId:input.bankTreasuryId.trim()}:{}),number:text(input.number,'number'),amount:voucher.amount,currency:voucher.currency,issueDate:input.issueDate,
+   ...(input.dueDate?.trim()?{dueDate:input.dueDate.trim()}:{})});
+ }
+
+ @Get('cheques')
+ async cheques(@Headers('authorization')auth:string,@Headers('x-company-id')company:string,@Headers('x-branch-id')branch:string){
+  const c=await this.context(this.headers(auth,company,branch),PLATFORM_CORE_PERMISSIONS.accountingFinanceRead);
+  const vouchers=await this.treasury.listVouchers(c.companyId);
+  const allowed=new Set(vouchers.filter(value=>value.branchId===c.branchId).map(value=>value.id));
+  return (await this.treasury.listCheques(c.companyId)).filter(value=>allowed.has(value.voucherId));
+ }
+
+ @Get('cheques/:id')
+ async cheque(@Headers('authorization')auth:string,@Headers('x-company-id')company:string,@Headers('x-branch-id')branch:string,@Param('id')id:string){
+  const c=await this.context(this.headers(auth,company,branch),PLATFORM_CORE_PERMISSIONS.accountingFinanceRead);
+  const cheque=await this.treasury.getCheque(c.companyId,id);
+  const voucher=cheque&&(await this.treasury.listVouchers(c.companyId)).find(value=>value.id===cheque.voucherId);
+  if(!cheque||!voucher||voucher.branchId!==c.branchId)throw new BadRequestException('cheque not found in current branch');
+  return cheque;
+ }
+
+ @Post('cheques/:id/status')
+ async transitionCheque(@Headers('authorization')auth:string,@Headers('x-company-id')company:string,@Headers('x-branch-id')branch:string,@Param('id')id:string,
+  @Body()input:{status:'DEPOSITED'|'CLEARED'|'BOUNCED'|'VOIDED';reference?:string}){
+  const c=await this.context(this.headers(auth,company,branch),PLATFORM_CORE_PERMISSIONS.accountingFinanceOperate);
+  const cheque=await this.treasury.getCheque(c.companyId,id);
+  const voucher=cheque&&(await this.treasury.listVouchers(c.companyId)).find(value=>value.id===cheque.voucherId);
+  if(!cheque||!voucher||voucher.branchId!==c.branchId)throw new BadRequestException('cheque not found in current branch');
+  if(!(['DEPOSITED','CLEARED','BOUNCED','VOIDED'] as const).includes(input.status))throw new BadRequestException('invalid cheque status');
+  return this.treasury.transitionCheque(c.companyId,id,input.status,input.reference?.trim());
+ }
+
  @Post('vouchers/:id/reverse')
  async reverseVoucher(@Headers('authorization')auth:string,@Headers('x-company-id')company:string,@Headers('x-branch-id')branch:string,@Param('id')id:string,@Body()input:{postingDate:string;number:string}){
   const c=await this.context(this.headers(auth,company,branch),PLATFORM_CORE_PERMISSIONS.accountingFinanceOperate);

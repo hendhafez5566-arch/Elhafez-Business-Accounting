@@ -20,7 +20,7 @@ test('administration client keeps every mutation scoped and uses the correct HTT
 
 test('administration page contains actionable workflows without browser prompt shortcuts',()=>{
  const source=readFileSync(new URL('./system-administration-page.tsx',import.meta.url),'utf8');
- for(const required of ['إنشاء مستخدم','إعادة تعيين بيانات الدخول','اسم المستخدم','كلمة مرور مؤقتة','إنشاء دور','منح وصول للفرع','إنهاء الجلسة','حفظ الإعداد','رفع ملف الاستيراد','حفظ خريطة الأعمدة','تنفيذ الاستيراد','إنشاء تصدير XLSX','تنزيل التصدير'])assert.match(source,new RegExp(required));
+ for(const required of ['إنشاء مستخدم','إعادة تعيين بيانات الدخول','اسم المستخدم','كلمة مرور مؤقتة','إنشاء دور','منح وصول للفرع','إنهاء الجلسة','حفظ إعداد اللغة','رفع ملف الاستيراد','حفظ خريطة الأعمدة','تنفيذ الاستيراد','إنشاء تصدير XLSX','تنزيل التصدير'])assert.match(source,new RegExp(required));
  assert.doesNotMatch(source,/بدء الاستعادة|سياسة الاحتفاظ/);
  assert.doesNotMatch(source,/window\.(prompt|confirm|alert)|\bprompt\(|\bconfirm\(|\balert\(/);
 });

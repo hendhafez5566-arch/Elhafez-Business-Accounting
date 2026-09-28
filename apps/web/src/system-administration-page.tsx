@@ -1,5 +1,5 @@
-import {useEffect,useState} from 'react';
-import {Button,Card,DisclosureCard,EmptyState,ErrorState,FormField,Input,LoadingState,Select,Tabs,Toast} from './ui.js';
+import {useEffect,useMemo,useState} from 'react';
+import {Button,Card,DisclosureCard,EmptyState,EntityPicker,ErrorState,FormField,Input,LoadingState,Select,Tabs,Toast} from './ui.js';
 import {HttpAdministrationClient,type AdministrationClient,type AdministrationContext} from './system-administration-client.js';
 import {tenantApiContext} from './tenant-session.js';
 
@@ -9,19 +9,22 @@ const areas=[
  ['إعدادات الشركة','configuration/locale'],['استيراد وتصدير البيانات','imports'],
  ['صحة النظام والتشخيص','operations/diagnostics']
 ] as const;
-const labels:Record<string,string>={id:'المعرّف',name:'الاسم',displayName:'الاسم',username:'اسم المستخدم',mustChangePassword:'تغيير كلمة المرور مطلوب',status:'الحالة',active:'نشط',type:'النوع',fileName:'الملف',format:'الصيغة',dataset:'مجموعة البيانات',createdAt:'تاريخ الإنشاء',readAt:'تاريخ القراءة',action:'العملية',resource:'المورد',backupProvider:'موفر النسخ',database:'قاعدة البيانات',schemaCompatibility:'توافق المخطط',runtimeVersion:'إصدار التشغيل',value:'القيمة',resultKey:'ملف التصدير'};
+const labels:Record<string,string>={name:'الاسم',displayName:'الاسم',username:'اسم المستخدم',mustChangePassword:'تغيير كلمة المرور مطلوب',status:'الحالة',active:'نشط',type:'النوع',fileName:'الملف',format:'الصيغة',dataset:'مجموعة البيانات',createdAt:'تاريخ الإنشاء',readAt:'تاريخ القراءة',action:'العملية',resource:'المورد',backupProvider:'موفر النسخ',database:'قاعدة البيانات',schemaCompatibility:'توافق المخطط',runtimeVersion:'إصدار التشغيل',value:'القيمة',resultKey:'ملف التصدير'};
 type DatasetOption={id:string;label:string;requiredFields:readonly string[];targetFields:readonly string[]};
 type DownloadPayload={fileName:string;contentType:string;contentBase64:string};
 type FilePayload={metadata:{id:string;contentType:string};contentBase64:string};
+type RefRecord=Record<string,unknown>&{id:string};
 
 function valueOf(value:unknown){if(value===null||value===undefined)return'—';if(typeof value==='boolean')return value?'نعم':'لا';if(typeof value==='object')return'بيانات محفوظة';return String(value);}
 function objectRecord(value:unknown):value is Record<string,unknown>{return Boolean(value)&&typeof value==='object'&&!Array.isArray(value);}
+function refRecord(value:unknown):value is RefRecord{return objectRecord(value)&&typeof value.id==='string';}
 function datasetOption(value:unknown):value is DatasetOption{return objectRecord(value)&&typeof value.id==='string'&&typeof value.label==='string'&&Array.isArray(value.requiredFields)&&Array.isArray(value.targetFields);}
 function downloadPayload(value:unknown):value is DownloadPayload{return objectRecord(value)&&typeof value.fileName==='string'&&typeof value.contentType==='string'&&typeof value.contentBase64==='string';}
 function filePayload(value:unknown):value is FilePayload{return objectRecord(value)&&typeof value.contentBase64==='string'&&objectRecord(value.metadata)&&typeof value.metadata.id==='string'&&typeof value.metadata.contentType==='string';}
 function fileAsBase64(file:File):Promise<string>{return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onerror=()=>reject(new Error('تعذر قراءة الملف'));reader.onload=()=>{const result=String(reader.result??'');resolve(result.includes(',')?result.slice(result.indexOf(',')+1):result);};reader.readAsDataURL(file);});}
-function configValue(text:string):unknown{try{return JSON.parse(text);}catch{return text;}}
 function triggerDownload(payload:DownloadPayload){const binary=atob(payload.contentBase64);const bytes=new Uint8Array(binary.length);for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);const url=URL.createObjectURL(new Blob([bytes],{type:payload.contentType}));const anchor=document.createElement('a');anchor.href=url;anchor.download=payload.fileName;anchor.click();URL.revokeObjectURL(url);}
+function refLabel(value:RefRecord,fallback:string){for(const key of['displayName','name','username','fileName','number','code']){const item=value[key];if(typeof item==='string'&&item.trim())return item;}return fallback;}
+function refCode(value:RefRecord){for(const key of['username','code','number','fileName']){const item=value[key];if(typeof item==='string'&&item.trim())return item;}return undefined;}
 
 export function SystemAdministrationPage({client=new HttpAdministrationClient(),context}:{client?:AdministrationClient;context?:AdministrationContext}={}){
  const [selected,setSelected]=useState('users');
@@ -29,90 +32,76 @@ export function SystemAdministrationPage({client=new HttpAdministrationClient(),
  const [datasets,setDatasets]=useState<readonly DatasetOption[]>([]);
  const [sourceFields,setSourceFields]=useState<readonly string[]>([]);
  const [columnMapping,setColumnMapping]=useState<Record<string,string>>({});
+ const [references,setReferences]=useState<Record<string,readonly RefRecord[]>>({users:[],roles:[],permissions:[],branches:[],files:[],notifications:[]});
  const [loading,setLoading]=useState(false);
  const [message,setMessage]=useState('');
  const [success,setSuccess]=useState('');
- const [form,setForm]=useState<Record<string,string>>({dataset:'CUSTOMERS',format:'CSV',mapping:'{}',configKey:'locale',configValue:'"ar"',retain:'7'});
+ const [form,setForm]=useState<Record<string,string>>({dataset:'CUSTOMERS',format:'CSV',mapping:'{}',configValue:'ar',retain:'7'});
  const ctx=context??tenantApiContext();
 
  const field=(name:string)=>form[name]??'';
  const setField=(name:string,value:string)=>setForm(current=>({...current,[name]:value}));
 
+ async function loadReferences(){
+  if(!ctx.token)return;
+  const paths=['users','roles','permissions','branches','files','notifications'] as const;
+  const entries=await Promise.all(paths.map(async path=>{try{return[path,(await client.list(path,ctx)).filter(refRecord)] as const;}catch{return[path,[]] as const;}}));
+  setReferences(Object.fromEntries(entries));
+ }
  async function load(path=selected,clearFeedback=true){
   if(!ctx.token)return;setLoading(true);if(clearFeedback){setMessage('');setSuccess('');}
   try{
-   setRows(await client.list(path,ctx));
+   const result=await client.list(path,ctx);setRows(result);
    if(path==='imports')setDatasets((await client.list('data-exchange/datasets',ctx)).filter(datasetOption));
+   if(path==='configuration/locale'){const value=result.find(objectRecord)?.value;if(typeof value==='string')setField('configValue',value);}
   }catch(error){setMessage(error instanceof Error?error.message:'تعذر التحميل');}
   finally{setLoading(false);}
  }
-
  async function selectArea(path:string){setSelected(path);await load(path);}
-
  async function run(label:string,operation:()=>Promise<unknown>,refresh=true){
   setLoading(true);setMessage('');setSuccess('');
-  try{await operation();if(refresh)await load(selected,false);setSuccess(label);}
+  try{await operation();if(refresh)await load(selected,false);await loadReferences();setSuccess(label);}
   catch(error){setMessage(error instanceof Error?error.message:'تعذر تنفيذ العملية');}
   finally{setLoading(false);}
  }
-
  async function importFile(file:File|undefined){if(!file)return;setField('importFileName',file.name);setField('format',file.name.toLowerCase().endsWith('.xlsx')?'XLSX':'CSV');setField('importContentBase64',await fileAsBase64(file));setField('importIdempotencyKey',crypto.randomUUID());setSourceFields([]);setColumnMapping({});}
- async function attachmentFile(file:File|undefined){if(!file)return;setField('fileContentType',file.type||'application/octet-stream');setField('fileContentBase64',await fileAsBase64(file));}
+ async function attachmentFile(file:File|undefined){if(!file)return;setField('fileName',file.name);setField('fileContentType',file.type||'application/octet-stream');setField('fileContentBase64',await fileAsBase64(file));}
  async function downloadExport(){const payload=await client.read(`exports/${field('exportJobId')}/download`,ctx);if(!downloadPayload(payload))throw new Error('ملف التصدير غير متاح');triggerDownload(payload);}
- async function downloadFile(){const payload=await client.read(`files/${field('fileId')}`,ctx);if(!filePayload(payload))throw new Error('الملف غير متاح');triggerDownload({fileName:`file-${payload.metadata.id}`,contentType:payload.metadata.contentType,contentBase64:payload.contentBase64});}
+ async function downloadFile(){const payload=await client.read(`files/${field('fileId')}`,ctx);if(!filePayload(payload))throw new Error('الملف غير متاح');triggerDownload({fileName:field('selectedFileName')||`file-${payload.metadata.id}`,contentType:payload.metadata.contentType,contentBase64:payload.contentBase64});}
 
- useEffect(()=>{if(ctx.token){setSelected('users');void load('users');}},[ctx.token,ctx.companyId,ctx.branchId]);
+ useEffect(()=>{if(ctx.token){setSelected('users');void Promise.all([load('users'),loadReferences()]);}},[ctx.token,ctx.companyId,ctx.branchId]);
  const records=rows.filter(objectRecord);
+ const sessionRefs=useMemo(()=>rows.filter(refRecord),[rows]);
  const selectedDataset=datasets.find(value=>value.id===field('dataset'));
-
+ const options=(name:string,fallback:string)=>(references[name]??[]).map(value=>({id:value.id,label:refLabel(value,fallback),code:refCode(value),disabled:value.active===false}));
+ const picker=(name:string,label:string,source:string,fallback:string,required=false)=><FormField label={label} required={required}><EntityPicker required={required} value={field(name)} onChange={value=>setField(name,value)} options={options(source,fallback)}/></FormField>;
  const input=(name:string,label:string,type='text')=><FormField label={label}><Input type={type} value={field(name)} onChange={event=>setField(name,event.target.value)}/></FormField>;
  const button=(label:string,onClick:()=>void)=><Button type="button" disabled={loading} onClick={onClick}>{label}</Button>;
 
  function actions(){
   if(selected==='users')return <div className="ui-admin-workflows">
-   <DisclosureCard title="إنشاء مستخدم" description="إنشاء حساب جديد باسم مستخدم وكلمة مرور مؤقتة.">
-    <div className="admin-actions">{input('userUsername','اسم المستخدم')}{input('userName','الاسم')}{input('userPassword','كلمة مرور مؤقتة','password')}{input('userRoleId','معرّف الدور (اختياري)')}{button('إنشاء مستخدم',()=>void run('تم إنشاء المستخدم. يجب تغيير كلمة المرور في أول دخول.',()=>client.action('users',ctx,{username:field('userUsername'),displayName:field('userName'),temporaryPassword:field('userPassword'),roleId:field('userRoleId')||undefined})))}</div>
-   </DisclosureCard>
-   <DisclosureCard title="إعادة تعيين بيانات الدخول" description="استخدمها فقط عند نسيان بيانات الدخول أو الحاجة لإلغاء الجلسات القديمة.">
-    <div className="admin-actions">{input('userId','معرّف المستخدم')}{input('resetUsername','اسم المستخدم لإعادة التعيين')}{input('resetPassword','كلمة مرور مؤقتة جديدة','password')}{button('إعادة تعيين بيانات الدخول',()=>void run('تمت إعادة تعيين بيانات الدخول وإلغاء الجلسات القديمة.',()=>client.action(`users/${field('userId')}/credentials`,ctx,{username:field('resetUsername'),temporaryPassword:field('resetPassword')}),false))}</div>
-   </DisclosureCard>
-   <DisclosureCard title="الدور وحالة المستخدم" description="إسناد الصلاحيات أو تعليق الحساب وإعادة تفعيله.">
-    <div className="admin-actions">{input('userId','معرّف المستخدم')}{input('userAssignRoleId','معرّف الدور')}{button('إسناد الدور',()=>void run('تم إسناد الدور.',()=>client.action(`users/${field('userId')}/roles/${field('userAssignRoleId')}`,ctx)))}{button('سحب الدور',()=>void run('تم سحب الدور.',()=>client.remove(`users/${field('userId')}/roles/${field('userAssignRoleId')}`,ctx)))}{button('تعطيل المستخدم',()=>void run('تم تحديث المستخدم.',()=>client.patch(`users/${field('userId')}`,ctx,{active:false})))}{button('إعادة تفعيل المستخدم',()=>void run('تم تحديث المستخدم.',()=>client.patch(`users/${field('userId')}`,ctx,{active:true})))}</div>
-   </DisclosureCard>
+   <DisclosureCard title="إنشاء مستخدم" description="إنشاء حساب جديد باسم مستخدم وكلمة مرور مؤقتة."><div className="admin-actions">{input('userUsername','اسم المستخدم')}{input('userName','الاسم')}{input('userPassword','كلمة مرور مؤقتة','password')}{picker('userRoleId','الدور المبدئي','roles','دور')}{button('إنشاء مستخدم',()=>void run('تم إنشاء المستخدم. يجب تغيير كلمة المرور في أول دخول.',()=>client.action('users',ctx,{username:field('userUsername'),displayName:field('userName'),temporaryPassword:field('userPassword'),roleId:field('userRoleId')||undefined})))}</div></DisclosureCard>
+   <DisclosureCard title="إعادة تعيين بيانات الدخول" description="استخدمها فقط عند نسيان بيانات الدخول أو الحاجة لإلغاء الجلسات القديمة."><div className="admin-actions">{picker('userId','المستخدم','users','مستخدم',true)}{input('resetUsername','اسم المستخدم لإعادة التعيين')}{input('resetPassword','كلمة مرور مؤقتة جديدة','password')}{button('إعادة تعيين بيانات الدخول',()=>void run('تمت إعادة تعيين بيانات الدخول وإلغاء الجلسات القديمة.',()=>client.action(`users/${field('userId')}/credentials`,ctx,{username:field('resetUsername'),temporaryPassword:field('resetPassword')}),false))}</div></DisclosureCard>
+   <DisclosureCard title="الدور وحالة المستخدم" description="إسناد الصلاحيات أو تعليق الحساب وإعادة تفعيله."><div className="admin-actions">{picker('userId','المستخدم','users','مستخدم',true)}{picker('userAssignRoleId','الدور','roles','دور',true)}{button('إسناد الدور',()=>void run('تم إسناد الدور.',()=>client.action(`users/${field('userId')}/roles/${field('userAssignRoleId')}`,ctx)))}{button('سحب الدور',()=>void run('تم سحب الدور.',()=>client.remove(`users/${field('userId')}/roles/${field('userAssignRoleId')}`,ctx)))}{button('تعطيل المستخدم',()=>void run('تم تحديث المستخدم.',()=>client.patch(`users/${field('userId')}`,ctx,{active:false})))}{button('إعادة تفعيل المستخدم',()=>void run('تم تحديث المستخدم.',()=>client.patch(`users/${field('userId')}`,ctx,{active:true})))}</div></DisclosureCard>
   </div>;
-  if(selected==='roles')return <div className="admin-actions">{input('roleName','اسم الدور')}{button('إنشاء دور',()=>void run('تم إنشاء الدور.',()=>client.action('roles',ctx,{name:field('roleName')})))}{button('عرض الصلاحيات',()=>void load('permissions'))}{input('roleId','معرّف الدور')}{input('permissionId','معرّف الصلاحية')}{button('منح الصلاحية',()=>void run('تم منح الصلاحية.',()=>client.action(`roles/${field('roleId')}/permissions/${field('permissionId')}`,ctx)))}{button('سحب الصلاحية',()=>void run('تم سحب الصلاحية.',()=>client.remove(`roles/${field('roleId')}/permissions/${field('permissionId')}`,ctx)))}</div>;
+  if(selected==='roles')return <div className="admin-actions">{input('roleName','اسم الدور')}{button('إنشاء دور',()=>void run('تم إنشاء الدور.',()=>client.action('roles',ctx,{name:field('roleName')})))}{picker('roleId','الدور','roles','دور',true)}{picker('permissionId','الصلاحية','permissions','صلاحية',true)}{button('منح الصلاحية',()=>void run('تم منح الصلاحية.',()=>client.action(`roles/${field('roleId')}/permissions/${field('permissionId')}`,ctx)))}{button('سحب الصلاحية',()=>void run('تم سحب الصلاحية.',()=>client.remove(`roles/${field('roleId')}/permissions/${field('permissionId')}`,ctx)))}</div>;
   if(selected==='companies')return <div className="admin-actions"><p>إنشاء الشركات الجديدة وإدارة الاشتراك يتمان حصريًا من مركز تحكم مالك المنصة.</p>{input('currentCompanyName','الاسم الجديد للشركة الحالية')}{button('تحديث اسم الشركة الحالية',()=>void run('تم تحديث الشركة.',()=>client.patch(`companies/${ctx.companyId}`,ctx,{name:field('currentCompanyName')}),false))}</div>;
-  if(selected==='branches')return <div className="admin-actions">{input('branchName','اسم الفرع')}{button('إنشاء فرع',()=>void run('تم إنشاء الفرع.',()=>client.action('branches',ctx,{name:field('branchName')})))}{input('branchId','معرّف الفرع')}{input('accessUserId','معرّف المستخدم')}{button('منح وصول للفرع',()=>void run('تم منح الوصول.',()=>client.action(`branches/${field('branchId')}/access/${field('accessUserId')}`,ctx)))}{button('سحب وصول الفرع',()=>void run('تم سحب الوصول.',()=>client.remove(`branches/${field('branchId')}/access/${field('accessUserId')}`,ctx)))}{button('تعطيل الفرع',()=>void run('تم تحديث الفرع.',()=>client.patch(`branches/${field('branchId')}`,ctx,{active:false})))}</div>;
-  if(selected==='sessions')return <div className="admin-actions">{input('sessionId','معرّف الجلسة')}{button('إنهاء الجلسة',()=>void run('تم إنهاء الجلسة.',()=>client.action(`sessions/${field('sessionId')}/revoke`,ctx)))}{input('sessionUserId','معرّف المستخدم')}{button('عرض جلسات المستخدم',()=>void load(`sessions/${field('sessionUserId')}`))}{button('إنهاء كل جلسات المستخدم',()=>void run('تم إنهاء جلسات المستخدم.',()=>client.action(`users/${field('sessionUserId')}/sessions/revoke`,ctx),false))}</div>;
-  if(selected==='notifications')return <div className="admin-actions">{input('notificationId','معرّف الإشعار')}{button('تحديد كمقروء',()=>void run('تم تحديث الإشعار.',()=>client.action(`notifications/${field('notificationId')}/read`,ctx)))}</div>;
-  if(selected.startsWith('configuration/'))return <div className="admin-actions">{input('configKey','مفتاح الإعداد')}{input('configValue','القيمة (JSON أو نص)')}{button('حفظ الإعداد',()=>void run('تم حفظ الإعداد.',()=>client.action(`configuration/${field('configKey')}`,ctx,{value:configValue(field('configValue'))}),false))}</div>;
-  if(selected==='files')return <div className="admin-actions"><FormField label="رفع ملف"><Input type="file" onChange={event=>void attachmentFile(event.target.files?.[0])}/></FormField>{button('حفظ الملف',()=>void run('تم حفظ الملف.',()=>client.action('files',ctx,{contentType:field('fileContentType')||'application/octet-stream',contentBase64:field('fileContentBase64')})))}{input('fileId','معرّف الملف')}{button('تنزيل الملف',()=>void run('تم تجهيز الملف.',downloadFile,false))}{button('إلغاء الملف',()=>void run('تم إلغاء الملف.',()=>client.remove(`files/${field('fileId')}`,ctx)))}</div>;
+  if(selected==='branches')return <div className="admin-actions">{input('branchName','اسم الفرع')}{button('إنشاء فرع',()=>void run('تم إنشاء الفرع.',()=>client.action('branches',ctx,{name:field('branchName')})))}{picker('branchId','الفرع','branches','فرع',true)}{picker('accessUserId','المستخدم','users','مستخدم',true)}{button('منح وصول للفرع',()=>void run('تم منح الوصول.',()=>client.action(`branches/${field('branchId')}/access/${field('accessUserId')}`,ctx)))}{button('سحب وصول الفرع',()=>void run('تم سحب الوصول.',()=>client.remove(`branches/${field('branchId')}/access/${field('accessUserId')}`,ctx)))}{button('تعطيل الفرع',()=>void run('تم تحديث الفرع.',()=>client.patch(`branches/${field('branchId')}`,ctx,{active:false})))}</div>;
+  if(selected==='sessions')return <div className="admin-actions">{picker('sessionUserId','المستخدم','users','مستخدم')}{button('عرض جلسات المستخدم',()=>void load(field('sessionUserId')?`sessions/${field('sessionUserId')}`:'sessions'))}{sessionRefs.length?<FormField label="الجلسة"><EntityPicker value={field('sessionId')} onChange={value=>setField('sessionId',value)} options={sessionRefs.map((value,index)=>({id:value.id,label:`جلسة ${index+1}`,description:typeof value.createdAt==='string'?new Date(value.createdAt).toLocaleString('ar-EG'):undefined}))}/></FormField>:null}{button('إنهاء الجلسة المحددة',()=>void run('تم إنهاء الجلسة.',()=>client.action(`sessions/${field('sessionId')}/revoke`,ctx)))}{button('إنهاء كل جلسات المستخدم',()=>void run('تم إنهاء جلسات المستخدم.',()=>client.action(`users/${field('sessionUserId')}/sessions/revoke`,ctx),false))}</div>;
+  if(selected==='notifications')return <div className="admin-actions">{picker('notificationId','الإشعار','notifications','إشعار',true)}{button('تحديد كمقروء',()=>void run('تم تحديث الإشعار.',()=>client.action(`notifications/${field('notificationId')}/read`,ctx)))}</div>;
+  if(selected==='configuration/locale')return <div className="admin-actions"><FormField label="اللغة والمنطقة"><Select value={field('configValue')} onChange={event=>setField('configValue',event.target.value)}><option value="ar">العربية</option><option value="ar-EG">العربية — مصر</option><option value="en">English</option></Select></FormField>{button('حفظ إعداد اللغة',()=>void run('تم حفظ إعداد اللغة.',()=>client.action('configuration/locale',ctx,{value:field('configValue')}),false))}</div>;
+  if(selected==='files')return <div className="admin-actions"><FormField label="رفع ملف"><Input type="file" onChange={event=>void attachmentFile(event.target.files?.[0])}/></FormField>{field('fileName')?<p>الملف المختار: {field('fileName')}</p>:null}{button('حفظ الملف',()=>void run('تم حفظ الملف.',()=>client.action('files',ctx,{contentType:field('fileContentType')||'application/octet-stream',contentBase64:field('fileContentBase64')})))}<FormField label="ملف محفوظ"><EntityPicker value={field('fileId')} onChange={value=>{setField('fileId',value);const selectedFile=(references.files??[]).find(item=>item.id===value);setField('selectedFileName',selectedFile?refLabel(selectedFile,'ملف'):'');}} options={options('files','ملف')}/></FormField>{button('تنزيل الملف',()=>void run('تم تجهيز الملف.',downloadFile,false))}{button('إلغاء الملف',()=>void run('تم إلغاء الملف.',()=>client.remove(`files/${field('fileId')}`,ctx)))}</div>;
   if(selected==='imports')return <div className="admin-actions">
    <FormField label="نوع البيانات"><Select value={field('dataset')} onChange={event=>{setField('dataset',event.target.value);setColumnMapping({});}}>{datasets.map(item=><option key={item.id} value={item.id}>{item.label}</option>)}</Select></FormField>
-   <p>الحقول المطلوبة: {selectedDataset?.requiredFields.join('، ')||'—'}</p>
-   <p>حقول النظام المتاحة: {selectedDataset?.targetFields.join('، ')||'—'}</p>
+   <p>الحقول المطلوبة: {selectedDataset?.requiredFields.join('، ')||'—'}</p><p>حقول النظام المتاحة: {selectedDataset?.targetFields.join('، ')||'—'}</p>
    <FormField label="ملف CSV أو XLSX"><Input type="file" accept=".csv,.xlsx" onChange={event=>void importFile(event.target.files?.[0])}/></FormField>
-   {button('رفع ملف الاستيراد',()=>void run('تم رفع ملف الاستيراد.',async()=>{
-    const result=await client.action('imports',ctx,{dataset:field('dataset'),fileName:field('importFileName'),format:field('format'),contentBase64:field('importContentBase64'),mapping:{},idempotencyKey:field('importIdempotencyKey')||crypto.randomUUID()});
-    if(objectRecord(result)&&typeof result.id==='string'){
-     setField('importJobId',result.id);
-     const rows=Array.isArray(result.rows)?result.rows:[];
-     const first=rows.find(objectRecord);
-     const source=first&&objectRecord(first.source)?Object.keys(first.source):[];
-     setSourceFields(source);
-     const targets=selectedDataset?.targetFields??[];
-     setColumnMapping(Object.fromEntries(source.filter(name=>targets.includes(name)).map(name=>[name,name])));
-    }
-    return result;
-   },false))}
+   {button('رفع ملف الاستيراد',()=>void run('تم رفع ملف الاستيراد.',async()=>{const result=await client.action('imports',ctx,{dataset:field('dataset'),fileName:field('importFileName'),format:field('format'),contentBase64:field('importContentBase64'),mapping:{},idempotencyKey:field('importIdempotencyKey')||crypto.randomUUID()});if(objectRecord(result)&&typeof result.id==='string'){setField('importJobId',result.id);const importedRows=Array.isArray(result.rows)?result.rows:[];const first=importedRows.find(objectRecord);const source=first&&objectRecord(first.source)?Object.keys(first.source):[];setSourceFields(source);const targets=selectedDataset?.targetFields??[];setColumnMapping(Object.fromEntries(source.filter(name=>targets.includes(name)).map(name=>[name,name])));}return result;},false))}
    {sourceFields.length?<fieldset><legend>مطابقة أعمدة الملف مع حقول النظام</legend>{sourceFields.map(source=><FormField key={source} label={source}><Select value={columnMapping[source]??''} onChange={event=>setColumnMapping(current=>({...current,[source]:event.target.value}))}><option value="">تجاهل العمود</option>{selectedDataset?.targetFields.map(target=><option key={target} value={target}>{target}</option>)}</Select></FormField>)}</fieldset>:null}
-   {input('importJobId','معرّف مهمة الاستيراد')}
+   {field('importJobId')?<p>ملف الاستيراد مرفوع وجاهز للمعاينة.</p>:null}
    {button('حفظ خريطة الأعمدة',()=>void run('تم حفظ خريطة الأعمدة.',()=>client.patch(`imports/${field('importJobId')}/mapping`,ctx,{mapping:Object.fromEntries(Object.entries(columnMapping).filter(([,target])=>Boolean(target)))}),false))}
-   {button('معاينة والتحقق',()=>void run('تم التحقق من الملف.',()=>client.action(`imports/${field('importJobId')}/preview`,ctx)))}
-   {button('تنفيذ الاستيراد',()=>void run('تم تنفيذ الاستيراد.',()=>client.action(`imports/${field('importJobId')}/execute`,ctx)))}
-   <hr/>{input('exportFileName','اسم ملف التصدير')}{button('إنشاء تصدير CSV',()=>void run('تم إنشاء ملف التصدير.',async()=>{const result=await client.action('exports',ctx,{dataset:field('dataset'),fileName:field('exportFileName')||'export.csv',format:'CSV',idempotencyKey:`export-${Date.now()}`});if(objectRecord(result)&&typeof result.id==='string')setField('exportJobId',result.id);return result;},false))}{button('إنشاء تصدير XLSX',()=>void run('تم إنشاء ملف التصدير.',async()=>{const result=await client.action('exports',ctx,{dataset:field('dataset'),fileName:field('exportFileName')||'export.xlsx',format:'XLSX',idempotencyKey:`export-${Date.now()}`});if(objectRecord(result)&&typeof result.id==='string')setField('exportJobId',result.id);return result;},false))}{input('exportJobId','معرّف مهمة التصدير')}{button('تنزيل التصدير',()=>void run('تم تجهيز ملف التصدير.',downloadExport,false))}
+   {button('معاينة والتحقق',()=>void run('تم التحقق من الملف.',()=>client.action(`imports/${field('importJobId')}/preview`,ctx)))}{button('تنفيذ الاستيراد',()=>void run('تم تنفيذ الاستيراد.',()=>client.action(`imports/${field('importJobId')}/execute`,ctx)))}
+   <hr/>{input('exportFileName','اسم ملف التصدير')}{button('إنشاء تصدير CSV',()=>void run('تم إنشاء ملف التصدير.',async()=>{const result=await client.action('exports',ctx,{dataset:field('dataset'),fileName:field('exportFileName')||'export.csv',format:'CSV',idempotencyKey:`export-${Date.now()}`});if(objectRecord(result)&&typeof result.id==='string')setField('exportJobId',result.id);return result;},false))}{button('إنشاء تصدير XLSX',()=>void run('تم إنشاء ملف التصدير.',async()=>{const result=await client.action('exports',ctx,{dataset:field('dataset'),fileName:field('exportFileName')||'export.xlsx',format:'XLSX',idempotencyKey:`export-${Date.now()}`});if(objectRecord(result)&&typeof result.id==='string')setField('exportJobId',result.id);return result;},false))}{field('exportJobId')?<p>ملف التصدير جاهز للتنزيل.</p>:null}{button('تنزيل التصدير',()=>void run('تم تجهيز ملف التصدير.',downloadExport,false))}
   </div>;
-
   return null;
  }
 

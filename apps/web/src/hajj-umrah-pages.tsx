@@ -54,6 +54,23 @@ const seasonTone = (status: Season['status']): 'neutral' | 'success' | 'error' =
 const errorMessage = (error: unknown) =>
   error instanceof Error ? error.message : 'تعذر تنفيذ العملية.';
 
+const requirementLabels: Record<Requirement, string> = {
+  HOTEL: 'إقامة', FLIGHT: 'طيران', TRANSPORT: 'نقل', VISA: 'تأشيرة',
+  MEAL: 'وجبات', VISIT: 'زيارات', GUIDE: 'مرشد', RAWDA: 'الروضة',
+  INSURANCE: 'تأمين', HEALTH: 'اشتراطات صحية', CAMP: 'مخيم', PERMIT: 'تصريح',
+};
+const componentTypes: readonly ProgramComponent['type'][] = [...Object.keys(requirementLabels) as Requirement[], 'MEETING', 'CUSTOM'];
+const priceLabels: readonly [keyof ProgramInput['prices'], string][] = [
+  ['single', 'سعر الفردي'], ['double', 'سعر الثنائي'], ['triple', 'سعر الثلاثي'],
+  ['quad', 'سعر الرباعي'], ['quint', 'سعر الخماسي'], ['childWithBed', 'سعر الطفل بسرير'],
+  ['childWithoutBed', 'سعر الطفل دون سرير'], ['infant', 'سعر الرضيع'],
+];
+
+export function updateProgramComponent(input: ProgramInput, index: number, patch: Partial<ProgramComponent>): ProgramInput {
+  return { ...input, components: (input.components ?? []).map((component, position) =>
+    position === index ? { ...component, ...patch } : component) };
+}
+
 export async function loadSeasons(api: HajjUmrahApi) {
   return api.listSeasons();
 }
@@ -288,7 +305,7 @@ export function ProgramsView({
   </DataGrid>;
 }
 
-function ProgramForm({
+export function ProgramForm({
   value,
   onChange,
   submitLabel,
@@ -301,39 +318,38 @@ function ProgramForm({
   readonly onSubmit: (event: FormEvent) => void;
   readonly seasons: readonly Season[];
 }) {
-  const [requirements, setRequirements] = useState((value.requirements ?? []).join(','));
-  const [components, setComponents] = useState(JSON.stringify(value.components ?? [], null, 2));
-  useEffect(() => {
-    setRequirements((value.requirements ?? []).join(','));
-    setComponents(JSON.stringify(value.components ?? [], null, 2));
-  }, [value]);
-
-  function syncStructured(nextRequirements = requirements, nextComponents = components) {
-    let parsedComponents: ProgramComponent[] = [];
-    try { parsedComponents = JSON.parse(nextComponents) as ProgramComponent[]; } catch { parsedComponents = value.components ?? []; }
-    const parsedRequirements = nextRequirements.split(',').map((item) => item.trim()).filter(Boolean) as Requirement[];
-    onChange({
-      ...value,
-      ...(parsedRequirements.length ? { requirements: parsedRequirements } : {}),
-      components: parsedComponents,
-    });
-  }
-
   return <form onSubmit={onSubmit}>
     <FormField label="الكود" required><Input required value={value.code} onChange={(event) => onChange({ ...value, code: event.target.value })} /></FormField>
     <FormField label="النوع" required><Select value={value.type} onChange={(event) => onChange({ ...value, type: event.target.value as Program['type'] })}><option value="UMRAH">عمرة</option><option value="HAJJ">حج</option></Select></FormField>
     <FormField label="الموسم" required><Select required value={value.seasonId} onChange={(event) => onChange({ ...value, seasonId: event.target.value })}><option value="">اختر الموسم</option>{seasons.filter(season=>season.status==='ACTIVE').map(season=><option key={season.id} value={season.id}>{season.code} — {season.arabicName}</option>)}</Select></FormField>
     <FormField label="الاسم العربي" required><Input required value={value.arabicName} onChange={(event) => onChange({ ...value, arabicName: event.target.value })} /></FormField>
     <FormField label="الاسم الإنجليزي"><Input value={value.englishName ?? ''} onChange={(event) => onChange({ ...value, englishName: event.target.value })} /></FormField>
+    <FormField label="رقم الفوج"><Input value={value.groupNumber ?? ''} onChange={(event) => onChange({ ...value, groupNumber: event.target.value })} /></FormField>
+    <FormField label="وصف الفوج"><Input value={value.groupDescription ?? ''} onChange={(event) => onChange({ ...value, groupDescription: event.target.value })} /></FormField>
     <FormField label="تاريخ السفر" required><Input required type="date" value={value.departureDate} onChange={(event) => onChange({ ...value, departureDate: event.target.value })} /></FormField>
     <FormField label="تاريخ العودة" required><Input required type="date" value={value.returnDate} onChange={(event) => onChange({ ...value, returnDate: event.target.value })} /></FormField>
     <FormField label="بداية البيع" required><Input required type="date" value={value.salesStart} onChange={(event) => onChange({ ...value, salesStart: event.target.value })} /></FormField>
     <FormField label="إغلاق البيع" required><Input required type="date" value={value.salesClose} onChange={(event) => onChange({ ...value, salesClose: event.target.value })} /></FormField>
     <FormField label="السعة" required><Input required inputMode="decimal" value={value.capacity} onChange={(event) => onChange({ ...value, capacity: event.target.value })} /></FormField>
     <FormField label="العملة" required><Input required value={value.currency} onChange={(event) => onChange({ ...value, currency: event.target.value.toUpperCase() })} /></FormField>
-    <FormField label="سعر الثنائي"><Input inputMode="decimal" value={value.prices.double ?? ''} onChange={(event) => onChange({ ...value, prices: { ...value.prices, double: event.target.value || undefined } })} /></FormField>
-    <FormField label="المتطلبات (مفصولة بفاصلة)"><Input value={requirements} onChange={(event) => { setRequirements(event.target.value); syncStructured(event.target.value, components); }} placeholder="HOTEL,FLIGHT,TRANSPORT" /></FormField>
-    <FormField label="المكونات JSON"><Textarea value={components} onChange={(event) => { setComponents(event.target.value); syncStructured(requirements, event.target.value); }} /></FormField>
+    {priceLabels.map(([key, label]) => <FormField key={key} label={label}><Input inputMode="decimal" value={value.prices[key] ?? ''} onChange={(event) => onChange({ ...value, prices: { ...value.prices, [key]: event.target.value || undefined } })} /></FormField>)}
+    <FormField label="الخدمات المطلوبة"><Select multiple size={6} value={value.requirements ?? []} onChange={(event) => onChange({ ...value, requirements: Array.from(event.target.selectedOptions, option => option.value as Requirement) })}>{Object.entries(requirementLabels).map(([type, label]) => <option key={type} value={type}>{label}</option>)}</Select></FormField>
+    <Card title="مكونات البرنامج وخط السير">
+      {(value.components ?? []).map((component, index) => <Card key={index} title={`مكون ${index + 1}`}>
+        <FormField label="نوع الخدمة"><Select value={component.type} onChange={(event) => onChange(updateProgramComponent(value, index, { type: event.target.value as ProgramComponent['type'] }))}>{componentTypes.map(type => <option key={type} value={type}>{type in requirementLabels ? requirementLabels[type as Requirement] : type === 'MEETING' ? 'نقطة تجمع' : 'أخرى'}</option>)}</Select></FormField>
+        <FormField label="اسم المكون" required><Input required value={component.title} onChange={(event) => onChange(updateProgramComponent(value, index, { title: event.target.value }))} /></FormField>
+        <FormField label="الترتيب" required><Input required type="number" min="1" value={component.sequence} onChange={(event) => onChange(updateProgramComponent(value, index, { sequence: Number(event.target.value) }))} /></FormField>
+        <FormField label="بداية الخدمة"><Input type="date" value={component.start?.slice(0, 10) ?? ''} onChange={(event) => onChange(updateProgramComponent(value, index, { start: event.target.value || undefined }))} /></FormField>
+        <FormField label="نهاية الخدمة"><Input type="date" value={component.end?.slice(0, 10) ?? ''} onChange={(event) => onChange(updateProgramComponent(value, index, { end: event.target.value || undefined }))} /></FormField>
+        <FormField label="المدينة"><Input value={component.city ?? ''} onChange={(event) => onChange(updateProgramComponent(value, index, { city: event.target.value || undefined }))} /></FormField>
+        <FormField label="خط السير"><Input value={component.route ?? ''} onChange={(event) => onChange(updateProgramComponent(value, index, { route: event.target.value || undefined }))} /></FormField>
+        <FormField label="الوصف"><Textarea value={component.description ?? ''} onChange={(event) => onChange(updateProgramComponent(value, index, { description: event.target.value || undefined }))} /></FormField>
+        <Button type="button" onClick={() => onChange({ ...value, components: (value.components ?? []).filter((_, position) => position !== index) })}>حذف المكون</Button>
+      </Card>)}
+      <Button type="button" onClick={() => onChange({ ...value, components: [...(value.components ?? []), { type: 'CUSTOM', title: '', sequence: (value.components?.length ?? 0) + 1 }] })}>إضافة مكون</Button>
+    </Card>
+    <FormField label="سياسة العربون"><Input value={value.minimumDepositPolicy ?? ''} onChange={(event) => onChange({ ...value, minimumDepositPolicy: event.target.value })} /></FormField>
+    <FormField label="سياسة الإلغاء"><Textarea value={value.cancellationPolicy ?? ''} onChange={(event) => onChange({ ...value, cancellationPolicy: event.target.value })} /></FormField>
     <FormField label="ملاحظات"><Textarea value={value.notes ?? ''} onChange={(event) => onChange({ ...value, notes: event.target.value })} /></FormField>
     <Button type="submit">{submitLabel}</Button>
   </form>;

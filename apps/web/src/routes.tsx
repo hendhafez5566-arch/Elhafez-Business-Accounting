@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { AgentsPage, CustomersPage, FollowupsPage, LeadsPage } from './crm-core-pages.js';
-import { Agent360Page, CrmSalesDashboardPage, Customer360Page, TravelersPage } from './crm-insights-pages.js';
+import { CrmSalesDashboardPage, TravelersPage } from './crm-insights-pages.js';
+import { Agent360Page, Customer360Page } from './crm-360-pages.js';
 import { QuotationsPage } from './quotation-pages.js';
 import { SuppliersPage } from './supplier-pages.js';
 import { ProcurementOperationsPage } from './procurement-pages.js';
@@ -11,6 +12,7 @@ import { BookingsPage, RoomingPage, VisasPage } from './hajj-umrah-operations-pr
 import { TicketingPage, TransportPage, TripOperationsPage } from './hajj-umrah-operations-secondary-pages.js';
 import { HajjUmrahReadinessPage } from './hajj-umrah-readiness-page.js';
 import { SystemAdministrationPage } from './system-administration-page.js';
+import { SystemReadinessPage } from './system-readiness-page.js';
 import { PlatformFoundationsPage } from './platform-foundations-page.js';
 import { TourismServicesPage } from './tourism-services-page.js';
 import { TourismOperationsPage } from './tourism-operations-page.js';
@@ -23,6 +25,7 @@ import { AccountSettingsPage } from './account-settings-page.js';
 import { NotificationCenterPage } from './notification-center-page.js';
 import { ApprovalCenterPage } from './approval-center-page.js';
 import { ReportingCenterPage } from './reporting-center-page.js';
+import { DocumentCenterPage } from './document-center-page.js';
 import type { IconName } from './ui/icons.js';
 
 export interface AppRoute {
@@ -52,7 +55,9 @@ export const foundationRoutes = defineRoutes(
   { id: 'management-exceptions', path: '/management/exceptions', label: 'مركز العمل والاستثناءات', group: 'الإدارة والتحكم', icon: 'tasks', element: <ManagementWorkCenterPage /> },
   { id: 'management-approvals', path: '/management/approvals', label: 'مركز الموافقات', group: 'الإدارة والتحكم', icon: 'tasks', element: <ApprovalCenterPage /> },
   { id: 'management-reports', path: '/management/reports', label: 'مركز التقارير', group: 'الإدارة والتحكم', icon: 'analytics', element: <ReportingCenterPage /> },
+  { id: 'management-documents', path: '/management/documents', label: 'المستندات والتقارير', group: 'الإدارة والتحكم', icon: 'analytics', element: <DocumentCenterPage /> },
   { id: 'notification-center', path: '/notifications', label: 'الإشعارات', group: 'الإدارة والتحكم', icon: 'bell', element: <NotificationCenterPage /> },
+  { id: 'system-readiness', path: '/system/readiness', label: 'الإعداد والتشغيل', group: 'إدارة النظام', icon: 'readiness', element: <SystemReadinessPage /> },
   { id: 'system-administration', path: '/system-administration', label: 'إدارة النظام', group: 'إدارة النظام', icon: 'settings', element: <SystemAdministrationPage /> },
   { id: 'system-custom-fields', path: '/system-administration/custom-fields', label: 'الحقول المخصصة', group: 'إدارة النظام', icon: 'settings', element: <PlatformFoundationsPage initialTab="custom-fields" /> },
   { id: 'system-document-numbering', path: '/system-administration/document-numbering', label: 'ترقيم المستندات', group: 'إدارة النظام', icon: 'settings', element: <PlatformFoundationsPage initialTab="numbering" /> },

@@ -24,6 +24,8 @@ const input = {
 test('creates, queries, validates and deactivates company-scoped cost centers', async () => {
   const service = new CostBudgetAccountingApplicationService(new InMemoryCostCenterRepository());
   await service.create(input);
+  assert.deepEqual((await service.list(company)).map(center=>center.code),['PROGRAM_1']);
+  assert.deepEqual(await service.list(other),[]);
   assert.equal((await service.get(company, id)).code, 'PROGRAM_1');
   await assert.rejects(service.get(other, id), /not found/);
   await assert.rejects(service.create({ ...input, id: costCenterId('cc-2') }), /already exists/);

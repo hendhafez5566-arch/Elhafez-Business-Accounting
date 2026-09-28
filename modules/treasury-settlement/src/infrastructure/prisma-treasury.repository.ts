@@ -346,6 +346,10 @@ export class PrismaTreasuryRepository implements TreasuryRepository {
     return value ? this.chequeValue(value) : undefined;
   }
 
+  async listCheques(companyId: string) {
+    return (await this.db.treasuryCheque.findMany({ where: { companyId } })).map(value => this.chequeValue(value));
+  }
+
   private cashCountValue(value: any): CashCount {
     return {
       ...value,

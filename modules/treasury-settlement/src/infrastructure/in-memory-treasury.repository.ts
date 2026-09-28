@@ -199,6 +199,10 @@ export class InMemoryTreasuryRepository implements TreasuryRepository {
     return this.cheques.find((x) => x.companyId === companyId && x.id === id);
   }
 
+  async listCheques(companyId: string) {
+    return this.cheques.filter((x) => x.companyId === companyId);
+  }
+
   async cashCount(companyId: string, id: string) {
     return this.counts.find((x) => x.companyId === companyId && x.id === id);
   }
