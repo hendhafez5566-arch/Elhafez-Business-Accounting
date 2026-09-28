@@ -1,0 +1,25 @@
+{
+  "id": "20260928-removable-premium-ui-theme",
+  "summary": "Add a removable premium visual theme for the tenant web application through the canonical UI foundation without changing business behavior.",
+  "type": "architecture",
+  "allowedModules": [],
+  "allowedPaths": [
+    "apps/web/src/index.tsx",
+    "apps/web/src/styles.css",
+    "apps/web/src/styles.spec.ts",
+    "apps/web/src/ui/**",
+    "docs/UI-ARCHITECTURE.md"
+  ],
+  "protectedPaths": [
+    "apps/web/src/styles.css",
+    "apps/web/src/ui/**",
+    "docs/UI-ARCHITECTURE.md"
+  ],
+  "protectedReason": "Owner-approved global UI foundation change. The premium theme is isolated behind a UI theme preference/data attribute and must style the login, shell and shared primitives without page-specific patches or business-logic changes.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": "",
+  "testEvidence": [
+    "apps/web/src/styles.spec.ts",
+    "apps/web/src/ui/preferences.spec.ts"
+  ]
+}
