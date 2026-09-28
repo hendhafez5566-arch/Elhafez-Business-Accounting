@@ -7,7 +7,7 @@
 
 If the current manager chat is unavailable, the owner should tell the new manager:
 
-> Open the GitHub repository `mhafez300300-byte/Elhafez-Business-Accounting`.
+> Open the GitHub repository `hendhafez5566-arch/Elhafez-Business-Accounting`.
 > Read `PROJECT_MANAGER_HANDOFF.md`, `PROJECT_STATE.md`, `AI_CHANGE_PROTOCOL.md`, `AGENTS.md`, `docs/BUSINESS-MODULE-ARCHITECTURE.md`, `docs/BUSINESS-MODULE-ROUTING.md`, and the relevant accounting architecture documents before making any decision.
 > Continue from the current verified repository state. Do not restart completed phases.
 
@@ -16,7 +16,7 @@ The replacement manager must **verify GitHub first**. Never trust this file blin
 ## 2. Project identity
 
 - Product: **ELHAFEZ BUSINESS PLATFORM**
-- Repository: `mhafez300300-byte/Elhafez-Business-Accounting` (repository name is retained; the program now continues beyond the closed Accounting subsystem).
+- Repository: `hendhafez5566-arch/Elhafez-Business-Accounting` (repository name is retained; the program now continues beyond the closed Accounting subsystem).
 - GitHub is the **Source of Truth** for implementation, history, accepted merges, and CI.
 - Product purpose: a clean modular business platform for Hajj, Umrah, tourism, CRM, suppliers/procurement, administration, reporting/control, and the accepted standalone Accounting & Finance subsystem.
 - Architecture: TypeScript monorepo, modular monolith, NestJS API, React web app, Prisma persistence.
