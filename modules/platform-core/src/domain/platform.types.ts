@@ -3,6 +3,7 @@ export type UserStatus = 'ACTIVE' | 'INACTIVE';
 export interface User { id: Id; email: string | null; passwordHash: string; status: UserStatus; displayName: string; createdAt: Date; updatedAt: Date }
 export type UserProjection = Omit<User, 'passwordHash'>;
 export interface CompanyLoginIdentity { companyId: Id; userId: Id; username: string; passwordHash: string; mustChangePassword: boolean; createdAt: Date; updatedAt: Date }
+export interface CompanyUserMfa { companyId:Id; userId:Id; secretCipher:string; confirmed:boolean; createdAt:Date; updatedAt:Date }
 export type CompanyLoginIdentityProjection = Omit<CompanyLoginIdentity,'passwordHash'>;
 export interface CompanyUserProjection extends UserProjection { username: string; mustChangePassword: boolean }
 export interface Company { id: Id; name: string; active: boolean; createdAt: Date }
