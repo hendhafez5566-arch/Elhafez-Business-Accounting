@@ -125,6 +125,17 @@ export class TreasurySettlementApplicationService {
   async listBankLines(companyId:CompanyId,treasuryId:string):Promise<BankLine[]>{
     return this.repo.bankLines(companyId,treasuryId);
   }
+  async listTransfers(companyId:CompanyId):Promise<Transfer[]>{
+    return this.repo.transfers(companyId);
+  }
+  async listCashCounts(companyId:CompanyId,treasuryId?:string):Promise<CashCount[]>{
+    return this.repo.cashCounts(companyId,treasuryId);
+  }
+  async getCheque(companyId:CompanyId,id:string):Promise<Cheque>{
+    const value=await this.repo.cheque(companyId,id);
+    if(!value)throw new ContractValidationError("cheque","not found");
+    return value;
+  }
 
   async createTreasury(input: {
     id: string;
