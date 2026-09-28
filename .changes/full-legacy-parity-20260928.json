@@ -25,6 +25,7 @@
     "apps/web/src/system-administration-page.tsx",
     "apps/web/src/system-administration.spec.ts",
     "apps/web/src/system-readiness-page.tsx",
+    "apps/web/src/system-readiness.spec.ts",
     "apps/web/src/ui.tsx",
     "apps/web/src/ui/entity-pickers.tsx",
     "apps/web/src/ui/primitives.tsx"
