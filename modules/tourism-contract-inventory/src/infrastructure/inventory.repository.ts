@@ -31,6 +31,7 @@ import type {
   CreateVisaQuotaInput,
   CreateGenericServiceInput,
   InternalFirstFulfillmentInput,
+  InventoryResourceOption,
   ProtectAllocationCoverageInput,
   ProgramSupplyEvidence,
   ProgramSupplyEvidenceInput,
@@ -51,6 +52,9 @@ export interface AdjustmentResult {
 }
 
 export interface TourismInventoryRepository {
+  contracts(companyId: CompanyId): Promise<TourismContract[]>;
+  resources(companyId: CompanyId, contractId?: string): Promise<InventoryResourceOption[]>;
+  allocations(companyId: CompanyId): Promise<Allocation[]>;
   planStandaloneSupply(input: PlanStandaloneSupplyInput): Promise<StandaloneSupplyPlan>;
   getStandaloneSupplyPlan(companyId: CompanyId, planId: string): Promise<StandaloneSupplyPlan | null>;
   commitStandaloneSupplyPlan(input: CommitStandaloneSupplyPlanInput, key: string | undefined, hash: string): Promise<StandaloneSupplyCommit>;
