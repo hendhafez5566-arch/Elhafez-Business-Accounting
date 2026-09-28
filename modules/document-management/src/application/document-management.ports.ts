@@ -1,3 +1,3 @@
 import type{CompanyId,ExecutionContext}from'@elhafez/contracts';export const DOCUMENT_ACCESS=Symbol('DOCUMENT_ACCESS'),DOCUMENT_FILES=Symbol('DOCUMENT_FILES');
 export interface DocumentAccess{requirePermission(c:ExecutionContext,p:string):Promise<void>;audit(c:ExecutionContext,action:string,entityId:string,metadata?:Record<string,unknown>):Promise<void>}
-export interface DocumentFilePort{requireFile(companyId:CompanyId,fileId:string):Promise<void>}
+export interface DocumentFilePort{requireFile(companyId:CompanyId,fileId:string):Promise<void>;upload(companyId:CompanyId,actorId:string,contentType:string,content:Uint8Array):Promise<{id:string;contentType:string;size:number}>;read(companyId:CompanyId,fileId:string):Promise<{metadata:{id:string;contentType:string;size:number};content:Uint8Array}>}
