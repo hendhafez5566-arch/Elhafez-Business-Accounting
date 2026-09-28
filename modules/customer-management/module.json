@@ -1,6 +1,19 @@
 {
   "name": "customer-management",
-  "publicApi": ["src/public/index.ts"],
-  "ownedTables": ["cm_customers", "cm_customer_references", "cm_number_counters"],
-  "allowedDependencies": ["@elhafez/contracts", "@elhafez/core", "@elhafez/platform-core", "@elhafez/party-registry", "@elhafez/agent-management"]
+  "publicApi": [
+    "src/public/index.ts"
+  ],
+  "ownedTables": [
+    "cm_customers",
+    "cm_customer_references",
+    "cm_number_counters",
+    "cm_customer_commercial_profiles"
+  ],
+  "allowedDependencies": [
+    "@elhafez/contracts",
+    "@elhafez/core",
+    "@elhafez/platform-core",
+    "@elhafez/party-registry",
+    "@elhafez/agent-management"
+  ]
 }
