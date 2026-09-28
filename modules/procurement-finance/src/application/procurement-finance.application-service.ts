@@ -713,6 +713,8 @@ export class ProcurementFinanceApplicationService {
     );
   }
 
+  async listInvoiceConversionsForPurchaseOrder(companyId:CompanyId,id:string){await this.getPurchaseOrder(companyId,id);return this.repo.listConversions(companyId,id);}
+
   async getPurchaseOrder(companyId: CompanyId, id: string) {
     const value = await this.repo.po(companyId, id);
     if (!value) throw new ContractValidationError('purchaseOrder', 'not found');
