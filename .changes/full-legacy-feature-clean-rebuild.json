@@ -1,0 +1,29 @@
+{
+  "id": "full-legacy-feature-clean-rebuild",
+  "summary": "Harvest legacy v32.5.66 user-visible functionality across the full ERP and rebuild missing presentation/orchestration surfaces on canonical new-system owners without copying legacy architecture or duplicating source truth.",
+  "type": "phase",
+  "allowedModules": [
+    "customer-management"
+  ],
+  "allowedPaths": [
+    ".changes/full-legacy-feature-clean-rebuild.json",
+    "docs/legacy-parity/**",
+    "apps/api/src/accounting-workspace.controller.ts",
+    "apps/api/src/accounting-workspace.spec.ts",
+    "apps/web/src/**",
+    "prisma/schema.prisma",
+    "prisma/migrations/20260928170000_full_legacy_feature_parity/migration.sql"
+  ],
+  "protectedPaths": [
+    "apps/web/src/routes.tsx",
+    "apps/web/src/ui/**",
+    "prisma/migrations/20260928170000_full_legacy_feature_parity/migration.sql"
+  ],
+  "protectedReason": "The scope is an owner-approved whole-product legacy feature parity closure. Changes preserve canonical business owners and only extend UI/composition or the existing customer-management owner where legacy commercial terms are missing; no duplicate module or legacy architecture is introduced.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": "",
+  "testEvidence": [
+    "apps/api/src/accounting-workspace.spec.ts",
+    "apps/web/src/legacy-parity.spec.ts"
+  ]
+}
