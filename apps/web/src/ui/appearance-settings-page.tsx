@@ -1,6 +1,11 @@
 import { ActionBar, Button, Card, FormField, Select } from './primitives.js';
 import { useUiPreferences } from './preferences.js';
 
+const themeLabels = {
+  premium: 'الحافظ الاحترافي',
+  classic: 'الشكل الأساسي',
+} as const;
+
 const sidebarLabels = {
   fixed: 'ثابت',
   compact: 'مصغّر بالأيقونات',
@@ -34,6 +39,22 @@ export function AppearanceSettingsPage() {
       <ActionBar><Button variant="secondary" onClick={resetPreferences}>استعادة الافتراضي</Button></ActionBar>
 
       <div className="ui-settings-grid">
+        <Card title="النمط البصري">
+          <FormField
+            label="شكل النظام"
+            hint="يمكن الرجوع للشكل الأساسي في أي وقت بدون تغيير البيانات أو وظائف النظام."
+          >
+            <Select
+              value={preferences.theme}
+              onChange={(event) => updatePreferences({ theme: event.target.value as typeof preferences.theme })}
+            >
+              {Object.entries(themeLabels).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </Select>
+          </FormField>
+        </Card>
+
         <Card title="القائمة الجانبية">
           <FormField
             label="طريقة عمل القائمة"
@@ -93,6 +114,7 @@ export function AppearanceSettingsPage() {
 
         <Card title="معاينة الإعداد الحالي">
           <dl className="ui-definition-list">
+            <div><dt>النمط</dt><dd>{themeLabels[preferences.theme]}</dd></div>
             <div><dt>القائمة</dt><dd>{sidebarLabels[preferences.sidebarMode]}</dd></div>
             <div><dt>الخط</dt><dd>{fontFamilyLabels[preferences.fontFamily]}</dd></div>
             <div><dt>الحجم</dt><dd>{fontScaleLabels[preferences.fontScale]}</dd></div>
