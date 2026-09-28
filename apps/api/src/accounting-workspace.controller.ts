@@ -1,5 +1,5 @@
 import{createHash,randomUUID}from'node:crypto';
-import{BadRequestException,Body,Controller,Get,Headers,Inject,Param,Post,UnauthorizedException}from'@nestjs/common';
+import{BadRequestException,Body,Controller,Get,Headers,Inject,Param,Post,Query,UnauthorizedException}from'@nestjs/common';
 import{decimalAmount,executionContext,type ExecutionContext}from'@elhafez/contracts';
 import{PLATFORM_CORE_PERMISSIONS,PlatformCoreApplicationService,PlatformError}from'@elhafez/platform-core';
 import{PeriodControlApplicationService,type FiscalYear,type AccountingPeriod}from'@elhafez/period-control';
@@ -158,6 +158,94 @@ export class AccountingWorkspaceController{
   const c=await this.context(this.headers(auth,company,branch),PLATFORM_CORE_PERMISSIONS.accountingFinanceOperate);
   const target=(await this.treasury.listVouchers(c.companyId)).find(value=>value.id===id);if(!target||target.branchId!==c.branchId)throw new BadRequestException('voucher not found in current branch');
   return this.treasury.voidVoucher(c.companyId,id,input.postingDate,text(input.number,'number'));
+ }
+
+
+ @Get('treasury/transfers')
+ async treasuryTransfers(@Headers('authorization')auth:string,@Headers('x-company-id')company:string,@Headers('x-branch-id')branch:string){
+  const c=await this.context(this.headers(auth,company,branch),PLATFORM_CORE_PERMISSIONS.accountingFinanceRead);
+  return this.treasury.listTransfers(c.companyId);
+ }
+
+ @Post('treasury/transfers')
+ async treasuryTransfer(@Headers('authorization')auth:string,@Headers('x-company-id')company:string,@Headers('x-branch-id')branch:string,
+  @Body()input:{commandKey:string;sourceTreasuryId:string;destinationTreasuryId:string;amount:string;postingDate:string;number:string}){
+  const c=await this.context(this.headers(auth,company,branch),PLATFORM_CORE_PERMISSIONS.accountingFinanceOperate);
+  const commandKey=text(input.commandKey,'commandKey');
+  return this.treasury.transfer({id:stableId(c.companyId,'TREASURY_TRANSFER',commandKey),companyId:c.companyId,sourceTreasuryId:text(input.sourceTreasuryId,'sourceTreasuryId'),destinationTreasuryId:text(input.destinationTreasuryId,'destinationTreasuryId'),amount:decimalAmount(input.amount),postingDate:input.postingDate,sourceType:'MANUAL_TREASURY_TRANSFER',sourceId:commandKey,number:text(input.number,'number')});
+ }
+
+ @Get('treasury/cheques/:id')
+ async treasuryCheque(@Headers('authorization')auth:string,@Headers('x-company-id')company:string,@Headers('x-branch-id')branch:string,@Param('id')id:string){
+  const c=await this.context(this.headers(auth,company,branch),PLATFORM_CORE_PERMISSIONS.accountingFinanceRead);
+  const cheque=await this.treasury.getCheque(c.companyId,id);
+  const voucher=(await this.treasury.listVouchers(c.companyId)).find(value=>value.id===cheque.voucherId);
+  if(!voucher||voucher.branchId!==c.branchId)throw new BadRequestException('cheque not found in current branch');
+  return cheque;
+ }
+
+ @Post('treasury/cheques')
+ async issueTreasuryCheque(@Headers('authorization')auth:string,@Headers('x-company-id')company:string,@Headers('x-branch-id')branch:string,
+  @Body()input:{commandKey:string;voucherId:string;direction:'INCOMING'|'OUTGOING';bankTreasuryId?:string;number:string;amount:string;currency:string;issueDate:string;dueDate?:string}){
+  const c=await this.context(this.headers(auth,company,branch),PLATFORM_CORE_PERMISSIONS.accountingFinanceOperate);
+  const voucher=(await this.treasury.listVouchers(c.companyId)).find(value=>value.id===text(input.voucherId,'voucherId'));
+  if(!voucher||voucher.branchId!==c.branchId)throw new BadRequestException('voucher not found in current branch');
+  if(input.direction!=='INCOMING'&&input.direction!=='OUTGOING')throw new BadRequestException('invalid cheque direction');
+  const commandKey=text(input.commandKey,'commandKey');
+  return this.treasury.issueCheque({id:stableId(c.companyId,'TREASURY_CHEQUE',commandKey),companyId:c.companyId,voucherId:voucher.id,direction:input.direction,...(input.bankTreasuryId?.trim()?{bankTreasuryId:input.bankTreasuryId.trim()}:{}),number:text(input.number,'number'),amount:decimalAmount(input.amount),currency:text(input.currency,'currency').toUpperCase(),issueDate:input.issueDate,...(input.dueDate?.trim()?{dueDate:input.dueDate}:{})});
+ }
+
+ @Post('treasury/cheques/:id/status')
+ async transitionTreasuryCheque(@Headers('authorization')auth:string,@Headers('x-company-id')company:string,@Headers('x-branch-id')branch:string,@Param('id')id:string,
+  @Body()input:{status:'DEPOSITED'|'CLEARED'|'BOUNCED'|'VOIDED';reference?:string}){
+  const c=await this.context(this.headers(auth,company,branch),PLATFORM_CORE_PERMISSIONS.accountingFinanceOperate);
+  const cheque=await this.treasury.getCheque(c.companyId,id);
+  const voucher=(await this.treasury.listVouchers(c.companyId)).find(value=>value.id===cheque.voucherId);
+  if(!voucher||voucher.branchId!==c.branchId)throw new BadRequestException('cheque not found in current branch');
+  if(!['DEPOSITED','CLEARED','BOUNCED','VOIDED'].includes(input.status))throw new BadRequestException('invalid cheque status');
+  return this.treasury.transitionCheque(c.companyId,id,input.status,input.reference?.trim()||undefined);
+ }
+
+ @Get('treasury/cash-counts')
+ async treasuryCashCounts(@Headers('authorization')auth:string,@Headers('x-company-id')company:string,@Headers('x-branch-id')branch:string,@Query('treasuryId')treasuryId?:string){
+  const c=await this.context(this.headers(auth,company,branch),PLATFORM_CORE_PERMISSIONS.accountingFinanceRead);
+  return this.treasury.listCashCounts(c.companyId,treasuryId?.trim()||undefined);
+ }
+
+ @Post('treasury/cash-counts')
+ async treasuryCashCount(@Headers('authorization')auth:string,@Headers('x-company-id')company:string,@Headers('x-branch-id')branch:string,
+  @Body()input:{commandKey:string;treasuryId:string;countedAmount:string;countDate:string;adjustmentAccountId?:string;number?:string}){
+  const c=await this.context(this.headers(auth,company,branch),PLATFORM_CORE_PERMISSIONS.accountingFinanceOperate);
+  const commandKey=text(input.commandKey,'commandKey');
+  return this.treasury.recordCashCount({id:stableId(c.companyId,'TREASURY_CASH_COUNT',commandKey),companyId:c.companyId,treasuryId:text(input.treasuryId,'treasuryId'),countedAmount:decimalAmount(input.countedAmount),countDate:input.countDate,...(input.adjustmentAccountId?.trim()?{adjustmentAccountId:input.adjustmentAccountId.trim()}:{}),...(input.number?.trim()?{number:input.number.trim()}:{})});
+ }
+
+ @Get('treasury/bank-lines/:treasuryId')
+ async treasuryBankLines(@Headers('authorization')auth:string,@Headers('x-company-id')company:string,@Headers('x-branch-id')branch:string,@Param('treasuryId')treasuryId:string){
+  const c=await this.context(this.headers(auth,company,branch),PLATFORM_CORE_PERMISSIONS.accountingFinanceRead);
+  return this.treasury.listBankLines(c.companyId,text(treasuryId,'treasuryId'));
+ }
+
+ @Post('treasury/bank-lines')
+ async importTreasuryBankLine(@Headers('authorization')auth:string,@Headers('x-company-id')company:string,@Headers('x-branch-id')branch:string,
+  @Body()input:{commandKey:string;treasuryId:string;currency:string;signedAmount:string;valueDate:string;reference?:string}){
+  const c=await this.context(this.headers(auth,company,branch),PLATFORM_CORE_PERMISSIONS.accountingFinanceOperate);
+  const commandKey=text(input.commandKey,'commandKey');
+  return this.treasury.importBankLine({id:stableId(c.companyId,'TREASURY_BANK_LINE',commandKey),companyId:c.companyId,treasuryId:text(input.treasuryId,'treasuryId'),currency:text(input.currency,'currency').toUpperCase(),signedAmount:decimalAmount(input.signedAmount),valueDate:input.valueDate,...(input.reference?.trim()?{reference:input.reference.trim()}:{})});
+ }
+
+ @Post('treasury/bank-lines/:id/auto-match')
+ async autoMatchTreasuryBankLine(@Headers('authorization')auth:string,@Headers('x-company-id')company:string,@Headers('x-branch-id')branch:string,@Param('id')id:string){
+  const c=await this.context(this.headers(auth,company,branch),PLATFORM_CORE_PERMISSIONS.accountingFinanceOperate);
+  return this.treasury.autoMatch(c.companyId,id);
+ }
+
+ @Post('treasury/bank-lines/:id/manual-match')
+ async manualMatchTreasuryBankLine(@Headers('authorization')auth:string,@Headers('x-company-id')company:string,@Headers('x-branch-id')branch:string,@Param('id')id:string,@Body()input:{voucherId:string}){
+  const c=await this.context(this.headers(auth,company,branch),PLATFORM_CORE_PERMISSIONS.accountingFinanceOperate);
+  const voucher=(await this.treasury.listVouchers(c.companyId)).find(value=>value.id===text(input.voucherId,'voucherId'));
+  if(!voucher||voucher.branchId!==c.branchId)throw new BadRequestException('voucher not found in current branch');
+  return this.treasury.manualMatch(c.companyId,id,voucher.id,c.actorId);
  }
 
  @Post('tax/policies')
