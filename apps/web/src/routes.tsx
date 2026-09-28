@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import { FollowupsPage, LeadsPage } from './crm-core-pages.js';
 import { AgentsPage, CustomersPage } from './crm-party-pages.js';
-import { Agent360Page, CrmSalesDashboardPage, Customer360Page, TravelersPage } from './crm-insights-pages.js';
+import { Agent360Page, Customer360Page } from './crm-360-parity-pages.js';
+import { CrmSalesDashboardPage, TravelersPage } from './crm-insights-pages.js';
 import { QuotationsPage } from './quotation-pages.js';
 import { SuppliersPage } from './supplier-pages.js';
 import { ProcurementOperationsPage } from './procurement-pages.js';
