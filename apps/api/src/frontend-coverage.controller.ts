@@ -372,6 +372,24 @@ export class TourismContractInventoryController {
     return tenantContext(this.platform, { authorization: auth, companyId: company, branchId: branch });
   }
 
+  @Get('contracts')
+  async contracts(@Headers('authorization') auth: string, @Headers('x-company-id') company: string, @Headers('x-branch-id') branch: string) {
+    const c = await this.context(auth, company, branch);
+    return this.inventory.listContracts(c.companyId);
+  }
+
+  @Get('resources')
+  async resources(@Headers('authorization') auth: string, @Headers('x-company-id') company: string, @Headers('x-branch-id') branch: string, @Query('contractId') contractId?: string) {
+    const c = await this.context(auth, company, branch);
+    return this.inventory.listResources(c.companyId, contractId?.trim() || undefined);
+  }
+
+  @Get('allocations')
+  async allocations(@Headers('authorization') auth: string, @Headers('x-company-id') company: string, @Headers('x-branch-id') branch: string) {
+    const c = await this.context(auth, company, branch);
+    return this.inventory.listAllocations(c.companyId);
+  }
+
   @Post('contracts')
   async createContract(@Headers('authorization') auth: string, @Headers('x-company-id') company: string, @Headers('x-branch-id') branch: string,
     @Body() input: Omit<CreateTourismContractInput, 'companyId'> & { commandKey?: string }) {
