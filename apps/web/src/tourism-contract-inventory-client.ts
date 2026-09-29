@@ -3,8 +3,12 @@ import { crmGet, crmPost } from './crm-core-client.js';
 const base='/tourism/contracts-inventory';
 const enc=encodeURIComponent;
 export type InventoryResult=Record<string,unknown>;
+export interface TourismInventorySupplierReference{supplier:{id:string;supplierCode:string;status:string;approvalStatus:string};party:{id:string;displayName:string}}
+export interface TourismInventoryProgramReference{id:string;code:string;nameAr:string;status:string}
 
 export const tourismContractInventoryApi={
+ suppliers:()=>crmGet<TourismInventorySupplierReference[]>('/suppliers'),
+ programs:()=>crmGet<TourismInventoryProgramReference[]>('/tourism/programs'),
  createContract:(input:{type:'HOTEL'|'FLIGHT_BLOCK'|'TRANSPORT'|'VISA'|'SERVICE';supplierId?:string;effectiveFrom:string;effectiveTo:string;commandKey?:string})=>crmPost<InventoryResult>(base+'/contracts',input),
  contract:(id:string)=>crmGet<InventoryResult|null>(base+'/contracts/'+enc(id)),
  versions:(id:string)=>crmGet<InventoryResult[]>(base+'/contracts/'+enc(id)+'/versions'),
