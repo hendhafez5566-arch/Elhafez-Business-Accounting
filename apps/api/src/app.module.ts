@@ -67,6 +67,7 @@ import { CrmSalesReadModelController } from './crm-sales-read-model.controller.j
 import { CrmSalesReadModelService } from './crm-sales-read-model.service.js';
 import { SupplierIntelligenceReadModelController } from './supplier-intelligence-read-model.controller.js';
 import { SupplierIntelligenceReadModelService } from './supplier-intelligence-read-model.service.js';
+import { SupplierFilesController } from './supplier-files.controller.js';
 import { HajjUmrahController } from './hajj-umrah.controller.js';
 import { HajjUmrahOperationsController } from './hajj-umrah-operations.controller.js';
 import { SystemAdministrationController } from './system-administration.controller.js';
@@ -77,6 +78,11 @@ import { StandaloneServicesApplicationService } from '@elhafez/standalone-servic
 import { ServiceFulfillmentModule } from '@elhafez/service-fulfillment/nest';
 import { ServiceVouchersModule } from '@elhafez/service-vouchers/nest';
 import { TourismServicesController } from './tourism-services.controller.js';
+import { TourismServiceFinancialReadController } from './tourism-service-financial-read.controller.js';
+import { TourismServiceFilesController } from './tourism-service-files.controller.js';
+import { TourismContractFilesController } from './tourism-contract-files.controller.js';
+import { TourismContractInventoryReadController } from './tourism-contract-inventory-read.controller.js';
+import { TourismAccountingReferencesController } from './tourism-accounting-references.controller.js';
 import { HajjUmrahProgramsApplicationService } from '@elhafez/hajj-umrah-programs';
 import { HajjUmrahReadinessApplicationService } from '@elhafez/hajj-umrah-readiness';
 import { FinancialReportingApplicationService } from '@elhafez/financial-reporting';
@@ -98,6 +104,7 @@ import { HealthController } from './health.controller.js';
 import { UserNotificationsController } from './user-notifications.controller.js';
 import { AdvancedAccountingController, TourismContractInventoryController } from './frontend-coverage.controller.js';
 
+/** Composition root only. Business modules are registered here through public module APIs. */
 @Module({
   imports: [
     PlatformCoreModule, DataExchangeModule, PlatformOperationsModule, CustomFieldsModule, DocumentNumberingModule, AutomationWorkflowModule, OperationalReportingModule, PartyRegistryModule, AgentManagementModule, CustomerManagementModule, CrmLeadsModule, CrmFollowupsModule, QuotationsModule, SupplierManagementModule, SupplierEvaluationModule, SupplierDisputesModule, ProcurementFulfillmentModule, ProcurementSourcingModule, TravelerManagementModule,
@@ -105,7 +112,7 @@ import { AdvancedAccountingController, TourismContractInventoryController } from
     ExpenseCommissionRecognitionModule, CostBudgetAccountingModule, AssetsFinancingModule, ProcurementFinanceModule, TourismContractInventoryModule,
     TourismFinanceOrchestrationModule, TourismProgramsModule, TourismItinerariesModule, TourismBookingsModule, StandaloneServicesModule, ServiceFulfillmentModule, ServiceVouchersModule, HajjUmrahSeasonsModule, HajjUmrahProgramsModule, HajjUmrahBookingsModule, HajjUmrahRoomingModule, HajjUmrahVisaOperationsModule, HajjUmrahTicketingModule, HajjUmrahTransportOperationsModule, HajjUmrahTripOperationsModule, HajjUmrahReadinessModule, FinancialReportingModule, SaasControlPlaneModule, Ac14MigrationModule,
   ],
-  controllers: [HealthController, UserNotificationsController, AdvancedAccountingController, TourismContractInventoryController, SaasOwnerController, PlatformOwnerOperationsController, SaasTenantController, AccountingWorkspaceController, FinancialReportingController, FinancialControlHistoryController, ReportDeliveryController, SystemAdministrationController, CrmAgentFilesController, CrmCustomerFilesController, CrmFinancialOperationsController, CrmSalesReadModelController, SupplierIntelligenceReadModelController, HajjUmrahController, HajjUmrahOperationsController, HajjUmrahReadinessController, ManagementControlController, TourismServicesController, TourismOperationsController],
+  controllers: [HealthController, UserNotificationsController, AdvancedAccountingController, TourismContractInventoryController, TourismContractInventoryReadController, TourismContractFilesController, TourismAccountingReferencesController, SaasOwnerController, PlatformOwnerOperationsController, SaasTenantController, AccountingWorkspaceController, FinancialReportingController, FinancialControlHistoryController, ReportDeliveryController, SystemAdministrationController, CrmAgentFilesController, CrmCustomerFilesController, SupplierFilesController, CrmFinancialOperationsController, CrmSalesReadModelController, SupplierIntelligenceReadModelController, HajjUmrahController, HajjUmrahOperationsController, HajjUmrahReadinessController, ManagementControlController, TourismServicesController, TourismServiceFinancialReadController, TourismServiceFilesController, TourismOperationsController],
   providers: [
     FinancialReportingEvidenceAdapter,
     ReportDeliveryWorker,
@@ -118,8 +125,16 @@ import { AdvancedAccountingController, TourismContractInventoryController } from
     },
     {
       provide: SupplierIntelligenceReadModelService,
-      useFactory: (suppliers: SupplierManagementApplicationService, evaluations: SupplierEvaluationApplicationService, disputes: SupplierDisputesApplicationService, procurement: ProcurementFinanceApplicationService, fulfillment: ProcurementFulfillmentApplicationService) => new SupplierIntelligenceReadModelService(suppliers,evaluations,disputes,procurement,fulfillment),
-      inject: [SupplierManagementApplicationService, SupplierEvaluationApplicationService, SupplierDisputesApplicationService, ProcurementFinanceApplicationService, ProcurementFulfillmentApplicationService],
+      useFactory: (
+        suppliers: SupplierManagementApplicationService,
+        evaluations: SupplierEvaluationApplicationService,
+        disputes: SupplierDisputesApplicationService,
+        procurement: ProcurementFinanceApplicationService,
+        fulfillment: ProcurementFulfillmentApplicationService,
+        billing: BillingSubledgersApplicationService,
+        treasury: TreasurySettlementApplicationService,
+      ) => new SupplierIntelligenceReadModelService(suppliers,evaluations,disputes,procurement,fulfillment,billing,treasury),
+      inject: [SupplierManagementApplicationService, SupplierEvaluationApplicationService, SupplierDisputesApplicationService, ProcurementFinanceApplicationService, ProcurementFulfillmentApplicationService, BillingSubledgersApplicationService, TreasurySettlementApplicationService],
     },
     {
       provide: CrmSalesReadModelService,
