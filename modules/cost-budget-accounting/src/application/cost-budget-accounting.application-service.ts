@@ -37,6 +37,11 @@ export class CostBudgetAccountingApplicationService {
     return value;
   }
 
+  async list(companyId: CompanyId, activeOnly = false): Promise<CostCenter[]> {
+    const values = await this.repository.list(companyId);
+    return activeOnly ? values.filter((value) => value.status === 'ACTIVE') : values;
+  }
+
   async validateActive(companyId: CompanyId, id: CostCenterId): Promise<CostCenter> {
     const value = await this.get(companyId, id);
     if (value.status !== 'ACTIVE') {
