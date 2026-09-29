@@ -11,7 +11,7 @@ type Lead={
 };
 type LeadHistory={id:string;kind:string;fromStatus:LeadStatus|null;toStatus:LeadStatus|null;detail:string|null;occurredAt:string;actorId:string};
 type AgentView={agent:{id:string;number:string;status:'ACTIVE'|'SUSPENDED'};party:{displayName:string}};
-type UserOption={id:string;displayName?:string;name?:string;username?:string;active?:boolean};
+type UserOption={id:string;displayName:string};
 type FollowupStatus='SCHEDULED'|'COMPLETED'|'CANCELLED';
 type Followup={id:string;leadId:string;responsibleUserId:string;interactionType:string;scheduledAt:string;status:FollowupStatus;outcome:string|null;nextAction:string|null;previousFollowupId:string|null;completedAt:string|null;cancelledAt:string|null;completionVoidedAt:string|null;completionVoidReason:string|null};
 type FollowupHistory={id:string;kind:string;detail:string|null;previousScheduledAt:string|null;scheduledAt:string|null;occurredAt:string;actorId:string};
@@ -20,7 +20,7 @@ const leadLabels:Record<LeadStatus,string>={NEW:'جديد',CONTACTED:'تم ال�
 const interactionLabels:Record<string,string>={CALL:'مكالمة',WHATSAPP:'واتساب',MEETING:'اجتماع',EMAIL:'بريد إلكتروني',OTHER:'أخرى'};
 const message=(error:unknown)=>error instanceof Error?error.message:'حدث خطأ غير متوقع';
 const tone=(status:string)=>status==='WON'||status==='COMPLETED'?'success':status==='LOST'||status==='CANCELLED'?'warning':'info';
-const userLabel=(value:UserOption)=>value.displayName||value.name||value.username||value.id;
+const userLabel=(value:UserOption)=>value.displayName;
 const toLocalInput=(date:Date)=>{const offset=date.getTimezoneOffset()*60_000;return new Date(date.getTime()-offset).toISOString().slice(0,16);};
 const defaultThrough=()=>toLocalInput(new Date(Date.now()+7*24*60*60*1000));
 const toIso=(value:string)=>new Date(value).toISOString();
@@ -33,7 +33,7 @@ export function LeadsPage(){
  const[losingId,setLosingId]=useState(''),[lostReason,setLostReason]=useState(''),[historyLead,setHistoryLead]=useState<Lead|null>(null),[history,setHistory]=useState<LeadHistory[]>([]);
  const[list,setList]=useState<Lead[]>([]),[all,setAll]=useState<Lead[]>([]),[agents,setAgents]=useState<AgentView[]>([]),[users,setUsers]=useState<UserOption[]>([]),[error,setError]=useState('');
  const listPath=useMemo(()=>`/crm/leads?${new URLSearchParams({...status&&{status},...q&&{q},...responsibleFilter&&{responsibleUserId:responsibleFilter}})}`,[q,status,responsibleFilter]);
- async function load(){try{const[rows,everyAgent,everyUser,total]=await Promise.all([crmGet<Lead[]>(listPath),crmGet<AgentView[]>('/crm/agents?status=ACTIVE'),crmGet<UserOption[]>('/system-administration/users'),crmGet<Lead[]>('/crm/leads')]);setList(rows);setAgents(everyAgent);setUsers(everyUser.filter(user=>user.active!==false));setAll(total);setError('');}catch(value){setError(message(value));}}
+ async function load(){try{const[rows,everyAgent,everyUser,total]=await Promise.all([crmGet<Lead[]>(listPath),crmGet<AgentView[]>('/crm/agents?status=ACTIVE'),crmGet<UserOption[]>('/crm/insights/assignees'),crmGet<Lead[]>('/crm/leads')]);setList(rows);setAgents(everyAgent);setUsers(everyUser);setAll(total);setError('');}catch(value){setError(message(value));}}
  useEffect(()=>{void load();},[listPath]);
  const counts=useMemo(()=>Object.fromEntries((Object.keys(leadLabels) as LeadStatus[]).map(key=>[key,all.filter(item=>item.status===key).length])) as Record<LeadStatus,number>,[all]);
  function reset(){setEditing(null);setKind('PERSON');setName('');setLegalName('');setPhone('');setWa('');setEmail('');setAddress('');setNationalId('');setTaxId('');setSource('');setService('');setExpected('');setCurrency('EGP');setResponsible('');setReferralAgent('');setNotes('');}
@@ -65,7 +65,7 @@ export function FollowupsPage(){
  const[mode,setMode]=useState<'due'|'overdue'>('due'),[through,setThrough]=useState(defaultThrough),[responsibleFilter,setResponsibleFilter]=useState(''),[selectedLead,setSelectedLead]=useState(()=>typeof window==='undefined'?'':new URLSearchParams(window.location.search).get('leadId')??''),[leadTimeline,setLeadTimeline]=useState<Followup[]>([]);
  const[completeId,setCompleteId]=useState(''),[outcome,setOutcome]=useState(''),[completionNextAction,setCompletionNextAction]=useState(''),[nextScheduledAt,setNextScheduledAt]=useState(''),[nextInteraction,setNextInteraction]=useState('CALL'),[nextResponsible,setNextResponsible]=useState('');
  const[rescheduleId,setRescheduleId]=useState(''),[rescheduledAt,setRescheduledAt]=useState(''),[cancelId,setCancelId]=useState(''),[cancelReason,setCancelReason]=useState(''),[voidId,setVoidId]=useState(''),[voidReason,setVoidReason]=useState(''),[history,setHistory]=useState<FollowupHistory[]>([]),[historyId,setHistoryId]=useState('');
- async function loadReferences(){try{const[l,u]=await Promise.all([crmGet<Lead[]>('/crm/leads'),crmGet<UserOption[]>('/system-administration/users')]);setLeads(l);setUsers(u.filter(user=>user.active!==false));}catch(value){setError(message(value));}}
+ async function loadReferences(){try{const[l,u]=await Promise.all([crmGet<Lead[]>('/crm/leads'),crmGet<UserOption[]>('/crm/insights/assignees')]);setLeads(l);setUsers(u);}catch(value){setError(message(value));}}
  async function loadQueue(){try{const params=new URLSearchParams({...responsibleFilter&&{responsibleUserId:responsibleFilter}});const path=mode==='overdue'?`/crm/followups/overdue?${params}`:`/crm/followups/due?${new URLSearchParams({through:toIso(through),...responsibleFilter&&{responsibleUserId:responsibleFilter}})}`;setRows(await crmGet<Followup[]>(path));setError('');}catch(value){setError(message(value));}}
  async function loadLeadTimeline(id=selectedLead){if(!id){setLeadTimeline([]);return;}try{setLeadTimeline(await crmGet<Followup[]>(`/crm/followups/lead/${encodeURIComponent(id)}`));}catch(value){setNotice(message(value));}}
  useEffect(()=>{void loadReferences();},[]);useEffect(()=>{void loadQueue();},[mode,through,responsibleFilter]);useEffect(()=>{if(selectedLead)void loadLeadTimeline(selectedLead);},[selectedLead]);
