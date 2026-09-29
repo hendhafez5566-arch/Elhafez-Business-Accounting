@@ -82,7 +82,7 @@ Confirmed existing implementations that must be reused rather than rebuilt:
 - The financial endpoint is separate from general Supplier 360 and requires the existing `accountingFinanceRead` permission; lack of accounting permission does not block non-financial Supplier 360.
 - `procurement-sourcing` already implements PR → submit → approval/rejection → RFQ → supplier invitation → bids → deterministic quote comparison → award → PO creation through the canonical procurement owner.
 - `procurement-pages.tsx` implements PO create/edit/approve/cancel, receipt evidence, receipt corrections, received-quantity-to-supplier-invoice conversion through Billing, and direct purchases through the accounting owner.
-- Purchase-return architecture decision: do **not** create a return table/service. An uninvoiced physical return is a reasoned `procurement-fulfillment` receipt correction that lowers received quantity while preserving immutable evidence; invoiced quantity must first be handled by Billing before received quantity can be reduced below invoiced quantity.
+- Purchase returns now have a dedicated NEW UI workspace but still use the existing `procurement-fulfillment` correction API. No return table/service was created. An uninvoiced physical return lowers received quantity through immutable correction evidence; invoiced quantity must be handled in Billing before received quantity can be reduced below invoiced quantity.
 
 ### Tourism / Services
 
@@ -122,7 +122,7 @@ Status: `DONE` = implementation/reuse decision complete; `IN PROGRESS` = active 
 | Supplier payment/refund/voucher history | Treasury public read API composed in Supplier 360, exact branch scoped | DONE |
 | Supplier active advances | Billing owner read via Treasury-linked advance IDs; no duplicate advance store | DONE |
 | Shared attachments/documents | Must reuse Platform Core; literal UI parity still under review | IN PROGRESS |
-| Purchase returns | Canonical mapping decided: fulfillment correction for uninvoiced physical return; Billing-first for invoiced return | DONE decision; explicit UX pending |
+| Purchase returns | Dedicated UI over existing immutable fulfillment correction; Billing-first guard for invoiced quantity | DONE |
 
 ### Tourism & Services
 
@@ -158,6 +158,8 @@ Status: `DONE` = implementation/reuse decision complete; `IN PROGRESS` = active 
 - `68c4975` — added accounting-read permission boundary for Supplier financial 360 endpoint.
 - `00596be` — aligned supplier read-model sanity coverage with the new owner integrations (not executed yet in Phase 1).
 - `e7e65c3` — added Supplier 360 purchase history, invoices/outstanding, payment/receipt vouchers, active advances, permission-aware finance state and loading state to the NEW UI.
+- `57f3829` — added a purchase-return workspace backed exclusively by immutable fulfillment corrections with precise decimal quantity validation.
+- `0c0b01a` — exposed the purchase-return workspace in the existing Purchases & Suppliers navigation.
 
 No commit above was made to `main`. No Railway/production deployment was performed.
 
@@ -183,12 +185,11 @@ Continue from here without redoing completed items:
 
 1. Finish literal OLD supplier documents/party controls and OLD tourism forms/workflows inventory.
 2. Wire supplier/shared documents only through the existing Platform Core file owner.
-3. Add explicit purchase-return UX over the existing immutable fulfillment-correction API; do not add a return table/service.
-4. Complete standalone service document/attachment and accounting/profitability 360 composition without duplicating truth.
-5. Audit tourism programs/bookings/itineraries/contract-inventory against legacy controls field-by-field.
-6. Review tourism refund/advance/collection/payment actions through existing Billing/Treasury/orchestration owners.
-7. Add only genuinely missing backend behavior to its canonical owner; no duplicate implementation.
-8. Keep updating this checkpoint and meaningful commits.
+3. Complete standalone service document/attachment and accounting/profitability 360 composition without duplicating truth.
+4. Audit tourism programs/bookings/itineraries/contract-inventory against legacy controls field-by-field.
+5. Review tourism refund/advance/collection/payment actions through existing Billing/Treasury/orchestration owners.
+6. Add only genuinely missing backend behavior to its canonical owner; no duplicate implementation.
+7. Keep updating this checkpoint and meaningful commits.
 
 Do not start comprehensive test execution yet.
 
