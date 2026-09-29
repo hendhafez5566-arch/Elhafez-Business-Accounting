@@ -11,11 +11,19 @@ export interface Fulfillment { case:{status:string;confirmedQuantity:string;deli
 export interface Voucher { id:string;number:string;status:'ISSUED'|'VOID';version:number }
 export interface PrintableVoucher { number:string;version:number;serviceNumber:string;serviceType:string;serviceDate:string;periodEnd?:string;customerPartyId:string;beneficiaryPartyIds:string[];quantity:string;description:string;supplierId?:string;externalReference?:string;instructions:string;issuedAt:string }
 export interface DraftInput { commandKey:string; number:string;serviceTypeId:string;serviceDate:string;periodEnd?:string;quantity:string;debtorKind:'CUSTOMER'|'AGENT';debtorPartyId:string;customerPartyId:string;beneficiaryPartyIds:string[];details:Record<string,unknown>;currency:string;grossAmount:string;discountAmount:string;invoiceNumber:string;postingDate:string;dueDate:string;approvalRequestId?:string }
+export interface CustomerReference { customer:{id:string;partyId:string;number:string;status:string};party:{id:string;displayName:string} }
+export interface AgentReference { agent:{id:string;partyId:string;number:string;status:string};party:{id:string;displayName:string} }
+export interface TravelerReference { id:string;fullName:string;partyId:string|null;customerId:string|null;status:string }
+export interface SupplierReference { supplier:{id:string;partyId:string;supplierCode:string;status:string;approvalStatus:string};party:{id:string;displayName:string} }
 const base='/tourism/services';
 export interface TourismCapabilities {view:boolean;manage:boolean;confirm:boolean;cancel:boolean;fulfill:boolean;voucher:boolean}
 export const tourismServicesApi={
  capabilities:()=>crmGet<TourismCapabilities>(`${base}/capabilities`),
  types:()=>crmGet<ServiceType[]>(`${base}/types`),
+ customers:()=>crmGet<CustomerReference[]>('/crm/customers?status=ACTIVE'),
+ agents:()=>crmGet<AgentReference[]>('/crm/agents?status=ACTIVE'),
+ travelers:()=>crmGet<TravelerReference[]>('/crm/travelers?status=ACTIVE'),
+ suppliers:()=>crmGet<SupplierReference[]>('/suppliers?status=ACTIVE'),
  saveType:(input:Omit<ServiceType,'companyId'>)=>crmPost<ServiceType>(`${base}/types`,input),
  list:()=>crmGet<ServiceRow[]>(base),
  get:(id:string)=>crmGet<ServiceRecord>(`${base}/${encodeURIComponent(id)}`),
