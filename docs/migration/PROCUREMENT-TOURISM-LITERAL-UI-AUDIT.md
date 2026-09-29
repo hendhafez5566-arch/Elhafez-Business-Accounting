@@ -2,41 +2,122 @@
 
 Phase 1 evidence ledger for `feature/procurement-tourism-full-legacy-parity`. OLD is functional/UI/UX evidence only; NEW ownership and public module boundaries remain authoritative.
 
+## Audit result
+
+**CLOSED FOR PHASE 1 — IMPLEMENTATION UNVERIFIED**
+
+The focused OLD screens/workflows for the two target sections were re-read against the NEW branch. Missing behavior was implemented only at existing canonical owners. Nothing in this document is a test result; verification is Phase 2.
+
+## Purchases & Suppliers
+
+Literal OLD behavior reviewed across supplier/party controls and procurement workflows included supplier profile/contact/category, supplier selection, approval/lifecycle, purchase requests and orders, receiving/corrections, supplier financial visibility, documents and contextual navigation.
+
+NEW mapping is now closed as follows:
+
+- supplier identity/profile/lifecycle: `supplier-management` + `party-registry`;
+- sourcing: `procurement-sourcing`;
+- PO commitment/economics: `procurement-finance`;
+- receiving/correction/purchase-return behavior: `procurement-fulfillment`;
+- supplier invoice/open balance/advance: Billing;
+- payment/voucher/cash-bank evidence: Treasury;
+- supplier documents: Platform Core `EntityFileLinksApplicationService` with `SUPPLIER` entity links;
+- evaluation/disputes/holds: their existing supplier owners;
+- Supplier 360 reads the owners above and does not persist balances or payable truth.
+
+Quick-create supplier behavior from OLD is intentionally not duplicated inside tourism contract forms. The NEW contract workspace selects an existing approved supplier so duplicate Party/Supplier identities are not created from a second feature.
+
 ## Tourism contract workspace
 
-Reviewed OLD `src/core/umrah/forms.ts` and `src/core/umrah/ui-pages.ts`.
+Reviewed OLD `src/core/umrah/forms.ts`, `src/core/umrah/operations.ts`, contract/inventory UI and workflow evidence.
 
 ### Picker behavior
-OLD program pickers were searchable and showed contextual information instead of opaque IDs. Program choices excluded cancelled programs; sale-program choices additionally required active/open sale state and respected sales-close dates. Results surfaced program code/name, departure date/status and availability context.
 
-NEW decision: preserve discoverability using canonical Tourism Programs and Contract Inventory read models. Never reproduce OLD storage or direct cross-module reads.
-
-### Workspace structure
-OLD grouped contract work into overview, contracts, live inventory, program allocations, and finance/procurement views, with hotel/flight/transport/visa/contracted-service filtering. Rows exposed supplier, effective period/release behavior, total/allocated/used/available capacity, validation/lifecycle state, and contextual actions. Actions included details, allocation, edit, amendment, confirmation where allowed, and procurement navigation.
-
-NEW decision: compose existing owners. Contract lifecycle/capacity stays in `tourism-contract-inventory`; supplier identity/lifecycle in `supplier-management`; procurement commitments in procurement owners; financial truth in Billing/Accounting/Treasury.
+OLD used contextual pickers rather than asking normal users for opaque internal IDs. NEW now uses canonical supplier/program/contract/resource/customer/traveler selectors. Allocation IDs are generated internally; direct allocation ID entry is retained only as an explicitly administrative lookup/release aid after allocation.
 
 ### Hotel contracts
-Literal OLD coverage: hotel name/short name, city, supplier picker with quick-create convenience, effective dates, currency, board basis, single/double/triple/quad/quint room quantities and nightly rates, dated seasonal quantity/rate overrides, cancellation policy, and contract attachments. OLD explicitly stated the contract itself did not create debt.
 
-NEW mapping: capacity/availability belongs to Contract Inventory; commercial terms may live in versioned contract terms; supplier selection uses Supplier Management; attachments use Platform Core; payable/accounting effects stay with procurement/Billing/Accounting/Treasury.
+OLD exposed hotel/short label, city, supplier, period, currency, board basis, room quantities/rates, dated seasonal overrides, cancellation policy and attachments.
+
+NEW mapping:
+
+- supplier/provider identity comes from Supplier Management / Party Registry;
+- hotel/room references are operational resource references under the selected supplier, not new Party identities;
+- quantities/availability/allocations remain in Tourism Contract Inventory;
+- base commercial terms and room rates are versioned contract terms;
+- dated seasonal room rates are saved as an additional version with its own effective period;
+- contract attachments link the `TOURISM_CONTRACT` entity to Platform Core files;
+- no hotel contract action creates payable, payment, ledger or treasury truth.
 
 ### Flight blocks
-Literal OLD coverage: block name, airline, supplier picker, outbound flight/origin/destination/datetime, return flight/origin/destination/datetime, total seats, cost per seat/currency, ticketing deadline, fare class, baggage, and contract attachments.
 
-NEW mapping: capacity/service-date inventory stays in Contract Inventory. Descriptive commercial terms may be versioned terms where they do not duplicate another owner. Cost/currency remain commercial inputs and must not become parallel payable, ledger, settlement, or profitability truth in Tourism.
+OLD exposed block label, airline label, supplier, outbound/return flight details, seats, cost/currency, ticketing deadline, fare class, baggage and attachments.
 
-### Operational cues
-OLD rows showed supplier context, release/cutoff behavior, capacity and availability, stop-sale/released state, validation warnings/errors, lifecycle status, and guarded action menus. Cost visibility was permission-gated.
+NEW mapping:
 
-NEW parity requirement: canonical read models should provide human-selectable contract/resource options plus availability context, preserving existing permissions/scopes and finance permission boundaries.
+- the financially accountable provider is the selected canonical supplier;
+- flight number/route/carrier label are operational/commercial references, not Party creation;
+- outbound capacity and real flight-segment allocation evidence remain with inventory/booking owners;
+- return leg, ticketing deadline, fare class, baggage and commercial pricing are versioned contract terms;
+- attachments link directly to the canonical contract;
+- payment/payable/profitability truth stays downstream in procurement/Billing/Accounting/Treasury.
 
-## Current NEW checkpoint
-The branch already contains canonical inventory catalog work and it must not be reimplemented: `3b290eaa` exports the read service/types; `9ed74aa2` exposes the authenticated catalog endpoint; `976a52cb` registers it; `5a419288` exposes typed catalog reads to the web client.
+### Transport contracts
 
-The current Contract Inventory page still uses free-text contract/resource IDs in the allocation area although the typed catalog is available. Next UI gap: use that catalog for contract/resource selection and contextual availability, retaining direct-ID lookup only where intentionally administrative.
+OLD exposed transport company, supplier, route, vehicle type/count/capacity, contract period, total commercial cost/currency and attachments.
 
-## Remaining literal audit queue
-Remaining Tourism operations/workflow pages and smoke references; supplier/party browser smoke and document controls; transport/visa/contracted-service form details; program/booking/itinerary action-state matrix; refund/advance/collection/payment mapping to Billing/Treasury/orchestration; Platform Core attachments; profitability/accounting drill-down composition without duplicate truth.
+NEW mapping:
 
-Phase 1 remains incomplete. Comprehensive Phase 2 CI must not start yet.
+- the transport company/provider identity is the selected canonical supplier; no free-text provider creates another identity;
+- transport capacity and period remain canonical inventory data;
+- route, vehicle type/count/capacity-per-vehicle and commercial pricing can be recorded as versioned contract terms without becoming accounting truth;
+- contract documents use Platform Core entity file links.
+
+### Visa agreements
+
+OLD exposed service label, supplier, period, quota, cost/currency, expected processing days and attachments.
+
+NEW mapping:
+
+- supplier identity is canonical;
+- quota/effective period are inventory truth;
+- service label, expected processing days and commercial price/currency are versioned terms;
+- program-type requirements specific to Hajj/Umrah remain with the existing Hajj/Umrah program/readiness owners rather than being duplicated in general tourism contract storage;
+- documents attach to the canonical contract.
+
+### Contracted generic services
+
+OLD supported camp/meal/visit/guide/Rawda/insurance and other allocatable services with supplier, period, unit, capacity/quota and commercial cost.
+
+NEW mapping:
+
+- `tourism-contract-inventory` generic service inventory owns category/name/description/unit/service period/capacity/release deadline;
+- supplier is the contract's canonical supplier;
+- optional commercial price is a versioned term only;
+- the duplicate generic-service corrective form was removed; the primary contract workspace is the normal creation path.
+
+## Tourism operations / finance hand-offs
+
+Literal OLD booking/program/itinerary and finance cues were compared with NEW owners.
+
+- Programs and itinerary use existing general-tourism owners and lifecycle rules.
+- Booking creation uses canonical customer/traveler selectors.
+- Booking confirmation uses contract/resource catalog selectors; internal allocation IDs are not user input.
+- Flight/Visa allocations require real operational evidence references.
+- Collection uses the existing customer party Billing/Treasury orchestration.
+- Customer/agent advance refund uses existing Billing/Treasury/Financial Controls orchestration.
+- Supplier settlement goes to canonical Accounting/Treasury rather than a tourism payment model.
+- Tourism Service 360 composes operational and financial reads and does not persist a second balance/profitability record.
+
+## Readiness decision
+
+OLD Hajj/Umrah readiness behavior was not copied into general Tourism. NEW already has a dedicated `hajj-umrah-readiness` owner that composes traveler/inventory/finance evidence. Creating another mutable readiness/task store in Tourism would duplicate ownership. General Tourism keeps its existing program/booking lifecycle while shared inventory evidence remains reusable by the specialized readiness owner.
+
+## Routes / duplicate UI decision
+
+The target sections use their canonical NEW routes. `/hajj-umrah/contracts-inventory` intentionally renders the same shared Tourism Contract Inventory owner; it is not a second repository, service, table or data truth and is outside the target-section navigation cleanup.
+
+No legacy persistence route, duplicate file store, supplier balance store, tourism payable store, second contract owner or second generic-service inventory owner was introduced.
+
+## Phase boundary
+
+Phase 1 code implementation and literal parity mapping are closed. TypeScript, build, lint, tests, permission verification, CI and `pnpm verify` have **not** been run and remain Phase 2 only.
