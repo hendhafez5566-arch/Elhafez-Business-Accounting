@@ -83,7 +83,7 @@ function fingerprint(value: unknown): string {
 }
 
 function expectedPartyKind(type: InvoiceType): PartyKind {
-  return type === 'SUPPLIER' ? 'SUPPLIER' : 'CUSTOMER';
+  return type === 'SUPPLIER' ? 'SUPPLIER' : type === 'AGENT' ? 'AGENT' : 'CUSTOMER';
 }
 
 function foreignFields(
