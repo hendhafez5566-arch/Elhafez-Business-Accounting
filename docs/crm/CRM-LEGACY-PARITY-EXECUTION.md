@@ -27,8 +27,9 @@ Branch: `feature/crm-full-legacy-parity`
 | Follow-ups | `crm-followups` |
 | Quotations and quotation communication evidence | `quotations` |
 | Travelers/passports/travel-document history | `traveler-management` |
-| Customer/agent invoices, receivables, advances and credit limits | `billing-subledgers` |
+| Customer/agent invoices, receivables, advances and credit limits | `billing-subledgers` when supported by its canonical contract |
 | Cash/bank receipt/payment settlement | `treasury-settlement` |
+| Financial agent commission claims and payments | `expense-commission-recognition` |
 | Customer/Agent 360 and CRM dashboard | composition/read model only; no duplicate tables |
 
 ## Legacy surface to preserve/rebuild
@@ -81,22 +82,24 @@ Branch: `feature/crm-full-legacy-parity`
 
 - [x] Dedicated branch created from current `main`.
 - [x] CRM navigation group renamed/aligned to `المبيعات والعملاء CRM` and visible `المندوبون` terminology.
-- [x] New customer workspace started using canonical Party + Customer ownership.
-- [x] Customer form now exposes person/company, legal name, identity/contact/address fields supported by Party Registry.
+- [x] Customer workspace rebuilt using canonical Party + Customer ownership.
+- [x] Customer form exposes person/company, legal name, identity/contact/address fields supported by Party Registry.
 - [x] Assigned agent uses an active-agent picker rather than raw ID input.
-- [x] Customer `الإجراءات` and `المزيد` surfaces introduced for legacy parity.
-- [x] Agent workspace started with WhatsApp and legacy-style action/more surfaces.
-- [ ] Wire accounting action intents to accounting workspace/orchestration without duplicate finance code.
-- [ ] Wire tourism service action intent with customer preselection.
-- [ ] Expand customer list/read model with receivable attention from canonical finance owner.
-- [ ] Expand Customer 360 tabs and read composition.
-- [ ] Expand Agent 360 including canonical financial commission attention if a financial owner/read exists.
-- [ ] Rebuild Leads UI selectors and legacy workflow richness.
-- [ ] Rebuild Follow-up UI selectors/history UX.
-- [ ] Rebuild Quotations selectors/prefill and complete legacy action flow.
-- [ ] Expand CRM dashboard.
-- [ ] Remove superseded duplicate UI implementations from `crm-core-pages.tsx` after route migration is complete.
-- [ ] Complete Phase 1 implementation marker.
+- [x] Customer KPI/list read model includes receivable and overdue attention from Billing without CRM-owned balance truth.
+- [x] Customer invoice and receipt actions execute through the canonical Accounting/Billing/Treasury APIs with the customer Party preselected.
+- [x] Tourism service action uses a customer-aware launcher that creates the service in the canonical Tourism Services owner.
+- [x] Customer 360 expanded to summary, full Billing finance, operations, activity shell, and comprehensive account view.
+- [x] Agent workspace rebuilt with WhatsApp, lifecycle, safe delete, and accounting-owner commission attention.
+- [x] Agent 360 expanded with assigned customers, referred leads, quotations, canonical commission claims, and direct owner-backed commission payment.
+- [x] Leads workspace rebuilt with canonical party fields, responsibility/referral selectors, lifecycle actions, loss reason, history, WhatsApp, quotation and conversion actions.
+- [x] Follow-up workspace rebuilt with lead/user selectors, due/overdue queues, completion, chained next follow-up, reschedule, cancel, correction and history.
+- [x] Quotations rebuilt with customer/lead selectors, prefill, multiple lines, revisions, approvals, reject/accept, Billing conversion, print/PDF/WhatsApp/share and evidence history.
+- [x] CRM dashboard expanded with pipeline, quotation, customer receivable/overdue and agent commission attention by currency.
+- [x] Superseded duplicate Customer/Agent/Lead/Follow-up/Agent360 UI implementations removed from active routing/source surfaces.
+- [ ] Complete atomic customer advance-refund workflow across Billing + Treasury, then enable `رد مقدم` as a real owner-backed action.
+- [ ] Resolve canonical Agent receivable/invoice/advance ownership. Current Billing/Treasury runtime contracts still exclude `AGENT`; do not enable agent receipt/invoice/advance buttons until the owner supports them correctly.
+- [ ] Resolve the generic attachment/document owner/API and wire Customer 360 documents/activity without adding CRM-owned attachment storage.
+- [ ] Complete Phase 1 implementation marker only after the three ownership gaps above are resolved or explicitly closed by an architectural decision.
 
 ## Phase 2 status
 
