@@ -14,11 +14,9 @@ test('reporting center exposes scoped financial operational saved-report and sch
  assert.match(page,/savedScope/);
  assert.match(page,/controlIssues/);
  assert.match(page,/openSaved/);
- assert.match(client,/operational-reporting\/saved-reports/);
- assert.match(client,/operational-reporting\/schedules/);
+ for(const endpoint of ['/operational-reporting/saved-reports','/operational-reporting/schedules','/accounting/reports/statements','/accounting/reports/aging','/accounting/reports/treasury','/accounting/reports/tax','/accounting/reports/program','/accounting/reports/supplier'])assert.ok(client.includes(endpoint),endpoint);
  assert.match(client,/managementControlApi\.overview/);
  assert.match(client,/accountingApi\.overview/);
- for(const endpoint of ['accounting\/reports\/statements','accounting\/reports\/aging','accounting\/reports\/treasury','accounting\/reports\/tax','accounting\/reports\/program','accounting\/reports\/supplier'])assert.match(client,new RegExp(endpoint));
  assert.match(client,/q\.set\('from'/);
  assert.match(client,/q\.set\('to'/);
  assert.match(client,/q\.set\('asOf'/);
