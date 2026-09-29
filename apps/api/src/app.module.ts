@@ -14,7 +14,7 @@ import { GeneralLedgerModule } from '@elhafez/general-ledger';
 import { FinancialControlsModule } from '@elhafez/financial-controls';
 import { TaxModule } from '@elhafez/tax';
 import { BillingSubledgersApplicationService, BillingSubledgersModule } from '@elhafez/billing-subledgers';
-import { TreasurySettlementModule } from '@elhafez/treasury-settlement';
+import { TreasurySettlementApplicationService, TreasurySettlementModule } from '@elhafez/treasury-settlement';
 import { PartyAccountingModule } from '@elhafez/party-accounting';
 import { CommissionReadApplicationService, ExpenseCommissionRecognitionModule } from '@elhafez/expense-commission-recognition';
 import { AssetsFinancingModule } from '@elhafez/assets-financing';
@@ -77,6 +77,7 @@ import { StandaloneServicesApplicationService } from '@elhafez/standalone-servic
 import { ServiceFulfillmentModule } from '@elhafez/service-fulfillment/nest';
 import { ServiceVouchersModule } from '@elhafez/service-vouchers/nest';
 import { TourismServicesController } from './tourism-services.controller.js';
+import { TourismServiceFinancialReadController } from './tourism-service-financial-read.controller.js';
 import { HajjUmrahProgramsApplicationService } from '@elhafez/hajj-umrah-programs';
 import { HajjUmrahReadinessApplicationService } from '@elhafez/hajj-umrah-readiness';
 import { FinancialReportingApplicationService } from '@elhafez/financial-reporting';
@@ -102,7 +103,7 @@ import { AdvancedAccountingController, TourismContractInventoryController } from
     ExpenseCommissionRecognitionModule, CostBudgetAccountingModule, AssetsFinancingModule, ProcurementFinanceModule, TourismContractInventoryModule,
     TourismFinanceOrchestrationModule, TourismProgramsModule, TourismItinerariesModule, TourismBookingsModule, StandaloneServicesModule, ServiceFulfillmentModule, ServiceVouchersModule, HajjUmrahSeasonsModule, HajjUmrahProgramsModule, HajjUmrahBookingsModule, HajjUmrahRoomingModule, HajjUmrahVisaOperationsModule, HajjUmrahTicketingModule, HajjUmrahTransportOperationsModule, HajjUmrahTripOperationsModule, HajjUmrahReadinessModule, FinancialReportingModule, SaasControlPlaneModule, Ac14MigrationModule,
   ],
-  controllers: [HealthController, UserNotificationsController, AdvancedAccountingController, TourismContractInventoryController, SaasOwnerController, PlatformOwnerOperationsController, SaasTenantController, AccountingWorkspaceController, SystemAdministrationController, CrmAgentFilesController, CrmCustomerFilesController, CrmFinancialOperationsController, CrmSalesReadModelController, SupplierIntelligenceReadModelController, HajjUmrahController, HajjUmrahOperationsController, HajjUmrahReadinessController, ManagementControlController, TourismServicesController, TourismOperationsController],
+  controllers: [HealthController, UserNotificationsController, AdvancedAccountingController, TourismContractInventoryController, SaasOwnerController, PlatformOwnerOperationsController, SaasTenantController, AccountingWorkspaceController, SystemAdministrationController, CrmAgentFilesController, CrmCustomerFilesController, CrmFinancialOperationsController, CrmSalesReadModelController, SupplierIntelligenceReadModelController, HajjUmrahController, HajjUmrahOperationsController, HajjUmrahReadinessController, ManagementControlController, TourismServicesController, TourismServiceFinancialReadController, TourismOperationsController],
   providers: [
     FinancialReportingEvidenceAdapter,
     { provide: APP_GUARD, useFactory: (saas:SaasControlPlaneApplicationService,platform:PlatformCoreApplicationService,operations:PlatformOperationsApplicationService) => new SaasSubscriptionGuard(saas,platform,operations), inject: [SaasControlPlaneApplicationService,PlatformCoreApplicationService,PlatformOperationsApplicationService] },
@@ -114,8 +115,16 @@ import { AdvancedAccountingController, TourismContractInventoryController } from
     },
     {
       provide: SupplierIntelligenceReadModelService,
-      useFactory: (suppliers: SupplierManagementApplicationService, evaluations: SupplierEvaluationApplicationService, disputes: SupplierDisputesApplicationService, procurement: ProcurementFinanceApplicationService, fulfillment: ProcurementFulfillmentApplicationService) => new SupplierIntelligenceReadModelService(suppliers,evaluations,disputes,procurement,fulfillment),
-      inject: [SupplierManagementApplicationService, SupplierEvaluationApplicationService, SupplierDisputesApplicationService, ProcurementFinanceApplicationService, ProcurementFulfillmentApplicationService],
+      useFactory: (
+        suppliers: SupplierManagementApplicationService,
+        evaluations: SupplierEvaluationApplicationService,
+        disputes: SupplierDisputesApplicationService,
+        procurement: ProcurementFinanceApplicationService,
+        fulfillment: ProcurementFulfillmentApplicationService,
+        billing: BillingSubledgersApplicationService,
+        treasury: TreasurySettlementApplicationService,
+      ) => new SupplierIntelligenceReadModelService(suppliers,evaluations,disputes,procurement,fulfillment,billing,treasury),
+      inject: [SupplierManagementApplicationService, SupplierEvaluationApplicationService, SupplierDisputesApplicationService, ProcurementFinanceApplicationService, ProcurementFulfillmentApplicationService, BillingSubledgersApplicationService, TreasurySettlementApplicationService],
     },
     {
       provide: CrmSalesReadModelService,
