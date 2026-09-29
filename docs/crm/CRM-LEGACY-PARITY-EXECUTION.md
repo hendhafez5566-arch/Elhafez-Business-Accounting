@@ -121,11 +121,18 @@ Run one comprehensive pass and fix every discovered defect before marking comple
 - [ ] Final legacy-vs-new button/icon/filter/action/workflow parity review.
 - [ ] Fix all failures and record final Phase 2 completion marker.
 
-Hosted verification progress:
-- Change-safety and engineering-integrity pass.
-- Prisma client generation passes.
-- Lint passes after explicit Nest DI import fixes.
-- Typecheck reached `apps/api` and exposed one intentional ownership mismatch: generic Accounting settlement accepted Billing's widened `AGENT` party kind while Treasury's generic settlement contract remains Customer/Supplier. The generic Accounting route now explicitly rejects Agent positions and routes them to the CRM financial workflow, preserving the canonical Agent orchestration boundary.
-- The required Accounting compatibility edit is now explicitly declared in the change-safety manifest as a protected path rather than bypassing governance. This commit triggers the next hosted verification pass.
+## Root-cause sweep before this verification
+
+Instead of triggering another run after each small failure, the branch was reviewed by failure class first:
+
+- Public Nest controller responses now have explicit portable return contracts rather than leaking inferred branded/private types.
+- Billing CRM receivable currency output and Commission read output now have explicit public return types.
+- Generic Accounting explicitly rejects Agent receivable settlement and leaves Agent settlement with the CRM Billing/Treasury orchestration boundary.
+- Platform entity-file persistence was moved out of the application service into an infrastructure repository boundary; raw SQL writes no longer live in application code.
+- Customer and Agent document upload controls now use the canonical shared `Input` primitive instead of raw HTML inputs, satisfying the UI architecture rule.
+- Change-safety manifest now includes the required Accounting compatibility edit and Platform file-repository files.
+- Earlier Engineering Integrity and Lint failures were fixed without `any`, lint suppression or duplicate implementation.
+
+This `[ci]` commit intentionally runs the next full hosted verification only after that static/root-cause sweep.
 
 The hourly continuation service must continue from this checklist. It must stay on `feature/crm-full-legacy-parity`, never modify `main`, never deploy Railway, and stop without starting another business section after Phase 2 is complete.
