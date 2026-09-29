@@ -8,14 +8,14 @@ import type { BillingSubledgersApplicationService } from '@elhafez/billing-suble
 import type { TreasurySettlementApplicationService } from '@elhafez/treasury-settlement';
 
 const zeroAmount=(value:string)=>/^0(?:\.0+)?$/.test(value.trim());
-type NamedRow = { id: string } & Record<string, unknown>;
-type SupplierDisputeRow = { id:string; title:string; severity:string; status:string; openedAt:string } & Record<string, unknown>;
-type SupplierHoldRow = { id:string; sourceType:string; sourceId:string; reason:string; createdAt:string } & Record<string, unknown>;
-type SupplierPurchaseOrderRow = { id:string; number:string } & Record<string, unknown>;
+type EvaluationRow = { id: string };
+type SupplierDisputeRow = { id:string; title:string; severity:string; status:string; openedAt:string };
+type SupplierHoldRow = { id:string; sourceType:string; sourceId:string; reason:string; createdAt:string };
+type SupplierPurchaseOrderRow = { id:string; number:string };
 
 export type SupplierIntelligenceOverview = {
   supplier: {
-    party: { id:string; displayName:string } & Record<string, unknown>;
+    party: { id:string; displayName:string };
     supplierCode: string;
     categories: readonly string[];
     status: string;
@@ -25,7 +25,7 @@ export type SupplierIntelligenceOverview = {
     contactPerson: unknown;
     notes: unknown;
   };
-  evaluation: { latest: NamedRow | undefined; history: readonly NamedRow[] };
+  evaluation: { latest: EvaluationRow | null; history: readonly EvaluationRow[] };
   procurementMetrics: Record<string, unknown>;
   purchaseOrders: readonly SupplierPurchaseOrderRow[];
   disputes: { open: readonly SupplierDisputeRow[]; history: readonly SupplierDisputeRow[] };
