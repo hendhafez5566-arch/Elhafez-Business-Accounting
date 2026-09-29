@@ -2,9 +2,6 @@ name: Procurement Tourism Hosted Verify
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - feature/procurement-tourism-full-legacy-parity
 
 concurrency:
   group: procurement-tourism-hosted-verify-${{ github.ref }}
@@ -12,7 +9,6 @@ concurrency:
 
 jobs:
   verify:
-    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[ci]')
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
