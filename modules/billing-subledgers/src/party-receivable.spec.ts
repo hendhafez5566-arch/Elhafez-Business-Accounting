@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { companyId, currencyCode, decimalAmount } from '@elhafez/contracts';
@@ -8,17 +7,36 @@ import { InMemoryBillingRepository } from './infrastructure/in-memory-billing.re
 
 const company=companyId('11111111-1111-4111-8111-111111111111');
 const amount=(value:string)=>decimalAmount(value);
+type TaxPort=ConstructorParameters<typeof BillingSubledgersApplicationService>[1];
+type FxPort=ConstructorParameters<typeof BillingSubledgersApplicationService>[2];
+type LedgerPort=ConstructorParameters<typeof BillingSubledgersApplicationService>[3];
+type Journal=Awaited<ReturnType<LedgerPort['post']>>;
+type PostingInput=Parameters<LedgerPort['post']>[0];
+
 function fixture(){
  const repository=new InMemoryBillingRepository();
- const journals:any[]=[];
- const tax={snapshotInvoiceLine:async()=>{throw new Error('tax snapshot not expected')}};
- const fx={
+ const journals:PostingInput[]=[];
+ const posted=new Map<string,Journal>();
+ const tax:TaxPort={snapshotInvoiceLine:async()=>{throw new Error('tax snapshot not expected')}};
+ const fx:FxPort={
   getBaseCurrency:async()=>({companyId:company,code:currencyCode('EGP'),precision:2,isBase:true,status:'ACTIVE' as const}),
   calculateSettlement:async()=>{throw new Error('foreign settlement not expected')},
  };
- const gl={post:async(input:any)=>{journals.push(input);return input;},reverse:async(_companyId:unknown,id:string)=>({id:'reverse:'+id})};
- const billing=new BillingSubledgersApplicationService(repository,tax as any,fx as any,gl as any);
- return{repository,journals,billing,party:new PartyReceivableApplicationService(repository,billing,fx as any)};
+ const gl:LedgerPort={
+  async post(input){
+   journals.push(input);
+   const journal:Journal={...input,kind:input.kind??'STANDARD',requestHash:`test:${input.id}`,lines:input.lines.map((line,index)=>({...line,id:`${input.id}:${index+1}`}))};
+   posted.set(journal.id,journal);
+   return journal;
+  },
+  async reverse(companyIdValue,journalId,postingDate,number){
+   const original=posted.get(journalId);if(!original)throw new Error(`journal not found: ${journalId}`);
+   const journal:Journal={id:`reverse:${journalId}`,companyId:companyIdValue,number,postingDate,kind:'REVERSAL',sourceType:'JOURNAL_REVERSAL',sourceId:journalId,requestHash:`reverse:${journalId}`,reversalOfId:journalId,lines:original.lines.map((line,index)=>({id:`reverse:${journalId}:${index+1}`,accountId:line.accountId,...(line.credit!==undefined?{debit:line.credit}:{}),...(line.debit!==undefined?{credit:line.debit}:{}),...(line.partyId?{partyId:line.partyId}:{}),...(line.foreignAmount?{foreignAmount:line.foreignAmount}:{}),...(line.foreignCurrency?{foreignCurrency:line.foreignCurrency}:{}),...(line.costCenterId?{costCenterId:line.costCenterId}:{})}))};
+   posted.set(journal.id,journal);return journal;
+  },
+ };
+ const billing=new BillingSubledgersApplicationService(repository,tax,fx,gl);
+ return{repository,journals,billing,party:new PartyReceivableApplicationService(repository,billing,fx)};
 }
 
 async function agentInvoice(f:ReturnType<typeof fixture>){
