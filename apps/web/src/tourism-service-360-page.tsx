@@ -27,7 +27,8 @@ function decimal(value:bigint){
   return negative?'-'+rendered:rendered;
 }
 const errorMessage=(error:unknown)=>error instanceof Error?error.message:'حدث خطأ غير متوقع';
-const statusLabel=(status:string)=>({DRAFT:'مسودة',CONFIRMING:'قيد التأكيد',CONFIRMED:'مؤكدة',CANCELLATION_REQUESTED:'طلب إلغاء',CANCELLED:'ملغاة',COMPLETED:'مكتملة',ACTIVE:'نشط'}[status]??status);
+const STATUS_LABELS:Record<string,string>={DRAFT:'مسودة',CONFIRMING:'قيد التأكيد',CONFIRMED:'مؤكدة',CANCELLATION_REQUESTED:'طلب إلغاء',CANCELLED:'ملغاة',COMPLETED:'مكتملة',ACTIVE:'نشط'};
+const statusLabel=(status:string)=>STATUS_LABELS[status]??status;
 const statusTone=(status:string):'success'|'warning'|'error'|'neutral'=>status==='CONFIRMED'||status==='COMPLETED'||status==='ACTIVE'?'success':status==='CANCELLED'?'error':status==='CONFIRMING'||status==='CANCELLATION_REQUESTED'?'warning':'neutral';
 
 export function TourismService360Page(){
