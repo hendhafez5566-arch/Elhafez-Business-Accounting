@@ -32,8 +32,8 @@
     "modules/operational-reporting/src/domain/operational-reporting.ts",
     "modules/operational-reporting/src/operational-reporting.spec.ts"
   ],
-  "protectedPaths": [],
-  "protectedReason": "",
+  "protectedPaths": ["apps/web/src/routes.tsx"],
+  "protectedReason": "Add one explicit management navigation route for the centralized Reports & Control output/due-alert center; no existing route is removed or repurposed.",
   "allowBreakingPublicApi": false,
   "publicApiBreakingReason": "",
   "testEvidence": [
