@@ -121,6 +121,10 @@ Run one comprehensive pass and fix every discovered defect before marking comple
 - [ ] Final legacy-vs-new button/icon/filter/action/workflow parity review.
 - [ ] Fix all failures and record final Phase 2 completion marker.
 
-Hosted verification progress: engineering integrity now passes. The next failure was four `consistent-type-imports` lint errors in the Customer/Agent file controllers; dependency injection imports were made explicit with `@Inject(...)`. This commit intentionally triggers the next hosted verification pass.
+Hosted verification progress:
+- Change-safety and engineering-integrity pass.
+- Prisma client generation passes.
+- Lint passes after explicit Nest DI import fixes.
+- Typecheck reached `apps/api` and exposed one intentional ownership mismatch: generic Accounting settlement accepted Billing's widened `AGENT` party kind while Treasury's generic settlement contract remains Customer/Supplier. The generic Accounting route now explicitly rejects Agent positions and routes them to the CRM financial workflow, preserving the canonical Agent orchestration boundary. This commit triggers verification of that narrowing and the remaining architecture/tests.
 
 The hourly continuation service must continue from this checklist. It must stay on `feature/crm-full-legacy-parity`, never modify `main`, never deploy Railway, and stop without starting another business section after Phase 2 is complete.
