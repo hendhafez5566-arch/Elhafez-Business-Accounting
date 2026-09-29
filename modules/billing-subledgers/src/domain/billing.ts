@@ -1,8 +1,8 @@
 import type { CompanyId, DecimalAmount } from '@elhafez/contracts';
 
-export type InvoiceType = 'CUSTOMER' | 'SUPPLIER' | 'OPENING_CUSTOMER_BALANCE';
+export type InvoiceType = 'CUSTOMER' | 'SUPPLIER' | 'AGENT' | 'OPENING_CUSTOMER_BALANCE';
 export type InvoiceStatus = 'DRAFT' | 'POSTING' | 'POSTED' | 'CANCELLING' | 'CANCELLED';
-export type PartyKind = 'CUSTOMER' | 'SUPPLIER';
+export type PartyKind = 'CUSTOMER' | 'SUPPLIER' | 'AGENT';
 
 export interface InvoiceLine {
   id: string;
