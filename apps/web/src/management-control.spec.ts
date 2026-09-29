@@ -19,3 +19,5 @@ test('client sends every supported work-center filter',async()=>{let path='';con
 test('executive and work-center routes render distinct page components',()=>{assert.match(renderToStaticMarkup(findRoute('/').element),/جارٍ تحميل/);assert.match(renderToStaticMarkup(findRoute('/management/exceptions').element),/جارٍ تحميل/);assert.notEqual(findRoute('/').element,findRoute('/management/exceptions').element);});
 
 test('both pages expose loading state while owner composition is pending',()=>{const api={overview:()=>new Promise<ManagementOverview>(()=>undefined)};assert.match(renderToStaticMarkup(createElement(ExecutiveDashboardPage,{api})),/جارٍ تحميل/);assert.match(renderToStaticMarkup(createElement(ManagementWorkCenterPage,{api})),/جارٍ تحميل/);});
+
+test('client omits empty filters and targets the canonical management-control endpoint',async()=>{let path='';const api=createManagementControlApi(async value=>{path=value;return empty;});await api.overview({domain:undefined,status:'',category:undefined});assert.equal(path,'/management-control/overview');});

@@ -7,9 +7,10 @@ export interface FiscalYearRow{id:string;startDate:string;endDate:string;status:
 export interface PeriodRow{id:string;fiscalYearId:string;startDate:string;endDate:string;status:'OPEN'|'CLOSED'}
 export interface JournalLineRow{id:string;accountId:string;debit?:string;credit?:string;partyId?:string;costCenterId?:string}
 export interface JournalRow{id:string;number:string;postingDate:string;kind:string;sourceType:string;sourceId:string;reversalOfId?:string;lines:readonly JournalLineRow[]}
-export interface InvoiceRow{id:string;branchId?:string;type:'CUSTOMER'|'SUPPLIER'|'OPENING_CUSTOMER_BALANCE';status:string;partyId:string;number:string;externalInvoiceNumber?:string;postingDate:string;dueDate?:string;currency:string;baseTotal:string;outstanding:string;controlAccountId:string}
+export interface InvoiceLineRow{id:string;accountId:string;amount:string;taxAmount?:string;taxCode?:string}
+export interface InvoiceRow{id:string;branchId?:string;type:'CUSTOMER'|'SUPPLIER'|'AGENT'|'OPENING_CUSTOMER_BALANCE';status:string;partyId:string;number:string;externalInvoiceNumber?:string;postingDate:string;dueDate?:string;currency:string;baseTotal:string;outstanding:string;controlAccountId:string;sourceType:string;sourceId:string;lines:readonly InvoiceLineRow[];createdAt:string}
 export interface TreasuryRow{id:string;code:string;name:string;type:'CASH'|'BANK';currency:string;glAccountId:string;active:boolean}
-export interface VoucherRow{id:string;branchId?:string;treasuryId:string;kind:string;partyId:string;number:string;postingDate:string;currency:string;amount:string;status:string}
+export interface VoucherRow{id:string;branchId?:string;treasuryId:string;kind:'RECEIPT'|'PAYMENT';partyKind:'CUSTOMER'|'SUPPLIER'|'AGENT'|'OWNER';partyId:string;number:string;postingDate:string;currency:string;amount:string;status:string;sourceType:string;sourceId:string;allocationIds:readonly string[];advanceId?:string;settlementId?:string;realizedFx?:string}
 export interface TaxPolicyRow{id:string;code:string;effectiveFrom:string;rate:string;outputAccountId:string;inputAccountId:string}
 export interface ApprovalPolicyRow{id:string;action:FinancialAction;threshold:string;active:boolean;forbidSelfApproval:boolean;requiredAuthority:string}
 export interface ApprovalRequestRow{id:string;branchId?:string;action:FinancialAction;sourceType:string;sourceId:string;requesterActorId:string;amount:string;status:'PENDING'|'APPROVED'|'REJECTED';requestedAt:string}
