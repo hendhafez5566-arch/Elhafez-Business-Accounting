@@ -80,6 +80,7 @@ import { ServiceVouchersModule } from '@elhafez/service-vouchers/nest';
 import { TourismServicesController } from './tourism-services.controller.js';
 import { TourismServiceFinancialReadController } from './tourism-service-financial-read.controller.js';
 import { TourismServiceFilesController } from './tourism-service-files.controller.js';
+import { TourismContractFilesController } from './tourism-contract-files.controller.js';
 import { TourismContractInventoryReadController } from './tourism-contract-inventory-read.controller.js';
 import { HajjUmrahProgramsApplicationService } from '@elhafez/hajj-umrah-programs';
 import { HajjUmrahReadinessApplicationService } from '@elhafez/hajj-umrah-readiness';
@@ -106,7 +107,7 @@ import { AdvancedAccountingController, TourismContractInventoryController } from
     ExpenseCommissionRecognitionModule, CostBudgetAccountingModule, AssetsFinancingModule, ProcurementFinanceModule, TourismContractInventoryModule,
     TourismFinanceOrchestrationModule, TourismProgramsModule, TourismItinerariesModule, TourismBookingsModule, StandaloneServicesModule, ServiceFulfillmentModule, ServiceVouchersModule, HajjUmrahSeasonsModule, HajjUmrahProgramsModule, HajjUmrahBookingsModule, HajjUmrahRoomingModule, HajjUmrahVisaOperationsModule, HajjUmrahTicketingModule, HajjUmrahTransportOperationsModule, HajjUmrahTripOperationsModule, HajjUmrahReadinessModule, FinancialReportingModule, SaasControlPlaneModule, Ac14MigrationModule,
   ],
-  controllers: [HealthController, UserNotificationsController, AdvancedAccountingController, TourismContractInventoryController, TourismContractInventoryReadController, SaasOwnerController, PlatformOwnerOperationsController, SaasTenantController, AccountingWorkspaceController, SystemAdministrationController, CrmAgentFilesController, CrmCustomerFilesController, SupplierFilesController, CrmFinancialOperationsController, CrmSalesReadModelController, SupplierIntelligenceReadModelController, HajjUmrahController, HajjUmrahOperationsController, HajjUmrahReadinessController, ManagementControlController, TourismServicesController, TourismServiceFinancialReadController, TourismServiceFilesController, TourismOperationsController],
+  controllers: [HealthController, UserNotificationsController, AdvancedAccountingController, TourismContractInventoryController, TourismContractInventoryReadController, TourismContractFilesController, SaasOwnerController, PlatformOwnerOperationsController, SaasTenantController, AccountingWorkspaceController, SystemAdministrationController, CrmAgentFilesController, CrmCustomerFilesController, SupplierFilesController, CrmFinancialOperationsController, CrmSalesReadModelController, SupplierIntelligenceReadModelController, HajjUmrahController, HajjUmrahOperationsController, HajjUmrahReadinessController, ManagementControlController, TourismServicesController, TourismServiceFinancialReadController, TourismServiceFilesController, TourismOperationsController],
   providers: [
     FinancialReportingEvidenceAdapter,
     { provide: APP_GUARD, useFactory: (saas:SaasControlPlaneApplicationService,platform:PlatformCoreApplicationService,operations:PlatformOperationsApplicationService) => new SaasSubscriptionGuard(saas,platform,operations), inject: [SaasControlPlaneApplicationService,PlatformCoreApplicationService,PlatformOperationsApplicationService] },
