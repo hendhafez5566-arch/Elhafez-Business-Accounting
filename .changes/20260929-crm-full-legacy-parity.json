@@ -14,6 +14,7 @@
     "billing-subledgers",
     "treasury-settlement",
     "expense-commission-recognition",
+    "financial-reporting",
     "tourism-services"
   ],
   "allowedPaths": [
@@ -28,6 +29,7 @@
     "apps/api/src/crm-sales-read-model.controller.ts",
     "apps/api/src/crm-sales-read-model.service.ts",
     "apps/api/src/cs03-final-crm-integration.spec.ts",
+    "apps/api/src/financial-reporting-evidence.adapter.ts",
     "apps/web/src/accounting-workspace-page.tsx",
     "apps/web/src/crm-360-parity-pages.tsx",
     "apps/web/src/crm-agent-documents-page.tsx",
@@ -71,7 +73,10 @@
     "modules/expense-commission-recognition/src/application/commission-read.repository.ts",
     "modules/expense-commission-recognition/src/expense-commission-recognition.module.ts",
     "modules/expense-commission-recognition/src/infrastructure/prisma-commission-read.repository.ts",
-    "modules/expense-commission-recognition/src/public/index.ts"
+    "modules/expense-commission-recognition/src/public/index.ts",
+    "modules/financial-reporting/src/application/financial-reporting.application-service.ts",
+    "modules/financial-reporting/src/domain/reporting.ts",
+    "modules/financial-reporting/src/financial-reporting.spec.ts"
   ],
   "protectedPaths": [
     ".github/workflows/crm-hosted-verify.yml",
@@ -80,7 +85,7 @@
     "apps/web/src/routes.tsx",
     "prisma/migrations/20260929004000_platform_entity_file_links/migration.sql"
   ],
-  "protectedReason": "Owner-approved CRM parity requires branch-scoped verification workflow wiring, composition-root and route registration, plus one additive Platform Core entity-file-link migration. Accounting workspace compatibility is narrowed only to reject AGENT receivables from its legacy Customer/Supplier settlement path so Agent settlement remains owned by the CRM Billing/Treasury orchestration. Entity-file persistence is implemented behind a Platform Core repository boundary so raw SQL remains infrastructure-only. The workflow performs verification only and contains no deployment step; the migration adds generic platform attachment linkage without moving CRM business truth.",
+  "protectedReason": "Owner-approved CRM parity requires branch-scoped verification workflow wiring, composition-root and route registration, plus one additive Platform Core entity-file-link migration. Accounting workspace compatibility is narrowed only to reject AGENT receivables from its legacy Customer/Supplier settlement path so Agent settlement remains owned by the CRM Billing/Treasury orchestration. Entity-file persistence is implemented behind a Platform Core repository boundary so raw SQL remains infrastructure-only. Financial Reporting is extended only to preserve the newly canonical AGENT receivable/advance identity so agent positions cannot leak into customer aging. The workflow performs verification only and contains no deployment step; the migration adds generic platform attachment linkage without moving CRM business truth.",
   "allowBreakingPublicApi": false,
   "publicApiBreakingReason": "",
   "testEvidence": [
@@ -88,6 +93,7 @@
     "apps/api/src/cs03-final-crm-integration.spec.ts",
     "apps/web/src/crm-core.spec.ts",
     "modules/billing-subledgers/src/party-receivable.spec.ts",
-    "modules/treasury-settlement/src/party-cash-movement.spec.ts"
+    "modules/treasury-settlement/src/party-cash-movement.spec.ts",
+    "modules/financial-reporting/src/financial-reporting.spec.ts"
   ]
 }
