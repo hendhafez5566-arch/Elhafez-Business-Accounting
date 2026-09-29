@@ -15,6 +15,17 @@ export interface CustomerReference { customer:{id:string;partyId:string;number:s
 export interface AgentReference { agent:{id:string;partyId:string;number:string;status:string};party:{id:string;displayName:string} }
 export interface TravelerReference { id:string;fullName:string;partyId:string|null;customerId:string|null;status:string }
 export interface SupplierReference { supplier:{id:string;partyId:string;supplierCode:string;status:string;approvalStatus:string};party:{id:string;displayName:string} }
+export interface ServiceFinancialInvoice {id:string;number:string;externalInvoiceNumber?:string;type:string;partyId:string;postingDate:string;dueDate?:string;currency:string;status:string;documentTotal:string;outstanding:string;sourceType:string;sourceId:string}
+export interface ServiceFinancialPurchaseOrder {id:string;number:string;supplierId:string;status:string;currency?:string;orderDate?:string;expectedDate?:string;lines:{id:string;itemReference:string;description?:string;orderedQuantity:string;receivedQuantity:string;invoicedQuantity:string;unitPrice?:string}[]}
+export interface ServiceFinancialView {
+ finance:{
+  reference:null|{status:string;revision:number;debtorPartyId:string;invoiceId?:string;allocationIds:readonly string[];purchaseOrderIds:readonly string[];commissionClaimId?:string};
+  snapshot:null|{id:string;version:number;category:ServiceCategory;currency:string;saleAmount:string;costAmount:string;status:string;supersedesId?:string;evidence:unknown;createdAt:string};
+ };
+ customerInvoice:ServiceFinancialInvoice|null;
+ supplierInvoices:ServiceFinancialInvoice[];
+ purchaseOrders:ServiceFinancialPurchaseOrder[];
+}
 const base='/tourism/services';
 export interface TourismCapabilities {view:boolean;manage:boolean;confirm:boolean;cancel:boolean;fulfill:boolean;voucher:boolean}
 export const tourismServicesApi={
@@ -27,6 +38,7 @@ export const tourismServicesApi={
  saveType:(input:Omit<ServiceType,'companyId'>)=>crmPost<ServiceType>(`${base}/types`,input),
  list:()=>crmGet<ServiceRow[]>(base),
  get:(id:string)=>crmGet<ServiceRecord>(`${base}/${encodeURIComponent(id)}`),
+ financials:(id:string)=>crmGet<ServiceFinancialView>(`${base}/${encodeURIComponent(id)}/financials`),
  create:(input:DraftInput)=>crmPost<ServiceRow>(base,input),
  update:(id:string,input:DraftInput&{expectedRevision:number})=>crmPatch<ServiceRow>(`${base}/${encodeURIComponent(id)}`,input),
  plan:(id:string,input:{expectedRevision:number;requests:SupplyRequest[];externalQuotes?:{requestId:string;supplierId:string;currency:string;unitCost:string;quoteReference:string}[]})=>crmPost<SupplyPlan>(`${base}/${encodeURIComponent(id)}/supply-plan`,input),
