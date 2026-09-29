@@ -45,6 +45,7 @@
     "apps/web/src/crm-service-launcher-page.tsx",
     "apps/web/src/crm-tourism-service-entry-page.tsx",
     "apps/web/src/crm-insights-pages.tsx",
+    "apps/web/src/cs03-final-crm-integration.spec.ts",
     "apps/web/src/quotation-pages.tsx",
     "apps/web/src/routes.tsx",
     "apps/web/src/tourism-services-page.tsx",
@@ -92,6 +93,7 @@
     "apps/api/src/crm-financial-operations.spec.ts",
     "apps/api/src/cs03-final-crm-integration.spec.ts",
     "apps/web/src/crm-core.spec.ts",
+    "apps/web/src/cs03-final-crm-integration.spec.ts",
     "modules/billing-subledgers/src/party-receivable.spec.ts",
     "modules/treasury-settlement/src/party-cash-movement.spec.ts",
     "modules/financial-reporting/src/financial-reporting.spec.ts"

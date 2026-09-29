@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { Agent360Page, CrmSalesDashboardPage, Customer360Page, TravelersPage } from './crm-insights-pages.js';
+import { Agent360Page } from './crm-agent-parity-pages.js';
+import { CrmSalesDashboardPage } from './crm-dashboard-parity-page.js';
+import { Customer360Page } from './crm-360-parity-pages.js';
+import { TravelersPage } from './crm-insights-pages.js';
 import { QuotationsPage } from './quotation-pages.js';
 import { findRoute, foundationRoutes } from './routes.js';
 
@@ -20,7 +23,7 @@ test('CS-03 CRM composition pages render Arabic-first operational surfaces witho
   const travelers=renderToStaticMarkup(createElement(TravelersPage));
   assert.match(dashboard,/جارٍ تحميل/);
   assert.match(customer,/ملف العميل 360°/);
-  assert.match(agent,/ملف الوكيل 360°/);
+  assert.match(agent,/ملف المندوب 360°/);
   assert.match(travelers,/إضافة مسافر/);
   assert.doesNotMatch(customer,/إنشاء قيد|تسجيل دفعة/);
   assert.doesNotMatch(agent,/صرف عمولة|تسجيل قيد/);
