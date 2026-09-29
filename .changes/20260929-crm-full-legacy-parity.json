@@ -19,6 +19,7 @@
   "allowedPaths": [
     ".changes/20260929-crm-full-legacy-parity.json",
     ".github/workflows/crm-hosted-verify.yml",
+    "apps/api/src/accounting-workspace.controller.ts",
     "apps/api/src/app.module.ts",
     "apps/api/src/crm-agent-files.controller.ts",
     "apps/api/src/crm-customer-files.controller.ts",
@@ -72,11 +73,12 @@
   ],
   "protectedPaths": [
     ".github/workflows/crm-hosted-verify.yml",
+    "apps/api/src/accounting-workspace.controller.ts",
     "apps/api/src/app.module.ts",
     "apps/web/src/routes.tsx",
     "prisma/migrations/20260929004000_platform_entity_file_links/migration.sql"
   ],
-  "protectedReason": "Owner-approved CRM parity requires branch-scoped verification workflow wiring, composition-root and route registration, plus one additive Platform Core entity-file-link migration. The workflow performs verification only and contains no deployment step; the migration adds generic platform attachment linkage without moving CRM business truth.",
+  "protectedReason": "Owner-approved CRM parity requires branch-scoped verification workflow wiring, composition-root and route registration, plus one additive Platform Core entity-file-link migration. Accounting workspace compatibility is narrowed only to reject AGENT receivables from its legacy Customer/Supplier settlement path so Agent settlement remains owned by the CRM Billing/Treasury orchestration. The workflow performs verification only and contains no deployment step; the migration adds generic platform attachment linkage without moving CRM business truth.",
   "allowBreakingPublicApi": false,
   "publicApiBreakingReason": "",
   "testEvidence": [
