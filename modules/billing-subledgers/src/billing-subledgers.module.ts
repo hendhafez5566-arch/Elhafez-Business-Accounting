@@ -7,6 +7,7 @@ import { PeriodControlModule } from '@elhafez/period-control';
 import { FinancialControlsModule } from '@elhafez/financial-controls';
 import { BILLING_REPOSITORY, type BillingRepository } from './application/billing.repository.js';
 import { BillingSubledgersApplicationService } from './application/billing-subledgers.application-service.js';
+import { PartyReceivableApplicationService } from './application/party-receivable.application-service.js';
 import { PrismaBillingRepository } from './infrastructure/prisma-billing.repository.js';
 
 import { HistoricalImportApplicationService } from './application/historical-import.application-service.js';
@@ -42,7 +43,12 @@ import { PrismaHistoricalImportRepository } from './infrastructure/prisma-histor
         GeneralLedgerApplicationService,
       ],
     },
+    {
+      provide: PartyReceivableApplicationService,
+      useFactory: (repository:BillingRepository,billing:BillingSubledgersApplicationService,fx:CurrencyFxApplicationService) => new PartyReceivableApplicationService(repository,billing,fx),
+      inject: [BILLING_REPOSITORY,BillingSubledgersApplicationService,CurrencyFxApplicationService],
+    },
   ],
-  exports: [HistoricalImportApplicationService, BillingSubledgersApplicationService],
+  exports: [HistoricalImportApplicationService, BillingSubledgersApplicationService, PartyReceivableApplicationService],
 })
 export class BillingSubledgersModule {}
