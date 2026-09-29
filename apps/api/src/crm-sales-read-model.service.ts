@@ -50,11 +50,11 @@ export class CrmSalesReadModelService {
     private readonly now: () => Date = () => new Date(),
   ) {}
 
-  private async customerFinancialPositions(context:ExecutionContext,partyId:string):Promise<FinancialPosition[]> {
+  private async partyFinancialPositions(context:ExecutionContext,partyId:string,kind:'CUSTOMER'|'AGENT'):Promise<FinancialPosition[]> {
     const today=this.now().toISOString().slice(0,10);
     const invoices=(await this.billing.listInvoices(context.companyId)).filter((invoice)=>
       invoice.partyId===partyId &&
-      (invoice.type==='CUSTOMER'||invoice.type==='OPENING_CUSTOMER_BALANCE') &&
+      (kind==='AGENT'?invoice.type==='AGENT':invoice.type==='CUSTOMER'||invoice.type==='OPENING_CUSTOMER_BALANCE') &&
       (invoice.branchId===undefined||invoice.branchId===context.branchId) &&
       (invoice.status==='POSTED'||invoice.status==='CANCELLED'),
     );
@@ -76,7 +76,7 @@ export class CrmSalesReadModelService {
   async customersWorkspace(context:ExecutionContext) {
     const customers=await this.customers.list(context);
     return Promise.all(customers.map(async(value)=>{
-      const financialPositions=await this.customerFinancialPositions(context,value.party.id);
+      const financialPositions=await this.partyFinancialPositions(context,value.party.id,'CUSTOMER');
       const openPositions=financialPositions.filter(position=>position.status==='POSTED'&&nonZero(position.outstanding));
       return {...value,financialSummaryByCurrency:summarizeFinancialPositions(financialPositions),openPositionCount:openPositions.length,overduePositionCount:openPositions.filter(position=>position.overdue).length,hasOutstanding:openPositions.length>0};
     }));
@@ -85,9 +85,10 @@ export class CrmSalesReadModelService {
   async agentsWorkspace(context:ExecutionContext) {
     const agents=await this.agents.list(context);
     return Promise.all(agents.map(async value=>{
-      const commissionPositions=await this.agentCommissionPositions(context,value.party.id);
+      const[commissionPositions,financialPositions]=await Promise.all([this.agentCommissionPositions(context,value.party.id),this.partyFinancialPositions(context,value.party.id,'AGENT')]);
       const pending=commissionPositions.filter(position=>['APPROVED','PARTIALLY_PAID'].includes(position.status)&&nonZero(position.outstanding));
-      return {...value,commissionSummaryByCurrency:summarizeCommissions(commissionPositions),pendingCommissionCount:pending.length,hasPendingCommission:pending.length>0};
+      const openPositions=financialPositions.filter(position=>position.status==='POSTED'&&nonZero(position.outstanding));
+      return {...value,commissionSummaryByCurrency:summarizeCommissions(commissionPositions),pendingCommissionCount:pending.length,hasPendingCommission:pending.length>0,financialSummaryByCurrency:summarizeFinancialPositions(financialPositions),openPositionCount:openPositions.length,overduePositionCount:openPositions.filter(position=>position.overdue).length,hasOutstanding:openPositions.length>0};
     }));
   }
 
@@ -98,7 +99,7 @@ export class CrmSalesReadModelService {
     const followups = (await Promise.all(leads.map((lead) => this.followups.forLead(context, lead.id)))).flat();
     const quotations = (await this.quotations.list(context)).filter((quote) => quote.customerId === id || (quote.sourceLeadId !== null && leadIds.has(quote.sourceLeadId)));
     const travelers = await this.travelers.list(context, { customerId: id });
-    const financialPositions = await this.customerFinancialPositions(context,customer.party.id);
+    const financialPositions = await this.partyFinancialPositions(context,customer.party.id,'CUSTOMER');
     const quotationLinkedFinancialPositions = await Promise.all(quotations.filter((quote) => quote.billingInvoiceId).map((quote) => this.billing.getOpenPosition(context.companyId, quote.billingInvoiceId!)));
     return {
       customer,
@@ -124,16 +125,20 @@ export class CrmSalesReadModelService {
       (quote.customerId !== null && customerIds.has(quote.customerId)) ||
       (quote.sourceLeadId !== null && leadIds.has(quote.sourceLeadId)),
     );
-    const commissionPositions=await this.agentCommissionPositions(context,agent.party.id);
-    return { agent, customers, leads, quotations, commissionPositions, commissionSummaryByCurrency:summarizeCommissions(commissionPositions),pendingCommissionPositions:commissionPositions.filter(position=>['APPROVED','PARTIALLY_PAID'].includes(position.status)&&nonZero(position.outstanding)) };
+    const[commissionPositions,financialPositions]=await Promise.all([this.agentCommissionPositions(context,agent.party.id),this.partyFinancialPositions(context,agent.party.id,'AGENT')]);
+    return { agent, customers, leads, quotations, financialPositions,financialSummaryByCurrency:summarizeFinancialPositions(financialPositions),overdueFinancialPositions:financialPositions.filter(position=>position.overdue),commissionPositions, commissionSummaryByCurrency:summarizeCommissions(commissionPositions),pendingCommissionPositions:commissionPositions.filter(position=>['APPROVED','PARTIALLY_PAID'].includes(position.status)&&nonZero(position.outstanding)) };
   }
 
   async dashboard(context: ExecutionContext) {
     const [customers, agents, leads, overdueFollowups, quotations, travelers, commissionClaims] = await Promise.all([
       this.customers.list(context), this.agents.list(context), this.leads.list(context), this.followups.overdue(context), this.quotations.list(context), this.travelers.list(context), this.commissions.listClaims(context.companyId),
     ]);
-    const customerFinancial=await Promise.all(customers.map(async value=>({customerId:value.customer.id,partyId:value.party.id,positions:await this.customerFinancialPositions(context,value.party.id)})));
+    const[customerFinancial,agentFinancial]=await Promise.all([
+      Promise.all(customers.map(async value=>({customerId:value.customer.id,partyId:value.party.id,positions:await this.partyFinancialPositions(context,value.party.id,'CUSTOMER')}))),
+      Promise.all(agents.map(async value=>({agentId:value.agent.id,partyId:value.party.id,positions:await this.partyFinancialPositions(context,value.party.id,'AGENT')}))),
+    ]);
     const openCustomerPositions=customerFinancial.flatMap(value=>value.positions.filter(position=>position.status==='POSTED'&&nonZero(position.outstanding)).map(position=>({...position,customerId:value.customerId})));
+    const openAgentPositions=agentFinancial.flatMap(value=>value.positions.filter(position=>position.status==='POSTED'&&nonZero(position.outstanding)).map(position=>({...position,agentId:value.agentId})));
     const commissionPositions=commissionClaims.filter(claim=>claim.branchId===undefined||claim.branchId===context.branchId).map(claim=>{const paid=claim.payments.filter(payment=>payment.status==='POSTED').reduce((total,payment)=>add(total,String(payment.claimAmountApplied)),'0');return{id:claim.id,agentPartyId:claim.agentPartyId,sourceType:claim.sourceType,sourceId:claim.sourceId,currency:claim.currency,amount:String(claim.amount),paid,outstanding:claim.status==='REVERSED'?'0':subtract(String(claim.amount),paid),status:claim.status} as CommissionPosition;});
     const pendingCommissions=commissionPositions.filter(position=>['APPROVED','PARTIALLY_PAID'].includes(position.status)&&nonZero(position.outstanding));
     const leadStages = Object.fromEntries(['NEW','CONTACTED','QUALIFIED','QUOTED','WON','LOST'].map((status)=>[status,leads.filter((lead)=>lead.status===status).length]));
@@ -145,16 +150,17 @@ export class CrmSalesReadModelService {
     const awaitingConversion=quotations.filter((quote)=>quote.status==='ACCEPTED'&&!quote.billingInvoiceId);
     const unresolvedCustomer=quotations.filter((quote)=>Boolean(quote.sourceLeadId)&&!quote.customerId);
     const expiringSoon=quotations.filter((quote)=>['DRAFT','SENT'].includes(quote.status)).filter((quote)=>{const revision=quote.revisions.find((item)=>item.id===quote.currentRevisionId);return Boolean(revision&&revision.validityDate>=today&&revision.validityDate<=soon);});
-    const customersWithOutstanding=new Set(openCustomerPositions.map(position=>position.customerId)).size;
-    const overdueReceivables=openCustomerPositions.filter(position=>position.overdue);
+    const customersWithOutstanding=new Set(openCustomerPositions.map(position=>position.customerId)).size,agentsWithOutstanding=new Set(openAgentPositions.map(position=>position.agentId)).size;
+    const overdueReceivables=openCustomerPositions.filter(position=>position.overdue),overdueAgentReceivables=openAgentPositions.filter(position=>position.overdue);
     return {
-      counts:{customers:customers.length,agents:agents.length,travelers:travelers.length,overdueFollowups:overdueFollowups.length,customersWithOutstanding,overdueReceivables:overdueReceivables.length,pendingCommissions:pendingCommissions.length},
+      counts:{customers:customers.length,agents:agents.length,travelers:travelers.length,overdueFollowups:overdueFollowups.length,customersWithOutstanding,overdueReceivables:overdueReceivables.length,agentsWithOutstanding,overdueAgentReceivables:overdueAgentReceivables.length,pendingCommissions:pendingCommissions.length},
       leadStages,
       quotationStatuses,
       quotationValueByCurrency,
       receivablesByCurrency:summarizeFinancialPositions(openCustomerPositions),
+      agentReceivablesByCurrency:summarizeFinancialPositions(openAgentPositions),
       commissionsByCurrency:summarizeCommissions(pendingCommissions),
-      attention:{overdueFollowups,overdueReceivables,pendingCommissions,awaitingApproval,awaitingConversion,unresolvedCustomer,expiringSoon},
+      attention:{overdueFollowups,overdueReceivables,overdueAgentReceivables,pendingCommissions,awaitingApproval,awaitingConversion,unresolvedCustomer,expiringSoon},
     };
   }
 }
