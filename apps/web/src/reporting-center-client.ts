@@ -2,7 +2,7 @@ import{crmGet,crmPatch,crmPost}from'./crm-core-client.js';
 import{accountingApi,type AccountingOverview,type ReportRow}from'./accounting-client.js';
 import{managementControlApi,type ManagementOverview}from'./management-control-client.js';
 
-export type ReportKey='EXECUTIVE_OVERVIEW'|'FINANCIAL_STATEMENTS'|'AR_AGING'|'AP_AGING'|'TREASURY'|'TAX'|'PROGRAM_PROFITABILITY'|'CRM_SALES'|'SUPPLIER_PROCUREMENT'|'HAJJ_UMRAH'|'EXCEPTIONS';
+export type ReportKey='EXECUTIVE_OVERVIEW'|'FINANCIAL_STATEMENTS'|'AR_AGING'|'AP_AGING'|'CUSTOMER_STATEMENT'|'SUPPLIER_STATEMENT'|'TREASURY'|'TAX'|'PROGRAM_PROFITABILITY'|'CRM_SALES'|'SUPPLIER_PROCUREMENT'|'HAJJ_UMRAH'|'EXCEPTIONS';
 export interface ReportScopeFilters{readonly from?:string;readonly to?:string;readonly asOf?:string}
 export interface SavedReport{readonly id:string;readonly name:string;readonly reportKey:ReportKey;readonly filters:Readonly<Record<string,unknown>>;readonly visibility:'PRIVATE'|'COMPANY';readonly active:boolean;readonly ownerActorId:string;readonly updatedAt:string}
 export interface ReportSchedule{readonly id:string;readonly savedReportId:string;readonly cadence:'DAILY'|'WEEKLY'|'MONTHLY';readonly hourUtc:number;readonly weekday:number|null;readonly dayOfMonth:number|null;readonly channel:'IN_APP'|'EMAIL';readonly recipient:string|null;readonly enabled:boolean;readonly updatedAt:string}
