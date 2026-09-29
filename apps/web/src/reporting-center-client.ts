@@ -12,7 +12,11 @@ export interface AgingReport{readonly side:'CUSTOMER'|'SUPPLIER'|'AGENT';readonl
 export interface CurrencyTotalsReport{readonly totals:readonly {readonly currency:string;readonly amount:string}[]}
 export interface ProgramAccountingReport{readonly programId:string;readonly byCurrency:readonly {readonly currency:string;readonly revenue:string;readonly cost:string;readonly profit:string;readonly costCenterIds?:readonly string[]}[]}
 export interface ProgramOption{readonly id:string;readonly source:'TOURISM'|'HAJJ_UMRAH';readonly code:string;readonly name:string;readonly status:string}
-export interface ReportingCenterData{readonly management:ManagementOverview;readonly accounting:AccountingOverview;readonly savedReports:readonly SavedReport[];readonly schedules:readonly ReportSchedule[]}
+export interface ReconciliationRunRow{readonly id:string;readonly branchId?:string;readonly type:string;readonly correlationId:string;readonly clean:boolean;readonly runAt:string}
+export interface CloseReadinessRow{readonly id:string;readonly branchId?:string;readonly correlationId:string;readonly ready:boolean;readonly blockers:readonly string[];readonly warnings:readonly string[];readonly evaluatedAt:string}
+export interface AuditTrailRow{readonly id:string;readonly actorId:string|null;readonly action:string;readonly resource:string;readonly entityId:string|null;readonly branchId:string|null;readonly metadata:Readonly<Record<string,unknown>>;readonly occurredAt:string}
+export interface FinancialControlHistory{readonly reconciliationRuns:readonly ReconciliationRunRow[];readonly closeReadinessRuns:readonly CloseReadinessRow[];readonly auditEntries:readonly AuditTrailRow[]}
+export interface ReportingCenterData{readonly management:ManagementOverview;readonly accounting:AccountingOverview;readonly financialHistory:FinancialControlHistory;readonly savedReports:readonly SavedReport[];readonly schedules:readonly ReportSchedule[]}
 export interface ReportingCenterClient{
  load():Promise<ReportingCenterData>;
  statements(filters?:ReportScopeFilters):Promise<ScopedStatements>;
@@ -31,7 +35,7 @@ function query(filters:ReportScopeFilters={}){const q=new URLSearchParams();if(f
 type TourismProgramRow={id:string;code:string;nameAr:string;status:string};
 type HajjProgramRow={id:string;code:string;arabicName:string;status:string};
 export class HttpReportingCenterClient implements ReportingCenterClient{
- async load(){const[management,accounting,savedReports,schedules]=await Promise.all([managementControlApi.overview(),accountingApi.overview(),crmGet<readonly SavedReport[]>('/operational-reporting/saved-reports'),crmGet<readonly ReportSchedule[]>('/operational-reporting/schedules')]);return{management,accounting,savedReports,schedules};}
+ async load(){const[management,accounting,financialHistory,savedReports,schedules]=await Promise.all([managementControlApi.overview(),accountingApi.overview(),crmGet<FinancialControlHistory>('/management-control/financial-history'),crmGet<readonly SavedReport[]>('/operational-reporting/saved-reports'),crmGet<readonly ReportSchedule[]>('/operational-reporting/schedules')]);return{management,accounting,financialHistory,savedReports,schedules};}
  async statements(filters={}){return crmGet<ScopedStatements>('/accounting/reports/statements'+query(filters));}
  async aging(side:'CUSTOMER'|'SUPPLIER'|'AGENT',filters={}){const suffix=query(filters);return crmGet<AgingReport>('/accounting/reports/aging?side='+side+(suffix?'&'+suffix.slice(1):''));}
  async treasury(filters={}){return crmGet<CurrencyTotalsReport>('/accounting/reports/treasury'+query(filters));}
