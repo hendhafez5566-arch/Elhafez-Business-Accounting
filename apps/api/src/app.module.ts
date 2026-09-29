@@ -7,7 +7,6 @@ import { CustomFieldsModule } from '@elhafez/custom-fields/nest';
 import { DocumentNumberingModule } from '@elhafez/document-numbering/nest';
 import { AutomationWorkflowModule } from '@elhafez/automation-workflow/nest';
 import { OperationalReportingModule } from '@elhafez/operational-reporting/nest';
-import { OperationalReportingApplicationService } from '@elhafez/operational-reporting';
 import { PlatformCoreApplicationService, PlatformCoreModule } from '@elhafez/platform-core';
 import { CurrencyFxModule } from '@elhafez/currency-fx';
 import { PeriodControlModule } from '@elhafez/period-control';
