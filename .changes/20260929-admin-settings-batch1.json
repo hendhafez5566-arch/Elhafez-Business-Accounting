@@ -1,0 +1,19 @@
+{
+  "id": "admin-settings-batch1-20260929",
+  "summary": "Complete Administration & Settings Batch 01 UX parity for users, roles, permissions, branches, and sessions by replacing raw security identifiers with canonical selector-driven workflows over the existing Platform Core and System Administration APIs, without introducing a parallel RBAC or authorization owner.",
+  "type": "feature",
+  "allowedModules": [
+    "platform-core"
+  ],
+  "allowedPaths": [
+    ".changes/20260929-admin-settings-batch1.json",
+    "apps/web/src/system-administration-page.tsx",
+    "apps/web/src/system-administration.spec.ts"
+  ],
+  "protectedPaths": [],
+  "protectedReason": "",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": "",
+  "unacceptedMigrationRepairs": [],
+  "unacceptedMigrationRepairReason": ""
+}
