@@ -14,7 +14,7 @@ import { GeneralLedgerModule } from '@elhafez/general-ledger';
 import { FinancialControlsModule } from '@elhafez/financial-controls';
 import { TaxModule } from '@elhafez/tax';
 import { BillingSubledgersApplicationService, BillingSubledgersModule } from '@elhafez/billing-subledgers';
-import { TreasurySettlementModule } from '@elhafez/treasury-settlement';
+import { TreasurySettlementApplicationService, TreasurySettlementModule } from '@elhafez/treasury-settlement';
 import { PartyAccountingModule } from '@elhafez/party-accounting';
 import { ExpenseCommissionRecognitionModule } from '@elhafez/expense-commission-recognition';
 import { AssetsFinancingModule } from '@elhafez/assets-financing';
@@ -111,8 +111,16 @@ import { AdvancedAccountingController, TourismContractInventoryController } from
     },
     {
       provide: SupplierIntelligenceReadModelService,
-      useFactory: (suppliers: SupplierManagementApplicationService, evaluations: SupplierEvaluationApplicationService, disputes: SupplierDisputesApplicationService, procurement: ProcurementFinanceApplicationService, fulfillment: ProcurementFulfillmentApplicationService) => new SupplierIntelligenceReadModelService(suppliers,evaluations,disputes,procurement,fulfillment),
-      inject: [SupplierManagementApplicationService, SupplierEvaluationApplicationService, SupplierDisputesApplicationService, ProcurementFinanceApplicationService, ProcurementFulfillmentApplicationService],
+      useFactory: (
+        suppliers: SupplierManagementApplicationService,
+        evaluations: SupplierEvaluationApplicationService,
+        disputes: SupplierDisputesApplicationService,
+        procurement: ProcurementFinanceApplicationService,
+        fulfillment: ProcurementFulfillmentApplicationService,
+        billing: BillingSubledgersApplicationService,
+        treasury: TreasurySettlementApplicationService,
+      ) => new SupplierIntelligenceReadModelService(suppliers,evaluations,disputes,procurement,fulfillment,billing,treasury),
+      inject: [SupplierManagementApplicationService, SupplierEvaluationApplicationService, SupplierDisputesApplicationService, ProcurementFinanceApplicationService, ProcurementFulfillmentApplicationService, BillingSubledgersApplicationService, TreasurySettlementApplicationService],
     },
     {
       provide: CrmSalesReadModelService,
