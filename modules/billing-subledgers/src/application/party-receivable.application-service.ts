@@ -26,7 +26,7 @@ export class PartyReceivableApplicationService{
   private readonly fx:Pick<CurrencyFxApplicationService,'getBaseCurrency'>,
  ){}
 
- async baseCurrency(companyId:CompanyId){return (await this.fx.getBaseCurrency(companyId)).code;}
+ async baseCurrency(companyId:CompanyId):Promise<string>{return String((await this.fx.getBaseCurrency(companyId)).code);}
 
  async listOpenInvoices(companyId:CompanyId,kind:ReceivablePartyKind,partyId:string,branchId?:string):Promise<Invoice[]>{
   return (await this.repo.invoices(companyId)).filter(invoice=>invoice.partyId===partyId&&receivableType(kind,invoice)&&invoice.status==='POSTED'&&units(invoice.outstanding)>0n&&(branchId===undefined||invoice.branchId===branchId));
