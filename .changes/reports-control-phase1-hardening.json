@@ -1,6 +1,6 @@
 {
   "id": "reports-control-phase1-hardening",
-  "summary": "Complete and harden the existing Reports & Control surfaces by validating work-center filters, preventing Hajj/Umrah readiness key collisions, completing financial/operational reporting views, surfacing canonical billing aging and financial control issues, improving saved-report workflows, and exposing scoped Financial Reporting reads without creating a second reporting owner.",
+  "summary": "Complete and harden the existing Reports & Control surfaces by validating work-center filters, preventing Hajj/Umrah readiness key collisions, completing financial/operational reporting views, surfacing financial control issues, improving saved-report workflows, and exposing real date-scoped Financial Reporting reads without creating a second reporting owner.",
   "type": "feature",
   "allowedModules": [],
   "allowedPaths": [
@@ -12,6 +12,7 @@
     "apps/api/src/management-control.service.ts",
     "apps/api/src/management-control.spec.ts",
     "apps/web/src/management-control.spec.ts",
+    "apps/web/src/reporting-center-client.ts",
     "apps/web/src/reporting-center-page.tsx",
     "apps/web/src/reporting-center.spec.ts"
   ],
