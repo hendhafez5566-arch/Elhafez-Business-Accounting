@@ -10,6 +10,7 @@ export interface TourismBookingInventorySelection{contractId:string;resourceType
 export interface TourismBookingConfirm{commandKey:string;category:'HOTEL'|'FLIGHT'|'TRANSPORT'|'VISA'|'OTHER';costCenterId:string;currency:string;grossAmount:string;discountAmount:string;postingDate:string;dueDate:string;invoiceNumber:string;inventories:TourismBookingInventorySelection[];approvalRequestId?:string}
 export interface TourismCustomerReference{customer:{id:string;partyId:string;number:string;status:string};party:{id:string;displayName:string}}
 export interface TourismTravelerReference{id:string;fullName:string;partyId:string|null;customerId:string|null;status:string}
+export interface TourismCostCenterReference{id:string;code:string;name:string;status:'ACTIVE'|'INACTIVE';parentId?:string|null}
 const enc=encodeURIComponent,base='/tourism';
 export const tourismOperationsApi={
  programs:()=>crmGet<TourismProgram[]>(base+'/programs'),
@@ -25,6 +26,7 @@ export const tourismOperationsApi={
  bookings:()=>crmGet<TourismBooking[]>(base+'/bookings'),
  customers:()=>crmGet<TourismCustomerReference[]>('/crm/customers?status=ACTIVE'),
  travelers:()=>crmGet<TourismTravelerReference[]>('/crm/travelers?status=ACTIVE'),
+ costCenters:()=>crmGet<TourismCostCenterReference[]>(base+'/references/cost-centers'),
  createBooking:(input:{code:string;programId:string;customerId:string;travelerIds:string[]})=>crmPost<TourismBooking>(base+'/bookings',input),
  confirmBooking:(id:string,input:TourismBookingConfirm)=>crmPost<TourismBooking>(base+'/bookings/'+enc(id)+'/confirm',input),
  cancelBooking:(id:string,input:{commandKey:string;postingDate:string})=>crmPost<TourismBooking>(base+'/bookings/'+enc(id)+'/cancel',input),
