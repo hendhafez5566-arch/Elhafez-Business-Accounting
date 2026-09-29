@@ -51,7 +51,8 @@ Reviewed directly from OLD:
 - `src/crm/party360.ts`;
 - `src/commercial/vendor-owner.ts` (confirmed intentionally disabled legacy Vendor Center shell; not a feature source to reproduce);
 - `src/commercial/pages.ts`;
-- `scripts/umrah-ui-parity-smoke.mjs`.
+- `scripts/umrah-ui-parity-smoke.mjs`;
+- latest OLD commit history including the PartyTransactions enhancement, which confirms legacy expectations for linked invoice/payment/PO transaction drill-down while preserving original-currency evidence.
 
 Important OLD behaviors retained as requirements, not copied as code:
 
@@ -75,16 +76,20 @@ Confirmed existing implementations that must be reused rather than rebuilt:
 
 ### Supplier / Procurement
 
-- `supplier-management` already owns supplier identity linkage, lifecycle, approval, categories, credit days, contact/notes, bank accounts, holds/history.
-- `SupplierIntelligenceReadModelService` already composes Supplier 360 information through public owners: supplier profile, evaluation history, dispute history, procurement economic metrics, fulfillment timing metrics, active holds.
-- `supplier-intelligence-page.tsx` already provides Arabic Supplier 360 evaluation/dispute workflows.
+- `supplier-management` owns supplier identity linkage, lifecycle, approval, categories, credit days, contact/notes, bank accounts, holds/history.
+- `SupplierIntelligenceReadModelService` composes Supplier 360 only through public owners. It now includes supplier profile, evaluation/dispute history, procurement metrics, branch-scoped PO history, and a separate permission-protected financial read model.
+- Supplier financial drill-down now reads Billing-owned supplier invoices/open positions and Treasury-owned vouchers, plus active Billing advances referenced by Treasury. No supplier balance/invoice/payment truth is stored in supplier modules or UI.
+- The financial endpoint is separate from general Supplier 360 and requires the existing `accountingFinanceRead` permission; lack of accounting permission does not block non-financial Supplier 360.
 - `procurement-sourcing` already implements PR → submit → approval/rejection → RFQ → supplier invitation → bids → deterministic quote comparison → award → PO creation through the canonical procurement owner.
-- `procurement-pages.tsx` already implements PO create/edit/approve/cancel, receipt evidence, receipt corrections, received-quantity-to-supplier-invoice conversion through Billing, and direct purchases through the accounting owner.
+- `procurement-pages.tsx` implements PO create/edit/approve/cancel, receipt evidence, receipt corrections, received-quantity-to-supplier-invoice conversion through Billing, and direct purchases through the accounting owner.
+- Purchase-return architecture decision: do **not** create a return table/service. An uninvoiced physical return is a reasoned `procurement-fulfillment` receipt correction that lowers received quantity while preserving immutable evidence; invoiced quantity must first be handled by Billing before received quantity can be reduced below invoiced quantity.
 
 ### Tourism / Services
 
 - `standalone-services` is the canonical standalone tourism-service owner.
-- Backend already has optimistic-revision `updateDraft`; this existed before this migration but was not exposed by the tourism UI.
+- Backend already had optimistic-revision `updateDraft`; migration work exposed it in the tourism UI.
+- Canonical customer/agent/traveler/supplier selectors now replace raw party-ID entry in the standalone tourism service workspace where public owner APIs exist.
+- Traveler selection maps through `traveler-management`; customer/agent/supplier selections use their canonical Party identities instead of duplicating identity data.
 - `tourism-services` workspace already uses service fulfillment, immutable vouchers, supply planning, supplier confirmation, delivery evidence, cancellation orchestration and durable finance integration.
 - Routes already separate standalone services, tourism programs, bookings, itineraries and contract inventory instead of creating a legacy monolith.
 
@@ -105,7 +110,7 @@ Status: `DONE` = implementation/reuse decision complete; `IN PROGRESS` = active 
 | Suspend/hold/reactivate | Existing supplier-management lifecycle | REUSE |
 | Unsafe hard delete | Do not reproduce. Linked supplier history remains retained; lifecycle controls stop new use | EXCLUDE |
 | Supplier banks | Existing supplier-management APIs | REUSE |
-| Supplier 360 | Existing Supplier Intelligence read model/page; continue literal parity review for documents/financial drill-down | IN PROGRESS |
+| Supplier 360 | Extended existing read model/page with PO history + permission-separated finance drill-down; documents still pending | IN PROGRESS |
 | Supplier evaluation | Existing `supplier-evaluation` | REUSE |
 | Supplier disputes | Existing `supplier-disputes` | REUSE |
 | PR/RFQ/bids/comparison/award | Existing `procurement-sourcing` | REUSE |
@@ -113,9 +118,11 @@ Status: `DONE` = implementation/reuse decision complete; `IN PROGRESS` = active 
 | Receiving/corrections | Existing `procurement-fulfillment` | REUSE |
 | Supplier invoice conversion | Existing Billing-owned flow from received PO quantity | REUSE |
 | Direct purchase | Existing Billing-backed flow | REUSE |
-| Supplier payable/balance/advance/payment/cheque | Must stay Billing/Treasury-owned; Supplier 360 composition parity still under review | IN PROGRESS |
+| Supplier payable/balance/invoice history | Billing public read API composed in Supplier 360, exact branch scoped | DONE |
+| Supplier payment/refund/voucher history | Treasury public read API composed in Supplier 360, exact branch scoped | DONE |
+| Supplier active advances | Billing owner read via Treasury-linked advance IDs; no duplicate advance store | DONE |
 | Shared attachments/documents | Must reuse Platform Core; literal UI parity still under review | IN PROGRESS |
-| Purchase returns | Canonical owner/available operation still being reviewed | IN PROGRESS |
+| Purchase returns | Canonical mapping decided: fulfillment correction for uninvoiced physical return; Billing-first for invoiced return | DONE decision; explicit UX pending |
 
 ### Tourism & Services
 
@@ -132,8 +139,8 @@ Status: `DONE` = implementation/reuse decision complete; `IN PROGRESS` = active 
 | Service cancellation with finance/fulfillment blockers | Existing orchestration | REUSE |
 | Service history/activity | Existing immutable history | REUSE |
 | Programs/bookings/itineraries/contracts inventory | Existing dedicated tourism owners/routes | REUSE; literal OLD UI parity continues |
-| Traveler linkage | Existing traveler owner; exact standalone-service selection UX still under review | IN PROGRESS |
-| Customer/supplier/agent pickers | Current standalone UI still exposes raw IDs in places; replace with canonical owner-backed selectors where public APIs permit | IN PROGRESS |
+| Traveler linkage | Canonical traveler selector wired into standalone-service UX | DONE for standalone service; other legacy workspaces still auditing |
+| Customer/supplier/agent pickers | Canonical owner-backed selectors replace raw IDs in standalone-service daily UX | DONE for standalone service; other workspaces still auditing |
 | Files/documents | Platform Core owner; integration parity under review | IN PROGRESS |
 | Refund/advances/collections/payments | Must remain Billing/Treasury/finance orchestration; exact available flows under review | IN PROGRESS |
 | Service 360 profitability/accounting drill-down | Must compose existing financial read models, not duplicate financial fields; under review | IN PROGRESS |
@@ -145,6 +152,12 @@ Status: `DONE` = implementation/reuse decision complete; `IN PROGRESS` = active 
 - `01bea2f` — exposed canonical standalone-service revision terms needed for draft editing in the web client types.
 - `f9e5a35` — added tourism draft editing plus service search/filter/sort using existing `updateDraft` API.
 - `678df06` — enriched supplier list lifecycle/contact UX with filters/sorting/loading states/WhatsApp/phone while retaining safe lifecycle behavior.
+- `73cfd8b` / `d75aea2` — replaced raw tourism customer/agent/traveler/supplier ID entry with canonical owner-backed selectors.
+- `1dfc715` — extended Supplier Intelligence read model with PO history and owner-backed financial composition.
+- `de77adf` — wired Billing/Treasury public services into Supplier Intelligence at the composition root.
+- `68c4975` — added accounting-read permission boundary for Supplier financial 360 endpoint.
+- `00596be` — aligned supplier read-model sanity coverage with the new owner integrations (not executed yet in Phase 1).
+- `e7e65c3` — added Supplier 360 purchase history, invoices/outstanding, payment/receipt vouchers, active advances, permission-aware finance state and loading state to the NEW UI.
 
 No commit above was made to `main`. No Railway/production deployment was performed.
 
@@ -160,20 +173,20 @@ Rules implemented:
 - manual `workflow_dispatch` is supported;
 - commands are change-safety, engineering-integrity, Prisma generate, lint, TypeScript, architecture check, tests and build.
 
-**The comprehensive workflow has NOT been run yet.** This is intentional because Phase 1 is not complete.
+**The comprehensive workflow has NOT been run yet.** This remains intentional because Phase 1 is incomplete.
 
 ## Phase 1 — Implementation
 
 **Status: IN PROGRESS**
 
-Next work must continue from here without redoing completed items:
+Continue from here without redoing completed items:
 
 1. Finish literal OLD supplier documents/party controls and OLD tourism forms/workflows inventory.
-2. Close supplier financial/document drill-down gaps only through Billing/Treasury/Platform Core public read models/APIs.
-3. Review purchase return capability and add/extend only its canonical owner if genuinely absent.
-4. Replace remaining raw party IDs in tourism daily UX with canonical customer/supplier/agent/traveler selectors where supported.
-5. Complete standalone service document/attachment and accounting/profitability 360 composition without duplicating truth.
-6. Audit tourism programs/bookings/itineraries/contract-inventory against legacy controls field-by-field.
+2. Wire supplier/shared documents only through the existing Platform Core file owner.
+3. Add explicit purchase-return UX over the existing immutable fulfillment-correction API; do not add a return table/service.
+4. Complete standalone service document/attachment and accounting/profitability 360 composition without duplicating truth.
+5. Audit tourism programs/bookings/itineraries/contract-inventory against legacy controls field-by-field.
+6. Review tourism refund/advance/collection/payment actions through existing Billing/Treasury/orchestration owners.
 7. Add only genuinely missing backend behavior to its canonical owner; no duplicate implementation.
 8. Keep updating this checkpoint and meaningful commits.
 
