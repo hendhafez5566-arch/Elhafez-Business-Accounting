@@ -26,14 +26,17 @@ export interface ManagementOverview {
   readonly items: readonly ManagementAttentionItem[];
 }
 
+/** مطابقة أكواد (status/category) غير حساسة لحالة الأحرف أو الفراغات الطرفية. */
+const sameCode = (left: string, right: string) => left.trim().toUpperCase() === right.trim().toUpperCase();
+
 export class WorkCenterApplicationService {
   compose(companyId: string, branchId: string, items: readonly ManagementAttentionItem[], summary: ManagementSummary, filter: WorkCenterFilter = {}, generatedAt = new Date().toISOString()): ManagementOverview {
     const scoped = items.filter((item) => item.companyId === companyId && (!item.branchId || item.branchId === branchId));
     const selected = scoped.filter((item) =>
       (!filter.domain || item.sourceDomain === filter.domain) &&
       (!filter.severity || item.severity === filter.severity) &&
-      (!filter.status || item.status === filter.status) &&
-      (!filter.category || item.category === filter.category) &&
+      (!filter.status || sameCode(item.status, filter.status)) &&
+      (!filter.category || sameCode(item.category, filter.category)) &&
       (!filter.from || Boolean(item.occurredAt && item.occurredAt >= filter.from)) &&
       (!filter.to || Boolean(item.occurredAt && item.occurredAt <= endOfDay(filter.to))),
     );
@@ -96,7 +99,11 @@ export class ManagementControlService {
   private async hajjAttention(context: ExecutionContext) {
     const programs = (await this.programs.list(context)).filter((program) => !['CLOSED', 'CANCELLED'].includes(program.status));
     const queues = await Promise.all(programs.map(async (program) => ({ program, items: await this.readiness.workQueue(context, program.id) })));
-    return { activePrograms: programs.length, items: queues.flatMap(({ program, items }) => items.map((row) => this.item(context, 'HAJJ_UMRAH', row.reference?.sourceType ?? 'READINESS', row.reference?.sourceId ?? row.key, `${program.code} — ${row.title}`, row.detail, row.priority, 'OPEN', row.category, '/hajj-umrah/readiness', row.dueAt))) };
+    return {
+      activePrograms: programs.length,
+      // عند غياب مرجع مصدر صريح، يُقيَّد مفتاح بند الجاهزية بمعرّف البرنامج حتى لا يتصادم sourceKey بين برنامجَين يحملان نفس مفتاح الجاهزية.
+      items: queues.flatMap(({ program, items }) => items.map((row) => this.item(context, 'HAJJ_UMRAH', row.reference?.sourceType ?? 'READINESS', row.reference?.sourceId ?? `${program.id}:${row.key}`, `${program.code} — ${row.title}`, row.detail, row.priority, 'OPEN', row.category, '/hajj-umrah/readiness', row.dueAt))),
+    };
   }
 
   private item(context: ExecutionContext, domain: ManagementDomain, type: string, id: string, title: string, summary: string, severity: AttentionSeverity, status: string, category: string, path: string, occurredAt?: string): ManagementAttentionItem {
