@@ -1,6 +1,6 @@
 {
   "id": "reports-control-phase1-hardening",
-  "summary": "Complete and harden the existing Reports & Control surfaces with validated work-center filters, scoped canonical financial reports, AR/AP aging, dynamic program profitability, branch-scoped reconciliation and close-readiness history, branch-aware platform audit trail, and reusable saved/scheduled report configuration without creating parallel owners.",
+  "summary": "Complete and harden the existing Reports & Control surfaces with validated work-center filters, scoped canonical financial reports, AR/AP aging, dynamic program profitability, customer and supplier statements from canonical Billing/Treasury owner data, branch-scoped reconciliation and close-readiness history, branch-aware platform audit trail, and reusable saved/scheduled report configuration without creating parallel owners.",
   "type": "feature",
   "allowedModules": ["operational-reporting", "financial-controls"],
   "allowedPaths": [
@@ -13,6 +13,7 @@
     "apps/api/src/management-control.controller.ts",
     "apps/api/src/management-control.service.ts",
     "apps/api/src/management-control.spec.ts",
+    "apps/web/src/accounting-client.ts",
     "apps/web/src/management-control.spec.ts",
     "apps/web/src/reporting-center-client.ts",
     "apps/web/src/reporting-center-page.tsx",
@@ -22,7 +23,9 @@
     "modules/financial-controls/src/infrastructure/in-memory-financial-controls.repository.ts",
     "modules/financial-controls/src/infrastructure/prisma-financial-controls.repository.ts",
     "modules/financial-controls/src/public/index.ts",
-    "modules/financial-controls/src/control-history.spec.ts"
+    "modules/financial-controls/src/control-history.spec.ts",
+    "modules/operational-reporting/src/domain/operational-reporting.ts",
+    "modules/operational-reporting/src/operational-reporting.spec.ts"
   ],
   "protectedPaths": [],
   "protectedReason": "",
