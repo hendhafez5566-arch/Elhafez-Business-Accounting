@@ -1,7 +1,7 @@
 import { Controller, Get, Headers, Param, Query, UnauthorizedException } from '@nestjs/common';
 import { executionContext, type ExecutionContext } from '@elhafez/contracts';
 import { PLATFORM_CORE_PERMISSIONS, PlatformCoreApplicationService } from '@elhafez/platform-core';
-import { SupplierIntelligenceReadModelService } from './supplier-intelligence-read-model.service.js';
+import { SupplierIntelligenceReadModelService, type SupplierIntelligenceOverview } from './supplier-intelligence-read-model.service.js';
 
 export const SUPPLIER_INTELLIGENCE_PERMISSIONS = Object.freeze({
   read: 'supplier.intelligence.read',
@@ -34,7 +34,7 @@ export class SupplierIntelligenceReadModelController {
     @Headers('x-company-id') companyId: string | undefined,
     @Headers('x-branch-id') branchId: string | undefined,
     @Param('supplierPartyId') supplierPartyId: string,
-  ) {
+  ): Promise<SupplierIntelligenceOverview> {
     const context = await this.context(authorization, companyId, branchId);
     await this.authorize(context, true);
     return this.service.overview(context, supplierPartyId);
