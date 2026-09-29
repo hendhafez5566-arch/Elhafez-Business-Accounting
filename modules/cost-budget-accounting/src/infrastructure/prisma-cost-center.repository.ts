@@ -53,6 +53,13 @@ export class PrismaCostCenterRepository implements CostCenterRepository {
     })) as CostCenter | undefined;
   }
 
+  async list(companyId: CompanyId): Promise<CostCenter[]> {
+    return (await this.db.cbaCostCenter.findMany({
+      where: { companyId },
+      orderBy: [{ code: 'asc' }, { name: 'asc' }],
+    })) as CostCenter[];
+  }
+
   async saveAssociation(value: ProgramCostCenterAssociation): Promise<void> {
     const center = await this.find(value.companyId, value.costCenterId);
     if (!center) {
