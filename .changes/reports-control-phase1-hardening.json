@@ -1,0 +1,22 @@
+{
+  "id": "reports-control-phase1-hardening",
+  "summary": "Harden the existing Management & Control work center by validating report filters, normalizing status/category matching, preventing Hajj/Umrah readiness key collisions, and adding targeted regression coverage without introducing new owners or routes.",
+  "type": "bugfix",
+  "allowedModules": [],
+  "allowedPaths": [
+    ".changes/reports-control-phase1-hardening.json",
+    "apps/api/src/management-control.controller.ts",
+    "apps/api/src/management-control.service.ts",
+    "apps/api/src/management-control.spec.ts",
+    "apps/web/src/management-control.spec.ts"
+  ],
+  "protectedPaths": [],
+  "protectedReason": "",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": "",
+  "testEvidence": [
+    "Draft PR CI affected workspace typecheck",
+    "Draft PR CI affected workspace tests",
+    "Architecture and lint checks"
+  ]
+}
