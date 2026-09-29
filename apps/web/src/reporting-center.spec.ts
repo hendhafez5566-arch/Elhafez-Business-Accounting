@@ -9,8 +9,13 @@ test('reporting center exposes financial operational saved-report and scheduling
   readFile(new URL('./reporting-center-client.ts',import.meta.url),'utf8'),
  ]);
  assert.ok(routes.includes('/management/reports'));
- for(const required of ['مركز التقارير','تقارير مالية','تقارير تشغيلية','التقارير المحفوظة والجدولة','طباعة / PDF','تصدير CSV لفتح Excel'])assert.match(page,new RegExp(required));
+ for(const required of ['مركز التقارير','تقارير مالية','تقارير تشغيلية','التقارير المحفوظة والجدولة','طباعة / PDF','تصدير CSV لفتح Excel','أعمار ديون العملاء','أعمار ديون الموردين','مشكلات الرقابة المالية','فتح'])assert.match(page,new RegExp(required));
  for(const forbidden of ['window.prompt','window.confirm','window.alert'])assert.ok(!page.includes(forbidden),forbidden+' must not be used');
+ assert.match(page,/OPENING_CUSTOMER_BALANCE/);
+ assert.match(page,/row\.outstanding/);
+ assert.match(page,/row\.dueDate/);
+ assert.match(page,/controlIssues/);
+ assert.match(page,/openSaved/);
  assert.match(client,/operational-reporting\/saved-reports/);
  assert.match(client,/operational-reporting\/schedules/);
  assert.match(client,/managementControlApi\.overview/);
