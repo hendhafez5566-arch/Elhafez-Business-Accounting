@@ -1,10 +1,11 @@
 import { Body, Controller, Delete, Get, Headers, Inject, Param, Post, UnauthorizedException } from '@nestjs/common';
 import { executionContext, type ExecutionContext } from '@elhafez/contracts';
-import { EntityFileLinksApplicationService, PlatformCoreApplicationService } from '@elhafez/platform-core';
+import { EntityFileLinksApplicationService, PlatformCoreApplicationService, type EntityFileLink, type StoredFile } from '@elhafez/platform-core';
 import { customerId, CustomerManagementApplicationService } from '@elhafez/customer-management';
 
 const ENTITY_TYPE='CUSTOMER';
 const REFERENCE_TYPE='PLATFORM_FILE';
+type FileContentResponse={metadata:StoredFile;contentBase64:string};
 
 @Controller('crm/customers/:customerId/files')
 export class CrmCustomerFilesController {
@@ -15,24 +16,24 @@ export class CrmCustomerFilesController {
   ){}
 
   @Get()
-  async list(@Headers('authorization') auth:string|undefined,@Headers('x-company-id') company:string|undefined,@Headers('x-branch-id') branch:string|undefined,@Param('customerId') rawId:string){
+  async list(@Headers('authorization') auth:string|undefined,@Headers('x-company-id') company:string|undefined,@Headers('x-branch-id') branch:string|undefined,@Param('customerId') rawId:string):Promise<EntityFileLink[]>{
     const context=await this.context(auth,company,branch),id=customerId(rawId);await this.customers.get(context,id);return this.files.list(context.companyId,ENTITY_TYPE,id);
   }
 
   @Get(':fileId')
-  async file(@Headers('authorization') auth:string|undefined,@Headers('x-company-id') company:string|undefined,@Headers('x-branch-id') branch:string|undefined,@Param('customerId') rawId:string,@Param('fileId') fileId:string){
+  async file(@Headers('authorization') auth:string|undefined,@Headers('x-company-id') company:string|undefined,@Headers('x-branch-id') branch:string|undefined,@Param('customerId') rawId:string,@Param('fileId') fileId:string):Promise<FileContentResponse>{
     const context=await this.context(auth,company,branch),id=customerId(rawId);await this.customers.get(context,id);const stored=await this.files.content(context.companyId,ENTITY_TYPE,id,fileId);return{metadata:stored.metadata,contentBase64:Buffer.from(stored.content).toString('base64')};
   }
 
   @Post()
-  async upload(@Headers('authorization') auth:string|undefined,@Headers('x-company-id') company:string|undefined,@Headers('x-branch-id') branch:string|undefined,@Param('customerId') rawId:string,@Body() input:{label?:string;contentType?:string;contentBase64?:string}){
+  async upload(@Headers('authorization') auth:string|undefined,@Headers('x-company-id') company:string|undefined,@Headers('x-branch-id') branch:string|undefined,@Param('customerId') rawId:string,@Body() input:{label?:string;contentType?:string;contentBase64?:string}):Promise<EntityFileLink>{
     const context=await this.context(auth,company,branch),id=customerId(rawId);await this.platform.authorize(context.actorId,context.companyId,'crm.customer.manage');await this.customers.requireActiveForIntegration(context,id);
     const content=decodeBase64(input.contentBase64);const link=await this.files.attach({companyId:context.companyId,entityType:ENTITY_TYPE,entityId:id,createdBy:context.actorId,label:input.label,contentType:input.contentType?.trim()||'application/octet-stream',content});
     try{await this.customers.registerReferenceForIntegration(context,id,REFERENCE_TYPE,link.fileId);return link;}catch(error){await this.files.detach(context.companyId,ENTITY_TYPE,id,link.fileId).catch(()=>undefined);throw error;}
   }
 
   @Delete(':fileId')
-  async remove(@Headers('authorization') auth:string|undefined,@Headers('x-company-id') company:string|undefined,@Headers('x-branch-id') branch:string|undefined,@Param('customerId') rawId:string,@Param('fileId') fileId:string){
+  async remove(@Headers('authorization') auth:string|undefined,@Headers('x-company-id') company:string|undefined,@Headers('x-branch-id') branch:string|undefined,@Param('customerId') rawId:string,@Param('fileId') fileId:string):Promise<{deleted:true}>{
     const context=await this.context(auth,company,branch),id=customerId(rawId);await this.platform.authorize(context.actorId,context.companyId,'crm.customer.manage');await this.customers.get(context,id);
     await this.customers.releaseReferenceForIntegration(context,id,REFERENCE_TYPE,fileId);
     try{await this.files.detach(context.companyId,ENTITY_TYPE,id,fileId);}catch(error){await this.customers.registerReferenceForIntegration(context,id,REFERENCE_TYPE,fileId).catch(()=>undefined);throw error;}return{deleted:true};
