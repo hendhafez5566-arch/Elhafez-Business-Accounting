@@ -5,10 +5,17 @@ import { supplierGet, supplierPost } from './supplier-client.js';
 type SupplierRow={supplier:{id:string;partyId:string;supplierCode:string;status:string;approvalStatus:string};party:{id:string;displayName:string};categories:string[]};
 type Evaluation={id:string;version:number;qualityScore:number;serviceScore:number;notes:string|null;evaluatedAt:string};
 type Dispute={id:string;severity:string;title:string;description:string;status:string;openedAt:string;resolvedAt:string|null;cancelledAt:string|null};
+type PurchaseOrder={id:string;number:string;status:string;orderDate?:string;expectedDate?:string;currency?:string;externalReference?:string;notes?:string;lines:{id:string;itemReference:string;description?:string;orderedQuantity:string;receivedQuantity:string;invoicedQuantity:string;unitPrice?:string}[]};
+type Financials={
+  invoices:{id:string;number:string;externalInvoiceNumber?:string;postingDate:string;dueDate?:string;currency:string;status:string;documentTotal:string;outstanding:string;sourceType:string;sourceId:string}[];
+  vouchers:{id:string;number:string;kind:string;postingDate:string;currency:string;amount:string;status:string;treasuryId:string;sourceType:string;sourceId:string;advanceId?:string}[];
+  activeAdvances:{id:string;amount:string;available:string;sourceType:string;sourceId:string;restrictionSourceType?:string;restrictionSourceId?:string}[];
+};
 type Overview={
   supplier:{party:{id:string;displayName:string};supplierCode:string;categories:string[];status:string;approvalStatus:string};
   evaluation:{latest:Evaluation|null;history:Evaluation[]};
   procurementMetrics:{poCount:number;cancelledPoCount:number;orderedQuantity:string;receivedQuantity:string;completionRatio:string;completedPoCount:number;fulfillmentCorrectionCount:number;onTimeCompletedCount:number;lateCompletedCount:number;unclassifiedTimingCount:number};
+  purchaseOrders:PurchaseOrder[];
   disputes:{open:Dispute[];history:Dispute[]};
   holds:{isHeld:boolean;active:{id:string;sourceType:string;sourceId:string;reason:string}[];criticalDisputeIds:string[]};
 };
@@ -19,10 +26,11 @@ const statusTone=(status:string):'success'|'warning'|'neutral'=>status==='ACTIVE
 const approvalLabel=(status:string)=>status==='APPROVED'?'معتمد':status==='PENDING'?'بانتظار الاعتماد':status==='REJECTED'?'مرفوض':status;
 const severityLabel=(value:string)=>value==='LOW'?'منخفض':value==='MEDIUM'?'متوسط':value==='HIGH'?'مرتفع':value==='CRITICAL'?'حرج':value;
 const disputeStatusLabel=(value:string)=>value==='OPEN'?'مفتوح':value==='RESOLVED'?'محلول':value==='CANCELLED'?'ملغي':value;
+const voucherKind=(value:string)=>value==='PAYMENT'?'سداد للمورد':value==='RECEIPT'?'تحصيل من المورد':value;
 
 export function SupplierIntelligencePage(){
-  const[q,setQ]=useState(''),[rows,setRows]=useState<SupplierRow[]>([]),[selected,setSelected]=useState<string|null>(null),[overview,setOverview]=useState<Overview|null>(null);
-  const[error,setError]=useState(''),[notice,setNotice]=useState('');
+  const[q,setQ]=useState(''),[rows,setRows]=useState<SupplierRow[]>([]),[selected,setSelected]=useState<string|null>(null),[overview,setOverview]=useState<Overview|null>(null),[financials,setFinancials]=useState<Financials|null>(null);
+  const[error,setError]=useState(''),[notice,setNotice]=useState(''),[financialWarning,setFinancialWarning]=useState(''),[loading,setLoading]=useState(false);
   const[evaluationOpen,setEvaluationOpen]=useState(false),[disputeOpen,setDisputeOpen]=useState(false),[action,setAction]=useState<{kind:'resolve'|'cancel'|'release';dispute:Dispute}|null>(null);
   const[quality,setQuality]=useState('5'),[service,setService]=useState('5'),[notes,setNotes]=useState('');
   const[severity,setSeverity]=useState('LOW'),[title,setTitle]=useState(''),[description,setDescription]=useState(''),[reason,setReason]=useState('');
@@ -34,8 +42,16 @@ export function SupplierIntelligencePage(){
   useEffect(()=>{void search();},[q]);
 
   async function load(supplierPartyId:string){
-    try{setSelected(supplierPartyId);setOverview(await supplierGet<Overview>('/supplier-intelligence/'+supplierPartyId+'/overview'));setError('');}
-    catch(e){setError(errorMessage(e));}
+    setSelected(supplierPartyId);setLoading(true);setFinancials(null);setFinancialWarning('');
+    const [base,finance]=await Promise.allSettled([
+      supplierGet<Overview>('/supplier-intelligence/'+supplierPartyId+'/overview'),
+      supplierGet<Financials>('/supplier-intelligence/'+supplierPartyId+'/financials'),
+    ]);
+    if(base.status==='fulfilled'){setOverview(base.value);setError('');}
+    else{setOverview(null);setError(errorMessage(base.reason));}
+    if(finance.status==='fulfilled')setFinancials(finance.value);
+    else setFinancialWarning('البيانات المالية غير متاحة بالصلاحيات الحالية أو تعذر تحميلها.');
+    setLoading(false);
   }
 
   async function addEvaluation(event:FormEvent){
@@ -76,7 +92,8 @@ export function SupplierIntelligencePage(){
         <td><Button onClick={()=>void load(row.party.id)}>ملف المورد 360°</Button></td>
       </tr>)}</DataGrid>:<EmptyState/>}
     </Card>
-    {overview&&<>
+    {loading&&<Card title="تحميل ملف المورد"><p role="status">جاري تحميل ملف المورد والبيانات المرتبطة…</p></Card>}
+    {overview&&!loading&&<>
       <Card title={'ملف المورد 360° — '+overview.supplier.party.displayName}>
         <p>الكود: {overview.supplier.supplierCode}</p>
         <p>التصنيفات: {overview.supplier.categories.join('، ')||'—'}</p>
@@ -87,6 +104,25 @@ export function SupplierIntelligencePage(){
         <DataGrid columns={['أوامر الشراء','ملغاة','المطلوب','المستلم','نسبة الإكمال','مكتملة','تصحيحات','في الموعد','متأخر','غير مصنف']}>
           <tr><td>{overview.procurementMetrics.poCount}</td><td>{overview.procurementMetrics.cancelledPoCount}</td><td>{overview.procurementMetrics.orderedQuantity}</td><td>{overview.procurementMetrics.receivedQuantity}</td><td>{overview.procurementMetrics.completionRatio}</td><td>{overview.procurementMetrics.completedPoCount}</td><td>{overview.procurementMetrics.fulfillmentCorrectionCount}</td><td>{overview.procurementMetrics.onTimeCompletedCount}</td><td>{overview.procurementMetrics.lateCompletedCount}</td><td>{overview.procurementMetrics.unclassifiedTimingCount}</td></tr>
         </DataGrid>
+      </Card>
+      <Card title="سجل أوامر الشراء">
+        {overview.purchaseOrders.length?<DataGrid columns={['الرقم','الحالة','التاريخ','المتوقع','العملة','المرجع','البنود']}>
+          {overview.purchaseOrders.map(po=><tr key={po.id}><td>{po.number}</td><td><Badge tone={po.status==='CANCELLED'?'warning':'neutral'}>{po.status}</Badge></td><td>{po.orderDate??'—'}</td><td>{po.expectedDate??'—'}</td><td>{po.currency??'—'}</td><td>{po.externalReference??'—'}</td><td>{po.lines.length}</td></tr>)}
+        </DataGrid>:<EmptyState title="لا توجد أوامر شراء لهذا المورد في الفرع الحالي"/>}
+      </Card>
+      <Card title="الحساب والمستحقات">
+        {financialWarning&&<p role="note">{financialWarning}</p>}
+        {financials?.invoices.length?<DataGrid columns={['الفاتورة','فاتورة المورد','التاريخ','الاستحقاق','العملة','الإجمالي','المتبقي','الحالة']}>
+          {financials.invoices.map(invoice=><tr key={invoice.id}><td>{invoice.number}</td><td>{invoice.externalInvoiceNumber??'—'}</td><td>{invoice.postingDate}</td><td>{invoice.dueDate??'—'}</td><td>{invoice.currency}</td><td>{invoice.documentTotal}</td><td>{invoice.outstanding}</td><td><Badge tone={invoice.status==='POSTED'?'success':'neutral'}>{invoice.status}</Badge></td></tr>)}
+        </DataGrid>:financials?<EmptyState title="لا توجد فواتير مورد في الفرع الحالي"/>:null}
+      </Card>
+      <Card title="المدفوعات ومقدمات المورد">
+        {financials?.vouchers.length?<DataGrid columns={['السند','النوع','التاريخ','العملة','القيمة','الحالة','الخزينة/البنك']}>
+          {financials.vouchers.map(voucher=><tr key={voucher.id}><td>{voucher.number}</td><td>{voucherKind(voucher.kind)}</td><td>{voucher.postingDate}</td><td>{voucher.currency}</td><td>{voucher.amount}</td><td><Badge tone={voucher.status==='POSTED'?'success':'neutral'}>{voucher.status}</Badge></td><td>{voucher.treasuryId}</td></tr>)}
+        </DataGrid>:financials?<EmptyState title="لا توجد حركة سداد أو تحصيل للمورد في الفرع الحالي"/>:null}
+        {financials?.activeAdvances.length?<><h3>المقدمات المتاحة</h3><DataGrid columns={['المقدم','القيمة الأصلية','المتاح','المصدر']}>
+          {financials.activeAdvances.map(advance=><tr key={advance.id}><td>{advance.id}</td><td>{advance.amount}</td><td>{advance.available}</td><td>{advance.sourceType}</td></tr>)}
+        </DataGrid></>:null}
       </Card>
       <Card title="التقييم">
         <Button onClick={()=>setEvaluationOpen(true)}>إضافة تقييم</Button>
