@@ -5,6 +5,7 @@ import { Customer360Page } from './crm-360-parity-pages.js';
 import { AgentsPage, Agent360Page } from './crm-agent-parity-pages.js';
 import { CrmSalesDashboardPage } from './crm-dashboard-parity-page.js';
 import { CrmFinancialActionPage } from './crm-financial-action-page.js';
+import { CrmCustomerDocumentsPage } from './crm-customer-documents-page.js';
 import { CrmAwareTourismServicesPage } from './crm-tourism-service-entry-page.js';
 import { TravelersPage } from './crm-insights-pages.js';
 import { QuotationsPage } from './quotation-pages.js';
@@ -68,6 +69,7 @@ export const foundationRoutes = defineRoutes(
   { id: 'crm-followups', path: '/crm/followups', label: 'المتابعات', group: 'المبيعات والعملاء CRM', icon: 'followup', element: <FollowupsPage /> },
   { id: 'crm-customers', path: '/crm/customers', label: 'العملاء', group: 'المبيعات والعملاء CRM', icon: 'customers', element: <CustomersPage /> },
   { id: 'crm-customer-360', path: '/crm/customer-360', label: 'ملف العميل 360°', group: 'المبيعات والعملاء CRM', icon: 'profile', navigation: false, element: <Customer360Page /> },
+  { id: 'crm-customer-documents', path: '/crm/customer-documents', label: 'مستندات العميل', group: 'المبيعات والعملاء CRM', icon: 'profile', navigation: false, element: <CrmCustomerDocumentsPage /> },
   { id: 'crm-financial-action', path: '/crm/financial-action', label: 'إجراء مالي للعميل', group: 'المبيعات والعملاء CRM', icon: 'analytics', navigation: false, element: <CrmFinancialActionPage /> },
   { id: 'crm-agents', path: '/crm/agents', label: 'المندوبون', group: 'المبيعات والعملاء CRM', icon: 'agents', element: <AgentsPage /> },
   { id: 'crm-agent-360', path: '/crm/agent-360', label: 'ملف المندوب 360°', group: 'المبيعات والعملاء CRM', icon: 'profile', navigation: false, element: <Agent360Page /> },
