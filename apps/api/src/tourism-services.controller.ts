@@ -56,12 +56,13 @@ export class TourismServicesController {
     }
     const travelerIds=this.travelerIds(input.details);
     const travelers=await Promise.all(travelerIds.map(id=>this.travelers.requireActiveForIntegration(context,travelerId(id))));
+    const beneficiaryPartyIds=input.beneficiaryPartyIds??[];
     for(const traveler of travelers){
       if(!traveler.partyId)throw new ContractValidationError('details.travelerIds','selected traveler has no canonical party linkage');
-      if(!input.beneficiaryPartyIds.includes(traveler.partyId))throw new ContractValidationError('beneficiaryPartyIds','must contain the canonical party for each selected traveler');
+      if(!beneficiaryPartyIds.includes(traveler.partyId))throw new ContractValidationError('beneficiaryPartyIds','must contain the canonical party for each selected traveler');
     }
-    const uniqueBeneficiaries=[...new Set(input.beneficiaryPartyIds)];
-    if(uniqueBeneficiaries.length!==input.beneficiaryPartyIds.length)throw new ContractValidationError('beneficiaryPartyIds','duplicate beneficiary parties are not allowed');
+    const uniqueBeneficiaries=[...new Set(beneficiaryPartyIds)];
+    if(uniqueBeneficiaries.length!==beneficiaryPartyIds.length)throw new ContractValidationError('beneficiaryPartyIds','duplicate beneficiary parties are not allowed');
   }
   @Get('capabilities')
   async capabilities(@Headers('authorization') auth?:string,@Headers('x-company-id') company?:string,@Headers('x-branch-id') branch?:string){
