@@ -137,10 +137,11 @@ The branch was reviewed by failure class rather than by repeatedly triggering CI
 - Financial Reporting now preserves `AGENT_RECEIVABLE` and `AGENT_ADVANCE` separately from Customer/Supplier positions, including dedicated Agent aging and regression coverage so Agent financial truth cannot leak into Customer aging.
 - Existing Billing consumers were reviewed for widened `AGENT` semantics: Party Accounting remains explicitly Customer/Supplier netting only; Expense/Commission recognition validates its expected Customer/Supplier positions; the generic Accounting settlement path explicitly rejects Agent and routes it to the CRM financial orchestration.
 - Treasury composition coverage was aligned with the canonical `PartyCashMovementApplicationService` export and now validates required public exports individually rather than freezing an obsolete exact export list.
+- The temporary hosted-runner smoke workflow passed and was then removed before final verification so it cannot pollute change-safety scope.
 - The hosted verification workflow remains non-deployment verification only. A temporary `[final-ci]` push gate is used for exactly this final verification commit; after completion it must return to manual-only `workflow_dispatch`.
 
 ## Exact continuation rule
 
 The hourly continuation service must continue this same task from the latest commit and this checkpoint. It must stay on `feature/crm-full-legacy-parity`, never modify `main`, never deploy Railway, never open a PR, and never start another business section. If the final hosted verification fails, inspect and fix the entire failure category before any second run. If it is green, complete the final legacy parity audit, mark Phase 2 complete, restore the hosted workflow to manual-only, and stop.
 
-Final hosted verification rerun triggered after closing the Treasury composition expectation failure class.
+Final hosted verification rerun triggered after removing the temporary smoke workflow that had been the only change-safety blocker.
