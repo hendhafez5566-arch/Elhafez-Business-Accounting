@@ -34,6 +34,7 @@ import { AccountSettingsPage } from './account-settings-page.js';
 import { NotificationCenterPage } from './notification-center-page.js';
 import { ApprovalCenterPage } from './approval-center-page.js';
 import { ReportingCenterPage } from './reporting-center-page.js';
+import { ReportingOutputCenterPage } from './reporting-output-center-page.js';
 import type { IconName } from './ui/icons.js';
 
 export interface AppRoute {
@@ -63,6 +64,7 @@ export const foundationRoutes = defineRoutes(
   { id: 'management-exceptions', path: '/management/exceptions', label: 'مركز العمل والاستثناءات', group: 'الإدارة والتحكم', icon: 'tasks', element: <ManagementWorkCenterPage /> },
   { id: 'management-approvals', path: '/management/approvals', label: 'مركز الموافقات', group: 'الإدارة والتحكم', icon: 'tasks', element: <ApprovalCenterPage /> },
   { id: 'management-reports', path: '/management/reports', label: 'مركز التقارير', group: 'الإدارة والتحكم', icon: 'analytics', element: <ReportingCenterPage /> },
+  { id: 'management-outputs', path: '/management/outputs', label: 'مركز المخرجات والاستحقاقات', group: 'الإدارة والتحكم', icon: 'analytics', element: <ReportingOutputCenterPage /> },
   { id: 'notification-center', path: '/notifications', label: 'الإشعارات', group: 'الإدارة والتحكم', icon: 'bell', element: <NotificationCenterPage /> },
   { id: 'system-administration', path: '/system-administration', label: 'إدارة النظام', group: 'إدارة النظام', icon: 'settings', element: <SystemAdministrationPage /> },
   { id: 'system-custom-fields', path: '/system-administration/custom-fields', label: 'الحقول المخصصة', group: 'إدارة النظام', icon: 'settings', element: <PlatformFoundationsPage initialTab="custom-fields" /> },
