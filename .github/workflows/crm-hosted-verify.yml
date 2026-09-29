@@ -2,6 +2,9 @@ name: CRM Hosted Verify
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - feature/crm-full-legacy-parity
 
 concurrency:
   group: crm-hosted-verify-${{ github.ref }}
@@ -9,6 +12,7 @@ concurrency:
 
 jobs:
   verify:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[final-ci]')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:

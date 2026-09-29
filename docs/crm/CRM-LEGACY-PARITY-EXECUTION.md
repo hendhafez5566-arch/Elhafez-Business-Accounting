@@ -103,36 +103,42 @@ Branch: `feature/crm-full-legacy-parity`
 - [x] Follow-up workspace rebuilt with lead/user selectors, due/overdue queues, completion, chained next follow-up, reschedule, cancel, correction and history.
 - [x] Quotations rebuilt with customer/lead selectors, prefill, multiple lines, revisions, approvals, reject/accept, Billing conversion, print/PDF/WhatsApp/share and evidence history.
 - [x] CRM dashboard expanded with pipeline, quotations, customer receivables/overdues, agent receivables/overdues and agent commissions by currency.
-- [x] Superseded duplicate Customer/Agent/Lead/Follow-up/Agent360 UI implementations removed from active routing/source surfaces.
+- [x] Superseded duplicate Customer/Agent/Lead/Follow-up/Agent360/Dashboard/Customer360 UI implementations removed from active routing/source surfaces.
 - [x] Phase 1 implementation marker complete. No change was made to `main`; no Railway deployment is part of this branch workflow.
 
-## Phase 2 status — STARTED
+## Phase 2 status — FINAL VERIFICATION READY
 
-Run one comprehensive pass and fix every discovered defect before marking complete:
+The root-cause static audit is complete. One comprehensive GitHub-hosted verification is now permitted. Do not run per-edit CI.
 
-- [ ] Build and TypeScript/typecheck.
-- [x] Change-safety / engineering-integrity checks reached and passed on GitHub-hosted verification.
-- [ ] Unit tests for touched canonical owners.
-- [ ] API/integration tests for Customer/Agent financial orchestration, compensation, approvals and documents.
-- [ ] UI route/form/action coverage for Customers, Agents, Leads, Follow-ups, Quotations, Dashboard and both 360 workspaces.
-- [ ] Permission/branch/company isolation checks.
-- [x] Prisma client generation succeeded on GitHub-hosted verification; migration validation still remains.
-- [ ] Safe-delete/reference-retention checks for Customer/Agent documents and cross-module links.
-- [ ] Final legacy-vs-new button/icon/filter/action/workflow parity review.
-- [ ] Fix all failures and record final Phase 2 completion marker.
+- [ ] Build and TypeScript/typecheck — pending final hosted verification result.
+- [x] Change-safety / engineering-integrity checks previously reached and passed on GitHub-hosted verification; final run will re-check the final branch state.
+- [ ] Unit tests for touched canonical owners — pending final hosted verification result.
+- [ ] API/integration tests for Customer/Agent financial orchestration, compensation, approvals and documents — pending final hosted verification result.
+- [ ] UI route/form/action coverage for Customers, Agents, Leads, Follow-ups, Quotations, Dashboard and both 360 workspaces — pending final hosted verification result.
+- [x] Permission/company/branch static audit completed for the CRM read/financial/file entry points and least-privilege assignee selector.
+- [x] Prisma client generation previously succeeded; final run will re-check the final branch state.
+- [x] Safe-delete/reference-retention static paths reviewed for Customer/Agent documents and cross-module links; runtime tests remain in the final suite.
+- [ ] Final legacy-vs-new button/icon/filter/action/workflow parity review — perform immediately after green verification.
+- [ ] Final Phase 2 completion marker — only after the hosted verification is green and final parity review is complete.
 
-## Root-cause sweep before this verification
+## Root-cause static audit completed before final verification
 
-Instead of triggering another run after each small failure, the branch was reviewed by failure class first:
+The branch was reviewed by failure class rather than by repeatedly triggering CI:
 
-- Public Nest controller responses now have explicit portable return contracts rather than leaking inferred branded/private types.
-- Billing CRM receivable currency output and Commission read output now have explicit public return types.
+- Public Nest controller responses use explicit portable return contracts rather than leaking inferred branded/private types.
+- Billing CRM receivable currency output and Commission read output use explicit public return types.
 - Generic Accounting explicitly rejects Agent receivable settlement and leaves Agent settlement with the CRM Billing/Treasury orchestration boundary.
-- Platform entity-file persistence was moved out of the application service into an infrastructure repository boundary; raw SQL writes no longer live in application code.
-- Customer and Agent document upload controls now use the canonical shared `Input` primitive instead of raw HTML inputs, satisfying the UI architecture rule.
-- Change-safety manifest now includes the required Accounting compatibility edit and Platform file-repository files.
-- Earlier Engineering Integrity and Lint failures were fixed without `any`, lint suppression or duplicate implementation.
+- Platform entity-file persistence lives behind an infrastructure repository boundary; raw SQL writes do not live in application code.
+- Customer and Agent document upload controls use the shared `Input` primitive rather than raw HTML controls.
+- Change-safety manifest includes the Accounting compatibility edit, Platform file repository files, and Financial Reporting Agent identity preservation.
+- Engineering-integrity issues were removed without `any`, lint suppression, TypeScript suppression, or disabled tests.
+- Duplicate Dashboard/Customer360/Agent360 implementations were removed; `crm-insights-pages.tsx` now retains only Traveler Management, whose identity/document history belongs to `traveler-management`.
+- The post-verification delta was narrowed to ten files and reviewed individually for UI architecture, declarations, permissions, imports and widened-contract fallout.
+- `crm/insights/assignees` exposes only active user id/display-name options under `crm.lead.read` plus branch access, avoiding a System Administration permission dependency for the lead selector.
+- Financial Reporting now preserves `AGENT_RECEIVABLE` and `AGENT_ADVANCE` separately from Customer/Supplier positions, including dedicated Agent aging and regression coverage so Agent financial truth cannot leak into Customer aging.
+- Existing Billing consumers were reviewed for widened `AGENT` semantics: Party Accounting remains explicitly Customer/Supplier netting only; Expense/Commission recognition validates its expected Customer/Supplier positions; the generic Accounting settlement path explicitly rejects Agent and routes it to the CRM financial orchestration.
+- The hosted verification workflow remains non-deployment verification only. A temporary `[final-ci]` push gate is used for exactly this final verification commit; after completion it must return to manual-only `workflow_dispatch`.
 
-This `[ci]` commit intentionally runs the next full hosted verification only after that static/root-cause sweep.
+## Exact continuation rule
 
-The hourly continuation service must continue from this checklist. It must stay on `feature/crm-full-legacy-parity`, never modify `main`, never deploy Railway, and stop without starting another business section after Phase 2 is complete.
+The hourly continuation service must continue this same task from the latest commit and this checkpoint. It must stay on `feature/crm-full-legacy-parity`, never modify `main`, never deploy Railway, never open a PR, and never start another business section. If the final hosted verification fails, inspect and fix the entire failure category before any second run. If it is green, complete the final legacy parity audit, mark Phase 2 complete, restore the hosted workflow to manual-only, and stop.
