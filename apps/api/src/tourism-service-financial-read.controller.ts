@@ -7,6 +7,14 @@ import { StandaloneServicesApplicationService } from '@elhafez/standalone-servic
 import { TourismFinanceReadApplicationService } from '@elhafez/tourism-finance-orchestration';
 import { TOURISM_SERVICE_PERMISSIONS } from './tourism-services.controller.js';
 
+type TourismServiceInvoicePosition = Record<string, unknown>;
+export type TourismServiceFinancialReadView = {
+  finance: unknown;
+  customerInvoice: TourismServiceInvoicePosition | null;
+  supplierInvoices: TourismServiceInvoicePosition[];
+  purchaseOrders: Record<string, unknown>[];
+};
+
 @Controller('tourism/services')
 export class TourismServiceFinancialReadController {
   static readonly runtimeDependencies = [
@@ -31,7 +39,7 @@ export class TourismServiceFinancialReadController {
     @Headers('x-company-id') companyId: string | undefined,
     @Headers('x-branch-id') branchId: string | undefined,
     @Param('id') serviceId: string,
-  ) {
+  ): Promise<TourismServiceFinancialReadView> {
     const context = await this.context(authorization, companyId, branchId);
     const source = await this.services.getService(context.companyId, serviceId);
     if (source.service.branchId !== context.branchId) throw new UnauthorizedException('service outside branch');
@@ -65,7 +73,7 @@ export class TourismServiceFinancialReadController {
     return {
       finance,
       customerInvoice,
-      supplierInvoices: supplierInvoices.filter((item): item is NonNullable<typeof item> => Boolean(item)),
+      supplierInvoices: supplierInvoices.filter((item): item is TourismServiceInvoicePosition => Boolean(item)),
       purchaseOrders: purchaseOrders.map((po) => ({
         id: po.id,
         number: po.number,
@@ -91,7 +99,7 @@ export class TourismServiceFinancialReadController {
     allInvoices: Awaited<ReturnType<BillingSubledgersApplicationService['listInvoices']>>,
     context: ExecutionContext,
     invoiceId: string,
-  ) {
+  ): Promise<TourismServiceInvoicePosition | null> {
     const invoice = allInvoices.find((item) => item.id === invoiceId && item.branchId === context.branchId);
     if (!invoice) return null;
     const position = await this.billing.getOpenPosition(context.companyId, invoice.id);
