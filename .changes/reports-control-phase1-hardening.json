@@ -16,7 +16,13 @@
     "apps/web/src/management-control.spec.ts",
     "apps/web/src/reporting-center-client.ts",
     "apps/web/src/reporting-center-page.tsx",
-    "apps/web/src/reporting-center.spec.ts"
+    "apps/web/src/reporting-center.spec.ts",
+    "modules/financial-controls/src/application/financial-controls.application-service.ts",
+    "modules/financial-controls/src/application/financial-controls.repository.ts",
+    "modules/financial-controls/src/infrastructure/in-memory-financial-controls.repository.ts",
+    "modules/financial-controls/src/infrastructure/prisma-financial-controls.repository.ts",
+    "modules/financial-controls/src/public/index.ts",
+    "modules/financial-controls/src/control-history.spec.ts"
   ],
   "protectedPaths": [],
   "protectedReason": "",
