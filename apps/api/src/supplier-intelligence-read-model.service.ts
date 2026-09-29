@@ -9,6 +9,25 @@ import type { TreasurySettlementApplicationService } from '@elhafez/treasury-set
 
 const zeroAmount=(value:string)=>/^0(?:\.0+)?$/.test(value.trim());
 
+export type SupplierIntelligenceOverview = {
+  supplier: {
+    party: unknown;
+    supplierCode: unknown;
+    categories: unknown;
+    status: unknown;
+    approvalStatus: unknown;
+    defaultCurrency: unknown;
+    creditDays: unknown;
+    contactPerson: unknown;
+    notes: unknown;
+  };
+  evaluation: { latest: unknown; history: readonly unknown[] };
+  procurementMetrics: Record<string, unknown>;
+  purchaseOrders: readonly Record<string, unknown>[];
+  disputes: { open: readonly unknown[]; history: readonly unknown[] };
+  holds: { isHeld: boolean; active: readonly Record<string, unknown>[]; criticalDisputeIds: readonly string[] };
+};
+
 export class SupplierIntelligenceReadModelService {
   constructor(
     private readonly suppliers: Pick<SupplierManagementApplicationService, 'listForIntegration' | 'supplierViewForIntegration' | 'holdStateForIntegration'>,
@@ -22,7 +41,7 @@ export class SupplierIntelligenceReadModelService {
 
   async searchSuppliers(context: ExecutionContext, query?: string) { return this.suppliers.listForIntegration(context, query); }
 
-  async overview(context: ExecutionContext, supplierPartyId: string) {
+  async overview(context: ExecutionContext, supplierPartyId: string): Promise<SupplierIntelligenceOverview> {
     const [supplier, latestEvaluation, evaluationHistory, disputeHistory, economic, timing, holdState, purchaseOrders] = await Promise.all([
       this.suppliers.supplierViewForIntegration(context, supplierPartyId), this.evaluations.latestForIntegration(context, supplierPartyId), this.evaluations.listForIntegration(context, supplierPartyId), this.disputes.listForIntegration(context, supplierPartyId), this.procurement.supplierPerformanceMetricsForIntegration(context.companyId, context.branchId, supplierPartyId), this.fulfillment.supplierTimingMetricsForIntegration(context.companyId, context.branchId, supplierPartyId), this.suppliers.holdStateForIntegration(context, supplierPartyId), this.procurement.purchaseOrdersForSupplierMetricsForIntegration(context.companyId, context.branchId, supplierPartyId),
     ]);
@@ -54,5 +73,4 @@ export class SupplierIntelligenceReadModelService {
   }
 }
 
-export type SupplierIntelligenceOverview = Awaited<ReturnType<SupplierIntelligenceReadModelService['overview']>>;
 export type SupplierFinancialOverview = Awaited<ReturnType<SupplierIntelligenceReadModelService['financials']>>;
