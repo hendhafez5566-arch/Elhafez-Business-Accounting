@@ -8,24 +8,28 @@ import type { BillingSubledgersApplicationService } from '@elhafez/billing-suble
 import type { TreasurySettlementApplicationService } from '@elhafez/treasury-settlement';
 
 const zeroAmount=(value:string)=>/^0(?:\.0+)?$/.test(value.trim());
+type NamedRow = { id: string } & Record<string, unknown>;
+type SupplierDisputeRow = { id:string; title:string; severity:string; status:string; openedAt:string } & Record<string, unknown>;
+type SupplierHoldRow = { id:string; sourceType:string; sourceId:string; reason:string; createdAt:string } & Record<string, unknown>;
+type SupplierPurchaseOrderRow = { id:string; number:string } & Record<string, unknown>;
 
 export type SupplierIntelligenceOverview = {
   supplier: {
-    party: unknown;
-    supplierCode: unknown;
-    categories: unknown;
-    status: unknown;
-    approvalStatus: unknown;
+    party: { id:string; displayName:string } & Record<string, unknown>;
+    supplierCode: string;
+    categories: readonly string[];
+    status: string;
+    approvalStatus: string;
     defaultCurrency: unknown;
     creditDays: unknown;
     contactPerson: unknown;
     notes: unknown;
   };
-  evaluation: { latest: unknown; history: readonly unknown[] };
+  evaluation: { latest: NamedRow | undefined; history: readonly NamedRow[] };
   procurementMetrics: Record<string, unknown>;
-  purchaseOrders: readonly Record<string, unknown>[];
-  disputes: { open: readonly unknown[]; history: readonly unknown[] };
-  holds: { isHeld: boolean; active: readonly Record<string, unknown>[]; criticalDisputeIds: readonly string[] };
+  purchaseOrders: readonly SupplierPurchaseOrderRow[];
+  disputes: { open: readonly SupplierDisputeRow[]; history: readonly SupplierDisputeRow[] };
+  holds: { isHeld: boolean; active: readonly SupplierHoldRow[]; criticalDisputeIds: readonly string[] };
 };
 
 export class SupplierIntelligenceReadModelService {
