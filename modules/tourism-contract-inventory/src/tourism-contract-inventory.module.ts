@@ -7,15 +7,21 @@ import {
 import { ProcurementFinanceApplicationService } from '@elhafez/procurement-finance';
 import { ProcurementFinanceModule } from '@elhafez/procurement-finance/nest';
 import { TourismContractInventoryApplicationServiceImpl } from './application/tourism-contract-inventory.application-service.impl.js';
+import { TourismContractInventoryReadApplicationService } from './application/tourism-contract-inventory-read.application-service.js';
 import type {
   CostEffectPort,
   ProcurementPort,
 } from './application/inventory.application-service.js';
 import { PrismaTourismInventoryRepository } from './infrastructure/prisma-inventory.repository.js';
+import { PrismaTourismInventoryReadRepository } from './infrastructure/prisma-inventory-read.repository.js';
 import {
   TOURISM_INVENTORY_REPOSITORY,
   type TourismInventoryRepository,
 } from './infrastructure/inventory.repository.js';
+import {
+  TOURISM_INVENTORY_READ_REPOSITORY,
+  type TourismInventoryReadRepository,
+} from './application/inventory-read.repository.js';
 
 export const TOURISM_CONTRACT_INVENTORY_SERVICE = Symbol(
   'TOURISM_CONTRACT_INVENTORY_SERVICE',
@@ -78,6 +84,16 @@ import { PrismaHistoricalImportRepository } from './infrastructure/prisma-histor
       inject: [PrismaClient],
     },
     {
+      provide: TOURISM_INVENTORY_READ_REPOSITORY,
+      useFactory: (prisma: PrismaClient) => new PrismaTourismInventoryReadRepository(prisma),
+      inject: [PrismaClient],
+    },
+    {
+      provide: TourismContractInventoryReadApplicationService,
+      useFactory: (repository: TourismInventoryReadRepository) => new TourismContractInventoryReadApplicationService(repository),
+      inject: [TOURISM_INVENTORY_READ_REPOSITORY],
+    },
+    {
       provide: TOURISM_CONTRACT_INVENTORY_SERVICE,
       useFactory: (
         repository: TourismInventoryRepository,
@@ -96,6 +112,6 @@ import { PrismaHistoricalImportRepository } from './infrastructure/prisma-histor
       ],
     },
   ],
-  exports: [HistoricalImportApplicationService, TOURISM_CONTRACT_INVENTORY_SERVICE],
+  exports: [HistoricalImportApplicationService, TourismContractInventoryReadApplicationService, TOURISM_CONTRACT_INVENTORY_SERVICE],
 })
 export class TourismContractInventoryModule {}
