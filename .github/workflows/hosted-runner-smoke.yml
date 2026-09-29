@@ -18,3 +18,5 @@ jobs:
           echo "GitHub-hosted runner is available"
           node --version
           echo "SMOKE_TEST=PASS"
+
+# reassurance trigger: lightweight hosted-runner availability check only
