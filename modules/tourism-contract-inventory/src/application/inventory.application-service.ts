@@ -27,6 +27,7 @@ export interface CreateTourismContractInput extends BaseInput {
   readonly supplierId?: string;
   readonly effectiveFrom: string;
   readonly effectiveTo: string;
+  readonly terms?: Record<string, unknown>;
 }
 
 export interface AmendContractInput extends BaseInput {
@@ -181,73 +182,33 @@ export interface AllocationResult {
 
 export interface ReleaseResult {
   readonly success: boolean;
-  readonly blockerEvidence?: string;
-  readonly releasedQuantity: DecimalAmount;
-}
-
-export interface IdempotencyCheckResult {
-  readonly exists: boolean;
-  readonly priorResult?: Record<string, unknown>;
-}
-
-export interface CostEffectPort {
-  recordAllocationAdjustment(input: {
-    companyId: CompanyId;
-    effectId: string;
-    program: SourceReference;
-    allocationId: string;
-    previousQuantity: DecimalAmount;
-    newQuantity: DecimalAmount;
-    costAmount: DecimalAmount;
-    postingDate: string;
-  }): Promise<{ id: string }>;
-}
-
-export interface ProcurementPort {
-  requestResidual(input: {
-    companyId: CompanyId;
-    branchId: string;
-    requestId: string;
-    supplierId: string;
-    type: ContractType;
-    quantity: DecimalAmount;
-    program: SourceReference;
-    referenceData: Record<string, unknown>;
-  }): Promise<string>;
+  readonly releaseId?: string;
+  readonly blockerReason?: string;
 }
 
 export interface StandaloneSupplyRequest {
   readonly requestId: string;
-  readonly contractId: string;
   readonly resourceType: ContractType;
   readonly resourceId: string;
+  readonly contractId: string;
   readonly serviceDate: string;
   readonly periodEnd?: string;
   readonly quantity: DecimalAmount;
   readonly unit: string;
-  readonly supplierId?: string;
   readonly currency: string;
   readonly unitCost: DecimalAmount;
-  readonly capacityPerUnit?: DecimalAmount;
+  readonly supplierId?: string;
   readonly flightSegmentReference?: SourceReference;
   readonly visaBatchReference?: SourceReference;
 }
-export interface StandaloneSupplyPlanLine {
-  readonly requestId: string;
-  readonly contractId: string;
+
+export interface StandaloneSupplyPlanLine extends StandaloneSupplyRequest {
   readonly pricingVersionId: string;
-  readonly resourceType: ContractType;
-  readonly resourceId: string;
-  readonly supplierId?: string;
-  readonly serviceDate: string;
-  readonly periodEnd?: string;
   readonly requestedQuantity: DecimalAmount;
   readonly allocationQuantity: DecimalAmount;
-  readonly unit: string;
-  readonly currency: string;
-  readonly unitCost: DecimalAmount;
   readonly costAmount: DecimalAmount;
 }
+
 export interface StandaloneSupplyResidual {
   readonly requestId: string;
   readonly resourceType: ContractType;
@@ -259,6 +220,7 @@ export interface StandaloneSupplyResidual {
   readonly costAmount?: DecimalAmount;
   readonly quoteReference?: string;
 }
+
 export interface StandaloneSupplyPlan {
   readonly planId: string;
   readonly version: number;
@@ -272,25 +234,30 @@ export interface StandaloneSupplyPlan {
   readonly residuals: readonly StandaloneSupplyResidual[];
   readonly totalsByCurrency: Readonly<Record<string, DecimalAmount>>;
 }
-export interface PlanStandaloneSupplyInput extends BaseInput {
+
+export interface PlanStandaloneSupplyInput {
+  readonly companyId: CompanyId;
   readonly branchId: string;
   readonly service: SourceReference;
   readonly serviceRevision: number;
   readonly requests: readonly StandaloneSupplyRequest[];
-  readonly externalQuotes?: readonly { requestId: string; supplierId: string; currency: string; unitCost: DecimalAmount; quoteReference: string }[];
+  readonly externalQuotes?: readonly { requestId:string;supplierId:string;currency:string;unitCost:DecimalAmount;quoteReference:string }[];
 }
-export interface CommitStandaloneSupplyPlanInput extends BaseInput {
+
+export interface CommitStandaloneSupplyPlanInput {
+  readonly companyId: CompanyId;
   readonly branchId: string;
   readonly service: SourceReference;
   readonly planId: string;
   readonly planVersion: number;
   readonly inputHash: string;
 }
+
 export interface StandaloneSupplyCommit {
-  readonly planId: string;
-  readonly version: number;
-  readonly allocationIds: readonly string[];
-  readonly residuals: readonly StandaloneSupplyResidual[];
+  readonly planId:string;
+  readonly version:number;
+  readonly allocationIds:readonly string[];
+  readonly residuals:readonly StandaloneSupplyResidual[];
 }
 
 export interface TourismContractInventoryApplicationService {
@@ -298,7 +265,6 @@ export interface TourismContractInventoryApplicationService {
   amendContract(input: AmendContractInput, key?: string): Promise<ContractVersion>;
   getContract(companyId: CompanyId, id: string): Promise<TourismContract | null>;
   getContractVersions(companyId: CompanyId, id: string): Promise<ContractVersion[]>;
-  getAllocation(companyId: CompanyId, allocationId: string): Promise<Allocation | null>;
   createHotelInventory(input: CreateHotelInventoryInput, key?: string): Promise<HotelInventory>;
   createFlightBlock(input: CreateFlightBlockInput, key?: string): Promise<FlightBlock>;
   createTransportCapacity(input: CreateTransportCapacityInput, key?: string): Promise<TransportCapacity>;
@@ -306,27 +272,31 @@ export interface TourismContractInventoryApplicationService {
   createGenericService(input:CreateGenericServiceInput,key?:string):Promise<GenericServiceInventory>;
   createStopSale(input: CreateStopSaleInput, key?: string): Promise<StopSale>;
   checkAvailability(input: CheckAvailabilityInput): Promise<AvailabilityResult>;
-  checkProgramSupplyEvidence(input: ProgramSupplyEvidenceInput): Promise<ProgramSupplyEvidence>;
   allocateCapacity(input: AllocateCapacityInput, key?: string): Promise<AllocationResult>;
   releaseAllocation(input: ReleaseAllocationInput, key?: string): Promise<ReleaseResult>;
+  getAllocation(companyId: CompanyId, allocationId: string): Promise<Allocation | null>;
   adjustAllocation(input: AdjustAllocationInput, key?: string): Promise<Allocation>;
   consumeFlightBlock(input: ConsumeFlightBlockInput, key?: string): Promise<FlightBlockConsumption>;
-  fulfillWithInternalFirst(input: InternalFirstFulfillmentInput, key?: string): Promise<AllocationResult>;
-  registerAllocationEconomicEvidence(
-    input: RegisterAllocationEconomicEvidenceInput,
-    key?: string,
-  ): Promise<AllocationEconomicEvidence>;
-  protectAllocationCoverage(
-    input: ProtectAllocationCoverageInput,
-    key?: string,
-  ): Promise<AllocationCoverageRequirement>;
-  releaseAllocationCoverage(
-    input: ReleaseAllocationCoverageInput,
-    key?: string,
-  ): Promise<AllocationCoverageRequirement>;
-  getReleaseBlockers(companyId: CompanyId, allocationId: string): Promise<ReleaseBlocker[]>;
-  checkIdempotency(companyId: CompanyId, key: string): Promise<IdempotencyCheckResult>;
-  planStandaloneSupply(input: PlanStandaloneSupplyInput): Promise<StandaloneSupplyPlan>;
-  getStandaloneSupplyPlan(companyId: CompanyId, planId: string): Promise<StandaloneSupplyPlan | null>;
-  commitStandaloneSupplyPlan(input: CommitStandaloneSupplyPlanInput, key?: string): Promise<StandaloneSupplyCommit>;
+  internalFirstFulfillment(input: InternalFirstFulfillmentInput, key?: string): Promise<AllocationResult>;
+  programSupplyEvidence(input: ProgramSupplyEvidenceInput): Promise<ProgramSupplyEvidence>;
+  registerAllocationEconomicEvidence(input:RegisterAllocationEconomicEvidenceInput,key?:string):Promise<AllocationEconomicEvidence>;
+  protectAllocationCoverage(input:ProtectAllocationCoverageInput,key?:string):Promise<AllocationCoverageRequirement>;
+  releaseAllocationCoverage(input:ReleaseAllocationCoverageInput,key?:string):Promise<AllocationCoverageRequirement>;
+  releaseBlockers(companyId:CompanyId,allocationId:string):Promise<ReleaseBlocker[]>;
+  planStandaloneSupply(input:PlanStandaloneSupplyInput):Promise<StandaloneSupplyPlan>;
+  getStandaloneSupplyPlan(companyId:CompanyId,planId:string):Promise<StandaloneSupplyPlan|null>;
+  commitStandaloneSupplyPlan(input:CommitStandaloneSupplyPlanInput,key?:string):Promise<StandaloneSupplyCommit>;
+}
+
+export interface CostEffectPort {
+  recordAllocationAdjustment(input:{effectId:string;companyId:CompanyId;program:SourceReference;allocationId:string;previousQuantity:DecimalAmount;newQuantity:DecimalAmount;costAmount:DecimalAmount;postingDate:string}):Promise<{id:string}>;
+}
+
+export interface ProcurementPort {
+  requestResidual(input:{requestId:string;companyId:CompanyId;branchId:string;supplierId:string;type:ContractType;quantity:DecimalAmount;referenceData:Record<string,unknown>}):Promise<string>;
+}
+
+export interface IdempotencyCheckResult {
+  readonly requestHash: string;
+  readonly result: Record<string, unknown>;
 }
