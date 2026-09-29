@@ -1,8 +1,8 @@
 {
   "id": "reports-control-phase1-hardening",
-  "summary": "Complete and harden the existing Reports & Control surfaces with validated work-center filters, scoped canonical financial reports, AR/AP aging, dynamic program profitability, customer and supplier statements from canonical Billing/Treasury owner data, branch-scoped control history, centralized owner-linked outputs and due alerts, plus in-app scheduled report delivery without creating parallel owners.",
+  "summary": "Complete and harden the existing Reports & Control surfaces with validated work-center filters, scoped canonical financial reports, AR/AP aging, dynamic program profitability, customer and supplier statements, branch-scoped controls/audit, centralized owner-linked outputs, cheque and uninvoiced supplier-commitment alerts, plus automatic in-app scheduled report availability without parallel financial owners.",
   "type": "feature",
-  "allowedModules": ["operational-reporting", "financial-controls"],
+  "allowedModules": ["operational-reporting", "financial-controls", "treasury-settlement"],
   "allowedPaths": [
     ".changes/reports-control-phase1-hardening.json",
     "apps/api/src/app.module.ts",
@@ -15,6 +15,8 @@
     "apps/api/src/management-control.spec.ts",
     "apps/api/src/report-delivery.controller.ts",
     "apps/api/src/report-delivery.controller.spec.ts",
+    "apps/api/src/report-delivery.worker.ts",
+    "apps/api/src/report-delivery.worker.spec.ts",
     "apps/web/src/accounting-client.ts",
     "apps/web/src/management-control.spec.ts",
     "apps/web/src/reporting-center-client.ts",
@@ -29,8 +31,15 @@
     "modules/financial-controls/src/infrastructure/prisma-financial-controls.repository.ts",
     "modules/financial-controls/src/public/index.ts",
     "modules/financial-controls/src/control-history.spec.ts",
+    "modules/operational-reporting/src/application/operational-reporting.application-service.ts",
     "modules/operational-reporting/src/domain/operational-reporting.ts",
-    "modules/operational-reporting/src/operational-reporting.spec.ts"
+    "modules/operational-reporting/src/operational-reporting.spec.ts",
+    "modules/treasury-settlement/src/application/treasury-cheque-read.application-service.ts",
+    "modules/treasury-settlement/src/application/treasury-cheque-read.repository.ts",
+    "modules/treasury-settlement/src/infrastructure/prisma-treasury-cheque-read.repository.ts",
+    "modules/treasury-settlement/src/public/index.ts",
+    "modules/treasury-settlement/src/treasury-cheque-read.spec.ts",
+    "modules/treasury-settlement/src/treasury-settlement.module.ts"
   ],
   "protectedPaths": ["apps/web/src/routes.tsx"],
   "protectedReason": "Add one explicit management navigation route for the centralized Reports & Control output/due-alert center; no existing route is removed or repurposed.",
@@ -41,10 +50,12 @@
     "apps/api/src/financial-reporting.controller.spec.ts",
     "apps/api/src/management-control.spec.ts",
     "apps/api/src/report-delivery.controller.spec.ts",
+    "apps/api/src/report-delivery.worker.spec.ts",
     "apps/web/src/management-control.spec.ts",
     "apps/web/src/reporting-center.spec.ts",
     "apps/web/src/reporting-output-center.spec.ts",
     "modules/financial-controls/src/control-history.spec.ts",
-    "modules/operational-reporting/src/operational-reporting.spec.ts"
+    "modules/operational-reporting/src/operational-reporting.spec.ts",
+    "modules/treasury-settlement/src/treasury-cheque-read.spec.ts"
   ]
 }

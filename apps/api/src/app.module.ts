@@ -7,6 +7,7 @@ import { CustomFieldsModule } from '@elhafez/custom-fields/nest';
 import { DocumentNumberingModule } from '@elhafez/document-numbering/nest';
 import { AutomationWorkflowModule } from '@elhafez/automation-workflow/nest';
 import { OperationalReportingModule } from '@elhafez/operational-reporting/nest';
+import { OperationalReportingApplicationService } from '@elhafez/operational-reporting';
 import { PlatformCoreApplicationService, PlatformCoreModule } from '@elhafez/platform-core';
 import { CurrencyFxModule } from '@elhafez/currency-fx';
 import { PeriodControlModule } from '@elhafez/period-control';
@@ -14,7 +15,7 @@ import { GeneralLedgerModule } from '@elhafez/general-ledger';
 import { FinancialControlsModule } from '@elhafez/financial-controls';
 import { TaxModule } from '@elhafez/tax';
 import { BillingSubledgersApplicationService, BillingSubledgersModule } from '@elhafez/billing-subledgers';
-import { TreasurySettlementModule } from '@elhafez/treasury-settlement';
+import { TreasuryChequeReadApplicationService, TreasurySettlementApplicationService, TreasurySettlementModule } from '@elhafez/treasury-settlement';
 import { PartyAccountingModule } from '@elhafez/party-accounting';
 import { CommissionReadApplicationService, ExpenseCommissionRecognitionModule } from '@elhafez/expense-commission-recognition';
 import { AssetsFinancingModule } from '@elhafez/assets-financing';
@@ -86,6 +87,7 @@ import { ManagementControlService } from './management-control.service.js';
 import { FinancialReportingController } from './financial-reporting.controller.js';
 import { FinancialControlHistoryController } from './financial-control-history.controller.js';
 import { ReportDeliveryController } from './report-delivery.controller.js';
+import { ReportDeliveryWorker } from './report-delivery.worker.js';
 import { SaasControlPlaneApplicationService } from '@elhafez/saas-control-plane';
 import { SaasControlPlaneModule } from '@elhafez/saas-control-plane/nest';
 import { SaasOwnerController, SaasTenantController } from './saas.controller.js';
@@ -97,7 +99,6 @@ import { HealthController } from './health.controller.js';
 import { UserNotificationsController } from './user-notifications.controller.js';
 import { AdvancedAccountingController, TourismContractInventoryController } from './frontend-coverage.controller.js';
 
-/** Composition root only. Business modules are registered here through public module APIs. */
 @Module({
   imports: [
     PlatformCoreModule, DataExchangeModule, PlatformOperationsModule, CustomFieldsModule, DocumentNumberingModule, AutomationWorkflowModule, OperationalReportingModule, PartyRegistryModule, AgentManagementModule, CustomerManagementModule, CrmLeadsModule, CrmFollowupsModule, QuotationsModule, SupplierManagementModule, SupplierEvaluationModule, SupplierDisputesModule, ProcurementFulfillmentModule, ProcurementSourcingModule, TravelerManagementModule,
@@ -108,6 +109,7 @@ import { AdvancedAccountingController, TourismContractInventoryController } from
   controllers: [HealthController, UserNotificationsController, AdvancedAccountingController, TourismContractInventoryController, SaasOwnerController, PlatformOwnerOperationsController, SaasTenantController, AccountingWorkspaceController, FinancialReportingController, FinancialControlHistoryController, ReportDeliveryController, SystemAdministrationController, CrmAgentFilesController, CrmCustomerFilesController, CrmFinancialOperationsController, CrmSalesReadModelController, SupplierIntelligenceReadModelController, HajjUmrahController, HajjUmrahOperationsController, HajjUmrahReadinessController, ManagementControlController, TourismServicesController, TourismOperationsController],
   providers: [
     FinancialReportingEvidenceAdapter,
+    ReportDeliveryWorker,
     { provide: APP_GUARD, useFactory: (saas:SaasControlPlaneApplicationService,platform:PlatformCoreApplicationService,operations:PlatformOperationsApplicationService) => new SaasSubscriptionGuard(saas,platform,operations), inject: [SaasControlPlaneApplicationService,PlatformCoreApplicationService,PlatformOperationsApplicationService] },
     WorkCenterApplicationService,
     {
@@ -136,8 +138,8 @@ import { AdvancedAccountingController, TourismContractInventoryController } from
     },
     {
       provide: ManagementControlService,
-      useFactory: (workCenter:WorkCenterApplicationService,crm:CrmSalesReadModelService,suppliers:SupplierIntelligenceReadModelService,programs:HajjUmrahProgramsApplicationService,readiness:HajjUmrahReadinessApplicationService,reporting:FinancialReportingApplicationService) => new ManagementControlService(workCenter,crm,suppliers,programs,readiness,reporting),
-      inject: [WorkCenterApplicationService,CrmSalesReadModelService,SupplierIntelligenceReadModelService,HajjUmrahProgramsApplicationService,HajjUmrahReadinessApplicationService,FinancialReportingApplicationService],
+      useFactory: (workCenter:WorkCenterApplicationService,crm:CrmSalesReadModelService,suppliers:SupplierIntelligenceReadModelService,programs:HajjUmrahProgramsApplicationService,readiness:HajjUmrahReadinessApplicationService,reporting:FinancialReportingApplicationService,cheques:TreasuryChequeReadApplicationService,treasury:TreasurySettlementApplicationService,procurement:ProcurementFinanceApplicationService) => new ManagementControlService(workCenter,crm,suppliers,programs,readiness,reporting,{listCheques:(companyId)=>cheques.list(companyId),listVouchers:(companyId)=>treasury.listVouchers(companyId)},{listPurchaseOrders:(companyId,branchId)=>procurement.listPurchaseOrders(companyId,branchId)}),
+      inject: [WorkCenterApplicationService,CrmSalesReadModelService,SupplierIntelligenceReadModelService,HajjUmrahProgramsApplicationService,HajjUmrahReadinessApplicationService,FinancialReportingApplicationService,TreasuryChequeReadApplicationService,TreasurySettlementApplicationService,ProcurementFinanceApplicationService],
     },
   ],
 })
