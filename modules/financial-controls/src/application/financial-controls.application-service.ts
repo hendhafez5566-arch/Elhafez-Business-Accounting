@@ -34,6 +34,8 @@ export class FinancialControlsApplicationService {
   async listApprovalPolicies(companyId:string){return this.repository.listPolicies(companyId);}
   async listApprovalRequests(companyId:string,branchId?:string){return this.repository.listRequests(companyId,branchId);}
   async listControlIssues(companyId:string,branchId?:string){return this.repository.listIssues(companyId,branchId);}
+  async listReconciliationRuns(companyId:string,branchId?:string){return this.repository.listRuns(companyId,branchId);}
+  async listCloseReadinessRuns(companyId:string,branchId?:string){return this.repository.listCloseRuns(companyId,branchId);}
 
   async configureApprovalPolicy(input: Omit<ApprovalPolicy, 'threshold'> & { threshold: string }): Promise<ApprovalPolicy> {
     requireText(input.id, 'id'); requireText(input.companyId, 'companyId'); requireText(input.requiredAuthority, 'requiredAuthority');
