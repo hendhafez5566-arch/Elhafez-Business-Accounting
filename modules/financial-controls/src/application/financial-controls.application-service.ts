@@ -28,12 +28,16 @@ export interface ReadinessCheck { readonly key: string; readonly passed: boolean
 function fingerprint(value: unknown): string { return createHash('sha256').update(JSON.stringify(value)).digest('hex'); }
 function now(): string { return new Date().toISOString(); }
 
+type FinancialControlsApplicationRepository = Omit<FinancialControlsRepository, 'listRuns' | 'listCloseRuns'> & Partial<Pick<FinancialControlsRepository, 'listRuns' | 'listCloseRuns'>>;
+
 export class FinancialControlsApplicationService {
-  constructor(private readonly repository: FinancialControlsRepository, private readonly authorization: TrustedAuthorizationPort) {}
+  constructor(private readonly repository: FinancialControlsApplicationRepository, private readonly authorization: TrustedAuthorizationPort) {}
 
   async listApprovalPolicies(companyId:string){return this.repository.listPolicies(companyId);}
   async listApprovalRequests(companyId:string,branchId?:string){return this.repository.listRequests(companyId,branchId);}
   async listControlIssues(companyId:string,branchId?:string){return this.repository.listIssues(companyId,branchId);}
+  async listReconciliationRuns(companyId:string,branchId?:string){if(!this.repository.listRuns)throw new ContractValidationError('repository','reconciliation history read is unavailable');return this.repository.listRuns(companyId,branchId);}
+  async listCloseReadinessRuns(companyId:string,branchId?:string){if(!this.repository.listCloseRuns)throw new ContractValidationError('repository','close readiness history read is unavailable');return this.repository.listCloseRuns(companyId,branchId);}
 
   async configureApprovalPolicy(input: Omit<ApprovalPolicy, 'threshold'> & { threshold: string }): Promise<ApprovalPolicy> {
     requireText(input.id, 'id'); requireText(input.companyId, 'companyId'); requireText(input.requiredAuthority, 'requiredAuthority');
