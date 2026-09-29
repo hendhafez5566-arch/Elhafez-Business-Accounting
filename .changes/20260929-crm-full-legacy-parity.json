@@ -67,6 +67,7 @@
     "modules/treasury-settlement/src/application/party-cash-movement.application-service.ts",
     "modules/treasury-settlement/src/application/treasury-settlement.application-service.ts",
     "modules/treasury-settlement/src/treasury-settlement.module.ts",
+    "modules/treasury-settlement/src/treasury-settlement.composition.spec.ts",
     "modules/treasury-settlement/src/domain/treasury.ts",
     "modules/treasury-settlement/src/party-cash-movement.spec.ts",
     "modules/treasury-settlement/src/public/index.ts",
@@ -96,6 +97,7 @@
     "apps/web/src/cs03-final-crm-integration.spec.ts",
     "modules/billing-subledgers/src/party-receivable.spec.ts",
     "modules/treasury-settlement/src/party-cash-movement.spec.ts",
+    "modules/treasury-settlement/src/treasury-settlement.composition.spec.ts",
     "modules/financial-reporting/src/financial-reporting.spec.ts"
   ]
 }
