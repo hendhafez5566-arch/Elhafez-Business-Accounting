@@ -15,10 +15,12 @@ export class InMemoryFinancialControlsRepository implements FinancialControlsRep
   async findDecision(c: string, id: string) { return this.decisions.get(this.key(c, id)); }
   async saveRun(run: ReconciliationRun, issues: readonly ReconciliationIssue[]) { this.runs.set(this.key(run.companyId, run.correlationId), { run, issues: [...issues] }); for (const issue of issues) this.issues.set(this.key(run.companyId, issue.id), issue); }
   async findRun(c: string, id: string) { return this.runs.get(this.key(c, id)); }
+  async listRuns(c:string,branchId?:string){return[...this.runs.values()].map(v=>v.run).filter(v=>v.companyId===c&&(branchId===undefined||v.branchId===branchId)).sort((a,b)=>b.runAt.localeCompare(a.runAt)||a.id.localeCompare(b.id));}
   async findIssue(c: string, id: string) { return this.issues.get(this.key(c, id)); }
   async listIssues(c:string,branchId?:string){return[...this.issues.values()].filter(v=>{if(v.companyId!==c)return false;if(branchId===undefined)return true;for(const entry of this.runs.values())if(entry.run.companyId===c&&entry.run.id===v.runId)return entry.run.branchId===branchId;return false;});}
   async resolveIssue(c: string, id: string, at: string, reference: string) { const issue = this.issues.get(this.key(c, id)); if (!issue) throw new ContractValidationError('issueId', 'not found'); const resolved = { ...issue, resolvedAt: at, resolutionReference: reference }; this.issues.set(this.key(c, id), resolved); return resolved; }
   async saveCloseRun(v: CloseReadinessRun) { const existing = await this.findCloseRun(v.companyId, v.correlationId); if (existing) return existing; this.closeRuns.push(v); return v; }
   async findCloseRun(c: string, correlationId: string) { return this.closeRuns.find((x) => x.companyId === c && x.correlationId === correlationId); }
+  async listCloseRuns(c:string,branchId?:string){return this.closeRuns.filter(v=>v.companyId===c&&(branchId===undefined||v.branchId===branchId)).sort((a,b)=>b.evaluatedAt.localeCompare(a.evaluatedAt)||a.id.localeCompare(b.id));}
   async saveEvidence(v: ControlEvidence) { if (!this.evidence.some((x) => x.id === v.id)) this.evidence.push(v); }
 }
