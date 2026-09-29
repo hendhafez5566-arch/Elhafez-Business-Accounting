@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Badge, Card, DataGrid, EmptyState, ErrorState, FormField, Select } from './ui.js';
+import { Badge, Button, Card, DataGrid, EmptyState, ErrorState, FormField, Select } from './ui.js';
 import {
   tourismServicesApi,
   type AgentReference,
@@ -91,6 +91,7 @@ export function TourismService360Page(){
           </tr>
         </DataGrid>
         <p>المسافرون: {travelerIds.length?travelerIds.map(id=>names.travelers.get(id)??id).join('، '):'—'}</p>
+        <Button variant="secondary" onClick={()=>{window.location.href='/tourism/service-documents?serviceId='+encodeURIComponent(record.service.id);}}>المستندات والمرفقات</Button>
       </Card>
 
       <Card title="المؤشرات المالية والربحية">
