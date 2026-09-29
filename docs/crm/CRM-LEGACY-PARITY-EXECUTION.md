@@ -121,4 +121,6 @@ Run one comprehensive pass and fix every discovered defect before marking comple
 - [ ] Final legacy-vs-new button/icon/filter/action/workflow parity review.
 - [ ] Fix all failures and record final Phase 2 completion marker.
 
+Hosted verification note: the first GitHub-hosted run reached `engineering-integrity:check`; its explicit-any/ESLint-suppression fixture failures were replaced with typed constructor-contract test doubles. This commit intentionally triggers the next hosted verification pass.
+
 The hourly continuation service must continue from this checklist. It must stay on `feature/crm-full-legacy-parity`, never modify `main`, never deploy Railway, and stop without starting another business section after Phase 2 is complete.
