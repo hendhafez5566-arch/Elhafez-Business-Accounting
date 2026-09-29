@@ -1,0 +1,18 @@
+{
+  "id": "reports-control-reporting-center-completion",
+  "summary": "Complete the existing reporting center with financial report selection, customer and supplier aging from canonical billing invoices, saved-report opening, report-aware CSV export, and visible financial control issues without introducing new reporting owners or routes.",
+  "type": "feature",
+  "allowedModules": [],
+  "allowedPaths": [
+    ".changes/reports-control-reporting-center-completion.json",
+    "apps/web/src/reporting-center-page.tsx",
+    "apps/web/src/reporting-center.spec.ts"
+  ],
+  "protectedPaths": [],
+  "protectedReason": "",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": "",
+  "testEvidence": [
+    "apps/web/src/reporting-center.spec.ts"
+  ]
+}
