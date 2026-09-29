@@ -96,11 +96,11 @@ Branch: `feature/crm-full-legacy-parity`
 - [x] Quotations rebuilt with customer/lead selectors, prefill, multiple lines, revisions, approvals, reject/accept, Billing conversion, print/PDF/WhatsApp/share and evidence history.
 - [x] CRM dashboard expanded with pipeline, quotation, customer receivable/overdue and agent commission attention by currency.
 - [x] Superseded duplicate Customer/Agent/Lead/Follow-up/Agent360 UI implementations removed from active routing/source surfaces.
+- [x] Generic attachment/document ownership gap closed by architectural decision: the current platform contains attachment IDs and legacy `file-metadata` migration evidence, but no canonical binary document owner/public API. CRM must not invent a private attachment store. Customer/Agent 360 therefore keeps activity/owner-backed evidence only; generic document upload remains disabled until a platform-wide document owner is introduced outside this parity workstream.
 - [ ] Complete atomic customer advance-refund workflow across Billing + Treasury, then enable `رد مقدم` as a real owner-backed action.
   - Checkpoint: the existing supplier-refund orchestration was reviewed as a reference for failure-safe ownership. Customer refund must not be routed through ECR because ECR owns supplier/expense/commission workflows, not customer liabilities. Billing must remain owner of advance availability and Treasury owner of the outgoing cash movement.
 - [ ] Resolve canonical Agent receivable/invoice/advance ownership. Billing now has canonical `AGENT` invoice/party types and Treasury voucher domain now admits `AGENT`; remaining application contracts, settlement behavior, tests/API/UI actions must be completed before enabling agent receipt/invoice/advance buttons.
-- [ ] Resolve the generic attachment/document owner/API and wire Customer 360 documents/activity without adding CRM-owned attachment storage.
-- [ ] Complete Phase 1 implementation marker only after the three ownership gaps above are resolved or explicitly closed by an architectural decision.
+- [ ] Complete Phase 1 implementation marker only after the two remaining financial ownership gaps above are resolved or explicitly closed by an architectural decision.
 
 ## Phase 2 status
 
