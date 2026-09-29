@@ -145,12 +145,13 @@ export class AccountingWorkspaceController{
   const position=await this.billing.getOpenPosition(c.companyId,text(input.invoiceId,'invoiceId'));
   if(position.branchId!==c.branchId)throw new BadRequestException('invoice not found in current branch');
   if(position.status!=='POSTED')throw new BadRequestException('posted invoice position required');
+  if(position.partyKind==='AGENT')throw new BadRequestException('agent receivable settlement must use the CRM financial workflow');
   const commandKey=text(input.commandKey,'commandKey'),id=stableId(c.companyId,'MANUAL_SETTLEMENT',commandKey);
   return this.treasury.postVoucher({id,companyId:c.companyId,branchId:c.branchId,treasuryId:text(input.treasuryId,'treasuryId'),
    kind:position.partyKind==='CUSTOMER'?'RECEIPT':'PAYMENT',partyKind:position.partyKind,partyId:position.partyId,number:text(input.number,'number'),postingDate:input.postingDate,
    amount:decimalAmount(input.amount),sourceType:'MANUAL_ACCOUNTING_SETTLEMENT',sourceId:commandKey,controlAccountId:position.controlAccountId,actorId:c.actorId,explicitPostedInvoiceId:position.invoiceId,
    ...(input.advanceAccountId?.trim()?{advanceAccountId:input.advanceAccountId.trim()}:{}),...(input.realizedFxGainAccountId?.trim()?{realizedFxGainAccountId:input.realizedFxGainAccountId.trim()}:{}),
-   ...(input.realizedFxLossAccountId?.trim()?{realizedFxLossAccountId:input.realizedFxLossAccountId.trim()}:{}),...(input.approvalRequestId?.trim()?{approvalRequestId:input.approvalRequestId.trim()}:{})});
+   ...(input.realizedFxLossAccountId?.trim()?{realizedFxLossAccountId:input.realizedFxLossAccountId.trim()}:{}) ,...(input.approvalRequestId?.trim()?{approvalRequestId:input.approvalRequestId.trim()}:{})});
  }
 
  @Post('vouchers/:id/reverse')

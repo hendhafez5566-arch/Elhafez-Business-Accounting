@@ -2,26 +2,40 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { AgentsPage, CustomersPage, FollowupsPage, LeadsPage } from './crm-core-pages.js';
+import { FollowupsPage, LeadsPage } from './crm-core-pages.js';
+import { CustomersPage } from './crm-party-pages.js';
+import { AgentsPage } from './crm-agent-parity-pages.js';
 import { foundationRoutes } from './routes.js';
 
-test('CS-01 registers only CRM Core routes and keeps Arabic-first labels', () => {
+test('CRM registers the complete Arabic-first sales/customer workspace without duplicate visible routes', () => {
   const paths=foundationRoutes.map((route)=>route.path);
-  assert.ok(paths.includes('/crm/customers'));
-  assert.ok(paths.includes('/crm/agents'));
-  assert.ok(paths.includes('/crm/leads'));
-  assert.ok(paths.includes('/crm/followups'));
-  assert.ok(paths.includes('/crm/quotations')); // CS-02 extends the suite without changing CS-01 owners.
+  for(const path of ['/crm/dashboard','/crm/customers','/crm/customer-360','/crm/customer-documents','/crm/agents','/crm/agent-360','/crm/agent-documents','/crm/leads','/crm/followups','/crm/quotations','/crm/financial-action'])assert.ok(paths.includes(path),path);
+  assert.equal(new Set(paths).size,paths.length);
+  assert.equal(foundationRoutes.find(route=>route.path==='/crm/agents')?.label,'المندوبون');
+  assert.equal(foundationRoutes.find(route=>route.path==='/crm/financial-action')?.navigation,false);
 });
-test('customer and agent pages expose lifecycle/edit controls without financial ownership fields', () => {
+
+test('customer and agent pages keep commercial ownership in CRM while exposing owner-backed operational workspaces', () => {
   const customers=renderToStaticMarkup(createElement(CustomersPage));
   const agents=renderToStaticMarkup(createElement(AgentsPage));
-  assert.match(customers,/إضافة عميل/); assert.match(customers,/ملاحظات تجارية/); assert.doesNotMatch(customers,/حد ائتماني|رصيد حساب|فاتورة/);
-  assert.match(agents,/العمولة الافتراضية/); assert.doesNotMatch(agents,/مطالبات عمولة|دفع العمولة/);
+  assert.match(customers,/إضافة عميل/);
+  assert.match(customers,/نوع العميل/);
+  assert.match(customers,/ملاحظات تجارية/);
+  assert.doesNotMatch(customers,/حد ائتماني|حساب مراقبة المدينين/);
+  assert.match(agents,/إضافة مندوب/);
+  assert.match(agents,/نوع العمولة الافتراضية/);
+  assert.match(agents,/لهم عمولات مستحقة/);
+  assert.doesNotMatch(agents,/حساب مراقبة المدينين/);
 });
-test('lead and follow-up pages expose CRM Core lifecycle without a quotation implementation', () => {
+
+test('lead and follow-up pages expose the expanded pipeline and scheduling surfaces', () => {
   const leads=renderToStaticMarkup(createElement(LeadsPage));
   const followups=renderToStaticMarkup(createElement(FollowupsPage));
-  assert.match(leads,/مسار العملاء المحتملين/); assert.match(leads,/حفظ العميل المحتمل/); assert.doesNotMatch(leads,/إنشاء عرض سعر|قبول عرض السعر|رفض عرض السعر/);
-  assert.match(followups,/جدولة متابعة/); assert.match(followups,/متأخرة/); assert.match(followups,/WHATSAPP/);
+  assert.match(leads,/العملاء المحتملون والمتابعة/);
+  assert.match(leads,/إضافة عميل محتمل/);
+  assert.match(leads,/المندوب المحيل/);
+  assert.match(leads,/مسار المبيعات/);
+  assert.match(followups,/جدولة متابعة/);
+  assert.match(followups,/متأخرة/);
+  assert.match(followups,/واتساب/);
 });

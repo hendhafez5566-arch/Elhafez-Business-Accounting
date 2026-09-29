@@ -1,6 +1,8 @@
 /** The only importable boundary for platform capabilities. */
 export { PlatformCoreModule } from '../platform-core.module.js';
 export { COMPANY_ADMINISTRATOR_ROLE, PLATFORM_CORE_PERMISSIONS, PlatformCoreApplicationService, NoopEventPublisher } from '../application/platform-core.application-service.js';
+export { EntityFileLinksApplicationService } from '../application/entity-file-links.application-service.js';
+export type { EntityFileLink } from '../application/entity-file-links.application-service.js';
 export { ConsolePlatformLogger } from '../infrastructure/platform.logger.js';
 export type { PlatformLogger } from '../infrastructure/platform.logger.js';
 export type { AuditEntry, Branch, Company, CompanyLoginIdentityProjection, CompanyUserProjection, Notification, Permission, Role, SessionProjection, StoredFile, StoredFileContent, User, UserProjection } from '../domain/platform.types.js';

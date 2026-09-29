@@ -1,0 +1,38 @@
+name: CRM Hosted Verify
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: crm-hosted-verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Resolve main baseline
+        run: |
+          git fetch origin main
+          echo "CHANGE_BASE_SHA=$(git rev-parse origin/main)" >> "$GITHUB_ENV"
+          echo "REQUIRE_CHANGE_SCOPE=true" >> "$GITHUB_ENV"
+
+      - name: Full verification
+        run: pnpm verify

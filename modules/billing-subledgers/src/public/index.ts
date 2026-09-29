@@ -3,6 +3,7 @@ export {
   BillingSubledgersApplicationService,
   type CreateInvoiceInput,
 } from '../application/billing-subledgers.application-service.js';
+export { PartyReceivableApplicationService, type ReceivablePartyKind } from '../application/party-receivable.application-service.js';
 export type {
   Invoice,
   InvoiceLine,

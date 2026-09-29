@@ -6,6 +6,7 @@ import type { CrmFollowupsApplicationService, Followup } from '@elhafez/crm-foll
 import type { QuotationsApplicationService, Quotation } from '@elhafez/quotations';
 import type { TravelerManagementApplicationService } from '@elhafez/traveler-management';
 import type { BillingSubledgersApplicationService } from '@elhafez/billing-subledgers';
+import type { CommissionReadApplicationService, CommissionClaim } from '@elhafez/expense-commission-recognition';
 
 type CustomersRead = Pick<CustomerManagementApplicationService, 'get' | 'list'>;
 type AgentsRead = Pick<AgentManagementApplicationService, 'get' | 'list'>;
@@ -13,7 +14,8 @@ type LeadsRead = Pick<CrmLeadsApplicationService, 'list'>;
 type FollowupsRead = Pick<CrmFollowupsApplicationService, 'forLead' | 'overdue'>;
 type QuotationsRead = Pick<QuotationsApplicationService, 'list'>;
 type TravelersRead = Pick<TravelerManagementApplicationService, 'list'>;
-type BillingRead = Pick<BillingSubledgersApplicationService, 'getOpenPosition'>;
+type BillingRead = Pick<BillingSubledgersApplicationService, 'getOpenPosition' | 'listInvoices'>;
+type CommissionRead = Pick<CommissionReadApplicationService,'listClaims'>;
 
 const SCALE = 10n ** 18n;
 function scaled(value: string): bigint {
@@ -29,6 +31,11 @@ function decimal(value: bigint): string {
   return negative&&text!=='0'?`-${text}`:text;
 }
 function add(left:string,right:string){return decimal(scaled(left)+scaled(right));}
+function subtract(left:string,right:string){return decimal(scaled(left)-scaled(right));}
+function nonZero(value:string){return scaled(value)!==0n;}
+
+type FinancialPosition={invoiceId:string;number:string;postingDate:string;dueDate:string|null;currency:string;documentTotal:string;outstanding:string;status:string;overdue:boolean;sourceType:string;sourceId:string};
+type CommissionPosition={id:string;agentPartyId:string;sourceType:string;sourceId:string;currency:string;amount:string;paid:string;outstanding:string;status:CommissionClaim['status']};
 
 export class CrmSalesReadModelService {
   constructor(
@@ -39,8 +46,51 @@ export class CrmSalesReadModelService {
     private readonly quotations: QuotationsRead,
     private readonly travelers: TravelersRead,
     private readonly billing: BillingRead,
+    private readonly commissions: CommissionRead,
     private readonly now: () => Date = () => new Date(),
   ) {}
+
+  private async partyFinancialPositions(context:ExecutionContext,partyId:string,kind:'CUSTOMER'|'AGENT'):Promise<FinancialPosition[]> {
+    const today=this.now().toISOString().slice(0,10);
+    const invoices=(await this.billing.listInvoices(context.companyId)).filter((invoice)=>
+      invoice.partyId===partyId &&
+      (kind==='AGENT'?invoice.type==='AGENT':invoice.type==='CUSTOMER'||invoice.type==='OPENING_CUSTOMER_BALANCE') &&
+      (invoice.branchId===undefined||invoice.branchId===context.branchId) &&
+      (invoice.status==='POSTED'||invoice.status==='CANCELLED'),
+    );
+    return invoices.map((invoice)=>{
+      const documentTotal=invoice.lines.reduce((total,line)=>add(total,add(String(line.amount),String(line.taxAmount??'0'))),'0');
+      return {invoiceId:invoice.id,number:invoice.number,postingDate:invoice.postingDate,dueDate:invoice.dueDate??null,currency:invoice.currency,documentTotal,outstanding:String(invoice.outstanding),status:invoice.status,overdue:invoice.status==='POSTED'&&Boolean(invoice.dueDate&&invoice.dueDate<today)&&nonZero(String(invoice.outstanding)),sourceType:invoice.sourceType,sourceId:invoice.sourceId};
+    }).sort((a,b)=>b.postingDate.localeCompare(a.postingDate));
+  }
+
+  private async agentCommissionPositions(context:ExecutionContext,agentPartyId:string):Promise<CommissionPosition[]> {
+    const claims=await this.commissions.listClaims(context.companyId,agentPartyId);
+    return claims.filter(claim=>claim.branchId===undefined||claim.branchId===context.branchId).map(claim=>{
+      const paid=claim.payments.filter(payment=>payment.status==='POSTED').reduce((total,payment)=>add(total,String(payment.claimAmountApplied)),'0');
+      const outstanding=claim.status==='REVERSED'? '0' : subtract(String(claim.amount),paid);
+      return {id:claim.id,agentPartyId:claim.agentPartyId,sourceType:claim.sourceType,sourceId:claim.sourceId,currency:claim.currency,amount:String(claim.amount),paid,outstanding,status:claim.status};
+    });
+  }
+
+  async customersWorkspace(context:ExecutionContext) {
+    const customers=await this.customers.list(context);
+    return Promise.all(customers.map(async(value)=>{
+      const financialPositions=await this.partyFinancialPositions(context,value.party.id,'CUSTOMER');
+      const openPositions=financialPositions.filter(position=>position.status==='POSTED'&&nonZero(position.outstanding));
+      return {...value,financialSummaryByCurrency:summarizeFinancialPositions(financialPositions),openPositionCount:openPositions.length,overduePositionCount:openPositions.filter(position=>position.overdue).length,hasOutstanding:openPositions.length>0};
+    }));
+  }
+
+  async agentsWorkspace(context:ExecutionContext) {
+    const agents=await this.agents.list(context);
+    return Promise.all(agents.map(async value=>{
+      const[commissionPositions,financialPositions]=await Promise.all([this.agentCommissionPositions(context,value.party.id),this.partyFinancialPositions(context,value.party.id,'AGENT')]);
+      const pending=commissionPositions.filter(position=>['APPROVED','PARTIALLY_PAID'].includes(position.status)&&nonZero(position.outstanding));
+      const openPositions=financialPositions.filter(position=>position.status==='POSTED'&&nonZero(position.outstanding));
+      return {...value,commissionSummaryByCurrency:summarizeCommissions(commissionPositions),pendingCommissionCount:pending.length,hasPendingCommission:pending.length>0,financialSummaryByCurrency:summarizeFinancialPositions(financialPositions),openPositionCount:openPositions.length,overduePositionCount:openPositions.filter(position=>position.overdue).length,hasOutstanding:openPositions.length>0};
+    }));
+  }
 
   async customer360(context: ExecutionContext, id: string) {
     const customer = await this.customers.get(context, customerId(id));
@@ -49,15 +99,19 @@ export class CrmSalesReadModelService {
     const followups = (await Promise.all(leads.map((lead) => this.followups.forLead(context, lead.id)))).flat();
     const quotations = (await this.quotations.list(context)).filter((quote) => quote.customerId === id || (quote.sourceLeadId !== null && leadIds.has(quote.sourceLeadId)));
     const travelers = await this.travelers.list(context, { customerId: id });
-    const financialPositions = await Promise.all(quotations.filter((quote) => quote.billingInvoiceId).map((quote) => this.billing.getOpenPosition(context.companyId, quote.billingInvoiceId!)));
+    const financialPositions = await this.partyFinancialPositions(context,customer.party.id,'CUSTOMER');
+    const quotationLinkedFinancialPositions = await Promise.all(quotations.filter((quote) => quote.billingInvoiceId).map((quote) => this.billing.getOpenPosition(context.companyId, quote.billingInvoiceId!)));
     return {
       customer,
       leads,
       followups,
       quotations,
       travelers,
-      quotationLinkedFinancialPositions: financialPositions,
-      quotationLinkedFinancialSummaryByCurrency: summarizePositions(financialPositions),
+      financialPositions,
+      financialSummaryByCurrency:summarizeFinancialPositions(financialPositions),
+      overdueFinancialPositions:financialPositions.filter(position=>position.overdue),
+      quotationLinkedFinancialPositions,
+      quotationLinkedFinancialSummaryByCurrency: summarizePositions(quotationLinkedFinancialPositions),
     };
   }
 
@@ -71,13 +125,22 @@ export class CrmSalesReadModelService {
       (quote.customerId !== null && customerIds.has(quote.customerId)) ||
       (quote.sourceLeadId !== null && leadIds.has(quote.sourceLeadId)),
     );
-    return { agent, customers, leads, quotations };
+    const[commissionPositions,financialPositions]=await Promise.all([this.agentCommissionPositions(context,agent.party.id),this.partyFinancialPositions(context,agent.party.id,'AGENT')]);
+    return { agent, customers, leads, quotations, financialPositions,financialSummaryByCurrency:summarizeFinancialPositions(financialPositions),overdueFinancialPositions:financialPositions.filter(position=>position.overdue),commissionPositions, commissionSummaryByCurrency:summarizeCommissions(commissionPositions),pendingCommissionPositions:commissionPositions.filter(position=>['APPROVED','PARTIALLY_PAID'].includes(position.status)&&nonZero(position.outstanding)) };
   }
 
   async dashboard(context: ExecutionContext) {
-    const [customers, agents, leads, overdueFollowups, quotations, travelers] = await Promise.all([
-      this.customers.list(context), this.agents.list(context), this.leads.list(context), this.followups.overdue(context), this.quotations.list(context), this.travelers.list(context),
+    const [customers, agents, leads, overdueFollowups, quotations, travelers, commissionClaims] = await Promise.all([
+      this.customers.list(context), this.agents.list(context), this.leads.list(context), this.followups.overdue(context), this.quotations.list(context), this.travelers.list(context), this.commissions.listClaims(context.companyId),
     ]);
+    const[customerFinancial,agentFinancial]=await Promise.all([
+      Promise.all(customers.map(async value=>({customerId:value.customer.id,partyId:value.party.id,positions:await this.partyFinancialPositions(context,value.party.id,'CUSTOMER')}))),
+      Promise.all(agents.map(async value=>({agentId:value.agent.id,partyId:value.party.id,positions:await this.partyFinancialPositions(context,value.party.id,'AGENT')}))),
+    ]);
+    const openCustomerPositions=customerFinancial.flatMap(value=>value.positions.filter(position=>position.status==='POSTED'&&nonZero(position.outstanding)).map(position=>({...position,customerId:value.customerId})));
+    const openAgentPositions=agentFinancial.flatMap(value=>value.positions.filter(position=>position.status==='POSTED'&&nonZero(position.outstanding)).map(position=>({...position,agentId:value.agentId})));
+    const commissionPositions=commissionClaims.filter(claim=>claim.branchId===undefined||claim.branchId===context.branchId).map(claim=>{const paid=claim.payments.filter(payment=>payment.status==='POSTED').reduce((total,payment)=>add(total,String(payment.claimAmountApplied)),'0');return{id:claim.id,agentPartyId:claim.agentPartyId,sourceType:claim.sourceType,sourceId:claim.sourceId,currency:claim.currency,amount:String(claim.amount),paid,outstanding:claim.status==='REVERSED'?'0':subtract(String(claim.amount),paid),status:claim.status} as CommissionPosition;});
+    const pendingCommissions=commissionPositions.filter(position=>['APPROVED','PARTIALLY_PAID'].includes(position.status)&&nonZero(position.outstanding));
     const leadStages = Object.fromEntries(['NEW','CONTACTED','QUALIFIED','QUOTED','WON','LOST'].map((status)=>[status,leads.filter((lead)=>lead.status===status).length]));
     const quotationStatuses = Object.fromEntries(['DRAFT','SENT','REJECTED','ACCEPTED','CONVERTED','EXPIRED'].map((status)=>[status,quotations.filter((quote)=>quote.status===status).length]));
     const quotationValueByCurrency = summarizeQuotationValues(quotations);
@@ -87,19 +150,34 @@ export class CrmSalesReadModelService {
     const awaitingConversion=quotations.filter((quote)=>quote.status==='ACCEPTED'&&!quote.billingInvoiceId);
     const unresolvedCustomer=quotations.filter((quote)=>Boolean(quote.sourceLeadId)&&!quote.customerId);
     const expiringSoon=quotations.filter((quote)=>['DRAFT','SENT'].includes(quote.status)).filter((quote)=>{const revision=quote.revisions.find((item)=>item.id===quote.currentRevisionId);return Boolean(revision&&revision.validityDate>=today&&revision.validityDate<=soon);});
+    const customersWithOutstanding=new Set(openCustomerPositions.map(position=>position.customerId)).size,agentsWithOutstanding=new Set(openAgentPositions.map(position=>position.agentId)).size;
+    const overdueReceivables=openCustomerPositions.filter(position=>position.overdue),overdueAgentReceivables=openAgentPositions.filter(position=>position.overdue);
     return {
-      counts:{customers:customers.length,agents:agents.length,travelers:travelers.length,overdueFollowups:overdueFollowups.length},
+      counts:{customers:customers.length,agents:agents.length,travelers:travelers.length,overdueFollowups:overdueFollowups.length,customersWithOutstanding,overdueReceivables:overdueReceivables.length,agentsWithOutstanding,overdueAgentReceivables:overdueAgentReceivables.length,pendingCommissions:pendingCommissions.length},
       leadStages,
       quotationStatuses,
       quotationValueByCurrency,
-      attention:{overdueFollowups,awaitingApproval,awaitingConversion,unresolvedCustomer,expiringSoon},
+      receivablesByCurrency:summarizeFinancialPositions(openCustomerPositions),
+      agentReceivablesByCurrency:summarizeFinancialPositions(openAgentPositions),
+      commissionsByCurrency:summarizeCommissions(pendingCommissions),
+      attention:{overdueFollowups,overdueReceivables,overdueAgentReceivables,pendingCommissions,awaitingApproval,awaitingConversion,unresolvedCustomer,expiringSoon},
     };
   }
 }
 
 function summarizePositions(positions: Array<Awaited<ReturnType<BillingRead['getOpenPosition']>>>) {
   const grouped=new Map<string,{currency:string;documentTotal:string;outstanding:string}>();
+  for(const position of positions){const current=grouped.get(position.currency)??{currency:position.currency,documentTotal:'0',outstanding:'0'};current.documentTotal=add(current.documentTotal,String(position.documentTotal));current.outstanding=add(current.outstanding,String(position.outstanding));grouped.set(position.currency,current);}
+  return [...grouped.values()].sort((a,b)=>a.currency.localeCompare(b.currency));
+}
+function summarizeFinancialPositions(positions:readonly Pick<FinancialPosition,'currency'|'documentTotal'|'outstanding'>[]) {
+  const grouped=new Map<string,{currency:string;documentTotal:string;outstanding:string}>();
   for(const position of positions){const current=grouped.get(position.currency)??{currency:position.currency,documentTotal:'0',outstanding:'0'};current.documentTotal=add(current.documentTotal,position.documentTotal);current.outstanding=add(current.outstanding,position.outstanding);grouped.set(position.currency,current);}
+  return [...grouped.values()].sort((a,b)=>a.currency.localeCompare(b.currency));
+}
+function summarizeCommissions(positions:readonly CommissionPosition[]) {
+  const grouped=new Map<string,{currency:string;amount:string;paid:string;outstanding:string}>();
+  for(const position of positions){const current=grouped.get(position.currency)??{currency:position.currency,amount:'0',paid:'0',outstanding:'0'};current.amount=add(current.amount,position.amount);current.paid=add(current.paid,position.paid);current.outstanding=add(current.outstanding,position.outstanding);grouped.set(position.currency,current);}
   return [...grouped.values()].sort((a,b)=>a.currency.localeCompare(b.currency));
 }
 function summarizeQuotationValues(quotations: readonly Quotation[]) {
@@ -108,6 +186,8 @@ function summarizeQuotationValues(quotations: readonly Quotation[]) {
   return [...grouped.values()].sort((a,b)=>a.currency.localeCompare(b.currency));
 }
 
+export type CustomerWorkspaceView = Awaited<ReturnType<CrmSalesReadModelService['customersWorkspace']>>;
+export type AgentWorkspaceView = Awaited<ReturnType<CrmSalesReadModelService['agentsWorkspace']>>;
 export type Customer360View = Awaited<ReturnType<CrmSalesReadModelService['customer360']>>;
 export type Agent360View = Awaited<ReturnType<CrmSalesReadModelService['agent360']>>;
 export type CrmSalesDashboardView = Awaited<ReturnType<CrmSalesReadModelService['dashboard']>>;

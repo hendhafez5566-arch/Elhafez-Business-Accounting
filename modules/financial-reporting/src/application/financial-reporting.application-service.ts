@@ -53,8 +53,12 @@ export class FinancialReportingApplicationService {
   async incomeStatement(scope: ReportScope) { return this.statement(scope, ['REVENUE', 'EXPENSE']); }
   async balanceSheet(scope: ReportScope) { return this.statement(scope, ['ASSET', 'LIABILITY', 'EQUITY']); }
 
-  async aging(scope: ReportScope, side: 'CUSTOMER' | 'SUPPLIER') {
-    const allowed = side === 'CUSTOMER' ? ['RECEIVABLE', 'CUSTOMER_ADVANCE'] : ['PAYABLE', 'SUPPLIER_ADVANCE'];
+  async aging(scope: ReportScope, side: 'CUSTOMER' | 'SUPPLIER' | 'AGENT') {
+    const allowed = side === 'CUSTOMER'
+      ? ['RECEIVABLE', 'CUSTOMER_ADVANCE']
+      : side === 'SUPPLIER'
+        ? ['PAYABLE', 'SUPPLIER_ADVANCE']
+        : ['AGENT_RECEIVABLE', 'AGENT_ADVANCE'];
     const positions = (await this.active(scope)).filter((x) => x.kind === 'BILLING_POSITION' && x.positionKind && allowed.includes(x.positionKind));
     return { metadata: metadata(scope, positions), side, positions: positions.map((x) => ({ evidenceId: x.evidenceId, partyId: x.partyId, positionKind: x.positionKind, dueDate: x.dueDate, currency: x.currency, openAmount: x.openAmount!, authoritativeReference: x.authoritativeReference })) };
   }

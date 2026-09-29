@@ -8,7 +8,7 @@ export type ReportingEvidenceKind =
   | 'PROCUREMENT_FINANCIAL'
   | 'TAX_FACT';
 export type AccountClass = 'ASSET' | 'LIABILITY' | 'EQUITY' | 'REVENUE' | 'EXPENSE';
-export type PositionKind = 'RECEIVABLE' | 'PAYABLE' | 'CUSTOMER_ADVANCE' | 'SUPPLIER_ADVANCE';
+export type PositionKind = 'RECEIVABLE' | 'PAYABLE' | 'CUSTOMER_ADVANCE' | 'SUPPLIER_ADVANCE' | 'AGENT_RECEIVABLE' | 'AGENT_ADVANCE';
 
 /** Immutable owner-produced fact. This is projection input, never an accounting command. */
 export interface ReportingEvidence {
