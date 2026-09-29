@@ -3,15 +3,13 @@ import {ContractValidationError,decimalAmount,type CompanyId,type DecimalAmount}
 import type {CurrencyFxApplicationService} from '@elhafez/currency-fx';
 import type {BillingRepository} from './billing.repository.js';
 import type {BillingSubledgersApplicationService,CreateInvoiceInput} from './billing-subledgers.application-service.js';
-import type {Advance,AdvanceConsumption,Allocation,Invoice,PartyKind} from '../domain/billing.js';
+import type {Advance,AdvanceConsumption,Allocation,Invoice} from '../domain/billing.js';
 
 const SCALE=10n**18n;
-const zero=decimalAmount('0');
 function units(value:DecimalAmount,field='amount'){const text=decimalAmount(value),negative=text.startsWith('-'),unsigned=negative?text.slice(1):text,[whole,fraction='']=unsigned.split('.');if(fraction.length>18)throw new ContractValidationError(field,'supports at most 18 fractional digits');const result=BigInt(whole+fraction.padEnd(18,'0'));return negative?-result:result;}
 function decimal(value:bigint):DecimalAmount{const negative=value<0n,absolute=negative?-value:value,whole=absolute/SCALE,fraction=absolute%SCALE,text=fraction===0n?whole.toString():whole.toString()+'.'+fraction.toString().padStart(18,'0').replace(/0+$/,'');return decimalAmount((negative&&text!=='0'?'-':'')+text);}
 function positive(value:DecimalAmount,field='amount'){const result=decimalAmount(value);if(units(result,field)<=0n)throw new ContractValidationError(field,'must be positive');return result;}
 function fingerprint(value:unknown){return createHash('sha256').update(JSON.stringify(value)).digest('hex');}
-function invoiceKind(invoice:Invoice):PartyKind{return invoice.type==='SUPPLIER'?'SUPPLIER':invoice.type==='AGENT'?'AGENT':'CUSTOMER';}
 function receivableType(kind:'CUSTOMER'|'AGENT',invoice:Invoice){return kind==='AGENT'?invoice.type==='AGENT':invoice.type==='CUSTOMER'||invoice.type==='OPENING_CUSTOMER_BALANCE';}
 
 export type ReceivablePartyKind='CUSTOMER'|'AGENT';
@@ -39,7 +37,8 @@ export class PartyReceivableApplicationService{
  }
 
  async createAndPostReceivableInvoice(input:Omit<CreateInvoiceInput,'type'>&{partyKind:ReceivablePartyKind}):Promise<Invoice>{
-  const draft=await this.billing.createDraft({...input,type:input.partyKind});
+  const{partyKind,...draftInput}=input;
+  const draft=await this.billing.createDraft({...draftInput,type:partyKind});
   return this.billing.postInvoice(input.companyId,draft.id);
  }
 
