@@ -1,6 +1,6 @@
 import { Controller, Get, Headers, Param, Query, UnauthorizedException } from '@nestjs/common';
 import { executionContext, type ExecutionContext } from '@elhafez/contracts';
-import { PlatformCoreApplicationService } from '@elhafez/platform-core';
+import { PLATFORM_CORE_PERMISSIONS, PlatformCoreApplicationService } from '@elhafez/platform-core';
 import { SupplierIntelligenceReadModelService } from './supplier-intelligence-read-model.service.js';
 
 export const SUPPLIER_INTELLIGENCE_PERMISSIONS = Object.freeze({
@@ -38,6 +38,19 @@ export class SupplierIntelligenceReadModelController {
     const context = await this.context(authorization, companyId, branchId);
     await this.authorize(context, true);
     return this.service.overview(context, supplierPartyId);
+  }
+
+  @Get(':supplierPartyId/financials')
+  async financials(
+    @Headers('authorization') authorization: string | undefined,
+    @Headers('x-company-id') companyId: string | undefined,
+    @Headers('x-branch-id') branchId: string | undefined,
+    @Param('supplierPartyId') supplierPartyId: string,
+  ) {
+    const context = await this.context(authorization, companyId, branchId);
+    await this.authorize(context, false);
+    await this.platform.authorize(context.actorId, context.companyId, PLATFORM_CORE_PERMISSIONS.accountingFinanceRead);
+    return this.service.financials(context, supplierPartyId);
   }
 
   private async authorize(context: ExecutionContext, includeDisputes: boolean) {
