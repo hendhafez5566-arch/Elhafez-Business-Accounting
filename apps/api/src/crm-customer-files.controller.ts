@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Headers, Param, Post, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Headers, Inject, Param, Post, UnauthorizedException } from '@nestjs/common';
 import { executionContext, type ExecutionContext } from '@elhafez/contracts';
 import { EntityFileLinksApplicationService, PlatformCoreApplicationService } from '@elhafez/platform-core';
 import { customerId, CustomerManagementApplicationService } from '@elhafez/customer-management';
@@ -8,7 +8,11 @@ const REFERENCE_TYPE='PLATFORM_FILE';
 
 @Controller('crm/customers/:customerId/files')
 export class CrmCustomerFilesController {
-  constructor(private readonly customers:CustomerManagementApplicationService,private readonly files:EntityFileLinksApplicationService,private readonly platform:PlatformCoreApplicationService){}
+  constructor(
+    @Inject(CustomerManagementApplicationService) private readonly customers:CustomerManagementApplicationService,
+    @Inject(EntityFileLinksApplicationService) private readonly files:EntityFileLinksApplicationService,
+    @Inject(PlatformCoreApplicationService) private readonly platform:PlatformCoreApplicationService,
+  ){}
 
   @Get()
   async list(@Headers('authorization') auth:string|undefined,@Headers('x-company-id') company:string|undefined,@Headers('x-branch-id') branch:string|undefined,@Param('customerId') rawId:string){
