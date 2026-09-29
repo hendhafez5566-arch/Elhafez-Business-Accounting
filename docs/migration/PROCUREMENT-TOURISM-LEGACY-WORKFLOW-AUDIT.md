@@ -1,55 +1,69 @@
 # Procurement + Tourism Literal Workflow Audit
 
-This audit is evidence for `PROCUREMENT-TOURISM-LEGACY-PARITY-EXECUTION.md`. OLD remains functional/UI/UX reference only; no legacy implementation code is transferred.
+This audit supports `PROCUREMENT-TOURISM-LEGACY-PARITY-EXECUTION.md`. OLD is functional/UI/UX reference only; no legacy implementation code is transferred.
 
-## Tourism program readiness evidence from OLD
+## Phase 1 status
 
-Reviewed `hendhafez5566-arch/Elhafez-Tourism-Offline/src/core/umrah/workflow.ts` literally.
+**CLOSED — IMPLEMENTATION COMPLETE / UNVERIFIED**
 
-The legacy workflow treated package requirements as configurable capabilities rather than one monolithic program form. The relevant requirement families were hotel, flight, transport, visa, meal, visit, guide, Rawda, insurance, health, camp and permit. Hajj defaulted camp/permit on; older records were normalized non-destructively.
+The remaining focused OLD forms, operations and workflow evidence were reviewed and mapped before closing Phase 1. Testing and runtime verification are intentionally deferred to Phase 2.
 
-Program operational metadata also included an operations manager, group leader, guide contacts and a customer cancellation policy. These are parity requirements to map against NEW canonical program/operations owners before any schema change.
+## Program/readiness evidence
 
-### Readiness and guarded sales opening
+OLD treated hotel, flight, transport, visa, meal, visit, guide, Rawda, insurance, health, camp and permit as configurable requirements and guarded Hajj/Umrah operational readiness using traveler, capacity, treasury and finance evidence.
 
-OLD blocked or warned program opening when required package components were incomplete. Literal checks included:
+NEW decision: do not create another readiness/task owner in general Tourism. `hajj-umrah-readiness` already composes the specialized Hajj/Umrah evidence. General Tourism keeps its canonical program/booking/itinerary lifecycle, while shared `tourism-contract-inventory` evidence remains reusable. Traveler/passport truth stays in `traveler-management`.
 
-- required service segment exists;
-- outbound and return flight coverage aligns with program dates;
-- hotel nights equal the program duration;
-- hotel bed capacity covers program capacity;
-- flight seats cover program capacity;
-- transport capacity covers program capacity;
-- a treasury/account exists for the program currency;
-- financial setup is complete.
+## Contract and inventory workflow evidence
 
-These are workflow semantics, not instructions to recreate OLD persistence. In NEW they must be implemented only where missing, using `tourism-programs`, `tourism-contract-inventory`, Billing/Treasury and finance orchestration public APIs/read models.
+Literal OLD contract forms were re-checked for hotel, flight, transport, visa and contracted service behavior.
 
-### Operational task/readiness model
+- Hotel: supplier, period, room inventory, base rates, seasonal rate periods, cancellation policy and attachments.
+- Flight: supplier, outbound/return segments, seats, commercial seat cost/currency, ticket deadline, fare class, baggage and attachments.
+- Transport: provider/supplier, route, vehicle type/count/capacity, period, commercial cost/currency and attachments.
+- Visa: supplier, service label, quota, period, processing days, commercial cost/currency and attachments.
+- Contracted services: supplier, category, period, unit, quota/capacity and commercial unit cost.
 
-OLD generated operational checkpoints around contracts, pricing, visa, tickets, rooming, transport, permits, camps, health, finance and final manifest. Completion could be derived from canonical operational evidence (for example issued visa, traveler flight readiness, room assignment, transport assignment and financial readiness) and reverted if the underlying readiness ceased to be true.
+NEW implementation keeps capacity/allocation/availability/stop-sale in `tourism-contract-inventory`. Commercial/descriptive details are versioned contract terms. Transport/visa and dated hotel-rate metadata now have an explicit structured amendment UI over the same contract owner. Contract attachments now link the `TOURISM_CONTRACT` entity directly to Platform Core files.
 
-This is important parity behavior: NEW should expose equivalent readiness/exception visibility without copying OLD task storage or creating a competing workflow owner.
+## Identity decision
 
-### Traveler readiness
+OLD forms sometimes carried both a supplier and a free-text provider/carrier/hotel label. In NEW, the financially accountable organization is the canonical Supplier Management / Party Registry identity selected on the contract. Resource labels such as hotel reference, vehicle reference, flight number or carrier label remain operational/descriptive references only and do not create Party or Supplier records.
 
-The legacy readiness score considered identity/name and passport validity plus only those package capabilities configured as required. Conditional checks included visa, ticket, hotel rooming, transport, permit, camp and health clearance.
+OLD quick-create supplier buttons are intentionally not reproduced inside contract forms. Supplier creation/resolution stays in Supplier Management so duplicate Party/Supplier identities are not introduced.
 
-NEW mapping must continue to use `traveler-management` for traveler/passport truth and dedicated tourism owners for booking/itinerary/allocation evidence. No traveler snapshot or duplicate passport truth should be introduced in program UI state.
+## Booking and allocation workflow
 
-### Procurement / finance boundary evidence
+OLD used contextual selection and guarded resource assignment. NEW now:
 
-OLD bundled service setup could associate a supplier and cost/procurement policy, but the NEW implementation must not reproduce that coupling. Supplier selection belongs to Supplier Management identities, contract/allotment capacity to `tourism-contract-inventory`, supplier commitment/procurement to canonical procurement owners, and payable/payment/accounting truth to Billing/Treasury/Accounting.
+- selects real customers/travelers from canonical CRM/traveler owners;
+- selects contract/resource inventory from the Contract Inventory catalog;
+- generates allocation IDs internally rather than asking the user to invent them;
+- requires real flight-segment / visa-batch evidence for those allocation types;
+- retains direct allocation ID only as an administrative lookup/release aid after allocation.
 
-## Decisions for the NEW audit
+## Procurement / finance boundary
 
-1. Treat configurable program requirements and readiness blockers as parity requirements; first inventory existing NEW behavior before adding anything.
-2. Treat operations team/cancellation-policy fields as candidate program metadata only after verifying canonical ownership and existing fields.
-3. Treat capacity/date readiness as cross-owner composition. Do not direct-read another module's database.
-4. Treat treasury and financial setup checks as finance-owner reads/orchestration, never program-owned financial truth.
-5. Do not reproduce automatic mutable task storage if NEW already has an operations/readiness owner; compose existing evidence instead.
-6. Preserve guarded lifecycle transitions. Do not make hard deletion a substitute for closing/cancelling programs or bookings.
+The final hand-off review confirms the following owner boundaries:
 
-## Remaining literal extraction
+- supplier commitment / purchase order: procurement owners;
+- supplier invoice/open payable/advance: Billing;
+- payment/voucher/cash-bank settlement: Treasury / Accounting;
+- customer invoice/open receivable: Billing;
+- collection: existing Billing/Treasury party orchestration;
+- customer/agent advance refund: Billing/Treasury/Financial Controls orchestration;
+- tourism profitability: derived read from canonical sale/cost evidence, not stored again in Tourism.
 
-Still review the focused OLD `forms.ts`, `ui-pages.ts`, `operations.ts`, supplier/party browser smoke and Umrah workflow smoke sections that are not yet represented in the execution checkpoint. Then compare each page/action/state against NEW before implementing missing behavior.
+No tourism contract, service, supplier page or read model owns a second ledger, receivable, payable, advance or treasury balance.
+
+## Safe lifecycle / audit decision
+
+Historical supplier, PO, booking, service, allocation and financial records are retained through their existing lifecycle/correction/cancellation mechanisms. No hard-delete path was introduced to replace canonical close/cancel/correct behavior. File deletion detaches the entity link through Platform Core rather than deleting a second copy held by Tourism or Supplier Management.
+
+## Routes and duplicate owners
+
+The target-section routes resolve to NEW canonical owners. The Hajj/Umrah contract-inventory route intentionally reuses the exact shared Tourism Contract Inventory component and owner; it is not a duplicate implementation. No second generic-service inventory form, second contract repository or legacy route-backed persistence was introduced.
+
+## Phase 2 boundary
+
+No TypeScript check, lint, unit/integration test, Prisma verification, build, hosted CI or `pnpm verify` result is claimed here. Those checks begin only when Phase 2 is explicitly started.
