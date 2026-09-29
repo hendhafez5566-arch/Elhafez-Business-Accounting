@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { branchId, companyId, executionContext } from '@elhafez/contracts';
-import { Module } from '@nestjs/common';
+import { BadRequestException, Module } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { PLATFORM_CORE_PERMISSIONS, PlatformCoreApplicationService } from '@elhafez/platform-core';
-import { ManagementControlController } from './management-control.controller.js';
-import { ManagementControlService, type ManagementSummary, WorkCenterApplicationService } from './management-control.service.js';
+import { ManagementControlController, parseWorkCenterFilter } from './management-control.controller.js';
+import { ManagementControlService, type ManagementAttentionItem, type ManagementSummary, WorkCenterApplicationService } from './management-control.service.js';
 
 const context=executionContext(companyId('company-1'),branchId('branch-1'),'manager');
 const summary:ManagementSummary={crmSales:{customers:0,agents:0,travelers:0,overdueFollowups:0,leadStages:{},quotationStatuses:{},quotationValueByCurrency:[]},suppliers:{total:0,openDisputes:0,activeHolds:0},hajjUmrah:{activePrograms:0,readinessItems:0,criticalReadinessItems:0},finance:{overduePositions:0,overdueByCurrency:[]}};
@@ -34,3 +34,56 @@ test('unscoped platform notifications are never requested or surfaced in company
 test('owner failures reject the aggregate instead of becoming successful empty data',async()=>{await assert.rejects(service({crm:async()=>{throw new Error('crm unavailable');}}).overview(context),/crm unavailable/);});
 
 test('Nest runtime DI resolves the controller and enforces branch plus canonical management permission',async()=>{const calls:string[]=[];const management={overview:async()=>new WorkCenterApplicationService().compose('company-1','branch-1',[],summary)};const platform={currentUser:async()=>({id:'manager',email:'m@example.com',status:'ACTIVE',displayName:'Manager',createdAt:new Date(),updatedAt:new Date()}),requireBranchAccess:async()=>{calls.push('branch');},authorize:async(_user:string,_company:string,permission:string)=>{calls.push(permission);}};@Module({controllers:[ManagementControlController],providers:[{provide:ManagementControlService,useValue:management},{provide:PlatformCoreApplicationService,useValue:platform}]})class ManagementControllerTestModule{}const app=await NestFactory.createApplicationContext(ManagementControllerTestModule,{logger:false});try{const controller=app.get(ManagementControlController);await assert.rejects(controller.overview(undefined,'company-1','branch-1',undefined,undefined,undefined,undefined,undefined,undefined),/authenticated company and branch context required/);await controller.overview('Bearer session','company-1','branch-1',undefined,undefined,undefined,undefined,undefined,undefined);assert.deepEqual(calls,['branch',PLATFORM_CORE_PERMISSIONS.managementControlRead]);}finally{await app.close();}});
+
+test('parseWorkCenterFilter rejects unsupported domain', () => {
+  assert.throws(() => parseWorkCenterFilter({ domain: 'TREASURY' }), BadRequestException);
+});
+
+test('parseWorkCenterFilter rejects unsupported severity', () => {
+  assert.throws(() => parseWorkCenterFilter({ severity: 'LOW' }), BadRequestException);
+});
+
+test('parseWorkCenterFilter rejects malformed date', () => {
+  assert.throws(() => parseWorkCenterFilter({ from: '29/09/2026' }), BadRequestException);
+  assert.throws(() => parseWorkCenterFilter({ to: '2026-9-1' }), BadRequestException);
+});
+
+test('parseWorkCenterFilter rejects non-existent calendar dates', () => {
+  for (const value of ['2026-02-31', '2026-04-31', '2026-13-01', '2026-00-10', '2026-06-00']) {
+    assert.throws(() => parseWorkCenterFilter({ from: value }), BadRequestException, value);
+  }
+  assert.deepEqual(parseWorkCenterFilter({ from: '2028-02-29' }), { from: '2028-02-29' });
+});
+
+test('parseWorkCenterFilter rejects from after to', () => {
+  assert.throws(() => parseWorkCenterFilter({ from: '2026-09-30', to: '2026-09-01' }), BadRequestException);
+});
+
+test('parseWorkCenterFilter trims status/category and drops empty values', () => {
+  assert.deepEqual(parseWorkCenterFilter({ status: '  OVERDUE ', category: '   ' }), { status: 'OVERDUE' });
+  assert.deepEqual(parseWorkCenterFilter({}), {});
+});
+
+test('compose matches status and category case-insensitively', () => {
+  const item: ManagementAttentionItem = { sourceKey: 'X:1', sourceDomain: 'CRM_SALES', sourceType: 'X', sourceId: '1', title: 't', summary: 's', severity: 'NORMAL', status: 'Overdue', companyId: context.companyId, branchId: context.branchId, category: 'Follow_Up', drillDownPath: '/x' };
+  const workCenter = new WorkCenterApplicationService();
+  assert.equal(workCenter.compose(context.companyId, context.branchId, [item], summary, { status: 'OVERDUE' }).items.length, 1);
+  assert.equal(workCenter.compose(context.companyId, context.branchId, [item], summary, { category: ' follow_up ' }).items.length, 1);
+  assert.equal(workCenter.compose(context.companyId, context.branchId, [item], summary, { status: 'PENDING' }).items.length, 0);
+});
+
+test('hajj readiness fallback source keys stay unique across programs sharing the same row.key',async()=>{
+  const result=await service({
+    programs:async()=>[
+      {id:'p1',code:'HAJJ-A',status:'ACTIVE'},
+      {id:'p2',code:'HAJJ-B',status:'ACTIVE'},
+    ],
+    queue:async()=>[
+      {key:'VISA_PENDING',priority:'HIGH',category:'VISA',title:'تأشيرات معلقة',detail:'d'},
+    ],
+  }).overview(context);
+  const hajj=result.items.filter(item=>item.sourceDomain==='HAJJ_UMRAH');
+  assert.equal(hajj.length,2);
+  assert.deepEqual(hajj.map(item=>item.sourceKey).sort(),['READINESS:p1:VISA_PENDING','READINESS:p2:VISA_PENDING']);
+  assert.equal(new Set(hajj.map(item=>item.sourceKey)).size,2);
+});
