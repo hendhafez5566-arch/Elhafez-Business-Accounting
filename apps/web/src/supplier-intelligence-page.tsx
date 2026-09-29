@@ -81,6 +81,8 @@ export function SupplierIntelligencePage(){
     }catch(e){setNotice(errorMessage(e));}
   }
 
+  const selectedSupplierId=selected?rows.find(row=>row.party.id===selected)?.supplier.id:null;
+
   return <section aria-label="تقييم ومتابعة الموردين">
     <Card title="تقييم ومتابعة الموردين">
       <Input aria-label="بحث الموردين" value={q} onChange={e=>setQ(e.target.value)} placeholder="ابحث باسم المورد أو الكود"/>
@@ -99,6 +101,7 @@ export function SupplierIntelligencePage(){
         <p>التصنيفات: {overview.supplier.categories.join('، ')||'—'}</p>
         <p>الحالة: <Badge tone={statusTone(overview.supplier.status)}>{statusLabel(overview.supplier.status)}</Badge> · الاعتماد: {approvalLabel(overview.supplier.approvalStatus)}</p>
         {overview.holds.isHeld&&<p>حالات الإيقاف: {overview.holds.active.map(hold=>hold.reason).join('، ')}</p>}
+        {selectedSupplierId?<Button variant="secondary" onClick={()=>{window.location.href='/procurement/supplier-documents?supplierId='+encodeURIComponent(selectedSupplierId);}}>المستندات والمرفقات</Button>:null}
       </Card>
       <Card title="أداء المشتريات">
         <DataGrid columns={['أوامر الشراء','ملغاة','المطلوب','المستلم','نسبة الإكمال','مكتملة','تصحيحات','في الموعد','متأخر','غير مصنف']}>
