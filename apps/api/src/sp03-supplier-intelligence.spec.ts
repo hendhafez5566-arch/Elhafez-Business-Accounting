@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { executionContext } from '@elhafez/contracts';
 import { NestFactory } from '@nestjs/core';
+import { PLATFORM_CORE_PERMISSIONS } from '@elhafez/platform-core';
 import { SupplierEvaluationApplicationService } from '@elhafez/supplier-evaluation';
 import { SupplierDisputesApplicationService } from '@elhafez/supplier-disputes';
 import { AppModule } from './app.module.js';
@@ -18,12 +19,19 @@ test('Supplier 360 composes public owner APIs, separates open/history disputes, 
     {id:'d2',status:'RESOLVED',severity:'HIGH'},
     {id:'d3',status:'CANCELLED',severity:'LOW'},
   ];
+  const po={id:'po-1',number:'PO-1',status:'APPROVED',orderDate:'2026-09-20',currency:'EGP',lines:[{id:'l1',itemReference:'HOTEL',orderedQuantity:'10',receivedQuantity:'8',invoicedQuantity:'5'}]};
   const service = new SupplierIntelligenceReadModelService(
     { listForIntegration:async()=>[supplier], supplierViewForIntegration:async()=>supplier, holdStateForIntegration:async()=>({isHeld:true,activeHolds:[{id:'h1',sourceType:'SUPPLIER_DISPUTE',sourceId:'d1',reason:'critical',createdAt:'2026-09-21T00:00:00Z'}]}) } as never,
     { latestForIntegration:async()=>evaluations[0], listForIntegration:async()=>evaluations } as never,
     { listForIntegration:async()=>disputes } as never,
-    { supplierPerformanceMetricsForIntegration:async()=>({poCount:2,cancelledPoCount:0,orderedQuantity:'10',receivedQuantity:'8',completionRatio:'0.8',completedPoCount:1}) } as never,
+    { supplierPerformanceMetricsForIntegration:async()=>({poCount:2,cancelledPoCount:0,orderedQuantity:'10',receivedQuantity:'8',completionRatio:'0.8',completedPoCount:1}), purchaseOrdersForSupplierMetricsForIntegration:async()=>[po] } as never,
     { supplierTimingMetricsForIntegration:async()=>({fulfillmentCorrectionCount:1,onTimeCompletedCount:1,lateCompletedCount:0,unclassifiedTimingCount:0}) } as never,
+    {
+      listInvoices:async()=>[{id:'inv-1',companyId:'co',branchId:'br',type:'SUPPLIER',status:'POSTED',partyId:'party-1',number:'INV-1',externalInvoiceNumber:'S-9',postingDate:'2026-09-22',dueDate:'2026-10-22',currency:'EGP',sourceType:'PROCUREMENT_PO',sourceId:'po-1',controlAccountId:'ap',lines:[],baseTotal:'100',outstanding:'40',requestHash:'h',createdAt:'2026-09-22T00:00:00Z'}],
+      getOpenPosition:async()=>({invoiceId:'inv-1',companyId:'co',branchId:'br',partyKind:'SUPPLIER',partyId:'party-1',invoiceType:'SUPPLIER',currency:'EGP',documentTotal:'100',outstanding:'40',baseTotal:'100',controlAccountId:'ap',status:'POSTED',postingDate:'2026-09-22',deferred:false}),
+      getAdvance:async()=>({id:'adv-1',companyId:'co',partyKind:'SUPPLIER',partyId:'party-1',amount:'20',available:'10',sourceType:'TREASURY',sourceId:'v1'}),
+    } as never,
+    { listVouchers:async()=>[{id:'v1',companyId:'co',branchId:'br',treasuryId:'bank',kind:'PAYMENT',partyKind:'SUPPLIER',partyId:'party-1',number:'PAY-1',postingDate:'2026-09-23',currency:'EGP',amount:'20',sourceType:'TEST',sourceId:'1',requestHash:'h',status:'POSTED',allocationIds:[],advanceId:'adv-1'}] } as never,
   );
   const result=await service.overview(context,'party-1');
   assert.equal(result.supplier.supplierCode,'SUP-1');
@@ -33,11 +41,16 @@ test('Supplier 360 composes public owner APIs, separates open/history disputes, 
   assert.equal(result.evaluation.latest?.id,'e1');
   assert.equal(result.evaluation.history.length,1);
   assert.equal(result.procurementMetrics.receivedQuantity,'8');
+  assert.equal(result.purchaseOrders[0]?.number,'PO-1');
   assert.equal(result.disputes.open.length,1);
   assert.equal(result.disputes.history.length,3);
   assert.equal(result.holds.isHeld,true);
   assert.deepEqual(result.holds.criticalDisputeIds,['d1']);
-  const serialized=JSON.stringify(result);
+  const financials=await service.financials(context,'party-1');
+  assert.equal(financials.invoices[0]?.outstanding,'40');
+  assert.equal(financials.vouchers[0]?.number,'PAY-1');
+  assert.equal(financials.activeAdvances[0]?.available,'10');
+  const serialized=JSON.stringify({...result,financials});
   assert.doesNotMatch(serialized,/bankAccounts|accountNumber|iban/i);
 });
 
@@ -48,7 +61,7 @@ test('Supplier Intelligence controller resolves currentUser and enforces branch/
     requireBranchAccess:async(value:string)=>{actor=value;},
     authorize:async(...args:[string,string,string])=>{assert.equal(args[0],'user-1');assert.equal(args[1],'co');permissions.push(args[2]);},
   };
-  const service={searchSuppliers:async()=>[],overview:async()=>({})};
+  const service={searchSuppliers:async()=>[],overview:async()=>({}),financials:async()=>({})};
   const controller=new SupplierIntelligenceReadModelController(service as never,platform as never);
   await controller.search('Bearer real-session','co','br',undefined);
   assert.equal(token,'real-session');
@@ -57,6 +70,9 @@ test('Supplier Intelligence controller resolves currentUser and enforces branch/
   permissions.length=0;
   await controller.overview('Bearer real-session','co','br','party-1');
   assert.deepEqual(permissions,[SUPPLIER_INTELLIGENCE_PERMISSIONS.read,SUPPLIER_INTELLIGENCE_PERMISSIONS.disputeRead]);
+  permissions.length=0;
+  await controller.financials('Bearer real-session','co','br','party-1');
+  assert.deepEqual(permissions,[SUPPLIER_INTELLIGENCE_PERMISSIONS.read,PLATFORM_CORE_PERMISSIONS.accountingFinanceRead]);
   await assert.rejects(()=>controller.search(undefined,'co','br',undefined),/authenticated company and branch context required/);
   await assert.rejects(()=>controller.search('Bearer real-session',undefined,'br',undefined),/authenticated company and branch context required/);
   await assert.rejects(()=>controller.search('Bearer real-session','co',undefined,undefined),/authenticated company and branch context required/);

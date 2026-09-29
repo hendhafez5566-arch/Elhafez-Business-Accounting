@@ -42,6 +42,12 @@ export class InMemoryCostCenterRepository implements CostCenterRepository {
     );
   }
 
+  async list(companyId: CompanyId) {
+    return [...this.centers.values()]
+      .filter((value) => value.companyId === companyId)
+      .sort((left, right) => left.code.localeCompare(right.code) || left.name.localeCompare(right.name));
+  }
+
   private associationKey(companyId: CompanyId, program: SourceReference) {
     return `${companyId}:${program.sourceType}:${program.sourceId}`;
   }

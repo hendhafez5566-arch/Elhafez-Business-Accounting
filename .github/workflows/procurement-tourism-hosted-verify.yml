@@ -1,0 +1,59 @@
+name: Procurement Tourism Hosted Verify
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/procurement-tourism-full-legacy-parity
+
+concurrency:
+  group: procurement-tourism-hosted-verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Change safety
+        run: pnpm change-safety:check
+
+      - name: Engineering integrity
+        run: pnpm engineering-integrity:check
+
+      - name: Prisma generate
+        run: pnpm prisma:generate
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: TypeScript
+        run: pnpm typecheck
+
+      - name: Architecture check
+        run: pnpm architecture:check
+
+      - name: Unit and integration tests
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build

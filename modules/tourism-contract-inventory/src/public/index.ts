@@ -30,6 +30,8 @@ export type {
   StandaloneSupplyCommit,
   ReleaseResult,
 } from '../application/inventory.application-service.js';
+export { TourismContractInventoryReadApplicationService } from '../application/tourism-contract-inventory-read.application-service.js';
+export type { TourismInventoryContractOption, TourismInventoryResourceOption } from '../application/inventory-read.repository.js';
 export type {
   TourismContract,
   ContractVersion,

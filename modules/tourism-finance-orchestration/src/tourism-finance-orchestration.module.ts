@@ -32,6 +32,7 @@ import {
   type TourismFinanceRepository,
 } from './application/orchestration.repository.js';
 import { TourismFinanceOrchestrationApplicationService } from './application/tourism-finance-orchestration.application-service.js';
+import { TourismFinanceReadApplicationService } from './application/tourism-finance-read.application-service.js';
 import { HistoricalImportApplicationService } from './application/historical-import.application-service.js';
 import {
   HISTORICAL_IMPORT_REPOSITORY,
@@ -78,6 +79,11 @@ import {
       inject: [PrismaClient],
     },
     {
+      provide: TourismFinanceReadApplicationService,
+      useFactory: (repository: TourismFinanceRepository) => new TourismFinanceReadApplicationService(repository),
+      inject: [TOURISM_FINANCE_REPOSITORY],
+    },
+    {
       provide: TourismFinanceOrchestrationApplicationService,
       useFactory: (
         repository: TourismFinanceRepository,
@@ -114,6 +120,7 @@ import {
   exports: [
     HistoricalImportApplicationService,
     TourismFinanceOrchestrationApplicationService,
+    TourismFinanceReadApplicationService,
   ],
 })
 export class TourismFinanceOrchestrationModule {}

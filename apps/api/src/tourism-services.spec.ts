@@ -31,7 +31,18 @@ test('pending cancellation retries with its persisted key and posting date', asy
   } as unknown as TourismFinanceOrchestrationApplicationService;
   const fulfillment = { cancellationBlockers: async () => [] } as unknown as ServiceFulfillmentApplicationService;
   const vouchers = { cancellationBlockers: async () => [] } as unknown as ServiceVouchersApplicationService;
-  const controller = new TourismServicesController(services, {} as TourismContractInventoryApplicationService, platform, fulfillment, vouchers, finance);
+  const controller = new TourismServicesController(
+    services,
+    {} as TourismContractInventoryApplicationService,
+    platform,
+    fulfillment,
+    vouchers,
+    finance,
+    {} as never,
+    {} as never,
+    {} as never,
+    {} as never,
+  );
 
   await controller.cancel('Bearer token', 'company-1', 'branch-1', 'service-1', { commandKey: 'new-key', postingDate: '2026-09-24' });
   assert.deepEqual(calls, [
