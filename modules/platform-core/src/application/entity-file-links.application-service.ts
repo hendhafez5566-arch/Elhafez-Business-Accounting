@@ -42,8 +42,9 @@ export class EntityFileLinksApplicationService {
   }
 
   async detach(companyId:string,entityType:string,entityId:string,fileId:string):Promise<void>{
-    const row=await this.requireLink(companyId,entityType,entityId,fileId);
-    await this.prisma.$transaction(async tx=>{await tx.$executeRaw`DELETE FROM "pc_entity_file_links" WHERE "id"=${row.id}`;});
+    await this.requireLink(companyId,entityType,entityId,fileId);
+    // pc_entity_file_links.file_id is ON DELETE CASCADE, so Platform Core file
+    // retirement is the single operation that owns both physical and metadata cleanup.
     await this.files.retireFile(companyId,fileId);
   }
 
