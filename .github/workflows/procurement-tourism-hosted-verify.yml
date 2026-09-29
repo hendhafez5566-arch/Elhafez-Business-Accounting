@@ -2,6 +2,9 @@ name: Procurement Tourism Hosted Verify
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - feature/procurement-tourism-full-legacy-parity
 
 concurrency:
   group: procurement-tourism-hosted-verify-${{ github.ref }}
