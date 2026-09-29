@@ -125,6 +125,7 @@ Hosted verification progress:
 - Change-safety and engineering-integrity pass.
 - Prisma client generation passes.
 - Lint passes after explicit Nest DI import fixes.
-- Typecheck reached `apps/api` and exposed one intentional ownership mismatch: generic Accounting settlement accepted Billing's widened `AGENT` party kind while Treasury's generic settlement contract remains Customer/Supplier. The generic Accounting route now explicitly rejects Agent positions and routes them to the CRM financial workflow, preserving the canonical Agent orchestration boundary. This commit triggers verification of that narrowing and the remaining architecture/tests.
+- Typecheck reached `apps/api` and exposed one intentional ownership mismatch: generic Accounting settlement accepted Billing's widened `AGENT` party kind while Treasury's generic settlement contract remains Customer/Supplier. The generic Accounting route now explicitly rejects Agent positions and routes them to the CRM financial workflow, preserving the canonical Agent orchestration boundary.
+- The required Accounting compatibility edit is now explicitly declared in the change-safety manifest as a protected path rather than bypassing governance. This commit triggers the next hosted verification pass.
 
 The hourly continuation service must continue from this checklist. It must stay on `feature/crm-full-legacy-parity`, never modify `main`, never deploy Railway, and stop without starting another business section after Phase 2 is complete.
