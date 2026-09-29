@@ -3,7 +3,7 @@ import{executionContext,type ExecutionContext}from'@elhafez/contracts';
 import{PlatformCoreApplicationService}from'@elhafez/platform-core';
 import{TourismProgramsApplicationService,type TourismProgramInput,type TourismProgramStatus}from'@elhafez/tourism-programs';
 import{TourismItinerariesApplicationService,type ItineraryDayInput}from'@elhafez/tourism-itineraries';
-import{TourismBookingsApplicationService,type BookingFinanceConfirmInput,type CreateTourismBookingInput,type TourismBookingStatus}from'@elhafez/tourism-bookings';
+import{TourismBookingsApplicationService,type CreateTourismBookingInput,type TourismBookingConfirmInput,type TourismBookingStatus}from'@elhafez/tourism-bookings';
 
 @Controller('tourism')
 export class TourismOperationsController{
@@ -21,7 +21,7 @@ export class TourismOperationsController{
  @Patch('programs/:programId/itinerary/:id')async updateItinerary(@Headers('authorization')a:string,@Headers('x-company-id')c:string,@Headers('x-branch-id')b:string,@Param('programId')programId:string,@Param('id')id:string,@Body()input:Omit<ItineraryDayInput,'programId'>&{expectedRevision:number}){return this.itineraries.update(await this.context(a,c,b),id,{...input,programId},input.expectedRevision)}
  @Get('bookings')async listBookings(@Headers('authorization')a?:string,@Headers('x-company-id')c?:string,@Headers('x-branch-id')b?:string,@Query('status')status?:TourismBookingStatus){return this.bookings.list(await this.context(a,c,b),status)}
  @Post('bookings')async createBooking(@Headers('authorization')a:string,@Headers('x-company-id')c:string,@Headers('x-branch-id')b:string,@Body()input:CreateTourismBookingInput){return this.bookings.create(await this.context(a,c,b),input)}
- @Post('bookings/:id/confirm')async confirmBooking(@Headers('authorization')a:string,@Headers('x-company-id')c:string,@Headers('x-branch-id')b:string,@Param('id')id:string,@Body()input:Omit<BookingFinanceConfirmInput,'companyId'|'branchId'|'bookingId'|'programId'|'programEvidence'|'customerPartyId'>){return this.bookings.confirm(await this.context(a,c,b),id,input)}
+ @Post('bookings/:id/confirm')async confirmBooking(@Headers('authorization')a:string,@Headers('x-company-id')c:string,@Headers('x-branch-id')b:string,@Param('id')id:string,@Body()input:TourismBookingConfirmInput){return this.bookings.confirm(await this.context(a,c,b),id,input)}
  @Post('bookings/:id/cancel')async cancelBooking(@Headers('authorization')a:string,@Headers('x-company-id')c:string,@Headers('x-branch-id')b:string,@Param('id')id:string,@Body()input:{commandKey:string;postingDate:string}){return this.bookings.cancel(await this.context(a,c,b),id,input)}
  @Post('bookings/:id/complete')async completeBooking(@Headers('authorization')a:string,@Headers('x-company-id')c:string,@Headers('x-branch-id')b:string,@Param('id')id:string){return this.bookings.complete(await this.context(a,c,b),id)}
 }
