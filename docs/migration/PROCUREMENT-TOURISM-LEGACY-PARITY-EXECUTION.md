@@ -2,177 +2,191 @@
 
 ## Mission
 
-Rebuild the functional/UI/UX coverage of the legacy `hendhafez5566-arch/Elhafez-Tourism-Offline` procurement/supplier and tourism/service areas inside `hendhafez5566-arch/Elhafez-Business-Accounting` without importing legacy architecture or copying legacy code.
+Rebuild the **Purchases & Suppliers** and **Tourism & Services** functional/UI/UX coverage from `hendhafez5566-arch/Elhafez-Tourism-Offline` inside `hendhafez5566-arch/Elhafez-Business-Accounting`.
 
-**Legacy system = functional/UI/UX reference only.**  
-**New system = architectural source of truth.**
-
-Working branch: `feature/procurement-tourism-full-legacy-parity`
-
-Guardrails:
-- Never modify or merge `main` as part of this mission.
+- OLD is a functional/UI/UX reference only.
+- NEW is the architectural source of truth.
+- Working branch: `feature/procurement-tourism-full-legacy-parity`.
+- Never modify/merge `main` in this mission.
 - Never deploy to Railway or production.
-- Never add a second implementation where a canonical owner already exists.
-- Never persist accounting truth in UI, supplier, or tourism feature state when an accounting owner exists.
-- Never use direct cross-module database access.
-- Never create duplicate party identities, invoice/payment/balance tables, attachment systems, permission systems, or repositories.
-- All cross-module work uses public application services, public module APIs, read models, or an orchestration layer.
-- Sensitive/financial actions must be backend permission checked, scope checked (company/branch), and approval-policy aware.
-- Existing linked entities are not hard-deleted unsafely; lifecycle, suspend/reactivate, references, audit evidence, and retention are preserved.
-- Existing migrations are immutable. Any database change must use a new migration.
+- Never copy legacy implementation code.
+- Never create duplicate owners, repositories, tables, financial truth, attachments, identity, permissions, or cross-module direct DB reads.
+- Cross-module integration must use public application services/APIs, read models, or orchestration.
+- Existing migrations are immutable; any DB change must be a new migration only.
 
 ## Canonical Ownership
 
-| Concern | Canonical owner in NEW | Rule |
-|---|---|---|
-| Supplier identity/contact | Party Registry + Supplier Management | Reuse/extend only |
-| Supplier operational lifecycle/profile | Supplier Management | Reuse/extend only |
-| Supplier qualifications/categories/bank details/holds/history | Supplier Management | Reuse/extend only |
-| Supplier invoices/payables/advances | Billing / Accounting owner | Supplier UI orchestrates; no duplicated financial truth |
-| Supplier payments/refunds/settlement | Treasury | Reuse Treasury APIs/read models |
-| Supplier evaluation | Supplier Evaluation | Reuse/extend |
-| Supplier disputes | Supplier Disputes | Reuse/extend |
-| Procurement sourcing/RFQ/quotes | Procurement Sourcing | Reuse/extend |
-| Purchase orders / procurement fulfillment | Procurement Fulfillment (+ Finance where applicable) | Reuse/extend |
-| Tourism service | Tourism Services | Reuse/extend |
-| Tourism booking/program/itinerary/inventory | Existing tourism booking/program/itinerary/contract-inventory owners | Reuse/extend |
-| Service supplier execution | Service Fulfillment | Reuse/extend |
-| Voucher | Service Vouchers | Reuse/extend |
-| Traveler/passport | Traveler Management | Reuse/extend |
-| Customer identity | Customer Management / Party Registry | Reuse/extend |
-| Files/attachments | Existing Platform/Core file owner | Reuse; no duplicate attachment store |
-| GL | General Ledger | Reuse |
-| Cash/bank | Treasury | Reuse |
-| Tax | Tax owner | Reuse |
-| Approvals | Financial Controls / existing approval owner | Reuse |
-| Currency/FX | Currency FX | Reuse |
-| Commission | Commission owner | Reuse |
+The mandatory NEW routing guide (`docs/BUSINESS-MODULE-ROUTING.md`) has been reviewed and is authoritative for this work.
 
-## Architecture Decisions Recorded So Far
-
-1. NEW already contains a `supplier-management` module and supplier-facing web UI. It is the canonical supplier operational owner; no replacement supplier module will be created.
-2. Supplier Management already integrates through public services with Platform Core and Party Registry. Cross-module identity will stay there rather than being copied into procurement/tourism tables.
-3. Supplier Management owns operational supplier data/lifecycle concerns (including existing category/qualification/bank/hold/history concepts) but does **not** become the source of truth for invoices or payments.
-4. NEW already contains a tourism-services workspace plus existing fulfillment/voucher/finance integrations. Tourism parity will extend these owners rather than introducing a parallel legacy-style Umrah/service subsystem.
-5. Legacy `src/core/umrah/procurement.ts` is treated as behavioral evidence only. Its global/event-bridge persistence model will not be copied. The reusable business semantics identified so far are: commitment creation from supplier-backed contracts/costs, safe cancellation when downstream invoice/receipt/execution evidence exists, program/booking/cost cascade cancellation rules, and per-traveler actualization policies.
-
-## Rolling Legacy Inventory -> NEW Mapping
-
-Status legend: `DISCOVERED`, `GAP-REVIEW`, `IMPLEMENTING`, `DONE`, `EXCLUDED`.
-
-### A. Suppliers / Procurement
-
-| Legacy feature / UX capability | NEW canonical owner | Current assessment | Action | Intended implementation location | Status |
-|---|---|---|---|---|---|
-| Supplier list/search/filter/sort/status/actions | Supplier Management + existing supplier web page | Exists; parity depth still under literal review | Reuse/Extend | supplier-management + supplier-pages | GAP-REVIEW |
-| Add/edit supplier | Supplier Management + Party Registry | Exists; field/action parity under review | Reuse/Extend | supplier-management public application service + supplier UI | GAP-REVIEW |
-| Supplier identity/contact | Party Registry | Exists | Reuse | Party Registry public API/read model | DISCOVERED |
-| Supplier classification/status | Supplier Management | Existing concepts confirmed | Reuse/Extend | supplier-management | GAP-REVIEW |
-| Payment terms / credit terms | Supplier Management for operational preference; accounting owner for financial truth | Needs owner-level parity review | Extend only if missing | supplier-management + billing/accounting public API | GAP-REVIEW |
-| Supplier balances / dues / financial account | Billing/Accounting read model | Must not be duplicated in supplier state | Reuse/Orchestrate | billing/accounting read model consumed by supplier 360 | GAP-REVIEW |
-| Supplier bank accounts | Supplier Management | Existing concept confirmed | Reuse/Extend | supplier-management | DISCOVERED |
-| Supplier documents / attachments | Platform/Core file owner | Existing shared attachment system to be identified | Reuse | public file owner API | GAP-REVIEW |
-| WhatsApp / phone actions | Supplier UI + party contact data | UX parity review pending | Extend UI using existing identity/contact | supplier pages | GAP-REVIEW |
-| Suspend/reactivate/holds | Supplier Management | Existing hold/lifecycle concepts confirmed | Reuse/Extend | supplier-management | GAP-REVIEW |
-| Safe delete / archive | Supplier Management lifecycle + reference checks | Must be safe; no unsafe hard delete | Extend | supplier-management + public reference checks | GAP-REVIEW |
-| Supplier 360 | Supplier Management orchestration/read model | Existing surrounding read models to review | Extend/Rebuild in NEW style | supplier read model + UI | GAP-REVIEW |
-| Supplier rating/evaluation | Supplier Evaluation | Module expected/needs exact coverage review | Reuse/Extend | supplier-evaluation | GAP-REVIEW |
-| Supplier history/activity/audit | Supplier Management + platform audit | Existing history concept confirmed | Reuse/Extend | supplier-management + audit | GAP-REVIEW |
-| Supplier disputes/issues | Supplier Disputes | Module expected/needs exact coverage review | Reuse/Extend | supplier-disputes | GAP-REVIEW |
-| Supplier offers / RFQ | Procurement Sourcing | Existing owner expected/needs exact coverage review | Reuse/Extend | procurement-sourcing | GAP-REVIEW |
-| Quote comparison | Procurement Sourcing | Coverage pending | Reuse/Extend | procurement-sourcing + procurement UI | GAP-REVIEW |
-| Supplier approval | Supplier Management / Financial Controls depending action | Existing approval framework must be reused | Reuse/Extend | public approval APIs | GAP-REVIEW |
-| Purchase requests / supply requests | Procurement Sourcing/Fulfillment | Coverage pending | Reuse/Extend | procurement-* | GAP-REVIEW |
-| Purchase orders (PO) | Procurement Fulfillment / Finance | Existing owner expected | Reuse/Extend | procurement-fulfillment | GAP-REVIEW |
-| Receiving / delivery / fulfillment | Procurement Fulfillment | Coverage pending | Reuse/Extend | procurement-fulfillment | GAP-REVIEW |
-| Purchase returns | Procurement Fulfillment + Accounting | Coverage pending | Reuse/Extend | fulfillment orchestration + accounting | GAP-REVIEW |
-| Supplier invoices | Billing/Accounting | Never duplicate in supplier module | Reuse/Orchestrate | billing owner | GAP-REVIEW |
-| Supplier payments/checks/payment methods | Treasury | Never duplicate in supplier module | Reuse/Orchestrate | treasury | GAP-REVIEW |
-| Supplier advances / advance refund | Accounting/Billing + Treasury | Never duplicate financial truth | Reuse/Orchestrate | billing/treasury public APIs | GAP-REVIEW |
-| Notes | Existing notes/activity owner or supplier operational profile | Coverage pending | Reuse/Extend | canonical shared/supplier owner | GAP-REVIEW |
-| KPI cards | Read models over canonical owners | Existing UI parity pending | Extend | supplier/procurement UI read models | GAP-REVIEW |
-| Empty/loading/error/confirmation states | NEW Design System | Parity pending | Extend | supplier/procurement pages | GAP-REVIEW |
-
-### B. Tourism / Services
-
-| Legacy feature / UX capability | NEW canonical owner | Current assessment | Action | Intended implementation location | Status |
-|---|---|---|---|---|---|
-| Tourism service list/search/filter/status/actions | Tourism Services | Existing page/workspace confirmed | Reuse/Extend | tourism-services page + public service API | GAP-REVIEW |
-| Create/edit service | Tourism Services | Existing service owner confirmed | Reuse/Extend | tourism services application service/UI | GAP-REVIEW |
-| Customer linkage | Customer Management / Party Registry | Must remain canonical | Reuse | public customer/party APIs | GAP-REVIEW |
-| Supplier linkage | Supplier Management | Must remain canonical | Reuse | public supplier API/read model | GAP-REVIEW |
-| Traveler/passport linkage | Traveler Management | Existing owner expected | Reuse/Extend | traveler-management | GAP-REVIEW |
-| Representative/agent linkage | Existing party/employee/agent owner | Exact owner to confirm | Reuse/Extend | canonical owner public API | GAP-REVIEW |
-| Service type/status/date/destination | Tourism Services | Existing coverage to inspect | Reuse/Extend | tourism-services | GAP-REVIEW |
-| Service cost/sale price/profitability/currency | Tourism Services presentation + accounting/FX truth | Durable finance integration exists; no duplicate financial truth | Reuse/Extend | tourism service read model + finance/FX owner | GAP-REVIEW |
-| Hotels/transport/flights/visas | Tourism Contracts/Inventory + Tourism Services/Bookings | Legacy supports these contract kinds | Reuse/Extend | existing tourism-* owners | GAP-REVIEW |
-| Programs/trips/bookings/itineraries | Tourism Programs/Bookings/Itineraries | Existing owners expected | Reuse/Extend | tourism-* modules | GAP-REVIEW |
-| Supplier fulfillment for service | Service Fulfillment | Existing integration confirmed | Reuse/Extend | service-fulfillment | DISCOVERED |
-| Costs/expenses/revenue | Accounting/Billing read models | No duplicate tourism ledger truth | Reuse/Orchestrate | finance/billing public APIs | GAP-REVIEW |
-| Customer advance/collection | Billing + Treasury | Must remain financial owner | Reuse/Orchestrate | billing/treasury | GAP-REVIEW |
-| Supplier advance/payment | Billing + Treasury | Must remain financial owner | Reuse/Orchestrate | billing/treasury | GAP-REVIEW |
-| Documents/files | Platform/Core file owner | Shared system to reuse | Reuse | public file API | GAP-REVIEW |
-| Voucher | Service Vouchers | Existing integration confirmed | Reuse/Extend | service-vouchers | DISCOVERED |
-| Confirmations | Tourism Services / Fulfillment | Exact coverage pending | Reuse/Extend | canonical service/fulfillment owner | GAP-REVIEW |
-| Notes/activity/audit | Existing audit/activity infrastructure | Exact coverage pending | Reuse/Extend | platform audit/read model | GAP-REVIEW |
-| Status lifecycle | Tourism Services + fulfillment/booking owners | Existing lifecycle pending literal comparison | Reuse/Extend | canonical service owner | GAP-REVIEW |
-| Cancel/amend/refund | Tourism Services + Billing/Treasury | Legacy safe-cancel evidence noted; exact NEW flow pending | Extend without duplicate finance | orchestration across public APIs | GAP-REVIEW |
-| Service 360 | Tourism Services read model/orchestration | Existing workspace confirmed; parity pending | Extend | tourism services UI/read model | GAP-REVIEW |
-| Accounting linkage | Existing finance integration | Existing durable-finance integration confirmed | Reuse/Extend | finance orchestration/public APIs | DISCOVERED |
-| KPIs/dashboard | Read models over canonical owners | Existing tourism workspace; parity pending | Extend | tourism UI/read models | GAP-REVIEW |
-| Empty/loading/error/confirmation states | NEW Design System | Parity pending | Extend | tourism pages | GAP-REVIEW |
+| Business truth | Canonical owner |
+|---|---|
+| Party identity/contact | `party-registry` |
+| Supplier operational profile/lifecycle/approval/banks | `supplier-management` |
+| Supplier evaluation | `supplier-evaluation` |
+| Supplier disputes | `supplier-disputes` |
+| PR / RFQ / bids / quote comparison / sourcing award | `procurement-sourcing` |
+| Purchase order / supplier commitment | `procurement-finance` |
+| Receiving / procurement execution evidence | `procurement-fulfillment` |
+| Supplier invoice/payable | `billing-subledgers` + existing procurement-finance contracts |
+| Supplier payment/refund/cheque/cash/bank | `treasury-settlement` |
+| General tourism standalone service | `standalone-services` |
+| Tourism program / booking / itinerary | `tourism-programs` / `tourism-bookings` / `tourism-itineraries` |
+| Tourism contract/allotment/inventory | `tourism-contract-inventory` |
+| Supplier confirmation / service fulfillment | `service-fulfillment` |
+| Voucher | `service-vouchers` |
+| Traveler/passport | `traveler-management` |
+| Customer operational identity | `customer-management` + `party-registry` |
+| Accounting workflow for tourism | `tourism-finance-orchestration` and accounting owners |
+| Files/audit/users/scoping | `platform-core` |
+| Financial approvals | `financial-controls` |
+| FX | `currency-fx` |
+| GL | `general-ledger` |
 
 ## Legacy Evidence Reviewed
 
-- Recursive legacy repository tree.
-- `src/core/umrah/procurement.ts` (behavioral reference only).
-- Legacy areas queued for literal extraction: `src/commercial/*`, `src/crm/party360.ts`, supplier/customer smoke tests, `src/core/umrah/ui-pages.ts`, `forms.ts`, `operations.ts`, `workflow.ts`, and Umrah UI/workflow smoke tests.
+Reviewed directly from OLD:
+
+- recursive repository tree;
+- `src/core/umrah/procurement.ts`;
+- `src/crm/party360.ts`;
+- `src/commercial/vendor-owner.ts` (confirmed intentionally disabled legacy Vendor Center shell; not a feature source to reproduce);
+- `src/commercial/pages.ts`;
+- `scripts/umrah-ui-parity-smoke.mjs`.
+
+Important OLD behaviors retained as requirements, not copied as code:
+
+- Supplier “More/360” concepts: edit, phone/WhatsApp, documents, suspend/reactivate, guarded deletion, account/transaction-linked drill downs.
+- Supplier history must be preserved while lifecycle changes stop new operations.
+- Supplier procurement history includes POs, supplier commitments, contract links and payment/invoice document access.
+- Procurement commitment/cancellation must respect downstream invoice/receipt/execution evidence.
+- Tourism/Umrah UI historically exposed grouped workspaces for contracts/inventory, programs, bookings, travelers, visas, flights, transport, costing/procurement, operations, documents/control/settings.
+- Program/service flows use guarded lifecycle transitions rather than deleting financial history.
+
+Still queued for literal legacy extraction:
+
+- focused OLD Umrah `ui-pages.ts`, `forms.ts`, `operations.ts`, `workflow.ts` sections;
+- supplier/party browser smoke references;
+- Umrah workflow smoke references;
+- remaining old buttons/menus/fields/states used by the two requested scopes.
 
 ## NEW Evidence Reviewed
 
-- Recursive NEW repository tree.
-- Existing `supplier-management` module and supplier web-page references.
-- Existing supplier public API exports and module metadata.
-- Existing tourism-services web/API references and integrations with Service Fulfillment, Service Vouchers, and finance-related orchestration.
+Confirmed existing implementations that must be reused rather than rebuilt:
 
-## Implementation Progress
+### Supplier / Procurement
 
-### Phase 1 — Implementation
+- `supplier-management` already owns supplier identity linkage, lifecycle, approval, categories, credit days, contact/notes, bank accounts, holds/history.
+- `SupplierIntelligenceReadModelService` already composes Supplier 360 information through public owners: supplier profile, evaluation history, dispute history, procurement economic metrics, fulfillment timing metrics, active holds.
+- `supplier-intelligence-page.tsx` already provides Arabic Supplier 360 evaluation/dispute workflows.
+- `procurement-sourcing` already implements PR → submit → approval/rejection → RFQ → supplier invitation → bids → deterministic quote comparison → award → PO creation through the canonical procurement owner.
+- `procurement-pages.tsx` already implements PO create/edit/approve/cancel, receipt evidence, receipt corrections, received-quantity-to-supplier-invoice conversion through Billing, and direct purchases through the accounting owner.
 
-**Status: IN PROGRESS**
+### Tourism / Services
 
-Completed so far:
-- Created isolated feature branch from current `main`.
-- Established canonical ownership guardrails.
-- Confirmed Supplier Management and Tourism Services are existing canonical owners and will be extended rather than replaced.
-- Began literal legacy behavioral extraction and NEW module mapping.
-- Created this durable checkpoint before feature code changes.
+- `standalone-services` is the canonical standalone tourism-service owner.
+- Backend already has optimistic-revision `updateDraft`; this existed before this migration but was not exposed by the tourism UI.
+- `tourism-services` workspace already uses service fulfillment, immutable vouchers, supply planning, supplier confirmation, delivery evidence, cancellation orchestration and durable finance integration.
+- Routes already separate standalone services, tourism programs, bookings, itineraries and contract inventory instead of creating a legacy monolith.
 
-Next execution steps (continue without redoing completed work):
-1. Finish literal OLD vs NEW inventory from supplier/commercial/party360 and Umrah UI/forms/workflow/smoke references.
-2. Inspect exact NEW public APIs/models/controllers/pages for supplier, sourcing, fulfillment, evaluation, disputes, tourism, traveler, voucher, billing, treasury, files, permissions, scoping, approvals.
-3. Implement backend gaps in canonical owners and orchestration.
-4. Implement UI parity gaps using NEW design system; every action must be backend-backed.
-5. Add only new migrations if genuinely required after owner review.
-6. Add/update focused tests as implementation artifacts where needed, but defer comprehensive verification run until both sections are implementation-complete.
-7. Update this checkpoint and commit each meaningful milestone.
+## Rolling Inventory / Decisions
 
-### Phase 2 — Comprehensive Testing
+Status: `DONE` = implementation/reuse decision complete; `IN PROGRESS` = active parity work; `REUSE` = NEW already covers it; `EXCLUDE` = legacy behavior deliberately not transferred because it violates NEW rules.
 
-**Status: NOT STARTED**
+### Purchases & Suppliers
 
-Starts automatically only after both Phase 1 sections are implementation-complete. It must include actual runs (not claims) for build, TypeScript, lint, architecture/change-safety/engineering-integrity checks, Prisma generate/migrations, unit/integration/API tests, permissions/scoping/read-model/financial-owner/approval checks, routes/forms/actions/filters/tabs/workflows, safe-delete/lifecycle/documents/financial flows, followed by a literal final legacy-vs-new audit.
+| Legacy capability | Decision / owner | Status |
+|---|---|---|
+| Supplier create/edit/profile/contact/category/status/credit days/notes | Reuse/extend `supplier-management` + Party Registry | REUSE |
+| Supplier search | Existing backend + UI | REUSE |
+| Supplier status/approval filters and sorting | Extended existing supplier UI | DONE |
+| Loading/empty/error states | Extended existing supplier UI using NEW Design System | DONE |
+| Phone / WhatsApp shortcuts | Added over canonical Party contact data; no duplicate identity | DONE |
+| Approval/rejection | Existing supplier-management backend permission checks | REUSE |
+| Suspend/hold/reactivate | Existing supplier-management lifecycle | REUSE |
+| Unsafe hard delete | Do not reproduce. Linked supplier history remains retained; lifecycle controls stop new use | EXCLUDE |
+| Supplier banks | Existing supplier-management APIs | REUSE |
+| Supplier 360 | Existing Supplier Intelligence read model/page; continue literal parity review for documents/financial drill-down | IN PROGRESS |
+| Supplier evaluation | Existing `supplier-evaluation` | REUSE |
+| Supplier disputes | Existing `supplier-disputes` | REUSE |
+| PR/RFQ/bids/comparison/award | Existing `procurement-sourcing` | REUSE |
+| PO/commitment | Existing `procurement-finance` exposed through procurement operations | REUSE |
+| Receiving/corrections | Existing `procurement-fulfillment` | REUSE |
+| Supplier invoice conversion | Existing Billing-owned flow from received PO quantity | REUSE |
+| Direct purchase | Existing Billing-backed flow | REUSE |
+| Supplier payable/balance/advance/payment/cheque | Must stay Billing/Treasury-owned; Supplier 360 composition parity still under review | IN PROGRESS |
+| Shared attachments/documents | Must reuse Platform Core; literal UI parity still under review | IN PROGRESS |
+| Purchase returns | Canonical owner/available operation still being reviewed | IN PROGRESS |
+
+### Tourism & Services
+
+| Legacy capability | Decision / owner | Status |
+|---|---|---|
+| Service create | Existing standalone-services | REUSE |
+| Draft service edit | Backend existed; UI now exposes canonical revision-backed edit flow | DONE |
+| Search/status filter/sort | Added to existing tourism service workspace | DONE |
+| Loading/empty/error states | Existing + extended result empty state | DONE |
+| Service type/date/period/quantity/customer/debtor/beneficiary/sale/discount/currency/financial terms | Existing canonical service revision, now also used for edit | REUSE/DONE |
+| Supplier/supply planning | Existing contract inventory + supply planning | REUSE |
+| Supplier confirmation/delivery | Existing `service-fulfillment` | REUSE |
+| Voucher issue/print/void | Existing `service-vouchers` | REUSE |
+| Service cancellation with finance/fulfillment blockers | Existing orchestration | REUSE |
+| Service history/activity | Existing immutable history | REUSE |
+| Programs/bookings/itineraries/contracts inventory | Existing dedicated tourism owners/routes | REUSE; literal OLD UI parity continues |
+| Traveler linkage | Existing traveler owner; exact standalone-service selection UX still under review | IN PROGRESS |
+| Customer/supplier/agent pickers | Current standalone UI still exposes raw IDs in places; replace with canonical owner-backed selectors where public APIs permit | IN PROGRESS |
+| Files/documents | Platform Core owner; integration parity under review | IN PROGRESS |
+| Refund/advances/collections/payments | Must remain Billing/Treasury/finance orchestration; exact available flows under review | IN PROGRESS |
+| Service 360 profitability/accounting drill-down | Must compose existing financial read models, not duplicate financial fields; under review | IN PROGRESS |
+
+## Implementation Commits / Checkpoints
+
+- `f0deef4` — initial mission/ownership checkpoint on isolated branch.
+- `b8b7a56` — added opt-in GitHub-hosted verification workflow.
+- `01bea2f` — exposed canonical standalone-service revision terms needed for draft editing in the web client types.
+- `f9e5a35` — added tourism draft editing plus service search/filter/sort using existing `updateDraft` API.
+- `678df06` — enriched supplier list lifecycle/contact UX with filters/sorting/loading states/WhatsApp/phone while retaining safe lifecycle behavior.
+
+No commit above was made to `main`. No Railway/production deployment was performed.
 
 ## Hosted Verification Workflow
 
-Required file: `.github/workflows/procurement-tourism-hosted-verify.yml`
+Created: `.github/workflows/procurement-tourism-hosted-verify.yml`
 
-Constraints:
-- GitHub-hosted `ubuntu-latest` only.
-- Full verification triggers only by `workflow_dispatch` or commit message containing `[ci]`.
-- Ordinary checkpoint/hourly commits must not consume full CI.
-- Original CI is left unchanged unless strictly necessary.
+Rules implemented:
+
+- runner: `ubuntu-latest`;
+- separate workflow; original CI unchanged;
+- push events create **no verification job** unless the head commit message contains `[ci]`;
+- manual `workflow_dispatch` is supported;
+- commands are change-safety, engineering-integrity, Prisma generate, lint, TypeScript, architecture check, tests and build.
+
+**The comprehensive workflow has NOT been run yet.** This is intentional because Phase 1 is not complete.
+
+## Phase 1 — Implementation
+
+**Status: IN PROGRESS**
+
+Next work must continue from here without redoing completed items:
+
+1. Finish literal OLD supplier documents/party controls and OLD tourism forms/workflows inventory.
+2. Close supplier financial/document drill-down gaps only through Billing/Treasury/Platform Core public read models/APIs.
+3. Review purchase return capability and add/extend only its canonical owner if genuinely absent.
+4. Replace remaining raw party IDs in tourism daily UX with canonical customer/supplier/agent/traveler selectors where supported.
+5. Complete standalone service document/attachment and accounting/profitability 360 composition without duplicating truth.
+6. Audit tourism programs/bookings/itineraries/contract-inventory against legacy controls field-by-field.
+7. Add only genuinely missing backend behavior to its canonical owner; no duplicate implementation.
+8. Keep updating this checkpoint and meaningful commits.
+
+Do not start comprehensive test execution yet.
+
+## Phase 2 — Comprehensive Testing
+
+**Status: NOT STARTED**
+
+Start automatically only after both requested Phase 1 scopes are implementation-complete. Then run the hosted workflow/manual verification and additional migration/API/permissions/scoping/read-model/financial-owner/approval/route/form/action/filter/tab/workflow/safe-delete/document/financial-flow checks. Fix every discovered problem, then perform final literal OLD-vs-NEW page/button/icon/form/field/filter/action/menu/workflow/state audit.
+
+Never claim a test passed unless it was actually run.
 
 ## Completion Rule
 
-When Phase 2 is marked complete with actual recorded results and the final literal legacy parity audit is complete, stop making changes. Do not begin any third module/section.
+When Phase 2 and the final literal audit are complete, stop changes on this mission. Do not start a third module, do not merge to `main`, and do not deploy.
