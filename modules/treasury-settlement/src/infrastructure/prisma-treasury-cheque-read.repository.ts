@@ -1,4 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
+import { companyId as companyIdentifier } from '@elhafez/contracts';
 import type { TreasuryChequeReadRepository } from '../application/treasury-cheque-read.repository.js';
 import type { Cheque } from '../domain/treasury.js';
 
@@ -11,7 +12,7 @@ export class PrismaTreasuryChequeReadRepository implements TreasuryChequeReadRep
     const rows=await this.db.treasuryCheque.findMany({where:{companyId},orderBy:[{dueDate:'asc'},{id:'asc'}]});
     return rows.map((value)=>({
       id:value.id,
-      companyId:value.companyId,
+      companyId:companyIdentifier(value.companyId),
       voucherId:value.voucherId,
       direction:value.direction as Cheque['direction'],
       ...(value.bankTreasuryId?{bankTreasuryId:value.bankTreasuryId}:{}),
