@@ -71,10 +71,19 @@
     "modules/expense-commission-recognition/src/public/index.ts"
   ],
   "protectedPaths": [
+    ".github/workflows/crm-hosted-verify.yml",
     "apps/api/src/app.module.ts",
-    "apps/web/src/routes.tsx"
+    "apps/web/src/routes.tsx",
+    "prisma/migrations/20260929004000_platform_entity_file_links/migration.sql"
   ],
-  "protectedReason": "CRM parity requires composition-root read wiring and route replacement while all business truth remains owned by existing canonical modules.",
+  "protectedReason": "Owner-approved CRM parity requires branch-scoped verification workflow wiring, composition-root and route registration, plus one additive Platform Core entity-file-link migration. The workflow performs verification only and contains no deployment step; the migration adds generic platform attachment linkage without moving CRM business truth.",
   "allowBreakingPublicApi": false,
-  "publicApiBreakingReason": ""
+  "publicApiBreakingReason": "",
+  "testEvidence": [
+    "apps/api/src/crm-financial-operations.spec.ts",
+    "apps/api/src/cs03-final-crm-integration.spec.ts",
+    "apps/web/src/crm-core.spec.ts",
+    "modules/billing-subledgers/src/party-receivable.spec.ts",
+    "modules/treasury-settlement/src/party-cash-movement.spec.ts"
+  ]
 }
