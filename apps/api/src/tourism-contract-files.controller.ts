@@ -38,7 +38,7 @@ export class TourismContractFilesController{
   }
 
   private async requireContract(context:ExecutionContext,contractId:string){const contract=await this.contracts.getContract(context.companyId,contractId);if(!contract)throw new NotFoundException('tourism contract not found');return contract;}
-  private async authorizeAny(context:ExecutionContext,permissions:readonly string[]){for(const permission of permissions){try{await this.platform.authorize(context.actorId,context.companyId,permission);return;}catch{}}throw new UnauthorizedException('contract inventory permission required');}
+  private async authorizeAny(context:ExecutionContext,permissions:readonly string[]){for(const permission of permissions){try{await this.platform.authorize(context.actorId,context.companyId,permission);return;}catch{continue;}}throw new UnauthorizedException('contract inventory permission required');}
   private async context(auth:string|undefined,company:string|undefined,branch:string|undefined):Promise<ExecutionContext>{if(!auth?.startsWith('Bearer ')||!company||!branch)throw new UnauthorizedException('authenticated company and branch context required');const user=await this.platform.currentUser(auth.slice(7));await this.platform.requireBranchAccess(user.id,company,branch);return executionContext(company,branch,user.id);}
 }
 
