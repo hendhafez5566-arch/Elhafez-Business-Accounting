@@ -26,7 +26,7 @@ test('reporting center exposes scoped financial operational control party-statem
  assert.match(accountingClient,/allocationIds/);
  assert.match(accountingClient,/advanceId/);
  assert.match(accountingClient,/sourceType/);
- for(const endpoint of ['/management-control/financial-history','/operational-reporting/saved-reports','/operational-reporting/schedules','/accounting/reports/statements','/accounting/reports/aging','/accounting/reports/treasury','/accounting/reports/tax','/accounting/reports/program','/accounting/reports/supplier','/tourism/programs','/hajj-umrah/programs'])assert.ok(client.includes(endpoint),endpoint);
+ for(const endpoint of ['/management-control/financial-history','/operational-reporting/saved-reports','/operational-reporting/schedules','/report-delivery/schedules/','/run-now','/accounting/reports/statements','/accounting/reports/aging','/accounting/reports/treasury','/accounting/reports/tax','/accounting/reports/program','/accounting/reports/supplier','/tourism/programs','/hajj-umrah/programs'])assert.ok(client.includes(endpoint),endpoint);
  assert.match(client,/managementControlApi\.overview/);
  assert.match(client,/accountingApi\.overview/);
  assert.match(client,/Promise\.allSettled/);
