@@ -1,6 +1,6 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { ActionBar, Button, Card, DataGrid, EmptyState, FormField, Input, MetricCard, Select, Textarea, Toast } from './ui.js';
-import { tourismContractInventoryApi, type InventoryResult, type TourismInventoryContractOption, type TourismInventoryProgramReference, type TourismInventoryResourceOption, type TourismInventoryResourceType, type TourismInventorySupplierReference } from './tourism-contract-inventory-client.js';
+import { tourismContractInventoryApi, type InventoryResult, type TourismInventoryContractOption, type TourismInventoryProgramReference, type TourismInventoryResourceType, type TourismInventorySupplierReference } from './tourism-contract-inventory-client.js';
 import { TourismContractInventoryCorrectiveSection } from './tourism-contract-inventory-corrective-section.js';
 
 const today=()=>new Date().toISOString().slice(0,10);
