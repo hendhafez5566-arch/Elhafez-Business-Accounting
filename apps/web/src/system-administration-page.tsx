@@ -9,7 +9,9 @@ const areas=[
  ['إعدادات الشركة','configuration/locale'],['استيراد وتصدير البيانات','imports'],
  ['صحة النظام والتشخيص','operations/diagnostics']
 ] as const;
-const labels:Record<string,string>={id:'المعرّف',name:'الاسم',displayName:'الاسم',username:'اسم المستخدم',mustChangePassword:'تغيير كلمة المرور مطلوب',status:'الحالة',active:'نشط',type:'النوع',fileName:'الملف',format:'الصيغة',dataset:'مجموعة البيانات',createdAt:'تاريخ الإنشاء',readAt:'تاريخ القراءة',action:'العملية',resource:'المورد',backupProvider:'موفر النسخ',database:'قاعدة البيانات',schemaCompatibility:'توافق المخطط',runtimeVersion:'إصدار التشغيل',value:'القيمة',resultKey:'ملف التصدير'};
+const labels:Record<string,string>={id:'المعرّف',name:'الاسم',displayName:'الاسم',username:'اسم المستخدم',mustChangePassword:'تغيير كلمة المرور مطلوب',status:'الحالة',active:'نشط',type:'النوع',fileName:'الملف',format:'الصيغة',dataset:'مجموعة البيانات',createdAt:'تاريخ الإنشاء',expiresAt:'تاريخ الانتهاء',revokedAt:'تاريخ الإنهاء',readAt:'تاريخ القراءة',action:'العملية',resource:'المورد',backupProvider:'موفر النسخ',database:'قاعدة البيانات',schemaCompatibility:'توافق المخطط',runtimeVersion:'إصدار التشغيل',value:'القيمة',resultKey:'ملف التصدير'};
+const rolePresets=['مدير نظام كامل','مدير فرع','محاسب','مسؤول خزينة','مبيعات وحجوزات','مراجع داخلي'] as const;
+const permissionAreas:Record<string,string>={'platform.users':'المستخدمون','platform.roles':'الأدوار والصلاحيات','platform.companies':'الشركات','platform.branches':'الفروع','platform.audit':'سجل النشاط','platform.sessions':'الجلسات والأجهزة','platform.notifications':'الإشعارات','platform.files':'الملفات والمرفقات','platform.configuration':'إعدادات الشركة','data_exchange':'استيراد وتصدير','platform_operations':'التشخيص والتشغيل'};
 type DatasetOption={id:string;label:string;requiredFields:readonly string[];targetFields:readonly string[]};
 type DownloadPayload={fileName:string;contentType:string;contentBase64:string};
 type FilePayload={metadata:{id:string;contentType:string};contentBase64:string};
@@ -22,10 +24,18 @@ function filePayload(value:unknown):value is FilePayload{return objectRecord(val
 function fileAsBase64(file:File):Promise<string>{return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onerror=()=>reject(new Error('تعذر قراءة الملف'));reader.onload=()=>{const result=String(reader.result??'');resolve(result.includes(',')?result.slice(result.indexOf(',')+1):result);};reader.readAsDataURL(file);});}
 function configValue(text:string):unknown{try{return JSON.parse(text);}catch{return text;}}
 function triggerDownload(payload:DownloadPayload){const binary=atob(payload.contentBase64);const bytes=new Uint8Array(binary.length);for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);const url=URL.createObjectURL(new Blob([bytes],{type:payload.contentType}));const anchor=document.createElement('a');anchor.href=url;anchor.download=payload.fileName;anchor.click();URL.revokeObjectURL(url);}
+function text(value:unknown){return typeof value==='string'?value:'';}
+function idOf(record:Record<string,unknown>){return text(record.id);}
+function userLabel(record:Record<string,unknown>){return `${text(record.displayName)||text(record.username)||idOf(record)}${text(record.username)?` — ${text(record.username)}`:''}`;}
+function permissionLabel(record:Record<string,unknown>){const name=text(record.name),parts=name.split('.'),key=name.startsWith('platform.')?parts.slice(0,2).join('.'):parts[0]??'';return `${(permissionAreas[key]??key)||'صلاحيات'} — ${name||idOf(record)}`;}
 
 export function SystemAdministrationPage({client=new HttpAdministrationClient(),context}:{client?:AdministrationClient;context?:AdministrationContext}={}){
  const [selected,setSelected]=useState('users');
  const [rows,setRows]=useState<readonly unknown[]>([]);
+ const [users,setUsers]=useState<readonly Record<string,unknown>[]>([]);
+ const [roles,setRoles]=useState<readonly Record<string,unknown>[]>([]);
+ const [permissions,setPermissions]=useState<readonly Record<string,unknown>[]>([]);
+ const [branches,setBranches]=useState<readonly Record<string,unknown>[]>([]);
  const [datasets,setDatasets]=useState<readonly DatasetOption[]>([]);
  const [sourceFields,setSourceFields]=useState<readonly string[]>([]);
  const [columnMapping,setColumnMapping]=useState<Record<string,string>>({});
@@ -37,6 +47,17 @@ export function SystemAdministrationPage({client=new HttpAdministrationClient(),
 
  const field=(name:string)=>form[name]??'';
  const setField=(name:string,value:string)=>setForm(current=>({...current,[name]:value}));
+
+ async function loadReferences(){
+  if(!ctx.token)return;
+  const [userResult,roleResult,permissionResult,branchResult]=await Promise.allSettled([
+   client.list('users',ctx),client.list('roles',ctx),client.list('permissions',ctx),client.list('branches',ctx)
+  ]);
+  if(userResult.status==='fulfilled')setUsers(userResult.value.filter(objectRecord));
+  if(roleResult.status==='fulfilled')setRoles(roleResult.value.filter(objectRecord));
+  if(permissionResult.status==='fulfilled')setPermissions(permissionResult.value.filter(objectRecord));
+  if(branchResult.status==='fulfilled')setBranches(branchResult.value.filter(objectRecord));
+ }
 
  async function load(path=selected,clearFeedback=true){
   if(!ctx.token)return;setLoading(true);if(clearFeedback){setMessage('');setSuccess('');}
@@ -51,8 +72,11 @@ export function SystemAdministrationPage({client=new HttpAdministrationClient(),
 
  async function run(label:string,operation:()=>Promise<unknown>,refresh=true){
   setLoading(true);setMessage('');setSuccess('');
-  try{await operation();if(refresh)await load(selected,false);setSuccess(label);}
-  catch(error){setMessage(error instanceof Error?error.message:'تعذر تنفيذ العملية');}
+  try{
+   await operation();
+   if(refresh)await Promise.all([load(selected,false),loadReferences()]);
+   setSuccess(label);
+  }catch(error){setMessage(error instanceof Error?error.message:'تعذر تنفيذ العملية');}
   finally{setLoading(false);}
  }
 
@@ -61,29 +85,70 @@ export function SystemAdministrationPage({client=new HttpAdministrationClient(),
  async function downloadExport(){const payload=await client.read(`exports/${field('exportJobId')}/download`,ctx);if(!downloadPayload(payload))throw new Error('ملف التصدير غير متاح');triggerDownload(payload);}
  async function downloadFile(){const payload=await client.read(`files/${field('fileId')}`,ctx);if(!filePayload(payload))throw new Error('الملف غير متاح');triggerDownload({fileName:`file-${payload.metadata.id}`,contentType:payload.metadata.contentType,contentBase64:payload.contentBase64});}
 
- useEffect(()=>{if(ctx.token){setSelected('users');void load('users');}},[ctx.token,ctx.companyId,ctx.branchId]);
+ useEffect(()=>{if(ctx.token){setSelected('users');void Promise.all([load('users'),loadReferences()]);}},[ctx.token,ctx.companyId,ctx.branchId]);
  const records=rows.filter(objectRecord);
  const selectedDataset=datasets.find(value=>value.id===field('dataset'));
+ const selectedUser=users.find(record=>idOf(record)===field('userId'));
+ const selectedBranch=branches.find(record=>idOf(record)===field('branchId'));
 
  const input=(name:string,label:string,type='text')=><FormField label={label}><Input type={type} value={field(name)} onChange={event=>setField(name,event.target.value)}/></FormField>;
  const button=(label:string,onClick:()=>void)=><Button type="button" disabled={loading} onClick={onClick}>{label}</Button>;
+ const select=(name:string,label:string,options:readonly {value:string;label:string}[],placeholder='اختر')=><FormField label={label}><Select value={field(name)} onChange={event=>setField(name,event.target.value)}><option value="">{placeholder}</option>{options.map(option=><option key={option.value} value={option.value}>{option.label}</option>)}</Select></FormField>;
+ const userSelect=(name='userId',label='اختيار المستخدم')=>select(name,label,users.map(record=>({value:idOf(record),label:userLabel(record)})).filter(option=>option.value));
+ const roleSelect=(name='userAssignRoleId',label='اختيار الدور',optional=false)=>select(name,label,roles.map(record=>({value:idOf(record),label:text(record.name)||idOf(record)})).filter(option=>option.value),optional?'بدون دور الآن':'اختر الدور');
+ const branchSelect=(name='branchId',label='اختيار الفرع')=>select(name,label,branches.map(record=>({value:idOf(record),label:`${text(record.name)||idOf(record)}${record.active===false?' — معطّل':''}`})).filter(option=>option.value));
+ const permissionSelect=(name='permissionId',label='اختيار الصلاحية')=>select(name,label,permissions.map(record=>({value:idOf(record),label:permissionLabel(record)})).filter(option=>option.value));
+ const sessionSelect=(name='sessionId',label='اختيار الجلسة')=>select(name,label,records.map(record=>({value:idOf(record),label:`${text(record.status)||'جلسة'} — ${text(record.createdAt)||idOf(record)}`})).filter(option=>option.value));
 
  function actions(){
   if(selected==='users')return <div className="ui-admin-workflows">
-   <DisclosureCard title="إنشاء مستخدم" description="إنشاء حساب جديد باسم مستخدم وكلمة مرور مؤقتة.">
-    <div className="admin-actions">{input('userUsername','اسم المستخدم')}{input('userName','الاسم')}{input('userPassword','كلمة مرور مؤقتة','password')}{input('userRoleId','معرّف الدور (اختياري)')}{button('إنشاء مستخدم',()=>void run('تم إنشاء المستخدم. يجب تغيير كلمة المرور في أول دخول.',()=>client.action('users',ctx,{username:field('userUsername'),displayName:field('userName'),temporaryPassword:field('userPassword'),roleId:field('userRoleId')||undefined})))}</div>
+   <DisclosureCard title="إنشاء مستخدم" description="إنشاء حساب جديد وربطه اختياريًا بدور موجود. الفرع الحالي هو نطاق الإنشاء الافتراضي.">
+    <div className="admin-actions">{input('userUsername','اسم المستخدم')}{input('userName','الاسم')}{input('userPassword','كلمة مرور مؤقتة','password')}{roleSelect('userRoleId','الدور (اختياري)',true)}{button('إنشاء مستخدم',()=>void run('تم إنشاء المستخدم. يجب تغيير كلمة المرور في أول دخول.',()=>client.action('users',ctx,{username:field('userUsername'),displayName:field('userName'),temporaryPassword:field('userPassword'),roleId:field('userRoleId')||undefined})))}</div>
    </DisclosureCard>
-   <DisclosureCard title="إعادة تعيين بيانات الدخول" description="استخدمها فقط عند نسيان بيانات الدخول أو الحاجة لإلغاء الجلسات القديمة.">
-    <div className="admin-actions">{input('userId','معرّف المستخدم')}{input('resetUsername','اسم المستخدم لإعادة التعيين')}{input('resetPassword','كلمة مرور مؤقتة جديدة','password')}{button('إعادة تعيين بيانات الدخول',()=>void run('تمت إعادة تعيين بيانات الدخول وإلغاء الجلسات القديمة.',()=>client.action(`users/${field('userId')}/credentials`,ctx,{username:field('resetUsername'),temporaryPassword:field('resetPassword')}),false))}</div>
-   </DisclosureCard>
-   <DisclosureCard title="الدور وحالة المستخدم" description="إسناد الصلاحيات أو تعليق الحساب وإعادة تفعيله.">
-    <div className="admin-actions">{input('userId','معرّف المستخدم')}{input('userAssignRoleId','معرّف الدور')}{button('إسناد الدور',()=>void run('تم إسناد الدور.',()=>client.action(`users/${field('userId')}/roles/${field('userAssignRoleId')}`,ctx)))}{button('سحب الدور',()=>void run('تم سحب الدور.',()=>client.remove(`users/${field('userId')}/roles/${field('userAssignRoleId')}`,ctx)))}{button('تعطيل المستخدم',()=>void run('تم تحديث المستخدم.',()=>client.patch(`users/${field('userId')}`,ctx,{active:false})))}{button('إعادة تفعيل المستخدم',()=>void run('تم تحديث المستخدم.',()=>client.patch(`users/${field('userId')}`,ctx,{active:true})))}</div>
+   <DisclosureCard title="ملف المستخدم الإداري" description="إدارة هوية المستخدم وحالته ودوره ووصوله للفروع وجلساته من اختيار واحد بدل كتابة المعرّفات الداخلية.">
+    <div className="admin-actions">
+     {userSelect()}
+     {selectedUser?<Card title={text(selectedUser.displayName)||text(selectedUser.username)||'المستخدم'}>
+      <p><strong>اسم المستخدم: </strong>{text(selectedUser.username)||'—'}</p>
+      <p><strong>الحالة: </strong>{text(selectedUser.status)==='ACTIVE'?'نشط':'غير نشط'}</p>
+      <p><strong>تغيير كلمة المرور مطلوب: </strong>{selectedUser.mustChangePassword===true?'نعم':'لا'}</p>
+     </Card>:null}
+     {input('resetUsername','اسم المستخدم لإعادة التعيين')}{input('resetPassword','كلمة مرور مؤقتة جديدة','password')}
+     {button('إعادة تعيين بيانات الدخول',()=>void run('تمت إعادة تعيين بيانات الدخول وإلغاء الجلسات القديمة.',()=>client.action(`users/${field('userId')}/credentials`,ctx,{username:field('resetUsername'),temporaryPassword:field('resetPassword')}),false))}
+     {roleSelect()}
+     {button('إسناد الدور',()=>void run('تم إسناد الدور.',()=>client.action(`users/${field('userId')}/roles/${field('userAssignRoleId')}`,ctx)))}
+     {button('سحب الدور',()=>void run('تم سحب الدور.',()=>client.remove(`users/${field('userId')}/roles/${field('userAssignRoleId')}`,ctx)))}
+     {branchSelect('userBranchId','اختيار فرع الوصول')}
+     {button('منح وصول للفرع',()=>void run('تم منح الوصول.',()=>client.action(`branches/${field('userBranchId')}/access/${field('userId')}`,ctx)))}
+     {button('سحب وصول الفرع',()=>void run('تم سحب الوصول.',()=>client.remove(`branches/${field('userBranchId')}/access/${field('userId')}`,ctx)))}
+     {button('تعطيل المستخدم',()=>void run('تم تحديث المستخدم.',()=>client.patch(`users/${field('userId')}`,ctx,{active:false})))}
+     {button('إعادة تفعيل المستخدم',()=>void run('تم تحديث المستخدم.',()=>client.patch(`users/${field('userId')}`,ctx,{active:true})))}
+     {button('عرض جلسات المستخدم',()=>{setField('sessionUserId',field('userId'));setSelected('sessions');void load(`sessions/${field('userId')}`);})}
+    </div>
    </DisclosureCard>
   </div>;
-  if(selected==='roles')return <div className="admin-actions">{input('roleName','اسم الدور')}{button('إنشاء دور',()=>void run('تم إنشاء الدور.',()=>client.action('roles',ctx,{name:field('roleName')})))}{button('عرض الصلاحيات',()=>void load('permissions'))}{input('roleId','معرّف الدور')}{input('permissionId','معرّف الصلاحية')}{button('منح الصلاحية',()=>void run('تم منح الصلاحية.',()=>client.action(`roles/${field('roleId')}/permissions/${field('permissionId')}`,ctx)))}{button('سحب الصلاحية',()=>void run('تم سحب الصلاحية.',()=>client.remove(`roles/${field('roleId')}/permissions/${field('permissionId')}`,ctx)))}</div>;
+  if(selected==='roles')return <div className="ui-admin-workflows">
+   <DisclosureCard title="إنشاء دور" description="الأسماء القديمة تظهر كاقتراحات UX فقط؛ نظام الصلاحيات الفعلي يظل Platform Core RBAC.">
+    <div className="admin-actions">{select('rolePreset','اقتراح اسم الدور',rolePresets.map(value=>({value,label:value})),'اختياري')}{field('rolePreset')?button('استخدام الاسم المقترح',()=>setField('roleName',field('rolePreset'))):null}{input('roleName','اسم الدور')}{button('إنشاء دور',()=>void run('تم إنشاء الدور.',()=>client.action('roles',ctx,{name:field('roleName')})))}</div>
+   </DisclosureCard>
+   <DisclosureCard title="محرر الصلاحيات" description="اختر الدور والصلاحية من القوائم الرسمية ثم امنح أو اسحب. لا توجد خريطة صلاحيات موازية في الواجهة.">
+    <div className="admin-actions">{roleSelect('roleId','اختيار الدور')}{permissionSelect()}{button('منح الصلاحية',()=>void run('تم منح الصلاحية.',()=>client.action(`roles/${field('roleId')}/permissions/${field('permissionId')}`,ctx)))}{button('سحب الصلاحية',()=>void run('تم سحب الصلاحية.',()=>client.remove(`roles/${field('roleId')}/permissions/${field('permissionId')}`,ctx)))}</div>
+   </DisclosureCard>
+  </div>;
   if(selected==='companies')return <div className="admin-actions"><p>إنشاء الشركات الجديدة وإدارة الاشتراك يتمان حصريًا من مركز تحكم مالك المنصة.</p>{input('currentCompanyName','الاسم الجديد للشركة الحالية')}{button('تحديث اسم الشركة الحالية',()=>void run('تم تحديث الشركة.',()=>client.patch(`companies/${ctx.companyId}`,ctx,{name:field('currentCompanyName')}),false))}</div>;
-  if(selected==='branches')return <div className="admin-actions">{input('branchName','اسم الفرع')}{button('إنشاء فرع',()=>void run('تم إنشاء الفرع.',()=>client.action('branches',ctx,{name:field('branchName')})))}{input('branchId','معرّف الفرع')}{input('accessUserId','معرّف المستخدم')}{button('منح وصول للفرع',()=>void run('تم منح الوصول.',()=>client.action(`branches/${field('branchId')}/access/${field('accessUserId')}`,ctx)))}{button('سحب وصول الفرع',()=>void run('تم سحب الوصول.',()=>client.remove(`branches/${field('branchId')}/access/${field('accessUserId')}`,ctx)))}{button('تعطيل الفرع',()=>void run('تم تحديث الفرع.',()=>client.patch(`branches/${field('branchId')}`,ctx,{active:false})))}</div>;
-  if(selected==='sessions')return <div className="admin-actions">{input('sessionId','معرّف الجلسة')}{button('إنهاء الجلسة',()=>void run('تم إنهاء الجلسة.',()=>client.action(`sessions/${field('sessionId')}/revoke`,ctx)))}{input('sessionUserId','معرّف المستخدم')}{button('عرض جلسات المستخدم',()=>void load(`sessions/${field('sessionUserId')}`))}{button('إنهاء كل جلسات المستخدم',()=>void run('تم إنهاء جلسات المستخدم.',()=>client.action(`users/${field('sessionUserId')}/sessions/revoke`,ctx),false))}</div>;
+  if(selected==='branches')return <div className="ui-admin-workflows">
+   <DisclosureCard title="إنشاء فرع" description="إنشاء فرع جديد داخل الشركة الحالية.">
+    <div className="admin-actions">{input('branchName','اسم الفرع')}{button('إنشاء فرع',()=>void run('تم إنشاء الفرع.',()=>client.action('branches',ctx,{name:field('branchName')})))}</div>
+   </DisclosureCard>
+   <DisclosureCard title="إدارة الفرع والوصول" description="اختر الفرع والمستخدم بدل إدخال المعرّفات الداخلية.">
+    <div className="admin-actions">{branchSelect()}{selectedBranch?<p><strong>حالة الفرع: </strong>{selectedBranch.active===false?'معطّل':'نشط'}</p>:null}{userSelect('accessUserId','اختيار المستخدم')}{button('منح وصول للفرع',()=>void run('تم منح الوصول.',()=>client.action(`branches/${field('branchId')}/access/${field('accessUserId')}`,ctx)))}{button('سحب وصول الفرع',()=>void run('تم سحب الوصول.',()=>client.remove(`branches/${field('branchId')}/access/${field('accessUserId')}`,ctx)))}{button('تعطيل الفرع',()=>void run('تم تحديث الفرع.',()=>client.patch(`branches/${field('branchId')}`,ctx,{active:false})))}{button('إعادة تفعيل الفرع',()=>void run('تم تحديث الفرع.',()=>client.patch(`branches/${field('branchId')}`,ctx,{active:true})))}</div>
+   </DisclosureCard>
+  </div>;
+  if(selected==='sessions')return <div className="ui-admin-workflows">
+   <DisclosureCard title="جلسات المستخدم" description="اختر المستخدم لعرض جلساته وإنهائها دون الحاجة لمعرفة معرف المستخدم أو الجلسة.">
+    <div className="admin-actions">{userSelect('sessionUserId','اختيار المستخدم')}{button('عرض جلسات المستخدم',()=>void load(`sessions/${field('sessionUserId')}`))}{button('إنهاء كل جلسات المستخدم',()=>void run('تم إنهاء جلسات المستخدم.',()=>client.action(`users/${field('sessionUserId')}/sessions/revoke`,ctx),false))}{records.length?sessionSelect():null}{records.length?button('إنهاء الجلسة',()=>void run('تم إنهاء الجلسة.',()=>client.action(`sessions/${field('sessionId')}/revoke`,ctx))):null}</div>
+   </DisclosureCard>
+  </div>;
   if(selected==='notifications')return <div className="admin-actions">{input('notificationId','معرّف الإشعار')}{button('تحديد كمقروء',()=>void run('تم تحديث الإشعار.',()=>client.action(`notifications/${field('notificationId')}/read`,ctx)))}</div>;
   if(selected.startsWith('configuration/'))return <div className="admin-actions">{input('configKey','مفتاح الإعداد')}{input('configValue','القيمة (JSON أو نص)')}{button('حفظ الإعداد',()=>void run('تم حفظ الإعداد.',()=>client.action(`configuration/${field('configKey')}`,ctx,{value:configValue(field('configValue'))}),false))}</div>;
   if(selected==='files')return <div className="admin-actions"><FormField label="رفع ملف"><Input type="file" onChange={event=>void attachmentFile(event.target.files?.[0])}/></FormField>{button('حفظ الملف',()=>void run('تم حفظ الملف.',()=>client.action('files',ctx,{contentType:field('fileContentType')||'application/octet-stream',contentBase64:field('fileContentBase64')})))}{input('fileId','معرّف الملف')}{button('تنزيل الملف',()=>void run('تم تجهيز الملف.',downloadFile,false))}{button('إلغاء الملف',()=>void run('تم إلغاء الملف.',()=>client.remove(`files/${field('fileId')}`,ctx)))}</div>;
@@ -120,7 +185,7 @@ export function SystemAdministrationPage({client=new HttpAdministrationClient(),
   <Card title="إدارة المنصة"><p>لوحة عربية موحدة وآمنة لإدارة الوصول والبيانات واستمرارية التشغيل.</p><Tabs tabs={areas.map(([label,id])=>({id,label}))} active={selected} onChange={id=>{if(ctx.token)void selectArea(id)}}/></Card>
   <section aria-live="polite" className="ui-section-space">
    {!ctx.token?<EmptyState title="يلزم تسجيل الدخول">اختر الشركة والفرع وسجّل الدخول لعرض أدوات الإدارة.</EmptyState>:<>
-    <div className="ui-inline"><Button type="button" variant="secondary" disabled={loading} onClick={()=>void load()}>تحديث البيانات</Button></div>
+    <div className="ui-inline"><Button type="button" variant="secondary" disabled={loading} onClick={()=>void Promise.all([load(),loadReferences()])}>تحديث البيانات</Button></div>
     {actions()}
     {loading?<LoadingState/>:message?<ErrorState message={message}/>:success?<Toast tone="success">{success}</Toast>:records.length===0?<EmptyState title="لا توجد بيانات متاحة"/>:<div className="ui-grid-md ui-section-space">
      {records.map((record,index)=><Card key={String(record.id??index)} className="ui-record-card">{Object.entries(record).filter(([key,value])=>labels[key]&&typeof value!=='object').map(([key,value])=><p key={key}><strong>{labels[key]}: </strong>{valueOf(value)}</p>)}</Card>)}
