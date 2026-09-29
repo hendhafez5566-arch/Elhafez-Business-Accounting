@@ -13,6 +13,7 @@ export interface CostCenterRepository {
   save(value: CostCenter): Promise<void>;
   find(companyId: CompanyId, id: CostCenterId): Promise<CostCenter | undefined>;
   findByCode(companyId: CompanyId, code: string): Promise<CostCenter | undefined>;
+  list(companyId: CompanyId): Promise<CostCenter[]>;
   saveAssociation(value: ProgramCostCenterAssociation): Promise<void>;
   findAssociation(companyId: CompanyId, program: SourceReference): Promise<ProgramCostCenterAssociation | undefined>;
   saveBudget(value: Budget): Promise<void>;
