@@ -1,11 +1,13 @@
 {
   "id": "reports-control-phase1-hardening",
-  "summary": "Complete and harden the existing Reports & Control surfaces with validated work-center filters, scoped canonical financial reports, AR/AP aging, dynamic program profitability across tourism and Hajj/Umrah, visible financial control issues, and reusable saved/scheduled report configuration without creating parallel owners.",
+  "summary": "Complete and harden the existing Reports & Control surfaces with validated work-center filters, scoped canonical financial reports, AR/AP aging, dynamic program profitability, branch-scoped reconciliation and close-readiness history, branch-aware platform audit trail, and reusable saved/scheduled report configuration without creating parallel owners.",
   "type": "feature",
-  "allowedModules": ["operational-reporting"],
+  "allowedModules": ["operational-reporting", "financial-controls"],
   "allowedPaths": [
     ".changes/reports-control-phase1-hardening.json",
     "apps/api/src/app.module.ts",
+    "apps/api/src/financial-control-history.controller.ts",
+    "apps/api/src/financial-control-history.controller.spec.ts",
     "apps/api/src/financial-reporting.controller.ts",
     "apps/api/src/financial-reporting.controller.spec.ts",
     "apps/api/src/management-control.controller.ts",
@@ -21,10 +23,12 @@
   "allowBreakingPublicApi": false,
   "publicApiBreakingReason": "",
   "testEvidence": [
+    "apps/api/src/financial-control-history.controller.spec.ts",
     "apps/api/src/financial-reporting.controller.spec.ts",
     "apps/api/src/management-control.spec.ts",
     "apps/web/src/management-control.spec.ts",
     "apps/web/src/reporting-center.spec.ts",
+    "modules/financial-controls/src/control-history.spec.ts",
     "modules/operational-reporting/src/operational-reporting.spec.ts"
   ]
 }
