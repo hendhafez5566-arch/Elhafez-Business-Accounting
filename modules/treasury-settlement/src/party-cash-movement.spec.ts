@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {companyId,decimalAmount} from '@elhafez/contracts';
@@ -7,18 +6,31 @@ import {InMemoryTreasuryRepository} from './infrastructure/in-memory-treasury.re
 
 const company=companyId('11111111-1111-4111-8111-111111111111');
 const amount=(value:string)=>decimalAmount(value);
+type LedgerPort=ConstructorParameters<typeof PartyCashMovementApplicationService>[1];
+type ControlsPort=ConstructorParameters<typeof PartyCashMovementApplicationService>[2];
+type Journal=Awaited<ReturnType<LedgerPort['post']>>;
+type PostingInput=Parameters<LedgerPort['post']>[0];
+type ApprovalRequest=NonNullable<Awaited<ReturnType<ControlsPort['getApprovalRequest']>>>;
+type ApprovalDecision=NonNullable<Awaited<ReturnType<ControlsPort['getApprovalDecision']>>>;
+
 async function fixture(required=false){
- const repo=new InMemoryTreasuryRepository(),journals:any[]=[];
+ const repo=new InMemoryTreasuryRepository(),journals:PostingInput[]=[];
  await repo.saveTreasury({id:'cash',companyId:company,code:'CASH',name:'Cash',type:'CASH',currency:'EGP',glAccountId:'cash-gl',active:true});
  await repo.savePolicy({companyId:company,allowNegative:true});
- const approvals=new Map<string,any>();
- const controls={
-  evaluateApprovalRequirement:async()=>required?{decision:'APPROVAL_REQUIRED',threshold:amount('50'),requiredAuthority:'approve.payment'}:{decision:'APPROVAL_NOT_REQUIRED'},
-  getApprovalRequest:async(_companyId:string,id:string)=>approvals.get(id)?.request,
-  getApprovalDecision:async(_companyId:string,id:string)=>approvals.get(id)?.decision,
+ const approvals=new Map<string,{request:ApprovalRequest;decision:ApprovalDecision}>();
+ const controls:ControlsPort={
+  evaluateApprovalRequirement:async()=>required?{decision:'APPROVAL_REQUIRED',policyId:'policy-payment',threshold:amount('50'),forbidSelfApproval:true,requiredAuthority:'approve.payment'}:{decision:'APPROVAL_NOT_REQUIRED'},
+  getApprovalRequest:async(_companyId,id)=>approvals.get(id)?.request,
+  getApprovalDecision:async(_companyId,id)=>approvals.get(id)?.decision,
  };
- const gl={post:async(input:any)=>{journals.push(input);return input;}};
- return{repo,journals,approvals,service:new PartyCashMovementApplicationService(repo,gl as any,controls as any)};
+ const gl:LedgerPort={
+  async post(input){
+   journals.push(input);
+   const journal:Journal={...input,kind:input.kind??'STANDARD',requestHash:`test:${input.id}`,lines:input.lines.map((line,index)=>({...line,id:`${input.id}:${index+1}`}))};
+   return journal;
+  },
+ };
+ return{repo,journals,approvals,service:new PartyCashMovementApplicationService(repo,gl,controls)};
 }
 
 test('AGENT receipt posts treasury debit and agent receivable credit with replay safety',async()=>{
@@ -44,7 +56,10 @@ test('payment requiring approval fails closed and accepts only exact approved ev
  const f=await fixture(true);
  const input={id:'agent-refund',companyId:company,branchId:'branch-1',treasuryId:'cash',kind:'PAYMENT' as const,partyKind:'AGENT' as const,partyId:'agent-party',number:'RF-2',postingDate:'2026-09-29',currency:'EGP',amount:amount('60'),offsetAccountId:'agent-advance',sourceType:'CRM_AGENT_ADVANCE_REFUND_CASH',sourceId:'refund-2',actorId:'actor-1'};
  await assert.rejects(()=>f.service.post(input),/approval/i);
- f.approvals.set('approval-1',{request:{id:'approval-1',companyId:company,branchId:'branch-1',action:'PAYMENT',sourceType:input.sourceType,sourceId:input.sourceId,requesterActorId:'actor-1',amount:amount('60'),status:'PENDING'},decision:{outcome:'APPROVED'}});
+ f.approvals.set('approval-1',{
+  request:{id:'approval-1',companyId:company,branchId:'branch-1',action:'PAYMENT',sourceType:input.sourceType,sourceId:input.sourceId,requesterActorId:'actor-1',amount:amount('60'),status:'APPROVED',policyId:'policy-payment',policyThresholdSnapshot:amount('50'),policyForbidSelfApprovalSnapshot:true,policyRequiredAuthoritySnapshot:'approve.payment',requestedAt:'2026-09-29T00:00:00.000Z'},
+  decision:{id:'decision-1',requestId:'approval-1',companyId:company,outcome:'APPROVED',actorId:'approver-1',decidedAt:'2026-09-29T00:05:00.000Z'},
+ });
  const result=await f.service.post({...input,approvalRequestId:'approval-1'});
  assert.equal(result.status,'POSTED');
  assert.equal(result.approvalRequestId,'approval-1');
