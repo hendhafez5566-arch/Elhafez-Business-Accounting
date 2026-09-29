@@ -52,6 +52,7 @@ Reviewed directly from OLD:
 - `src/commercial/vendor-owner.ts` (confirmed intentionally disabled legacy Vendor Center shell; not a feature source to reproduce);
 - `src/commercial/pages.ts`;
 - `scripts/umrah-ui-parity-smoke.mjs`;
+- focused `src/core/umrah/forms.ts` contract/picker sections;
 - latest OLD commit history including the PartyTransactions enhancement, which confirms legacy expectations for linked invoice/payment/PO transaction drill-down while preserving original-currency evidence.
 
 Important OLD behaviors retained as requirements, not copied as code:
@@ -62,10 +63,12 @@ Important OLD behaviors retained as requirements, not copied as code:
 - Procurement commitment/cancellation must respect downstream invoice/receipt/execution evidence.
 - Tourism/Umrah UI historically exposed grouped workspaces for contracts/inventory, programs, bookings, travelers, visas, flights, transport, costing/procurement, operations, documents/control/settings.
 - Program/service flows use guarded lifecycle transitions rather than deleting financial history.
+- OLD contract forms used supplier selection (with quick-create convenience), hotel room inventory/rates plus date overrides, hotel cancellation policy, flight outbound/return legs, seat cost/currency/ticket deadline/fare class/baggage, and contract attachment actions.
+- OLD picker UX constrained program selection by lifecycle/sales state and surfaced contextual availability; these are UX requirements to compare against canonical NEW read models, not legacy data-model requirements.
 
 Still queued for literal legacy extraction:
 
-- focused OLD Umrah `ui-pages.ts`, `forms.ts`, `operations.ts`, `workflow.ts` sections;
+- remaining focused OLD Umrah `forms.ts`, `ui-pages.ts`, `operations.ts`, `workflow.ts` sections;
 - supplier/party browser smoke references;
 - Umrah workflow smoke references;
 - remaining old buttons/menus/fields/states used by the two requested scopes.
@@ -92,6 +95,8 @@ Confirmed existing implementations that must be reused rather than rebuilt:
 - Traveler selection maps through `traveler-management`; customer/agent/supplier selections use their canonical Party identities instead of duplicating identity data.
 - `tourism-services` workspace already uses service fulfillment, immutable vouchers, supply planning, supplier confirmation, delivery evidence, cancellation orchestration and durable finance integration.
 - Routes already separate standalone services, tourism programs, bookings, itineraries and contract inventory instead of creating a legacy monolith.
+- Contract Inventory now reads suppliers from the canonical Supplier Management endpoint and programs from the canonical Tourism Programs endpoint; the UI filters supplier choices to active/approved suppliers and program choices away from closed/cancelled states. No supplier/program identity is duplicated in the inventory owner.
+- Contract Inventory already keeps contract versions, hotel/flight/transport/visa capacity, availability, allocation/release, stop-sale and corrective/amendment behavior under the canonical tourism-contract-inventory owner. Literal parity still requires deciding which OLD commercial fields belong in contract terms/version metadata versus other canonical owners before adding anything.
 
 ## Rolling Inventory / Decisions
 
@@ -139,6 +144,8 @@ Status: `DONE` = implementation/reuse decision complete; `IN PROGRESS` = active 
 | Service cancellation with finance/fulfillment blockers | Existing orchestration | REUSE |
 | Service history/activity | Existing immutable history | REUSE |
 | Programs/bookings/itineraries/contracts inventory | Existing dedicated tourism owners/routes | REUSE; literal OLD UI parity continues |
+| Contract supplier/program pickers | Canonical Supplier Management/Tourism Programs reads wired into Contract Inventory UI | DONE |
+| OLD hotel/flight commercial contract fields | Map field-by-field to canonical version terms/inventory/finance owners before implementation; do not duplicate cost/financial truth | IN PROGRESS |
 | Traveler linkage | Canonical traveler selector wired into standalone-service UX | DONE for standalone service; other legacy workspaces still auditing |
 | Customer/supplier/agent pickers | Canonical owner-backed selectors replace raw IDs in standalone-service daily UX | DONE for standalone service; other workspaces still auditing |
 | Files/documents | Platform Core owner; integration parity under review | IN PROGRESS |
@@ -160,6 +167,9 @@ Status: `DONE` = implementation/reuse decision complete; `IN PROGRESS` = active 
 - `e7e65c3` — added Supplier 360 purchase history, invoices/outstanding, payment/receipt vouchers, active advances, permission-aware finance state and loading state to the NEW UI.
 - `57f3829` — added a purchase-return workspace backed exclusively by immutable fulfillment corrections with precise decimal quantity validation.
 - `0c0b01a` — exposed the purchase-return workspace in the existing Purchases & Suppliers navigation.
+- `cf505cc` — exposed canonical Supplier Management and Tourism Programs reads in the Contract Inventory web client.
+- `6e0e068` — wired active/approved supplier and open-program selectors into Contract Inventory, replacing raw daily-use IDs without changing ownership.
+- Current checkpoint — literal OLD contract-form audit captured hotel/flight commercial fields and attachment actions; no speculative owner/model changes were made.
 
 No commit above was made to `main`. No Railway/production deployment was performed.
 
@@ -183,10 +193,10 @@ Rules implemented:
 
 Continue from here without redoing completed items:
 
-1. Finish literal OLD supplier documents/party controls and OLD tourism forms/workflows inventory.
+1. Finish literal OLD supplier documents/party controls and remaining OLD tourism forms/workflows inventory.
 2. Wire supplier/shared documents only through the existing Platform Core file owner.
 3. Complete standalone service document/attachment and accounting/profitability 360 composition without duplicating truth.
-4. Audit tourism programs/bookings/itineraries/contract-inventory against legacy controls field-by-field.
+4. Continue tourism programs/bookings/itineraries/contract-inventory audit field-by-field. For hotel/flight contract fields already extracted, first map commercial terms to the contract-version owner and route any financial truth to Billing/Accounting/Treasury rather than adding parallel fields.
 5. Review tourism refund/advance/collection/payment actions through existing Billing/Treasury/orchestration owners.
 6. Add only genuinely missing backend behavior to its canonical owner; no duplicate implementation.
 7. Keep updating this checkpoint and meaningful commits.
