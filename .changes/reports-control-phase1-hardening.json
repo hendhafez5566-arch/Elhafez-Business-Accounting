@@ -15,8 +15,7 @@
   "allowBreakingPublicApi": false,
   "publicApiBreakingReason": "",
   "testEvidence": [
-    "Draft PR CI affected workspace typecheck",
-    "Draft PR CI affected workspace tests",
-    "Architecture and lint checks"
+    "apps/api/src/management-control.spec.ts",
+    "apps/web/src/management-control.spec.ts"
   ]
 }
