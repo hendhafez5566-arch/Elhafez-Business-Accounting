@@ -18,19 +18,19 @@ concurrency:
 
 jobs:
   quality:
-    runs-on: self-hosted
+    runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-latest' || 'self-hosted' }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
-          # The persistent self-hosted runner keeps installed dependencies between runs.
-          # Git-tracked state is still reset below and pnpm --frozen-lockfile verifies dependency truth.
+          # Pull requests run on an ephemeral GitHub-hosted runner while main keeps the persistent self-hosted runner.
+          # Git-tracked state is reset below and pnpm --frozen-lockfile verifies dependency truth on both paths.
           clean: false
           # PR merge refs need only the merge commit and its parents.
           # Main keeps a wider fail-closed history window without fetching all history.
           fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 50 }}
 
-      - name: Sanitize persistent workspace
+      - name: Sanitize workspace
         run: |
           git reset --hard HEAD
           git clean -ffdx -e node_modules/ -e "**/node_modules/"
