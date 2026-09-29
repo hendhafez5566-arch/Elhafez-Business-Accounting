@@ -1,0 +1,31 @@
+{
+  "id": "admin-settings-final-closure-20260929",
+  "summary": "Close remaining Administration & Settings parity with a typed company profile over Platform Core-owned configuration, honest operations/backup diagnostics, canonical branch selection for document numbering, and canonical user selection for automation recipients and escalation without introducing parallel settings, backup, approval, numbering, notification, automation, or accounting owners.",
+  "type": "feature",
+  "allowedModules": [
+    "platform-core",
+    "document-numbering",
+    "automation-workflow"
+  ],
+  "allowedPaths": [
+    ".changes/20260929-admin-settings-final-closure.json",
+    "apps/web/src/company-profile-model.ts",
+    "apps/web/src/company-profile-panel.tsx",
+    "apps/web/src/system-administration-page.tsx",
+    "apps/web/src/platform-foundations-page.tsx",
+    "apps/web/src/system-administration.spec.ts",
+    "apps/web/src/platform-foundations.spec.ts",
+    "apps/web/src/administration-final-closure.spec.ts"
+  ],
+  "protectedPaths": [],
+  "protectedReason": "",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": "",
+  "testEvidence": [
+    "apps/web/src/administration-final-closure.spec.ts",
+    "apps/web/src/system-administration.spec.ts",
+    "apps/web/src/platform-foundations.spec.ts"
+  ],
+  "unacceptedMigrationRepairs": [],
+  "unacceptedMigrationRepairReason": ""
+}

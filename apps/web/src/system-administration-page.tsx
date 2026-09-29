@@ -1,6 +1,7 @@
 import {useEffect,useState} from 'react';
 import {Button,Card,DisclosureCard,EmptyState,ErrorState,FormField,Input,LoadingState,Select,Tabs,Toast} from './ui.js';
 import {HttpAdministrationClient,type AdministrationClient,type AdministrationContext} from './system-administration-client.js';
+import {CompanyProfilePanel} from './company-profile-panel.js';
 import {tenantApiContext} from './tenant-session.js';
 
 const areas=[
@@ -22,7 +23,6 @@ function datasetOption(value:unknown):value is DatasetOption{return objectRecord
 function downloadPayload(value:unknown):value is DownloadPayload{return objectRecord(value)&&typeof value.fileName==='string'&&typeof value.contentType==='string'&&typeof value.contentBase64==='string';}
 function filePayload(value:unknown):value is FilePayload{return objectRecord(value)&&typeof value.contentBase64==='string'&&objectRecord(value.metadata)&&typeof value.metadata.id==='string'&&typeof value.metadata.contentType==='string';}
 function fileAsBase64(file:File):Promise<string>{return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onerror=()=>reject(new Error('تعذر قراءة الملف'));reader.onload=()=>{const result=String(reader.result??'');resolve(result.includes(',')?result.slice(result.indexOf(',')+1):result);};reader.readAsDataURL(file);});}
-function configValue(text:string):unknown{try{return JSON.parse(text);}catch{return text;}}
 function triggerDownload(payload:DownloadPayload){const binary=atob(payload.contentBase64);const bytes=new Uint8Array(binary.length);for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);const url=URL.createObjectURL(new Blob([bytes],{type:payload.contentType}));const anchor=document.createElement('a');anchor.href=url;anchor.download=payload.fileName;anchor.click();URL.revokeObjectURL(url);}
 function text(value:unknown){return typeof value==='string'?value:'';}
 function idOf(record:Record<string,unknown>){return text(record.id);}
@@ -42,7 +42,7 @@ export function SystemAdministrationPage({client=new HttpAdministrationClient(),
  const [loading,setLoading]=useState(false);
  const [message,setMessage]=useState('');
  const [success,setSuccess]=useState('');
- const [form,setForm]=useState<Record<string,string>>({dataset:'CUSTOMERS',format:'CSV',mapping:'{}',configKey:'locale',configValue:'"ar"',retain:'7'});
+ const [form,setForm]=useState<Record<string,string>>({dataset:'CUSTOMERS',format:'CSV',mapping:'{}',retain:'7'});
  const ctx=context??tenantApiContext();
 
  const field=(name:string)=>form[name]??'';
@@ -122,7 +122,7 @@ export function SystemAdministrationPage({client=new HttpAdministrationClient(),
      {button('منح وصول للفرع',()=>void run('تم منح الوصول.',()=>client.action(`branches/${field('userBranchId')}/access/${field('userId')}`,ctx)))}
      {button('سحب وصول الفرع',()=>void run('تم سحب الوصول.',()=>client.remove(`branches/${field('userBranchId')}/access/${field('userId')}`,ctx)))}
      {button('تعطيل المستخدم',()=>void run('تم تحديث المستخدم.',()=>client.patch(`users/${field('userId')}`,ctx,{active:false})))}
-     {button('إعادة تفعيل المستخدم',()=>void run('تم تحديث المستخدم.',()=>client.patch(`users/${field('userId')}`,ctx,{active:true})))}
+     {button('إعادة تفعيل المستخدم',()=>void run('تم تحديث المستخدم.',()=>client.patch(`users/${field('userId')}`,ctx,{active:true}))) }
      {button('عرض جلسات المستخدم',()=>{setField('sessionUserId',field('userId'));setSelected('sessions');void load(`sessions/${field('userId')}`);})}
     </div>
    </DisclosureCard>
@@ -150,7 +150,7 @@ export function SystemAdministrationPage({client=new HttpAdministrationClient(),
    </DisclosureCard>
   </div>;
   if(selected==='notifications')return <div className="admin-actions">{input('notificationId','معرّف الإشعار')}{button('تحديد كمقروء',()=>void run('تم تحديث الإشعار.',()=>client.action(`notifications/${field('notificationId')}/read`,ctx)))}</div>;
-  if(selected.startsWith('configuration/'))return <div className="admin-actions">{input('configKey','مفتاح الإعداد')}{input('configValue','القيمة (JSON أو نص)')}{button('حفظ الإعداد',()=>void run('تم حفظ الإعداد.',()=>client.action(`configuration/${field('configKey')}`,ctx,{value:configValue(field('configValue'))}),false))}</div>;
+  if(selected.startsWith('configuration/'))return <CompanyProfilePanel client={client} context={ctx}/>;
   if(selected==='files')return <div className="admin-actions"><FormField label="رفع ملف"><Input type="file" onChange={event=>void attachmentFile(event.target.files?.[0])}/></FormField>{button('حفظ الملف',()=>void run('تم حفظ الملف.',()=>client.action('files',ctx,{contentType:field('fileContentType')||'application/octet-stream',contentBase64:field('fileContentBase64')})))}{input('fileId','معرّف الملف')}{button('تنزيل الملف',()=>void run('تم تجهيز الملف.',downloadFile,false))}{button('إلغاء الملف',()=>void run('تم إلغاء الملف.',()=>client.remove(`files/${field('fileId')}`,ctx)))}</div>;
   if(selected==='imports')return <div className="admin-actions">
    <FormField label="نوع البيانات"><Select value={field('dataset')} onChange={event=>{setField('dataset',event.target.value);setColumnMapping({});}}>{datasets.map(item=><option key={item.id} value={item.id}>{item.label}</option>)}</Select></FormField>
@@ -177,7 +177,6 @@ export function SystemAdministrationPage({client=new HttpAdministrationClient(),
    {button('تنفيذ الاستيراد',()=>void run('تم تنفيذ الاستيراد.',()=>client.action(`imports/${field('importJobId')}/execute`,ctx)))}
    <hr/>{input('exportFileName','اسم ملف التصدير')}{button('إنشاء تصدير CSV',()=>void run('تم إنشاء ملف التصدير.',async()=>{const result=await client.action('exports',ctx,{dataset:field('dataset'),fileName:field('exportFileName')||'export.csv',format:'CSV',idempotencyKey:`export-${Date.now()}`});if(objectRecord(result)&&typeof result.id==='string')setField('exportJobId',result.id);return result;},false))}{button('إنشاء تصدير XLSX',()=>void run('تم إنشاء ملف التصدير.',async()=>{const result=await client.action('exports',ctx,{dataset:field('dataset'),fileName:field('exportFileName')||'export.xlsx',format:'XLSX',idempotencyKey:`export-${Date.now()}`});if(objectRecord(result)&&typeof result.id==='string')setField('exportJobId',result.id);return result;},false))}{input('exportJobId','معرّف مهمة التصدير')}{button('تنزيل التصدير',()=>void run('تم تجهيز ملف التصدير.',downloadExport,false))}
   </div>;
-
   return null;
  }
 
