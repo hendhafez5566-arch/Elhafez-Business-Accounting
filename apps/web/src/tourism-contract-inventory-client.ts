@@ -8,6 +8,7 @@ export interface TourismInventoryResourceOption{id:string;contractId:string;reso
 export interface TourismInventoryContractOption{id:string;type:TourismInventoryResourceType;status:string;supplierId?:string;effectiveFrom:string;effectiveTo:string;resources:TourismInventoryResourceOption[]}
 export interface TourismInventorySupplierReference{supplier:{id:string;supplierCode:string;status:string;approvalStatus:string};party:{id:string;displayName:string}}
 export interface TourismInventoryProgramReference{id:string;code:string;nameAr:string;status:string}
+export interface TourismInventorySourceReference{sourceType:string;sourceId:string}
 
 export const tourismContractInventoryApi={
  catalog:()=>crmGet<TourismInventoryContractOption[]>(base+'/catalog'),
@@ -22,7 +23,7 @@ export const tourismContractInventoryApi={
  createVisa:(input:{contractId:string;visaType:string;nationality?:string;quotaTotal:string;effectiveFrom:string;effectiveTo:string;commandKey?:string})=>crmPost<InventoryResult>(base+'/visa-quotas',input),
  stopSale:(input:{contractId:string;reason:string;effectiveFrom:string;effectiveTo:string;commandKey?:string})=>crmPost<InventoryResult>(base+'/stop-sales',input),
  availability:(input:{contractId:string;resourceType:TourismInventoryResourceType;resourceId:string;serviceDate:string;periodEnd?:string})=>crmPost<InventoryResult>(base+'/availability',input),
- allocate:(input:{contractId:string;resourceType:TourismInventoryResourceType;resourceId:string;program:{sourceType:string;sourceId:string};serviceDate:string;periodEnd?:string;quantity:string;commandKey?:string})=>crmPost<InventoryResult>(base+'/allocations',input),
+ allocate:(input:{contractId:string;resourceType:TourismInventoryResourceType;resourceId:string;program:TourismInventorySourceReference;serviceDate:string;periodEnd?:string;quantity:string;flightSegmentReference?:TourismInventorySourceReference;visaBatchReference?:TourismInventorySourceReference;commandKey?:string})=>crmPost<InventoryResult>(base+'/allocations',input),
  allocation:(id:string)=>crmGet<InventoryResult|null>(base+'/allocations/'+enc(id)),
  release:(id:string,input:{quantity:string;commandKey?:string})=>crmPost<InventoryResult>(base+'/allocations/'+enc(id)+'/release',input),
  amendContract:(id:string,input:{terms:Record<string,unknown>;effectiveFrom:string;effectiveTo:string;commandKey?:string})=>crmPost<InventoryResult>(base+'/contracts/'+enc(id)+'/amendments',input),
