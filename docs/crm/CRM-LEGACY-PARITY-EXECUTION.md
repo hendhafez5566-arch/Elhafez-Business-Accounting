@@ -130,15 +130,17 @@ The branch was reviewed by failure class rather than by repeatedly triggering CI
 - Generic Accounting explicitly rejects Agent receivable settlement and leaves Agent settlement with the CRM Billing/Treasury orchestration boundary.
 - Platform entity-file persistence lives behind an infrastructure repository boundary; raw SQL writes do not live in application code.
 - Customer and Agent document upload controls use the shared `Input` primitive rather than raw HTML controls.
-- Change-safety manifest includes the Accounting compatibility edit, Platform file repository files, and Financial Reporting Agent identity preservation.
+- Change-safety manifest includes the Accounting compatibility edit, Platform file repository files, Financial Reporting Agent identity preservation, and the Treasury composition regression test.
 - Engineering-integrity issues were removed without `any`, lint suppression, TypeScript suppression, or disabled tests.
 - Duplicate Dashboard/Customer360/Agent360 implementations were removed; `crm-insights-pages.tsx` now retains only Traveler Management, whose identity/document history belongs to `traveler-management`.
-- The post-verification delta was narrowed to ten files and reviewed individually for UI architecture, declarations, permissions, imports and widened-contract fallout.
 - `crm/insights/assignees` exposes only active user id/display-name options under `crm.lead.read` plus branch access, avoiding a System Administration permission dependency for the lead selector.
 - Financial Reporting now preserves `AGENT_RECEIVABLE` and `AGENT_ADVANCE` separately from Customer/Supplier positions, including dedicated Agent aging and regression coverage so Agent financial truth cannot leak into Customer aging.
 - Existing Billing consumers were reviewed for widened `AGENT` semantics: Party Accounting remains explicitly Customer/Supplier netting only; Expense/Commission recognition validates its expected Customer/Supplier positions; the generic Accounting settlement path explicitly rejects Agent and routes it to the CRM financial orchestration.
+- Treasury composition coverage was aligned with the canonical `PartyCashMovementApplicationService` export and now validates required public exports individually rather than freezing an obsolete exact export list.
 - The hosted verification workflow remains non-deployment verification only. A temporary `[final-ci]` push gate is used for exactly this final verification commit; after completion it must return to manual-only `workflow_dispatch`.
 
 ## Exact continuation rule
 
 The hourly continuation service must continue this same task from the latest commit and this checkpoint. It must stay on `feature/crm-full-legacy-parity`, never modify `main`, never deploy Railway, never open a PR, and never start another business section. If the final hosted verification fails, inspect and fix the entire failure category before any second run. If it is green, complete the final legacy parity audit, mark Phase 2 complete, restore the hosted workflow to manual-only, and stop.
+
+Final hosted verification rerun triggered after closing the Treasury composition expectation failure class.
