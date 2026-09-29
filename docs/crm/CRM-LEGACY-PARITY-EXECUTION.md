@@ -27,9 +27,11 @@ Branch: `feature/crm-full-legacy-parity`
 | Follow-ups | `crm-followups` |
 | Quotations and quotation communication evidence | `quotations` |
 | Travelers/passports/travel-document history | `traveler-management` |
-| Customer/agent invoices, receivables, advances and credit limits | `billing-subledgers` when supported by its canonical contract |
+| Customer/agent invoices, receivables, advances and credit limits | `billing-subledgers` |
 | Cash/bank receipt/payment settlement | `treasury-settlement` |
+| Threshold approval evidence and decisions | `financial-controls` |
 | Financial agent commission claims and payments | `expense-commission-recognition` |
+| Binary file storage and entity-file links | `platform-core` |
 | Customer/Agent 360 and CRM dashboard | composition/read model only; no duplicate tables |
 
 ## Legacy surface to preserve/rebuild
@@ -55,10 +57,11 @@ Branch: `feature/crm-full-legacy-parity`
 - Customer 360: summary, finance, operations, attachments/activity, unified account view using owner reads.
 
 ### Agents / Representatives
-- Total, active, due-commission attention, suspended.
+- Total, active, receivable attention, overdue invoices, due-commission attention, suspended.
 - Name, phone, WhatsApp, fixed/percent commercial default commission, currency, notes.
 - Legacy actions: receipt from agent, invoice on agent, advance refund, due commission settlement when applicable.
-- Edit, WhatsApp, lifecycle, safe delete and Agent 360.
+- Edit, WhatsApp, documents, lifecycle, safe delete and Agent 360.
+- Agent receivables must remain separate from commission liabilities; no implicit netting.
 
 ### Leads / Follow-ups
 - Full lead pipeline and lifecycle.
@@ -78,7 +81,7 @@ Branch: `feature/crm-full-legacy-parity`
 - Add only read composition needed for legacy parity.
 - Keep financial amounts currency-separated.
 
-## Phase 1 status
+## Phase 1 status — COMPLETE
 
 - [x] Dedicated branch created from current `main`.
 - [x] CRM navigation group renamed/aligned to `المبيعات والعملاء CRM` and visible `المندوبون` terminology.
@@ -86,22 +89,36 @@ Branch: `feature/crm-full-legacy-parity`
 - [x] Customer form exposes person/company, legal name, identity/contact/address fields supported by Party Registry.
 - [x] Assigned agent uses an active-agent picker rather than raw ID input.
 - [x] Customer KPI/list read model includes receivable and overdue attention from Billing without CRM-owned balance truth.
-- [x] Customer invoice and receipt actions execute through the canonical Accounting/Billing/Treasury APIs with the customer Party preselected.
+- [x] Customer invoice and receipt actions execute through canonical Accounting/Billing/Treasury APIs with the customer Party preselected.
+- [x] Customer advance refund is owner-backed: Treasury posts outgoing cash, Billing consumes exact available advance, Financial Controls creates/validates threshold approval evidence, retries use stable source identities, and Treasury is compensated automatically if the Billing leg fails.
 - [x] Tourism service action uses a customer-aware launcher that creates the service in the canonical Tourism Services owner.
-- [x] Customer 360 expanded to summary, full Billing finance, operations, activity shell, and comprehensive account view.
-- [x] Agent workspace rebuilt with WhatsApp, lifecycle, safe delete, and accounting-owner commission attention.
-- [x] Agent 360 expanded with assigned customers, referred leads, quotations, canonical commission claims, and direct owner-backed commission payment.
+- [x] Customer 360 expanded to summary, full Billing finance, operations, activity/account view and owner-backed documents.
+- [x] Generic Platform Core entity-file ownership implemented for CRM documents; Customer and Agent upload/download/delete use the same platform owner and register retention references so Safe Delete cannot bypass attached documents.
+- [x] Agent workspace rebuilt with WhatsApp, lifecycle, documents, safe delete, receivable/overdue attention and accounting-owner commission attention.
+- [x] Billing canonical contracts support `AGENT` invoice/party kind and shared Billing mapping classifies Agent positions as Agent-owned rather than Customer-owned.
+- [x] Agent invoice, receipt, overpayment advance and advance refund are implemented through Billing/Treasury owner boundaries without CRM financial tables.
+- [x] Agent receivables are visible in list/Agent360/dashboard separately from commission claims; commission liabilities remain owned by `expense-commission-recognition` and are never implicitly netted against agent receivables.
+- [x] Agent 360 expanded with assigned customers, referred leads, quotations, receivable invoices/overdues, documents, canonical commission claims, and direct owner-backed commission payment.
 - [x] Leads workspace rebuilt with canonical party fields, responsibility/referral selectors, lifecycle actions, loss reason, history, WhatsApp, quotation and conversion actions.
 - [x] Follow-up workspace rebuilt with lead/user selectors, due/overdue queues, completion, chained next follow-up, reschedule, cancel, correction and history.
 - [x] Quotations rebuilt with customer/lead selectors, prefill, multiple lines, revisions, approvals, reject/accept, Billing conversion, print/PDF/WhatsApp/share and evidence history.
-- [x] CRM dashboard expanded with pipeline, quotation, customer receivable/overdue and agent commission attention by currency.
+- [x] CRM dashboard expanded with pipeline, quotations, customer receivables/overdues, agent receivables/overdues and agent commissions by currency.
 - [x] Superseded duplicate Customer/Agent/Lead/Follow-up/Agent360 UI implementations removed from active routing/source surfaces.
-- [x] Generic attachment/document ownership gap closed by architectural decision: the current platform contains attachment IDs and legacy `file-metadata` migration evidence, but no canonical binary document owner/public API. CRM must not invent a private attachment store. Customer/Agent 360 therefore keeps activity/owner-backed evidence only; generic document upload remains disabled until a platform-wide document owner is introduced outside this parity workstream.
-- [ ] Complete atomic customer advance-refund workflow across Billing + Treasury, then enable `رد مقدم` as a real owner-backed action.
-  - Checkpoint: the existing supplier-refund orchestration was reviewed as a reference for failure-safe ownership. Customer refund must not be routed through ECR because ECR owns supplier/expense/commission workflows, not customer liabilities. Billing must remain owner of advance availability and Treasury owner of the outgoing cash movement.
-- [ ] Resolve canonical Agent receivable/invoice/advance ownership. Billing now has canonical `AGENT` invoice/party types and Treasury voucher domain now admits `AGENT`; remaining application contracts, settlement behavior, tests/API/UI actions must be completed before enabling agent receipt/invoice/advance buttons.
-- [ ] Complete Phase 1 implementation marker only after the two remaining financial ownership gaps above are resolved or explicitly closed by an architectural decision.
+- [x] Phase 1 implementation marker complete. No change was made to `main`; no Railway deployment is part of this branch workflow.
 
-## Phase 2 status
+## Phase 2 status — STARTED
 
-Not started by design. Start only after Phase 1 is fully implemented, then run one comprehensive build/typecheck/unit/integration/API/UI/permission/migration/parity pass and fix all discovered defects.
+Run one comprehensive pass and fix every discovered defect before marking complete:
+
+- [ ] Build and TypeScript/typecheck.
+- [ ] Change-safety / architecture-boundary checks.
+- [ ] Unit tests for touched canonical owners.
+- [ ] API/integration tests for Customer/Agent financial orchestration, compensation, approvals and documents.
+- [ ] UI route/form/action coverage for Customers, Agents, Leads, Follow-ups, Quotations, Dashboard and both 360 workspaces.
+- [ ] Permission/branch/company isolation checks.
+- [ ] Prisma schema/migration validation, including `pc_entity_file_links`.
+- [ ] Safe-delete/reference-retention checks for Customer/Agent documents and cross-module links.
+- [ ] Final legacy-vs-new button/icon/filter/action/workflow parity review.
+- [ ] Fix all failures and record final Phase 2 completion marker.
+
+The hourly continuation service must continue from this checklist. It must stay on `feature/crm-full-legacy-parity`, never modify `main`, never deploy Railway, and stop without starting another business section after Phase 2 is complete.
