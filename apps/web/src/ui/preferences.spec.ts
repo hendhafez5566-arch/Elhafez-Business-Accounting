@@ -28,7 +28,12 @@ test('UI preferences normalize invalid values to stable defaults', () => {
   );
 });
 
-test('UI preferences preserve an explicitly selected classic theme', () => {
+test('Gemini Pro reference design is the default visual theme', () => {
+  assert.equal(DEFAULT_UI_PREFERENCES.theme, 'gemini');
+  assert.equal(normalizeUiPreferences({ theme: 'gemini' }).theme, 'gemini');
+});
+
+test('UI preferences preserve explicitly selected fallback themes', () => {
   assert.equal(normalizeUiPreferences({ theme: 'classic' }).theme, 'classic');
   assert.equal(normalizeUiPreferences({ theme: 'premium' }).theme, 'premium');
 });
@@ -40,7 +45,7 @@ test('UI preferences persist independently by scope for future authenticated use
     fontScale: 'large',
     fontFamily: 'system',
     density: 'compact',
-    theme: 'premium',
+    theme: 'gemini',
   }, storage);
   saveUiPreferences('user-b', {
     sidebarMode: 'fixed',
@@ -52,7 +57,7 @@ test('UI preferences persist independently by scope for future authenticated use
 
   assert.equal(loadUiPreferences('user-a', storage).sidebarMode, 'auto');
   assert.equal(loadUiPreferences('user-a', storage).fontScale, 'large');
-  assert.equal(loadUiPreferences('user-a', storage).theme, 'premium');
+  assert.equal(loadUiPreferences('user-a', storage).theme, 'gemini');
   assert.equal(loadUiPreferences('user-b', storage).sidebarMode, 'fixed');
   assert.equal(loadUiPreferences('user-b', storage).theme, 'classic');
   assert.notEqual(preferenceStorageKey('user-a'), preferenceStorageKey('user-b'));
