@@ -5,7 +5,8 @@
   "allowedModules": [],
   "allowedPaths": [
     ".changes/20260930-no-parallel-ui-owners.json",
-    "apps/web/src/no-parallel-ui-owners.spec.tsx"
+    "apps/web/src/no-parallel-ui-owners.spec.tsx",
+    "apps/web/src/no-parallel-ui-owners.md"
   ],
   "protectedPaths": [],
   "protectedReason": "",
