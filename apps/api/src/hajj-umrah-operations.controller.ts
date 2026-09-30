@@ -22,6 +22,7 @@ import {
   type CreateVisaCaseInput,
   type IssueVisaInput,
 } from '@elhafez/hajj-umrah-visa-operations';
+import { BARCODE_PERMISSIONS, HajjUmrahBarcodeApplicationService, type BarcodeStatus } from '@elhafez/hajj-umrah-barcode';
 import {
   HajjUmrahTicketingApplicationService,
   TICKET_PERMISSIONS,
@@ -46,7 +47,7 @@ type RequestHeaders={authorization:string|undefined;companyId:string|undefined;b
 @Controller('hajj-umrah/operations')
 export class HajjUmrahOperationsController {
   static readonly runtimeDependencies=[
-    HajjUmrahBookingsApplicationService,HajjUmrahRoomingApplicationService,HajjUmrahVisaOperationsApplicationService,
+    HajjUmrahBookingsApplicationService,HajjUmrahRoomingApplicationService,HajjUmrahVisaOperationsApplicationService,HajjUmrahBarcodeApplicationService,
     HajjUmrahTicketingApplicationService,HajjUmrahTransportOperationsApplicationService,HajjUmrahTripOperationsApplicationService,
     PlatformCoreApplicationService,
   ] as const;
@@ -58,7 +59,21 @@ export class HajjUmrahOperationsController {
     private readonly transport:HajjUmrahTransportOperationsApplicationService,
     private readonly trip:HajjUmrahTripOperationsApplicationService,
     private readonly platform:PlatformCoreApplicationService,
+    private readonly barcodes?:HajjUmrahBarcodeApplicationService,
   ){}
+
+  @Get('barcodes')
+  async listBarcodes(@Headers('authorization') authorization:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined,@Query('programId') programId?:string){return this.barcodeOwner().list(await this.context({authorization,companyId,branchId}),programId)}
+  @Post('barcodes')
+  async assignBarcode(@Headers('authorization') authorization:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined,@Body() input:{programId:string;visaCaseId:string}){return this.barcodeOwner().assign(await this.context({authorization,companyId,branchId}),input)}
+  @Get('barcodes/lookup/:code')
+  async lookupBarcode(@Headers('authorization') authorization:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined,@Param('code') code:string){return this.barcodeOwner().lookup(await this.context({authorization,companyId,branchId}),code)}
+  @Get('barcodes/:id/history')
+  async barcodeHistory(@Headers('authorization') authorization:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined,@Param('id') id:string){return this.barcodeOwner().historyFor(await this.context({authorization,companyId,branchId}),id)}
+  @Post('barcodes/:id/status')
+  async transitionBarcode(@Headers('authorization') authorization:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined,@Param('id') id:string,@Body() input:{status:BarcodeStatus;reason?:string}){return this.barcodeOwner().transition(await this.context({authorization,companyId,branchId}),id,input.status,input.reason)}
+
+  private barcodeOwner(){if(!this.barcodes)throw new Error('barcode owner unavailable');return this.barcodes}
 
   @Get('capabilities')
   async capabilities(@Headers('authorization') authorization:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined){
@@ -67,6 +82,7 @@ export class HajjUmrahOperationsController {
       bookingView:BOOKING_PERMISSIONS.view,bookingManage:BOOKING_PERMISSIONS.manage,bookingConfirm:BOOKING_PERMISSIONS.confirm,bookingLifecycle:BOOKING_PERMISSIONS.lifecycle,bookingCancel:BOOKING_PERMISSIONS.cancel,
       roomingView:ROOMING_PERMISSIONS.view,roomingManage:ROOMING_PERMISSIONS.manage,
       visaView:VISA_PERMISSIONS.view,visaManage:VISA_PERMISSIONS.manage,visaIssue:VISA_PERMISSIONS.issue,
+      barcodeView:BARCODE_PERMISSIONS.view,barcodeManage:BARCODE_PERMISSIONS.manage,barcodeUse:BARCODE_PERMISSIONS.use,barcodeCancel:BARCODE_PERMISSIONS.cancel,
       ticketView:TICKET_PERMISSIONS.view,ticketManage:TICKET_PERMISSIONS.manage,ticketIssue:TICKET_PERMISSIONS.issue,
       transportView:TRANSPORT_PERMISSIONS.view,transportManage:TRANSPORT_PERMISSIONS.manage,transportDispatch:TRANSPORT_PERMISSIONS.dispatch,
       tripView:TRIP_PERMISSIONS.view,tripManage:TRIP_PERMISSIONS.manage,

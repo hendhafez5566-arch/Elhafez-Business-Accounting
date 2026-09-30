@@ -1,0 +1,48 @@
+{
+  "id": "functional-closure-missing-final",
+  "summary": "Complete legacy functional closure across canonical reporting, treasury, Hajj/Umrah, API, web, migration, operations, and release-readiness owners.",
+  "type": "phase",
+  "allowedModules": [
+    "_template",
+    "financial-reporting",
+    "treasury-settlement",
+    "hajj-umrah-barcode",
+    "platform-core",
+    "platform-operations",
+    "supplier-management",
+    "agent-management",
+    "hajj-umrah-programs",
+    "tourism-programs",
+    "tourism-finance-orchestration"
+  ],
+  "allowedPaths": [
+    ".changes/functional-closure-missing-final.json",
+    "docs/LEGACY_PARITY_MATRIX.md",
+    "docs/migration/functional-closure-rehearsal.md",
+    "docs/operations/FUNCTIONAL-CLOSURE-RECOVERY.md",
+    "docs/operations/FUNCTIONAL-CLOSURE-PRODUCTION-READINESS.md",
+    "apps/api/src/**",
+    "apps/api/package.json",
+    "apps/web/src/**",
+    "prisma/schema.prisma",
+    "prisma/migrations/20260930120000_functional_closure_branch_barcode/**",
+    "package.json",
+    "pnpm-lock.yaml"
+  ],
+  "protectedPaths": [
+    "modules/*/module.json",
+    "apps/api/src/app.module.ts",
+    "apps/web/src/routes.tsx",
+    "prisma/schema.prisma",
+    "prisma/migrations/**",
+    "package.json",
+    "pnpm-lock.yaml"
+  ],
+  "protectedReason": "The owner-approved closure adds the planned barcode module, additive persistence, backward-compatible owner APIs, existing-route composition wiring, and branch-provenance integration test alignment.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": "",
+  "testEvidence": [
+    "apps/web/src/functional-closure-ui.spec.ts",
+    "modules/tourism-finance-orchestration/src/integration.spec.ts"
+  ]
+}

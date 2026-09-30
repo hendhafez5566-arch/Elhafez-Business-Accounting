@@ -1,0 +1,3 @@
+import type{BarcodeHistory,UmrahBarcode}from'../domain/barcode.js';
+export const BARCODE_REPOSITORY=Symbol('BARCODE_REPOSITORY');
+export interface BarcodeRepository{create(value:UmrahBarcode,history:BarcodeHistory):Promise<UmrahBarcode>;save(value:UmrahBarcode,expectedRevision:number,history:BarcodeHistory):Promise<UmrahBarcode>;find(companyId:string,branchId:string,id:string):Promise<UmrahBarcode|null>;byCode(companyId:string,branchId:string,code:string):Promise<UmrahBarcode|null>;byVisa(companyId:string,branchId:string,visaCaseId:string):Promise<UmrahBarcode|null>;list(companyId:string,branchId:string,programId?:string):Promise<UmrahBarcode[]>;history(companyId:string,branchId:string,id:string):Promise<BarcodeHistory[]>;}

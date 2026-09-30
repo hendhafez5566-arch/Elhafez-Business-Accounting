@@ -13,9 +13,10 @@ test('Umrah barcode is registered as a dedicated Hajj & Umrah route',()=>{
  assert.equal(route.group,'الحج والعمرة');
 });
 
-test('Umrah barcode shell is Arabic-first and explicitly marked as coming soon',()=>{
+test('Umrah barcode page exposes the real internal lifecycle without claiming an external provider',()=>{
  const html=renderToStaticMarkup(createElement(UmrahBarcodePage));
  assert.match(html,/باركود العمرة/);
- assert.match(html,/قريبًا/);
- assert.match(html,/باركود العمرة المصري/);
+ assert.match(html,/تعيين باركود داخلي/);
+ assert.match(html,/لا يدّعي تكاملًا أو صيغة لمزود خارجي/);
+ assert.doesNotMatch(html,/قريبًا|غير مفعّل/);
 });

@@ -50,6 +50,7 @@
     "@elhafez/hajj-umrah-bookings": "workspace:*",
     "@elhafez/hajj-umrah-rooming": "workspace:*",
     "@elhafez/hajj-umrah-visa-operations": "workspace:*",
+    "@elhafez/hajj-umrah-barcode": "workspace:*",
     "@elhafez/hajj-umrah-ticketing": "workspace:*",
     "@elhafez/hajj-umrah-transport-operations": "workspace:*",
     "@elhafez/hajj-umrah-trip-operations": "workspace:*",

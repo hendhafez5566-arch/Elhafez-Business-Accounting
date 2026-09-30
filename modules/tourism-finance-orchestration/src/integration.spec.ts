@@ -478,6 +478,7 @@ async function createCashTreasury(service: TreasurySettlementApplicationService)
   return service.createTreasury({
     id: 'cash',
     companyId: company,
+    branchId: 'branch-1',
     code: 'CASH',
     name: 'Cash',
     type: 'CASH',

@@ -1,5 +1,5 @@
 import { type FormEvent, useEffect, useState } from 'react';
-import { ActionBar, Button, Card, DataGrid, EmptyState, ErrorState, FormField, Input, LoadingState, MetricCard } from './ui.js';
+import { ActionBar, Button, Card, ConfirmationDialog, DataGrid, EmptyState, ErrorState, FormField, Input, LoadingState, MetricCard } from './ui.js';
 import { crmDelete, crmGet, crmPost } from './crm-core-client.js';
 
 type StoredFile={id:string;companyId:string;contentType:string;size:number;checksum:string|null;createdBy:string|null;createdAt:string};
@@ -13,19 +13,19 @@ function base64ToBytes(value:string){const binary=atob(value),bytes=new Uint8Arr
 export function queryParam(name:string){return typeof window==='undefined'?'':new URLSearchParams(window.location.search).get(name)??'';}
 
 export function EntityDocumentsPanel({entityId,basePath,emptyTitle,uploadTitle='إضافة مستند',listTitle='المستندات المرتبطة'}:EntityDocumentsPanelProps){
- const[rows,setRows]=useState<EntityFileLink[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState(''),[notice,setNotice]=useState(''),[label,setLabel]=useState(''),[file,setFile]=useState<File|null>(null),[version,setVersion]=useState(0);
+ const[rows,setRows]=useState<EntityFileLink[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState(''),[notice,setNotice]=useState(''),[label,setLabel]=useState(''),[file,setFile]=useState<File|null>(null),[version,setVersion]=useState(0),[pendingDelete,setPendingDelete]=useState<EntityFileLink|null>(null);
  useEffect(()=>{if(!entityId){setRows([]);setError('');setLoading(false);return;}let alive=true;setLoading(true);crmGet<EntityFileLink[]>(basePath).then(value=>{if(alive){setRows(value);setError('');}}).catch(value=>{if(alive)setError(msg(value));}).finally(()=>{if(alive)setLoading(false);});return()=>{alive=false;};},[entityId,basePath,version]);
  async function upload(event:FormEvent){event.preventDefault();if(!file||!entityId)return;try{const bytes=new Uint8Array(await file.arrayBuffer());await crmPost(basePath,{label:label.trim()||file.name,contentType:file.type||'application/octet-stream',contentBase64:bytesToBase64(bytes)});setNotice('تم حفظ المستند وربطه بالسجل.');setLabel('');setFile(null);setVersion(value=>value+1);}catch(value){setNotice(msg(value));}}
  async function download(row:EntityFileLink){try{const stored=await crmGet<FileContent>(basePath+'/'+encodeURIComponent(row.fileId));const blob=new Blob([base64ToBytes(stored.contentBase64)],{type:stored.metadata.contentType});const url=URL.createObjectURL(blob),anchor=document.createElement('a');anchor.href=url;anchor.download=row.label?.trim()||`document-${row.fileId}`;anchor.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch(value){setNotice(msg(value));}}
- async function remove(row:EntityFileLink){if(!window.confirm(`حذف المستند ${row.label??row.fileId}؟`))return;try{await crmDelete(basePath+'/'+encodeURIComponent(row.fileId));setNotice('تم حذف المستند وفك رابطه من السجل.');setVersion(value=>value+1);}catch(value){setNotice(msg(value));}}
+ async function remove(){if(!pendingDelete)return;try{await crmDelete(basePath+'/'+encodeURIComponent(pendingDelete.fileId));setNotice('تم حذف المستند وفك رابطه من السجل.');setPendingDelete(null);setVersion(value=>value+1);}catch(value){setNotice(msg(value));}}
  if(!entityId)return <EmptyState title="اختر سجلًا لعرض مستنداته"/>;
  const totalSize=rows.reduce((sum,row)=>sum+row.file.size,0);
  return <section className="ui-page-stack" aria-label="مساحة المستندات">
   <div className="ui-metric-grid"><MetricCard label="عدد المستندات" value={rows.length}/><MetricCard label="إجمالي الحجم" value={`${Math.ceil(totalSize/1024)} KB`}/></div>
   <section className="ui-dashboard-grid" aria-label="رفع وقائمة المستندات">
    <Card title={uploadTitle}><form onSubmit={upload} className="ui-filter-grid"><FormField label="اسم / وصف المستند"><Input value={label} onChange={event=>setLabel(event.target.value)} placeholder="مثال: عقد، تأكيد، فاتورة مرجعية أو هوية"/></FormField><FormField label="الملف" required><Input required type="file" onChange={event=>setFile(event.target.files?.[0]??null)}/></FormField>{file?<p>{file.name} — {Math.ceil(file.size/1024)} KB</p>:null}<ActionBar><Button type="submit" disabled={!file}>رفع المستند</Button></ActionBar></form>{notice?<p role="status">{notice}</p>:null}</Card>
-   <Card title={listTitle}>{loading?<LoadingState label="جارٍ تحميل المستندات…"/>:error?<ErrorState message={error}/>:!rows.length?<EmptyState title={emptyTitle}/>:<DataGrid columns={['الوصف','النوع','الحجم','التاريخ','إجراءات']}>{rows.map(row=><tr key={row.id}><td><strong>{row.label??'—'}</strong></td><td>{row.file.contentType}</td><td>{Math.ceil(row.file.size/1024)} KB</td><td>{new Date(row.createdAt).toLocaleString('ar-EG')}</td><td><ActionBar><Button variant="secondary" onClick={()=>void download(row)}>تحميل</Button><Button variant="danger" onClick={()=>void remove(row)}>حذف</Button></ActionBar></td></tr>)}</DataGrid>}</Card>
-  </section>
+   <Card title={listTitle}>{loading?<LoadingState label="جارٍ تحميل المستندات…"/>:error?<ErrorState message={error}/>:!rows.length?<EmptyState title={emptyTitle}/>:<DataGrid columns={['الوصف','النوع','الحجم','التاريخ','إجراءات']}>{rows.map(row=><tr key={row.id}><td><strong>{row.label??'—'}</strong></td><td>{row.file.contentType}</td><td>{Math.ceil(row.file.size/1024)} KB</td><td>{new Date(row.createdAt).toLocaleString('ar-EG')}</td><td><ActionBar><Button variant="secondary" onClick={()=>void download(row)}>تحميل</Button><Button variant="danger" onClick={()=>setPendingDelete(row)}>حذف</Button></ActionBar></td></tr>)}</DataGrid>}</Card>
+  </section><ConfirmationDialog open={Boolean(pendingDelete)} title="حذف المستند" onClose={()=>setPendingDelete(null)} onConfirm={()=>void remove()}>سيتم حذف المستند {pendingDelete?.label??''} وفك رابطه من السجل. هل تريد المتابعة؟</ConfirmationDialog>
  </section>;
 }
 
