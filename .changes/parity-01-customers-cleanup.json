@@ -1,0 +1,19 @@
+{
+  "id": "parity-01-customers-cleanup",
+  "summary": "Simplify the canonical customer workspace and Customer 360 selection flow while preserving existing CRM, Billing, Tourism and Party ownership without duplicate business paths.",
+  "type": "phase",
+  "allowedModules": [],
+  "allowedPaths": [
+    ".changes/parity-01-customers-cleanup.json",
+    "apps/web/src/crm-party-pages.tsx",
+    "apps/web/src/crm-360-parity-pages.tsx",
+    "apps/web/src/crm-core.spec.ts"
+  ],
+  "protectedPaths": [],
+  "protectedReason": "",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": "",
+  "testEvidence": [
+    "apps/web/src/crm-core.spec.ts"
+  ]
+}
