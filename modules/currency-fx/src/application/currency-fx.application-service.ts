@@ -16,6 +16,7 @@ import {
   type FxRate,
   type PositionClassification,
 } from '../domain/fx.js';
+import type { LiveFxRateProvider } from './live-fx-rate.provider.js';
 import type { CurrencyFxRepository } from './currency-fx.repository.js';
 
 export interface FxRateSnapshot {
@@ -45,12 +46,17 @@ export type RevaluationPreparation = Readonly<
 >;
 
 export class CurrencyFxApplicationService {
-  constructor(private readonly repository: CurrencyFxRepository) {}
+  constructor(private readonly repository: CurrencyFxRepository, private readonly liveProvider?: LiveFxRateProvider) {}
 
   async configure(input: CurrencyConfiguration): Promise<CurrencyConfiguration> {
     const value = configureCurrency(input);
     await this.repository.saveCurrency(value);
     return value;
+  }
+
+  async listCurrencies(companyId: CompanyId): Promise<readonly CurrencyConfiguration[]> {
+    const values = await this.repository.listCurrencies(companyId);
+    return Object.freeze(values.map((value) => Object.freeze({ ...value })));
   }
 
   async getBaseCurrency(companyId: CompanyId): Promise<CurrencyConfiguration> {
@@ -67,6 +73,17 @@ export class CurrencyFxApplicationService {
     const value = makeRate(input);
     await this.repository.saveRate(value);
     return this.snapshot(value);
+  }
+
+  async refreshLiveRate(companyId: CompanyId, fromInput: CurrencyCode, toInput: CurrencyCode, id: string): Promise<FxRateSnapshot> {
+    const from = currencyCode(fromInput);
+    const to = currencyCode(toInput);
+    await this.requireActive(companyId, from);
+    await this.requireActive(companyId, to);
+    if (from === to) return this.resolveRate(companyId, from, to, new Date().toISOString());
+    if (!this.liveProvider) throw new ContractValidationError('rate', 'live FX provider is not configured');
+    const quote = await this.liveProvider.quote(from, to);
+    return this.publishRate({ id, companyId, fromCurrency: from, toCurrency: to, effectiveAt: quote.effectiveAt, rate: quote.rate, source: quote.source });
   }
 
   async resolveRate(companyId: CompanyId, fromInput: CurrencyCode, toInput: CurrencyCode, at: string): Promise<FxRateSnapshot> {
