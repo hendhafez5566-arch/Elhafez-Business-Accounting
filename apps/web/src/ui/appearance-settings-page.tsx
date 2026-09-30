@@ -2,7 +2,8 @@ import { ActionBar, Button, Card, FormField, Select } from './primitives.js';
 import { useUiPreferences } from './preferences.js';
 
 const themeLabels = {
-  premium: 'الحافظ الاحترافي',
+  gemini: 'تصميم Gemini Pro الموحد',
+  premium: 'الحافظ الاحترافي السابق',
   classic: 'الشكل الأساسي',
 } as const;
 
@@ -42,7 +43,7 @@ export function AppearanceSettingsPage() {
         <Card title="النمط البصري">
           <FormField
             label="شكل النظام"
-            hint="يمكن الرجوع للشكل الأساسي في أي وقت بدون تغيير البيانات أو وظائف النظام."
+            hint="تصميم Gemini Pro هو الشكل الموحد الافتراضي؛ ويمكن الرجوع للشكل السابق دون تغيير البيانات أو الوظائف."
           >
             <Select
               value={preferences.theme}
