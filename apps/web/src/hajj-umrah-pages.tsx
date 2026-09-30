@@ -312,22 +312,23 @@ function ProgramForm({
   readonly seasons: readonly Season[];
 }) {
   const [requirements, setRequirements] = useState((value.requirements ?? []).join(','));
-  const [components, setComponents] = useState(JSON.stringify(value.components ?? [], null, 2));
+  const [components, setComponents] = useState<ProgramComponent[]>([...(value.components ?? [])]);
   useEffect(() => {
     setRequirements((value.requirements ?? []).join(','));
-    setComponents(JSON.stringify(value.components ?? [], null, 2));
+    setComponents([...(value.components ?? [])]);
   }, [value]);
 
   function syncStructured(nextRequirements = requirements, nextComponents = components) {
-    let parsedComponents: ProgramComponent[] = [];
-    try { parsedComponents = JSON.parse(nextComponents) as ProgramComponent[]; } catch { parsedComponents = value.components ?? []; }
     const parsedRequirements = nextRequirements.split(',').map((item) => item.trim()).filter(Boolean) as Requirement[];
     onChange({
       ...value,
       ...(parsedRequirements.length ? { requirements: parsedRequirements } : {}),
-      components: parsedComponents,
+      components: nextComponents,
     });
   }
+  function updateComponent(index:number,change:Partial<ProgramComponent>){const next=components.map((component,position)=>position===index?{...component,...change}:component);setComponents(next);syncStructured(requirements,next);}
+  function addComponent(){const next=[...components,{type:'CUSTOM' as const,title:'',sequence:components.length+1}];setComponents(next);syncStructured(requirements,next);}
+  function removeComponent(index:number){const next=components.filter((_,position)=>position!==index).map((component,position)=>({...component,sequence:position+1}));setComponents(next);syncStructured(requirements,next);}
 
   return <form className="ui-filter-grid" onSubmit={onSubmit}>
     <FormField label="الكود" required><Input required value={value.code} onChange={(event) => onChange({ ...value, code: event.target.value })} /></FormField>
@@ -343,7 +344,7 @@ function ProgramForm({
     <FormField label="العملة" required><Input required value={value.currency} onChange={(event) => onChange({ ...value, currency: event.target.value.toUpperCase() })} /></FormField>
     <FormField label="سعر الثنائي"><Input inputMode="decimal" value={value.prices.double ?? ''} onChange={(event) => onChange({ ...value, prices: { ...value.prices, double: event.target.value || undefined } })} /></FormField>
     <FormField label="المتطلبات (مفصولة بفاصلة)"><Input value={requirements} onChange={(event) => { setRequirements(event.target.value); syncStructured(event.target.value, components); }} placeholder="HOTEL,FLIGHT,TRANSPORT" /></FormField>
-    <FormField label="المكونات JSON"><Textarea value={components} onChange={(event) => { setComponents(event.target.value); syncStructured(requirements, event.target.value); }} /></FormField>
+    <section className="ui-page-stack" aria-label="مكونات البرنامج"><strong>مكونات البرنامج</strong>{components.map((component,index)=><Card key={`${component.sequence}-${index}`} title={`المكون ${index+1}`}><div className="ui-filter-grid"><FormField label="النوع"><Select value={component.type} onChange={event=>updateComponent(index,{type:event.target.value as ProgramComponent['type']})}><option value="HOTEL">إقامة</option><option value="FLIGHT">طيران</option><option value="TRANSPORT">نقل</option><option value="VISA">تأشيرة</option><option value="VISIT">زيارة</option><option value="MEETING">تجمع</option><option value="CUSTOM">خدمة أخرى</option></Select></FormField><FormField label="العنوان" required><Input required value={component.title} onChange={event=>updateComponent(index,{title:event.target.value})}/></FormField><FormField label="المدينة"><Input value={component.city??''} onChange={event=>updateComponent(index,{city:event.target.value||undefined})}/></FormField><FormField label="المسار"><Input value={component.route??''} onChange={event=>updateComponent(index,{route:event.target.value||undefined})}/></FormField><FormField label="البداية"><Input type="datetime-local" value={component.start??''} onChange={event=>updateComponent(index,{start:event.target.value||undefined})}/></FormField><FormField label="النهاية"><Input type="datetime-local" value={component.end??''} onChange={event=>updateComponent(index,{end:event.target.value||undefined})}/></FormField><FormField label="الوصف"><Textarea value={component.description??''} onChange={event=>updateComponent(index,{description:event.target.value||undefined})}/></FormField><Button type="button" variant="danger" onClick={()=>removeComponent(index)}>حذف المكون</Button></div></Card>)}<Button type="button" variant="secondary" onClick={addComponent}>إضافة مكون</Button></section>
     <FormField label="ملاحظات"><Textarea value={value.notes ?? ''} onChange={(event) => onChange({ ...value, notes: event.target.value })} /></FormField>
     <Button type="submit">{submitLabel}</Button>
   </form>;
