@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Button } from './primitives.js';
 
 /**
  * Structural screen blueprints are intentionally separate from visual themes.
@@ -74,6 +75,12 @@ export interface ScreenDesign {
   readonly reference: ScreenReferenceId;
 }
 
+export interface WorkspaceNavigationItem {
+  readonly id: string;
+  readonly label: string;
+  readonly description?: string;
+}
+
 const blueprintValues = new Set<string>(Object.values(SCREEN_BLUEPRINTS));
 const referenceValues = new Set<string>(Object.values(SCREEN_REFERENCE_IDS));
 
@@ -124,6 +131,36 @@ export function WorkspacePane({
     className,
   ].filter(Boolean).join(' ');
   return <section className={classes}>{children}</section>;
+}
+
+export function WorkspaceNavigation({
+  items,
+  active,
+  onChange,
+  ariaLabel = 'التنقل داخل مساحة العمل',
+}: {
+  readonly items: readonly WorkspaceNavigationItem[];
+  readonly active: string;
+  readonly onChange: (id: string) => void;
+  readonly ariaLabel?: string;
+}) {
+  return (
+    <nav className="ui-workspace-nav" aria-label={ariaLabel}>
+      {items.map((item) => (
+        <Button
+          key={item.id}
+          type="button"
+          variant="ghost"
+          className="ui-workspace-nav__item"
+          aria-current={active === item.id ? 'page' : undefined}
+          onClick={() => onChange(item.id)}
+        >
+          <span className="ui-workspace-nav__label">{item.label}</span>
+          {item.description ? <small className="ui-workspace-nav__description">{item.description}</small> : null}
+        </Button>
+      ))}
+    </nav>
+  );
 }
 
 export function SplitWorkspace({
