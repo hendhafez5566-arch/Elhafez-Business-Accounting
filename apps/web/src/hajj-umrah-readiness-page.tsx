@@ -19,9 +19,6 @@ function Blockers({items}:{readonly items:readonly ReadinessBlocker[]}){
  if(!items.length)return <EmptyState title="لا توجد موانع حالية">كل الأدلة المطلوبة مكتملة وفق الحالة الحالية.</EmptyState>;
  return <DataGrid columns={['النوع','المشكلة','المسؤول','الحجز / المسافر']}>{items.map((item,index)=><tr key={item.code+item.bookingId+item.travelerId+index}><td><Badge tone={item.category==='FINANCIAL'||item.category==='CONTROL'?'warning':'error'}>{categoryLabel[item.category]??item.category}</Badge></td><td>{item.message}</td><td>{item.responsibility}</td><td>{item.bookingId?'حجز مرتبط':'—'}{item.travelerId?' / مسافر مرتبط':''}</td></tr>)}</DataGrid>;
 }
-function ReadinessCard({result,title='حالة الجاهزية'}:{readonly result:ReadinessResult;readonly title?:string}){
- return <Card title={title}><p><Badge tone={result.status==='READY'?'success':'error'}>{result.status==='READY'?'جاهز':'غير جاهز'}</Badge></p><Blockers items={result.blockers}/></Card>;
-}
 function AccountingSummary({value}:{readonly value:unknown}){
  if(!value||typeof value!=='object')return <p>لا توجد بيانات مالية معروضة.</p>;
  const rows=(value as{byCurrency?:readonly {currency:string;revenue:string;cost:string;profit:string}[]}).byCurrency;
