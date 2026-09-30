@@ -150,10 +150,10 @@ export function Topbar({
         <Icon name="menu" />
       </Button>
 
-      <div className="app-topbar__search">
-        <span className="app-topbar__search-icon" aria-hidden="true">⌕</span>
+      <div className="ui-inline" aria-label="البحث العام">
         <Input
           type="search"
+          size={36}
           aria-label="البحث في أقسام النظام"
           placeholder="ابحث عن شاشة أو قسم..."
           value={query}
@@ -164,27 +164,22 @@ export function Topbar({
         <datalist id="elhafez-route-search">
           {searchableRoutes.map(route => <option key={route.id} value={route.label}>{route.group}</option>)}
         </datalist>
-        <span className="app-topbar__search-shortcut" aria-hidden="true">Enter</span>
+        <small className="ui-field__hint">Enter</small>
       </div>
 
-      <div className="app-topbar__context">
+      <div className="topbar-actions">
         <div className="app-topbar__identity">
           <strong>{companyLabel}</strong>
           {branches.length>1&&onBranchChange
             ? <label className="app-topbar__branch"><span className="sr-only">الفرع الحالي</span><Select value={branchId} onChange={event=>onBranchChange(event.target.value)}>{branches.map(branch=><option key={branch.id} value={branch.id}>{branch.name}</option>)}</Select></label>
             : <span>{branchLabel}</span>}
         </div>
-        <div className="topbar-actions">
-          <Button variant="ghost" className="app-topbar__notification" aria-label="الإشعارات" title="الإشعارات">
-            <span className="app-topbar__notification-dot" aria-hidden="true" />
-            <Icon name="bell" />
-          </Button>
-          <Dropdown label="الحساب">
-            <a href="/settings/appearance">المظهر والتنقل</a>
-            <a href="/settings/account">بيانات الدخول</a>
-            {onLogout?<Button variant="ghost" type="button" onClick={onLogout}>تسجيل الخروج</Button>:null}
-          </Dropdown>
-        </div>
+        <Button variant="ghost" aria-label="الإشعارات" title="الإشعارات"><Icon name="bell" /></Button>
+        <Dropdown label="الحساب">
+          <a href="/settings/appearance">المظهر والتنقل</a>
+          <a href="/settings/account">بيانات الدخول</a>
+          {onLogout?<Button variant="ghost" type="button" onClick={onLogout}>تسجيل الخروج</Button>:null}
+        </Dropdown>
       </div>
     </header>
   );
