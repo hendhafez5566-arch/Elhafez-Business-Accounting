@@ -5,8 +5,8 @@ import {
 import {
   emptyOperationsCapabilities, hajjUmrahOperationsApi,
   type CreateIncidentInput, type CreateTaskInput, type CreateTransportRunInput, type HajjUmrahOperationsApi,
-  type Incident, type IncidentStatus, type ManifestAssignment, type OperationTask, type OperationsCapabilities,
-  type RecordServiceInput, type ServiceExecution, type TaskStatus, type TicketIssueInput, type TicketRecord, type TicketStatus,
+  type Incident, type ManifestAssignment, type OperationTask, type OperationsCapabilities,
+  type RecordServiceInput, type ServiceExecution, type TicketIssueInput, type TicketRecord, type TicketStatus,
   type TransportRun, type TransportRunStatus,
 } from './hajj-umrah-operations-client.js';
 import { makeOperationCommandKey, OperationsFailure } from './hajj-umrah-operations-primary-pages.js';
@@ -14,8 +14,6 @@ import { makeOperationCommandKey, OperationsFailure } from './hajj-umrah-operati
 const errorMessage=(error:unknown)=>error instanceof Error?error.message:'تعذر تنفيذ العملية.';
 const ticketLabels:Record<TicketStatus,string>={RESERVED:'محجوز',ISSUED:'صادر',REISSUED:'معاد الإصدار',VOIDED:'مبطل',CANCELLED:'ملغي'};
 const runLabels:Record<TransportRunStatus,string>={SCHEDULED:'مجدول',DISPATCHED:'تحرك',COMPLETED:'مكتمل',CANCELLED:'ملغي'};
-const taskLabels:Record<TaskStatus,string>={OPEN:'مفتوحة',COMPLETED:'مكتملة',CANCELLED:'ملغاة'};
-const incidentLabels:Record<IncidentStatus,string>={OPEN:'مفتوح',RESOLVED:'تم الحل',CANCELLED:'ملغي'};
 const statusTone=(status:string)=>status==='ISSUED'||status==='REISSUED'||status==='COMPLETED'||status==='RESOLVED'?'success' as const:status==='CANCELLED'||status==='VOIDED'?'error' as const:status==='DISPATCHED'?'info' as const:'warning' as const;
 
 function PermissionState({allowed,children}:{readonly allowed:boolean;readonly children:ReactNode}){
