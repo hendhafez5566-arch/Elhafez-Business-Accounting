@@ -1,21 +1,21 @@
 {
   "id": "20260930-accounting-canonical-layout-rebuild",
-  "summary": "Rebuild the accounting web workspace on the canonical screen-layout architecture so structural redesign changes navigation and workspace composition without duplicating accounting ownership, APIs, balances, journals or other financial truth.",
+  "summary": "Harden the canonical screen-workspace composition used by the already-merged accounting structural redesign: add one reusable workspace navigation pattern and allow the content pane to remain unsurfaced so modules do not accumulate card-on-card wrapper layers.",
   "type": "architecture",
   "allowedModules": [],
   "allowedPaths": [
     ".changes/20260930-accounting-canonical-layout-rebuild.json",
-    "apps/web/src/accounting-workspace-page.tsx",
     "apps/web/src/ui/screen-layouts.tsx",
     "apps/web/src/ui/screen-layouts.spec.tsx"
   ],
   "protectedPaths": [
     "apps/web/src/ui/**"
   ],
-  "protectedReason": "The accounting rebuild consumes and minimally extends the canonical screen-layout foundation with one reusable workspace navigation pattern and a surface-free content pane. The owner explicitly requested a permanent structural redesign fix without wrapper-on-wrapper patching or duplicate business implementations.",
+  "protectedReason": "The owner explicitly requested protection against patch-on-patch UI construction. This change modifies only the canonical screen-layout foundation so existing structural workspaces can reuse navigation and avoid an unnecessary visual surface around content. It does not create another accounting implementation or change business ownership.",
   "allowBreakingPublicApi": false,
   "publicApiBreakingReason": "",
   "testEvidence": [
-    "apps/web/src/ui/screen-layouts.spec.tsx"
+    "apps/web/src/ui/screen-layouts.spec.tsx",
+    "apps/web/src/accounting-workspace-layout.spec.tsx"
   ]
 }
