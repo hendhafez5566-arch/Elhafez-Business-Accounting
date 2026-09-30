@@ -1,0 +1,21 @@
+{
+  "id": "20260930-system-administration-structural-redesign",
+  "summary": "Route system administration through a canonical Settings Workspace while preserving the existing administration page as the single hidden transaction owner for users, roles, branches, sessions, data exchange and diagnostics.",
+  "type": "architecture",
+  "allowedModules": [],
+  "allowedPaths": [
+    ".changes/20260930-system-administration-structural-redesign.json",
+    "apps/web/src/system-administration-structural-page.tsx",
+    "apps/web/src/system-administration-structural.spec.tsx",
+    "apps/web/src/routes.tsx"
+  ],
+  "protectedPaths": [
+    "apps/web/src/routes.tsx"
+  ],
+  "protectedReason": "The owner-requested structural redesign requires the canonical route registry to make the settings blueprint the visible system administration surface while the existing administration implementation remains the only write owner.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": "",
+  "testEvidence": [
+    "apps/web/src/system-administration-structural.spec.tsx"
+  ]
+}
