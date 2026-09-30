@@ -25,6 +25,7 @@
     "apps/web/src/routes.spec.ts",
     "apps/web/src/app-shell-contract.spec.ts",
     "apps/web/src/app-entry-path.spec.tsx",
-    "apps/web/src/accounting-workspace-layout.spec.tsx"
+    "apps/web/src/accounting-workspace-layout.spec.tsx",
+    "apps/web/src/crm-structural-layout.spec.tsx"
   ]
 }
