@@ -4,6 +4,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { FollowupsPage, LeadsPage } from './crm-core-pages.js';
 import { CustomersPage } from './crm-party-pages.js';
+import { Customer360Page } from './crm-360-parity-pages.js';
 import { AgentsPage } from './crm-agent-parity-pages.js';
 import { foundationRoutes } from './routes.js';
 
@@ -20,12 +21,21 @@ test('customer and agent pages keep commercial ownership in CRM while exposing o
   const agents=renderToStaticMarkup(createElement(AgentsPage));
   assert.match(customers,/إضافة عميل/);
   assert.match(customers,/نوع العميل/);
+  assert.match(customers,/كل الأنواع/);
+  assert.match(customers,/عملاء موقوفون/);
   assert.match(customers,/ملاحظات تجارية/);
   assert.doesNotMatch(customers,/حد ائتماني|حساب مراقبة المدينين/);
   assert.match(agents,/إضافة مندوب/);
   assert.match(agents,/نوع العمولة الافتراضية/);
   assert.match(agents,/لهم عمولات مستحقة/);
   assert.doesNotMatch(agents,/حساب مراقبة المدينين/);
+});
+
+test('customer 360 selects a human-readable customer instead of asking employees for a raw internal id', () => {
+  const customer360=renderToStaticMarkup(createElement(Customer360Page));
+  assert.match(customer360,/اختر العميل بالاسم أو الرقم/);
+  assert.match(customer360,/عرض الملف الموحد/);
+  assert.doesNotMatch(customer360,/معرّف العميل/);
 });
 
 test('lead and follow-up pages expose the expanded pipeline and scheduling surfaces', () => {
