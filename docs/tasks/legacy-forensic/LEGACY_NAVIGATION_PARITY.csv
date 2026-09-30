@@ -1,0 +1,47 @@
+legacy_id,legacy_key,legacy_label,legacy_description,status,new_target,decision
+LEG-NAV-001,dashboard,لوحة التحكم,مركز النظام والأقسام,NEW_BETTER,/,الرئيسية + الإدارة والتحكم
+LEG-NAV-002,umrah-dashboard,نظام الحج والعمرة,من إنشاء البرنامج حتى إقفال الفوج,PARTIAL,/hajj-umrah/program-workspace,موزع بين برامج الحج والعمرة، مساحة عمل البرنامج، الجاهزية والتشغيل
+LEG-NAV-003,umrah-contracts,التعاقدات والمخزون,عقود الفنادق والطيران والنقل ومتابعة السعة,PARITY,/hajj-umrah/contracts-inventory,التعاقدات والمخزون موجودة
+LEG-NAV-004,umrah-control,إدارة الحج والعمرة,الرقابة والتسعير والجاهزية والتشغيل,NEW_BETTER,/hajj-umrah/readiness,مركز الجاهزية والتشغيل + صفحات تشغيل مستقلة
+LEG-NAV-005,crm,العملاء المحتملون والمتابعة,الفرص والمتابعات قبل التحويل لعميل,PARITY,/crm/leads + /crm/followups,العملاء المحتملون والمتابعات منفصلان
+LEG-NAV-006,customers,العملاء,الملف والرصيد والحركة,PARTIAL,/crm/customers + /crm/customer-360,العميل موجود لكن 360 أقل عمقًا من القديم
+LEG-NAV-007,agents,المندوبون,العملاء والعمولات والذمم,PARTIAL,/crm/agents + /crm/agent-360,الوكيل موجود لكن يحتاج عمقًا تشغيليًا وماليًا
+LEG-NAV-008,quotations,عروض الأسعار,من العرض إلى الفاتورة,NEW_BETTER,/crm/quotations,Lifecycle والمراجعات والموافقات أقوى
+LEG-NAV-009,services,الخدمات السياحية,تأشيرات وطيران وفنادق ونقل ورحلات,PARTIAL,/tourism/services,الخدمات موجودة؛ بعض العلاقات ما زالت تقنية
+LEG-NAV-010,suppliers,الموردون,الالتزامات والعقود والحركة,NEW_BETTER,/procurement/suppliers,إدارة وتقييم ومتابعة أوسع
+LEG-NAV-011,purchaseorders,أوامر الشراء,الطلب والاعتماد والاستلام قبل فاتورة المورد,NEW_BETTER,/procurement/purchase-orders + /procurement/sourcing,أوامر الشراء والتوريد أقوى
+LEG-NAV-012,invoices,الفواتير,مبيعات وموردين وتسويات,PARTIAL,/accounting,موجودة داخل Workspace
+LEG-NAV-013,receipts,سندات القبض,التحصيل والتخصيص وطرق الدفع,PARTIAL,/accounting,موجودة ضمن الخزينة/التسوية والوصول أقل مباشرة
+LEG-NAV-014,payments,سندات الصرف,السداد والاعتمادات,PARTIAL,/accounting,موجودة ضمن الخزينة/التسوية والوصول أقل مباشرة
+LEG-NAV-015,expenses,المصروفات,مدفوع ومستحق ومقدم,PARTIAL,/accounting,موجودة داخل المحاسبة
+LEG-NAV-016,settlements,التسويات والإلغاءات,تسويات الموردين والعملاء ورسوم الإلغاء والشطب,PARTIAL,/accounting,موجودة لكن بعض UX تقني
+LEG-NAV-017,accruals,الاستحقاقات والإيراد المؤجل,إيراد مقدم ومستحق والاعتراف حسب تاريخ الخدمة,PARTIAL,/accounting,موجودة لكن بعض التدفقات تقنية
+LEG-NAV-018,assets,الأصول الثابتة,سجل الأصول والإهلاك والاستبعاد,PARTIAL,/accounting,موجودة داخل Workspace
+LEG-NAV-019,loans,القروض والمخصصات,التمويل والفوائد والمخصصات,PARTIAL,/accounting,موجودة داخل Workspace
+LEG-NAV-020,budgets,الموازنات,موازنات الحسابات ومراكز التكلفة ومقارنة الفعلي,PARTIAL,/accounting,موجودة داخل Workspace
+LEG-NAV-021,cheques,الشيكات,واردة وصادرة والتحصيل والارتداد,PARTIAL,/accounting,منطق الشيكات موجود لكن واجهة كاملة تحتاج إغلاق
+LEG-NAV-022,treasury,الخزن والبنوك,السيولة والتحويل والمطابقة,PARTIAL,/accounting,الخزن والبنوك موجودة؛ التحويل والجرد والمطابقة تحتاج UI مكتملة
+LEG-NAV-023,journal,القيود اليومية,القيود اليدوية والمرحلة,PARITY,/accounting,القيود موجودة
+LEG-NAV-024,accounts,دليل الحسابات,شجرة الحسابات المحمية,PARITY,/accounting,دليل الحسابات موجود
+LEG-NAV-025,trial,ميزان المراجعة,الحركة والأرصدة,PARITY,/management/reports + /accounting,ميزان المراجعة والتقارير موجودان
+LEG-NAV-026,costcenters,مراكز التكلفة,تحليل الربحية,PARITY,/accounting,مراكز التكلفة موجودة
+LEG-NAV-027,currencies,العملات وأسعار الصرف,الأسعار وإعادة التقييم,PARITY,/accounting,العملات وFX موجودة
+LEG-NAV-028,taxes,الضرائب,الأكواد وحسابات المدخلات والمخرجات,PARITY,/accounting + /management/reports,الضرائب موجودة
+LEG-NAV-029,periods,الفترات المالية,الفتح والإقفال والسنة المالية,PARITY,/accounting,الفترات والإقفال موجودان
+LEG-NAV-030,workcenter,مركز العمل اليومي,كل ما يحتاج تنفيذًا الآن في مكان واحد,NEW_BETTER,/management/exceptions,مركز العمل والاستثناءات أقوى
+LEG-NAV-031,owner,لوحة الإدارة,المؤشرات التنفيذية للإدارة العليا,NEW_BETTER,/management/*,لوحات الإدارة والتحكم أوسع
+LEG-NAV-032,reports,التقارير,مالية وتشغيلية وضريبية,NEW_BETTER,/management/reports,Reporting Center أوسع
+LEG-NAV-033,approvals,الاعتمادات,العمليات التي تنتظر قرارًا,NEW_BETTER,/management/approvals,مركز موافقات مستقل
+LEG-NAV-034,audit,الرقابة المالية,فحص سلامة القيود والبيانات,PARTIAL,/accounting + /system-administration,الرقابة موجودة وتحتاج direct UX مماثل
+LEG-NAV-035,activity,سجل النشاط,من فعل ماذا ومتى,PARITY,/system-administration,Audit/activity موجود
+LEG-NAV-036,market-readiness,جاهزية البيع والتشغيل,فحص ذاتي قبل تسليم النظام للعميل,MISSING,—,لا يوجد route مخصص مكافئ في baseline
+LEG-NAV-037,quick-guide,دليل البدء السريع,خطوات إعداد الشركة وبدء أول دورة عمل,MISSING,—,لا يوجد route مخصص مكافئ في baseline
+LEG-NAV-038,users,المستخدمون والصلاحيات,الدخول والأدوار وحدود الاعتماد,PARITY,/system-administration,المستخدمون والصلاحيات موجودة
+LEG-NAV-039,branches,الفروع,الفروع وصلاحيات الوصول,PARITY,/system-administration,الفروع والوصول موجودان
+LEG-NAV-040,documents,مركز المستندات,الأرشيف والمرفقات,PARTIAL,/system-administration,Files موجودة لكن الربط داخل 360 وصفحات الأعمال أقل
+LEG-NAV-041,sessions,الجلسات والأجهزة,الأجهزة المتصلة وإنهاء الجلسات,PARITY,/system-administration,إدارة الجلسات موجودة
+LEG-NAV-042,dataexchange,استيراد وتصدير,Excel وCSV ونقل البيانات,NEW_BETTER,/system-administration,استيراد/تصدير وإدارة Jobs
+LEG-NAV-043,support,الدعم وحالة النظام,التشخيص والترخيص وحالة الاتصال,NEW_BETTER,/system-administration,Diagnostics/operations أقوى
+LEG-NAV-044,settings,الإعدادات,بيانات الشركة والسياسات والطباعة,PARTIAL,/system-administration + /settings/*,هوية الشركة والطباعة تحتاج توحيدًا
+LEG-NAV-045,backup-center,النسخ الاحتياطي والاستعادة,نسخ كاملة + استعادة + نسخ خادمية,NEW_BETTER,Owner Control,Backup/Restore/diagnostics أقوى ومركزي
+LEG-NAV-046,period-archiving,الأرشفة الذكية,إغلاق الفترات والأرشيف وصحة البيانات,REBUILD_DIFFERENTLY,/accounting,يمثل كفترات مغلقة/قراءة فقط وليس أرشيف بيانات موازٍ
