@@ -1,7 +1,7 @@
 {
   "id": "20260930-hajj-readiness-inplace-redesign",
   "summary": "Rebuild the existing Hajj and Umrah readiness page in place as a command center without parallel routes or duplicate UI owners.",
-  "type": "ui",
+  "type": "architecture",
   "allowedModules": [],
   "allowedPaths": [
     ".changes/20260930-hajj-readiness-inplace-redesign.json",
