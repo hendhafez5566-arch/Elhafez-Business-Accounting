@@ -2,8 +2,8 @@ import { TourismContractInventoryPage as TourismContractInventoryWorkspace } fro
 import { TourismContractParityPanels } from './tourism-contract-parity-panels.js';
 
 export function TourismContractInventoryPage(){
- return <>
+ return <section className="ui-dashboard" aria-label="التعاقدات والمخزون السياحي">
   <TourismContractInventoryWorkspace/>
   <TourismContractParityPanels/>
- </>;
+ </section>;
 }
