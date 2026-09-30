@@ -3,7 +3,7 @@ CREATE TABLE "pc_entity_file_links" (
   "company_id" TEXT NOT NULL,
   "entity_type" TEXT NOT NULL,
   "entity_id" TEXT NOT NULL,
-  "file_id" TEXT NOT NULL,
+  "file_id" UUID NOT NULL,
   "label" TEXT,
   "created_by" TEXT,
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
