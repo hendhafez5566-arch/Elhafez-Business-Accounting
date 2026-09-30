@@ -170,7 +170,7 @@ export function SettingsWorkspace({
   readonly className?: string;
 }) {
   return (
-    <div className={['ui-dashboard-grid', 'ui-workspace-settings', className].filter(Boolean).join(' ')}>
+    <div className={['ui-settings-grid', 'ui-workspace-settings', className].filter(Boolean).join(' ')}>
       <WorkspacePane variant="nav">{navigation}</WorkspacePane>
       <WorkspacePane variant="content">{content}</WorkspacePane>
     </div>
