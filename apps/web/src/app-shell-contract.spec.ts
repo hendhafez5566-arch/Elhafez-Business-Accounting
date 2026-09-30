@@ -13,8 +13,17 @@ test('global shell contract preserves RTL, right sidebar, topbar, navigation and
   assert.match(html, /class="app-main"/);
   assert.match(html, /aria-current="page"/);
   assert.match(html, /data-sidebar-mode="fixed"/);
+  assert.match(html, /data-route-id="foundation"/);
   assert.match(html, /class="ui-page-header"/);
   assert.match(html, /class="ui-page-stack"/);
+});
+
+test('Gemini app layout exposes global route search and ERP brand through the canonical shell', () => {
+  const html = renderToStaticMarkup(createElement(AppShell, { pathname: '/' }));
+  assert.match(html, /الحافظ ERP/);
+  assert.match(html, /aria-label="البحث في أقسام النظام"/);
+  assert.match(html, /placeholder="ابحث عن شاشة أو قسم\.\.\."/);
+  assert.match(html, /الرئيسية/);
 });
 
 test('sidebar supports fixed, compact and auto preference modes through one canonical shell', () => {
