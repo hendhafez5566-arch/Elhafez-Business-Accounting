@@ -32,11 +32,10 @@ test('ScreenDesign validation accepts only registered blueprint/reference combin
 
 test('ScreenLayoutBoundary replaces the page stack with one canonical structural boundary', () => {
   const markup = renderToStaticMarkup(
-    createElement(
-      ScreenLayoutBoundary,
-      { design: { blueprint: 'dashboard', reference: 'main-dashboard' } },
-      createElement('span', null, 'content'),
-    ),
+    createElement(ScreenLayoutBoundary, {
+      design: { blueprint: 'dashboard', reference: 'main-dashboard' },
+      children: createElement('span', null, 'content'),
+    }),
   );
   assert.match(markup, /class="ui-page-stack ui-screen-layout ui-screen-layout--dashboard"/);
   assert.match(markup, /data-screen-blueprint="dashboard"/);
@@ -70,6 +69,6 @@ test('SettingsWorkspace uses canonical navigation and content panes', () => {
 });
 
 test('WorkspacePane adds only canonical structural classes', () => {
-  const markup = renderToStaticMarkup(createElement(WorkspacePane, { variant: 'detail', className: 'extra' }, 'body'));
+  const markup = renderToStaticMarkup(createElement(WorkspacePane, { variant: 'detail', className: 'extra', children: 'body' }));
   assert.match(markup, /ui-card ui-workspace-pane ui-workspace-pane--detail extra/);
 });
