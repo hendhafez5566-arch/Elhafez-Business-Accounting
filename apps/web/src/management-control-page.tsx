@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Badge, Card, DataGrid, EmptyState, ErrorState, FormField, Input, LoadingState, MetricCard, Select } from './ui.js';
+import { ActionBar, Badge, Card, DataGrid, EmptyState, ErrorState, FormField, Input, LoadingState, MetricCard, Select } from './ui.js';
 import { managementControlApi, type AttentionSeverity, type ManagementControlApi, type ManagementDomain, type ManagementFilters, type ManagementOverview } from './management-control-client.js';
 
 const domainLabel:Record<ManagementDomain,string>={CRM_SALES:'العملاء والمبيعات',SUPPLIERS_PROCUREMENT:'الموردون والمشتريات',HAJJ_UMRAH:'الحج والعمرة',FINANCE:'المالية والرقابة'};
@@ -12,16 +12,37 @@ function AttentionTable({data,limit}:{readonly data:ManagementOverview;readonly 
   return <Card title={limit===undefined?'بنود العمل والاستثناءات':'أولويات تتطلب المتابعة'}><DataGrid columns={['الأولوية','المجال','البند','الحالة','التاريخ','الانتقال للمصدر']}>{items.map(item=><tr key={item.sourceKey}><td><Badge tone={item.severity==='CRITICAL'?'error':item.severity==='HIGH'?'warning':'info'}>{severityLabel[item.severity]}</Badge></td><td>{domainLabel[item.sourceDomain]}</td><td><strong>{item.title}</strong><small className="ui-block">{item.summary}</small></td><td>{item.status}</td><td>{item.occurredAt?new Date(item.occurredAt).toLocaleDateString('ar-EG'):'—'}</td><td><a href={item.drillDownPath}>فتح مساحة العمل الأصلية</a></td></tr>)}</DataGrid></Card>;
 }
 
-export function ExecutiveDashboardView({data}:{readonly data:ManagementOverview}) { const summary=data.summary; return <section className="ui-dashboard" dir="rtl" aria-label="لوحة الإدارة التنفيذية">
-  <div className="ui-metric-grid" aria-label="مؤشرات الانتباه"><MetricCard label="بنود تحتاج انتباه الإدارة" value={data.totals.attention}/><MetricCard label="حالات حرجة" value={data.totals.critical} tone={data.totals.critical?'error':'neutral'}/><MetricCard label="أولوية مرتفعة" value={data.totals.high} tone={data.totals.high?'warning':'neutral'}/></div>
-  <section className="ui-dashboard-grid" aria-label="ملخص الأعمال">
-    <Card title="العملاء والمبيعات"><p>العملاء: {summary.crmSales.customers} | الوكلاء: {summary.crmSales.agents} | المسافرون: {summary.crmSales.travelers}</p><p>متابعات متأخرة: {summary.crmSales.overdueFollowups} | عروض مقبولة: {summary.crmSales.quotationStatuses.ACCEPTED??0}</p><p>{summary.crmSales.quotationValueByCurrency.map(value=>`${value.total} ${value.currency}`).join(' | ')||'لا توجد قيمة عروض مسجلة'}</p><a href="/crm/dashboard">فتح لوحة العملاء والمبيعات</a></Card>
-    <Card title="الموردون والمشتريات"><p>الموردون: {summary.suppliers.total} | النزاعات المفتوحة: {summary.suppliers.openDisputes} | الإيقافات النشطة: {summary.suppliers.activeHolds}</p><a href="/procurement/supplier-intelligence">فتح متابعة الموردين</a></Card>
-    <Card title="جاهزية الحج والعمرة"><p>البرامج النشطة: {summary.hajjUmrah.activePrograms} | بنود الجاهزية: {summary.hajjUmrah.readinessItems} | حرجة: {summary.hajjUmrah.criticalReadinessItems}</p><a href="/hajj-umrah/readiness">فتح مركز الجاهزية</a></Card>
-    <Card title="المراكز المالية المستحقة"><p>المراكز المتأخرة: {summary.finance.overduePositions}</p><p>{summary.finance.overdueByCurrency.map(value=>`${value.amount} ${value.currency}`).join(' | ')||'لا توجد ذمم متأخرة'}</p></Card>
+function RecentAttention({data}:{readonly data:ManagementOverview}){
+ const items=data.items.slice(0,5);
+ return <Card title="أحدث النشاطات والتنبيهات">{items.length?<div className="ui-admin-workflows">{items.map(item=><section className="ui-disclosure-card" key={item.sourceKey}><div className="ui-disclosure-card__body"><div className="ui-inline"><Badge tone={item.severity==='CRITICAL'?'error':item.severity==='HIGH'?'warning':'info'}>{severityLabel[item.severity]}</Badge><small>{domainLabel[item.sourceDomain]}</small></div><p><strong>{item.title}</strong></p><p className="ui-page-intro">{item.summary}</p><div className="ui-inline"><small>{item.occurredAt?new Date(item.occurredAt).toLocaleString('ar-EG'):'بدون تاريخ'}</small><a href={item.drillDownPath}>فتح المصدر</a></div></div></section>)}</div>:<EmptyState title="لا توجد نشاطات حالية"/>}<ActionBar><a href="/management/exceptions">عرض مركز العمل كاملًا</a></ActionBar></Card>;
+}
+
+export function ExecutiveDashboardView({data}:{readonly data:ManagementOverview}) {
+ const summary=data.summary;
+ const overdueAmount=summary.finance.overdueByCurrency.map(value=>`${value.amount} ${value.currency}`).join(' | ')||'0';
+ return <section className="ui-dashboard" dir="rtl" aria-label="لوحة الإدارة التنفيذية">
+  <Card><div className="ui-inline"><div><h2>مرحباً بك 👋</h2><p className="ui-page-intro">إليك ملخص أداء الشركة وأهم البنود التي تحتاج متابعة الآن.</p></div><ActionBar><Select aria-label="فترة لوحة القيادة" defaultValue="current"><option value="current">الفترة الحالية</option><option value="today">اليوم</option><option value="month">هذا الشهر</option></Select></ActionBar></div></Card>
+  <div className="ui-metric-grid" aria-label="مؤشرات لوحة القيادة">
+   <MetricCard label="بنود تحتاج انتباه الإدارة" value={data.totals.attention} detail="كل المجالات التشغيلية" tone="info"/>
+   <MetricCard label="حالات حرجة" value={data.totals.critical} detail="تحتاج تدخلاً سريعاً" tone={data.totals.critical?'error':'neutral'}/>
+   <MetricCard label="أولوية مرتفعة" value={data.totals.high} detail="بنود متابعة قريبة" tone={data.totals.high?'warning':'neutral'}/>
+   <MetricCard label="مراكز مالية متأخرة" value={summary.finance.overduePositions} detail={overdueAmount} tone={summary.finance.overduePositions?'error':'success'}/>
+  </div>
+  <section className="ui-dashboard-grid" aria-label="تحليل الأداء وأحدث النشاطات">
+   <Card title="ملخص الأداء التشغيلي">
+    <div className="ui-metric-grid">
+     <MetricCard label="العملاء" value={summary.crmSales.customers} detail={`الوكلاء ${summary.crmSales.agents} • المسافرون ${summary.crmSales.travelers}`} tone="info"/>
+     <MetricCard label="متابعات متأخرة" value={summary.crmSales.overdueFollowups} detail={`عروض مقبولة ${summary.crmSales.quotationStatuses.ACCEPTED??0}`} tone={summary.crmSales.overdueFollowups?'warning':'success'}/>
+     <MetricCard label="نزاعات الموردين" value={summary.suppliers.openDisputes} detail={`إيقافات نشطة ${summary.suppliers.activeHolds}`} tone={summary.suppliers.openDisputes?'warning':'success'}/>
+     <MetricCard label="جاهزية الحج والعمرة" value={summary.hajjUmrah.readinessItems} detail={`حرجة ${summary.hajjUmrah.criticalReadinessItems} • برامج نشطة ${summary.hajjUmrah.activePrograms}`} tone={summary.hajjUmrah.criticalReadinessItems?'error':'success'}/>
+    </div>
+    <ActionBar><a href="/crm/dashboard">العملاء والمبيعات</a><a href="/procurement/supplier-intelligence">الموردون</a><a href="/hajj-umrah/readiness">جاهزية الحج والعمرة</a><a href="/accounting">المحاسبة والمالية</a></ActionBar>
+   </Card>
+   <RecentAttention data={data}/>
   </section>
-  <AttentionTable data={data} limit={5}/><a href="/management/exceptions">عرض مركز العمل والاستثناءات</a>
- </section>; }
+  <AttentionTable data={data} limit={5}/>
+ </section>;
+}
 
 export function ManagementWorkCenterView({data,filters,onFilters}:{readonly data:ManagementOverview;readonly filters:ManagementFilters;readonly onFilters:(value:ManagementFilters)=>void}) { return <section className="ui-work-center" dir="rtl" aria-label="مركز العمل والاستثناءات">
   <p className="ui-page-intro">تصفية البنود القابلة للتنفيذ والانتقال إلى مساحة المالك المعتمد.</p>

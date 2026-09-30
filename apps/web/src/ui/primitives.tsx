@@ -106,7 +106,12 @@ export function PageHeader({
   return (
     <header className="ui-page-header">
       <div>
-        {eyebrow && <p className="ui-page-header__eyebrow">{eyebrow}</p>}
+        <div className="ui-inline ui-page-header__eyebrow" aria-label="مسار الصفحة">
+          <a href="/">الرئيسية</a>
+          {eyebrow && <><span aria-hidden="true">‹</span><span>{eyebrow}</span></>}
+          <span aria-hidden="true">‹</span>
+          <strong>{title}</strong>
+        </div>
         <h1 id={id}>{title}</h1>
         {description && <p className="ui-page-header__description">{description}</p>}
       </div>

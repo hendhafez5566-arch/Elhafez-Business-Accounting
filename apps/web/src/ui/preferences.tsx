@@ -12,7 +12,7 @@ export const SIDEBAR_MODES = ['fixed', 'compact', 'auto'] as const;
 export const FONT_SCALES = ['small', 'normal', 'large', 'xlarge'] as const;
 export const FONT_FAMILIES = ['tahoma', 'system', 'arial'] as const;
 export const UI_DENSITIES = ['comfortable', 'balanced', 'compact'] as const;
-export const UI_THEMES = ['premium', 'classic'] as const;
+export const UI_THEMES = ['gemini', 'premium', 'classic'] as const;
 
 export type SidebarMode = (typeof SIDEBAR_MODES)[number];
 export type FontScale = (typeof FONT_SCALES)[number];
@@ -33,7 +33,7 @@ export const DEFAULT_UI_PREFERENCES: UiPreferences = Object.freeze({
   fontScale: 'normal',
   fontFamily: 'tahoma',
   density: 'comfortable',
-  theme: 'premium',
+  theme: 'gemini',
 });
 
 export interface PreferenceStorage {
@@ -67,6 +67,10 @@ export function normalizeUiPreferences(value: unknown): UiPreferences {
 }
 
 export function preferenceStorageKey(scope: string): string {
+  return 'elhafez.ui.preferences.v2:' + (scope.trim() || 'default');
+}
+
+function legacyPreferenceStorageKey(scope: string): string {
   return 'elhafez.ui.preferences.v1:' + (scope.trim() || 'default');
 }
 
@@ -86,7 +90,12 @@ export function loadUiPreferences(
   if (!storage) return DEFAULT_UI_PREFERENCES;
   try {
     const raw = storage.getItem(preferenceStorageKey(scope));
-    return raw ? normalizeUiPreferences(JSON.parse(raw)) : DEFAULT_UI_PREFERENCES;
+    if (raw) return normalizeUiPreferences(JSON.parse(raw));
+
+    const legacyRaw = storage.getItem(legacyPreferenceStorageKey(scope));
+    if (!legacyRaw) return DEFAULT_UI_PREFERENCES;
+    const legacy = normalizeUiPreferences(JSON.parse(legacyRaw));
+    return normalizeUiPreferences({ ...legacy, theme: 'gemini' });
   } catch {
     return DEFAULT_UI_PREFERENCES;
   }
