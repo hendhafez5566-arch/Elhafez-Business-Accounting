@@ -1,17 +1,20 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import {
+  ActionBar,
   Badge,
   Button,
   Card,
   DataGrid,
   Dialog,
+  DisclosureCard,
   EmptyState,
   ErrorState,
   FormField,
   Input,
   LoadingState,
+  MetricCard,
   Select,
-  Tabs,
+  SplitWorkspace,
   Textarea,
   Toast,
 } from './ui.js';
@@ -130,11 +133,11 @@ export function SeasonsView({
       <td>{row.salesStart.slice(0, 10)} — {row.salesEnd.slice(0, 10)}</td>
       <td><Badge tone={seasonTone(row.status)}>{row.status === 'ACTIVE' ? 'نشط' : row.status === 'CLOSED' ? 'مغلق' : 'ملغي'}</Badge></td>
       <td>{row.version}</td>
-      <td>
+      <td><ActionBar>
         {capabilities.seasonManage && row.status === 'ACTIVE' && onEdit && <Button type="button" onClick={() => onEdit(row.id)}>تعديل</Button>}
-        {capabilities.seasonLifecycle && row.status === 'ACTIVE' && onClose && <Button type="button" onClick={() => onClose(row.id)}>إغلاق</Button>}
-        {capabilities.seasonLifecycle && row.status === 'ACTIVE' && onCancel && <Button type="button" onClick={() => onCancel(row.id)}>إلغاء</Button>}
-      </td>
+        {capabilities.seasonLifecycle && row.status === 'ACTIVE' && onClose && <Button type="button" variant="secondary" onClick={() => onClose(row.id)}>إغلاق</Button>}
+        {capabilities.seasonLifecycle && row.status === 'ACTIVE' && onCancel && <Button type="button" variant="danger" onClick={() => onCancel(row.id)}>إلغاء</Button>}
+      </ActionBar></td>
     </tr>)}
   </DataGrid>;
 }
@@ -192,9 +195,19 @@ export function SeasonsPage({ api = hajjUmrahApi }: { readonly api?: HajjUmrahAp
     } catch (error) { setNotice(errorMessage(error)); }
   }
 
-  return <section aria-label="المواسم">
-    {capabilities.seasonManage && <Card title={editingId ? 'تعديل الموسم' : 'إضافة موسم'}>
-      <form onSubmit={save}>
+  const active = rows.filter((row) => row.status === 'ACTIVE').length;
+  const closed = rows.filter((row) => row.status === 'CLOSED').length;
+  const cancelled = rows.filter((row) => row.status === 'CANCELLED').length;
+
+  return <section aria-label="المواسم" className="ui-dashboard">
+    <div className="ui-metric-grid">
+      <MetricCard label="إجمالي المواسم" value={rows.length} />
+      <MetricCard label="مواسم نشطة" value={active} tone="success" />
+      <MetricCard label="مواسم مغلقة" value={closed} />
+      <MetricCard label="مواسم ملغاة" value={cancelled} tone={cancelled ? 'warning' : 'neutral'} />
+    </div>
+    {capabilities.seasonManage && <DisclosureCard title={editingId ? 'تعديل الموسم' : 'إضافة موسم'} description="تعريف فترة التشغيل والبيع للموسم من نفس السجل التشغيلي.">
+      <form className="ui-filter-grid" onSubmit={save}>
         <FormField label="كود الموسم" required><Input required value={form.code} onChange={(event) => setForm({ ...form, code: event.target.value })} /></FormField>
         <FormField label="الاسم العربي" required><Input required value={form.arabicName} onChange={(event) => setForm({ ...form, arabicName: event.target.value })} /></FormField>
         <FormField label="الاسم الإنجليزي"><Input value={form.englishName ?? ''} onChange={(event) => setForm({ ...form, englishName: event.target.value })} /></FormField>
@@ -204,13 +217,10 @@ export function SeasonsPage({ api = hajjUmrahApi }: { readonly api?: HajjUmrahAp
         <FormField label="بداية البيع" required><Input required type="date" value={form.salesStart} onChange={(event) => setForm({ ...form, salesStart: event.target.value })} /></FormField>
         <FormField label="نهاية البيع" required><Input required type="date" value={form.salesEnd} onChange={(event) => setForm({ ...form, salesEnd: event.target.value })} /></FormField>
         <FormField label="ملاحظات"><Textarea value={form.notes ?? ''} onChange={(event) => setForm({ ...form, notes: event.target.value })} /></FormField>
-        <Button type="submit">{editingId ? 'حفظ التعديل' : 'حفظ الموسم'}</Button>
-        {editingId && <Button type="button" onClick={() => { setEditingId(null); setForm(emptySeasonInput()); }}>إلغاء التعديل</Button>}
+        <ActionBar><Button type="submit">{editingId ? 'حفظ التعديل' : 'حفظ الموسم'}</Button>{editingId && <Button variant="secondary" type="button" onClick={() => { setEditingId(null); setForm(emptySeasonInput()); }}>إلغاء التعديل</Button>}</ActionBar>
       </form>
-    </Card>}
-    <Card title="المواسم">
-      <SeasonsView rows={rows} capabilities={capabilities} loading={loading} error={error} onEdit={(id) => void beginEdit(id)} onClose={(id) => void closeSeason(id)} onCancel={setCancelId} />
-    </Card>
+    </DisclosureCard>}
+    <Card title="سجل المواسم"><SeasonsView rows={rows} capabilities={capabilities} loading={loading} error={error} onEdit={(id) => void beginEdit(id)} onClose={(id) => void closeSeason(id)} onCancel={setCancelId} /></Card>
     {notice && <Toast>{notice}</Toast>}
     <Dialog open={Boolean(cancelId)} title="إلغاء الموسم" onClose={() => { setCancelId(null); setCancelReason(''); }}>
       <FormField label="سبب الإلغاء" required><Textarea required value={cancelReason} onChange={(event) => setCancelReason(event.target.value)} /></FormField>
@@ -319,7 +329,7 @@ function ProgramForm({
     });
   }
 
-  return <form onSubmit={onSubmit}>
+  return <form className="ui-filter-grid" onSubmit={onSubmit}>
     <FormField label="الكود" required><Input required value={value.code} onChange={(event) => onChange({ ...value, code: event.target.value })} /></FormField>
     <FormField label="النوع" required><Select value={value.type} onChange={(event) => onChange({ ...value, type: event.target.value as Program['type'] })}><option value="UMRAH">عمرة</option><option value="HAJJ">حج</option></Select></FormField>
     <FormField label="الموسم" required><Select required value={value.seasonId} onChange={(event) => onChange({ ...value, seasonId: event.target.value })}><option value="">اختر الموسم</option>{seasons.filter(season=>season.status==='ACTIVE').map(season=><option key={season.id} value={season.id}>{season.code} — {season.arabicName}</option>)}</Select></FormField>
@@ -338,6 +348,8 @@ function ProgramForm({
     <Button type="submit">{submitLabel}</Button>
   </form>;
 }
+
+const programColumns: readonly ProgramStatus[] = ['PREPARING', 'BOOKABLE', 'IN_TRIP', 'CLOSED', 'CANCELLED'];
 
 export function ProgramsPage({ api = hajjUmrahApi }: { readonly api?: HajjUmrahApi } = {}) {
   const [rows, setRows] = useState<Program[]>([]);
@@ -372,24 +384,33 @@ export function ProgramsPage({ api = hajjUmrahApi }: { readonly api?: HajjUmrahA
     [rows, query],
   );
 
-  return <section aria-label="برامج الحج والعمرة">
-    <Card title="برامج الحج والعمرة">
-      <Input aria-label="بحث البرامج" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="بحث بالاسم أو الكود" />
-      {capabilities.programCreate && <Button type="button" onClick={() => setShowCreate((value) => !value)}>{showCreate ? 'إغلاق النموذج' : 'إنشاء برنامج'}</Button>}
+  return <section aria-label="برامج الحج والعمرة" className="ui-dashboard">
+    <div className="ui-metric-grid">
+      <MetricCard label="إجمالي البرامج" value={rows.length} />
+      <MetricCard label="تحت التجهيز" value={rows.filter(row=>row.status==='PREPARING').length} tone="warning" />
+      <MetricCard label="متاح للحجز" value={rows.filter(row=>row.status==='BOOKABLE').length} tone="success" />
+      <MetricCard label="في الرحلة" value={rows.filter(row=>row.status==='IN_TRIP').length} tone="info" />
+    </div>
+    <Card title="إدارة البرامج">
+      <div className="ui-inline"><Input aria-label="بحث البرامج" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="بحث بالاسم أو الكود" />{capabilities.programCreate && <Button type="button" onClick={() => setShowCreate((value) => !value)}>{showCreate ? 'إغلاق النموذج' : 'إنشاء برنامج'}</Button>}</div>
     </Card>
-    {showCreate && capabilities.programCreate && <Card title="إنشاء برنامج"><ProgramForm value={form} onChange={setForm} submitLabel="حفظ البرنامج" onSubmit={create} seasons={seasons} /></Card>}
-    <Card title="قائمة البرامج"><ProgramsView rows={filtered} capabilities={capabilities} loading={loading} error={error} /></Card>
+    {showCreate && capabilities.programCreate && <DisclosureCard title="إنشاء برنامج" description="تعريف البرنامج والموسم والأسعار والمكونات قبل إتاحته للحجز."><ProgramForm value={form} onChange={setForm} submitLabel="حفظ البرنامج" onSubmit={create} seasons={seasons} /></DisclosureCard>}
+    {loading?<LoadingState/>:error?<ErrorState message={error}/>:<section className="ui-grid-md" aria-label="لوحة دورة البرامج">
+      {programColumns.map(status=>{
+        const items=filtered.filter(row=>row.status===status);
+        return <Card key={status} title={`${lifecycleLabels[status]} (${items.length})`}>
+          {!items.length?<EmptyState title="لا توجد برامج"/>:<div className="ui-admin-workflows">{items.map(program=><article key={program.id} className="ui-disclosure-card"><div className="ui-disclosure-card__body">
+            <div className="ui-inline"><strong>{program.arabicName}</strong><Badge tone={lifecycleTone(program.status)}>{program.code}</Badge></div>
+            <p className="ui-page-intro">{program.type==='HAJJ'?'حج':'عمرة'} · السفر {program.snapshot.departureDate.slice(0,10)} · السعة {program.snapshot.capacity}</p>
+            <div className="ui-inline"><Badge tone={program.bookingOpen?'success':'warning'}>{program.bookingOpen?'الحجز متاح':'الحجز مغلق'}</Badge><small>الإصدار {program.currentVersion}</small></div>
+            <ActionBar><a href={`/hajj-umrah/program-workspace?id=${encodeURIComponent(program.id)}`}>فتح مساحة العمل</a></ActionBar>
+          </div></article>)}</div>}
+        </Card>;
+      })}
+    </section>}
     {notice && <Toast>{notice}</Toast>}
   </section>;
 }
-
-const workspaceTabs = [
-  { id: 'basic', label: 'البيانات الأساسية' },
-  { id: 'dates', label: 'التواريخ والسعة' },
-  { id: 'prices', label: 'الأسعار' },
-  { id: 'supply', label: 'المتطلبات والمكونات' },
-  { id: 'versions', label: 'الإصدارات' },
-] as const;
 
 export function ProgramWorkspaceView({
   program,
@@ -416,14 +437,14 @@ export function ProgramWorkspaceView({
   if (error) return <ErrorState message={error} />;
   if (!program) return <EmptyState title="اختر برنامجًا لفتح مساحة العمل"><p>ابدأ من قائمة برامج الحج والعمرة، ثم اختر «فتح مساحة العمل» للبرنامج المطلوب.</p><a href="/hajj-umrah/programs">الانتقال إلى قائمة البرامج</a></EmptyState>;
   return <Card title={`${program.arabicName} — ${program.code}`}>
-    <p><Badge tone={lifecycleTone(program.status)}>{lifecycleLabels[program.status]}</Badge> <Badge tone={program.bookingOpen ? 'success' : 'warning'}>{program.bookingOpen ? 'الحجز متاح' : 'الحجز مغلق'}</Badge></p>
-    <p>الموسم: {seasonLabel??program.seasonId} · الإصدار الحالي: {program.currentVersion} · عدد الإصدارات: {versions.length}</p>
-    {capabilities.programAvailability && program.status === 'BOOKABLE' && onAction && <Button type="button" onClick={() => onAction(program.bookingOpen ? 'booking-close' : 'booking-open')}>{program.bookingOpen ? 'إغلاق الحجز' : 'فتح الحجز'}</Button>}
-    {capabilities.programLifecycle && program.status === 'PREPARING' && onAction && <Button type="button" onClick={() => onAction('open')}>اعتماد الجاهزية وإتاحة البرنامج</Button>}
-    {capabilities.programLifecycle && program.status === 'BOOKABLE' && onAction && <Button type="button" onClick={() => onAction('departure')}>تسجيل المغادرة</Button>}
-    {capabilities.programClose && program.status === 'IN_TRIP' && onAction && <Button type="button" onClick={() => onAction('return')}>تسجيل العودة وإنهاء البرنامج</Button>}
-    {capabilities.programCancel && (program.status === 'PREPARING' || program.status === 'BOOKABLE') && onCancel && <Button type="button" onClick={onCancel}>إلغاء البرنامج</Button>}
-    {capabilities.programReopen && program.status === 'CLOSED' && onReopen && <Button type="button" onClick={onReopen}>إعادة فتح استثنائية</Button>}
+    <div className="ui-inline"><div><p><Badge tone={lifecycleTone(program.status)}>{lifecycleLabels[program.status]}</Badge> <Badge tone={program.bookingOpen ? 'success' : 'warning'}>{program.bookingOpen ? 'الحجز متاح' : 'الحجز مغلق'}</Badge></p><p className="ui-page-intro">الموسم: {seasonLabel??program.seasonId} · الإصدار الحالي: {program.currentVersion} · عدد الإصدارات: {versions.length}</p></div><ActionBar>
+      {capabilities.programAvailability && program.status === 'BOOKABLE' && onAction && <Button type="button" variant="secondary" onClick={() => onAction(program.bookingOpen ? 'booking-close' : 'booking-open')}>{program.bookingOpen ? 'إغلاق الحجز' : 'فتح الحجز'}</Button>}
+      {capabilities.programLifecycle && program.status === 'PREPARING' && onAction && <Button type="button" onClick={() => onAction('open')}>اعتماد الجاهزية وإتاحة البرنامج</Button>}
+      {capabilities.programLifecycle && program.status === 'BOOKABLE' && onAction && <Button type="button" onClick={() => onAction('departure')}>تسجيل المغادرة</Button>}
+      {capabilities.programClose && program.status === 'IN_TRIP' && onAction && <Button type="button" onClick={() => onAction('return')}>تسجيل العودة وإنهاء البرنامج</Button>}
+      {capabilities.programCancel && (program.status === 'PREPARING' || program.status === 'BOOKABLE') && onCancel && <Button type="button" variant="danger" onClick={onCancel}>إلغاء البرنامج</Button>}
+      {capabilities.programReopen && program.status === 'CLOSED' && onReopen && <Button type="button" variant="secondary" onClick={onReopen}>إعادة فتح استثنائية</Button>}
+    </ActionBar></div>
   </Card>;
 }
 
@@ -444,7 +465,6 @@ export function ProgramWorkspacePage({
   const [versions, setVersions] = useState<ProgramVersion[]>([]);
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [capabilities, setCapabilities] = useState<HajjUmrahCapabilities>(emptyCapabilities);
-  const [tab, setTab] = useState('basic');
   const [editor, setEditor] = useState<ProgramInput>(emptyProgramInput());
   const [reasonMode, setReasonMode] = useState<'cancel' | 'reopen' | 'amend' | null>(null);
   const [reason, setReason] = useState('');
@@ -504,52 +524,27 @@ export function ProgramWorkspacePage({
     } catch (error) { setNotice(errorMessage(error)); }
   }
 
-  return <section aria-label="مساحة عمل البرنامج">
-    <ProgramWorkspaceView
-      program={program}
-      versions={versions}
-      capabilities={capabilities}
-      loading={loading}
-      error={error}
-      onAction={(value) => void action(value)}
-      onCancel={() => setReasonMode('cancel')}
-      onReopen={() => setReasonMode('reopen')}
-      seasonLabel={seasons.find(season=>season.id===program?.seasonId)?.arabicName}
+  if (loading) return <LoadingState />;
+  if (error) return <ErrorState message={error} />;
+  if (!program) return <ProgramWorkspaceView program={null} versions={[]} capabilities={capabilities} />;
+
+  const seasonLabel=seasons.find(season=>season.id===program.seasonId)?.arabicName;
+  const priceRows=Object.entries(program.snapshot.prices);
+
+  return <section aria-label="مساحة عمل البرنامج" className="ui-dashboard">
+    <ProgramWorkspaceView program={program} versions={versions} capabilities={capabilities} onAction={(value) => void action(value)} onCancel={() => setReasonMode('cancel')} onReopen={() => setReasonMode('reopen')} seasonLabel={seasonLabel} />
+    <div className="ui-metric-grid">
+      <MetricCard label="السعة" value={program.snapshot.capacity} />
+      <MetricCard label="الإصدار الحالي" value={program.currentVersion} />
+      <MetricCard label="المتطلبات" value={program.snapshot.requirements.length} />
+      <MetricCard label="المكونات" value={program.snapshot.components.length} />
+    </div>
+    <SplitWorkspace
+      left={<section aria-label="تشغيل البرنامج"><h3>التشغيل والجدول</h3><p><strong>النوع:</strong> {program.type === 'HAJJ' ? 'حج' : 'عمرة'} · <strong>الموسم:</strong> {seasonLabel??program.seasonId}</p><p><strong>السفر:</strong> {program.snapshot.departureDate.slice(0,10)} · <strong>العودة:</strong> {program.snapshot.returnDate.slice(0,10)}</p><p><strong>البيع:</strong> {program.snapshot.salesStart.slice(0,10)} — {program.snapshot.salesClose.slice(0,10)} · <strong>الحجز المؤقت:</strong> {program.temporaryHoldMinutes} دقيقة</p><p><strong>مسؤول العمليات:</strong> {program.operationsManager??'—'} · <strong>قائد المجموعة:</strong> {program.groupLeader??'—'} · <strong>المرشد:</strong> {program.guide??'—'}</p><h4>الأسعار والسياسات</h4>{!priceRows.length?<EmptyState title="لا توجد أسعار"/>:<DataGrid columns={['الفئة','السعر','العملة']}>{priceRows.map(([kind,value])=><tr key={kind}><td>{kind}</td><td>{value}</td><td>{program.snapshot.currency}</td></tr>)}</DataGrid>}<p><strong>الحد الأدنى للعربون:</strong> {program.minimumDepositPolicy??'—'} · <strong>سياسة الإلغاء:</strong> {program.snapshot.cancellationPolicy??'—'}</p></section>}
+      right={<section aria-label="توريد البرنامج"><h3>المتطلبات والمكونات</h3><p><strong>المتطلبات:</strong> {program.snapshot.requirements.join('، ')||'—'}</p>{!program.snapshot.components.length?<EmptyState title="لا توجد مكونات مرتبطة بعد"/>:<DataGrid columns={['الترتيب','النوع','المكون','المرجع التعاقدي','الفترة']}>{program.snapshot.components.map(component=><tr key={`${component.sequence}:${component.type}`}><td>{component.sequence}</td><td>{component.type}</td><td>{component.title}</td><td>{component.inventoryReference??'—'}</td><td>{component.start??'—'}{component.end?` — ${component.end}`:''}</td></tr>)}</DataGrid>}<p className="ui-page-intro">عند إتاحة البرنامج للحجز يتحقق الخادم من الموسم والأسعار وأدلة التوريد الفعلية قبل تغيير الحالة.</p></section>}
     />
-    {program && <>
-      <Tabs tabs={workspaceTabs} active={tab} onChange={setTab} />
-      {tab === 'basic' && <Card title="البيانات الأساسية والموسم">
-        <p>النوع: {program.type === 'HAJJ' ? 'حج' : 'عمرة'} · الموسم: {seasons.find(season=>season.id===program.seasonId)?.arabicName??program.seasonId}</p>
-        <p>الاسم الإنجليزي: {program.englishName ?? '—'} · مسؤول العمليات: {program.operationsManager ?? '—'} · قائد المجموعة: {program.groupLeader ?? '—'} · المرشد: {program.guide ?? '—'} · التواصل: {program.contact ?? '—'}</p>
-        {(program.status === 'PREPARING' ? capabilities.programEdit : capabilities.programAmend) &&
-          <ProgramForm value={editor} onChange={setEditor} submitLabel={program.status === 'PREPARING' ? 'حفظ تعديل التجهيز' : 'إنشاء تعديل معتمد'} onSubmit={saveDefinition} seasons={seasons} />}
-      </Card>}
-      {tab === 'dates' && <Card title="التواريخ والسعة">
-        <p>السفر: {program.snapshot.departureDate.slice(0, 10)} · العودة: {program.snapshot.returnDate.slice(0, 10)}</p>
-        <p>البيع: {program.snapshot.salesStart.slice(0, 10)} — {program.snapshot.salesClose.slice(0, 10)} · السعة: {program.snapshot.capacity}</p>
-        <p>مدة الحجز المؤقت: {program.temporaryHoldMinutes} دقيقة</p>
-      </Card>}
-      {tab === 'prices' && <Card title="الأسعار والسياسات">
-        {!Object.entries(program.snapshot.prices).length ? <EmptyState title="لا توجد أسعار" /> : <DataGrid columns={['الفئة', 'السعر', 'العملة']}>
-          {Object.entries(program.snapshot.prices).map(([kind, value]) => <tr key={kind}><td>{kind}</td><td>{value}</td><td>{program.snapshot.currency}</td></tr>)}
-        </DataGrid>}
-        <p>الحد الأدنى للعربون: {program.minimumDepositPolicy ?? '—'} · سياسة الإلغاء: {program.snapshot.cancellationPolicy ?? '—'}</p>
-      </Card>}
-      {tab === 'supply' && <Card title="المتطلبات والمكونات">
-        <p>المتطلبات: {program.snapshot.requirements.join('، ') || '—'}</p>
-        {!program.snapshot.components.length ? <EmptyState title="لا توجد مكونات مرتبطة بعد" /> : <DataGrid columns={['الترتيب', 'النوع', 'المكون', 'المرجع التعاقدي', 'الفترة']}>
-          {program.snapshot.components.map((component) => <tr key={`${component.sequence}:${component.type}`}>
-            <td>{component.sequence}</td><td>{component.type}</td><td>{component.title}</td><td>{component.inventoryReference ?? '—'}</td><td>{component.start ?? '—'}{component.end ? ` — ${component.end}` : ''}</td>
-          </tr>)}
-        </DataGrid>}
-        <p>عند إتاحة البرنامج للحجز، الخادم يتحقق من الموسم والأسعار وأدلة التوريد الفعلية قبل تغيير الحالة.</p>
-      </Card>}
-      {tab === 'versions' && <Card title="الإصدارات">
-        {!versions.length ? <EmptyState title="لا يوجد تاريخ إصدارات" /> : <DataGrid columns={['الإصدار', 'السبب', 'التاريخ', 'المنفذ']}>
-          {versions.map((version) => <tr key={version.id}><td>{version.version}</td><td>{version.reason}</td><td>{version.effectiveAt}</td><td>{version.actorId}</td></tr>)}
-        </DataGrid>}
-      </Card>}
-    </>}
+    {(program.status === 'PREPARING' ? capabilities.programEdit : capabilities.programAmend) && <DisclosureCard title="تعديل تعريف البرنامج" description={program.status==='PREPARING'?'يحفظ التعديل ضمن مرحلة التجهيز.':'أي تعديل بعد الإتاحة يُحفظ كإصدار جديد بسبب معتمد.'}><ProgramForm value={editor} onChange={setEditor} submitLabel={program.status === 'PREPARING' ? 'حفظ تعديل التجهيز' : 'إنشاء تعديل معتمد'} onSubmit={saveDefinition} seasons={seasons} /></DisclosureCard>}
+    <Card title="سجل الإصدارات">{!versions.length?<EmptyState title="لا يوجد تاريخ إصدارات"/>:<DataGrid columns={['الإصدار','السبب','التاريخ','المنفذ']}>{versions.map(version=><tr key={version.id}><td>{version.version}</td><td>{version.reason}</td><td>{version.effectiveAt}</td><td>{version.actorId}</td></tr>)}</DataGrid>}</Card>
     {notice && <Toast>{notice}</Toast>}
     <Dialog open={Boolean(reasonMode)} title={reasonMode === 'reopen' ? 'إعادة فتح استثنائية' : reasonMode === 'amend' ? 'سبب التعديل' : 'إلغاء البرنامج'} onClose={() => { setReasonMode(null); setReason(''); }}>
       <FormField label="السبب" required><Textarea required value={reason} onChange={(event) => setReason(event.target.value)} /></FormField>
