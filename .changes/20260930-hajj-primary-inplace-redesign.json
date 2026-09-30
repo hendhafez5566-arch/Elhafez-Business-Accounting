@@ -1,0 +1,18 @@
+{
+  "id": "20260930-hajj-primary-inplace-redesign",
+  "summary": "Rebuild Hajj and Umrah bookings, rooming and visa operations structurally inside their existing canonical page owners, preserving the same APIs and business actions without parallel UI routes.",
+  "type": "architecture",
+  "allowedModules": [],
+  "allowedPaths": [
+    ".changes/20260930-hajj-primary-inplace-redesign.json",
+    "apps/web/src/hajj-umrah-operations-primary-pages.tsx",
+    "apps/web/src/hajj-umrah-primary-structural.spec.ts"
+  ],
+  "protectedPaths": [],
+  "protectedReason": "",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": "",
+  "testEvidence": [
+    "apps/web/src/hajj-umrah-primary-structural.spec.ts"
+  ]
+}
