@@ -1,0 +1,45 @@
+legacy_id,kind,legacy_name,mapping_status,executor_rule
+LEG-PRINT-001,DOC,فاتورة مبيعات,PARTIAL_TEMPLATE_PARITY,Rebuild on central reporting/document renderer; do not duplicate financial calculation logic in web.
+LEG-PRINT-002,DOC,فاتورة مورد,PARTIAL_TEMPLATE_PARITY,Rebuild on central reporting/document renderer; do not duplicate financial calculation logic in web.
+LEG-PRINT-003,DOC,إشعار دائن,PARTIAL_TEMPLATE_PARITY,Rebuild on central reporting/document renderer; do not duplicate financial calculation logic in web.
+LEG-PRINT-004,DOC,إشعار مدين,PARTIAL_TEMPLATE_PARITY,Rebuild on central reporting/document renderer; do not duplicate financial calculation logic in web.
+LEG-PRINT-005,DOC,سند قبض,PARTIAL_TEMPLATE_PARITY,Rebuild on central reporting/document renderer; do not duplicate financial calculation logic in web.
+LEG-PRINT-006,DOC,سند صرف,PARTIAL_TEMPLATE_PARITY,Rebuild on central reporting/document renderer; do not duplicate financial calculation logic in web.
+LEG-PRINT-007,DOC,قيد يومية,PARTIAL_TEMPLATE_PARITY,Rebuild on central reporting/document renderer; do not duplicate financial calculation logic in web.
+LEG-PRINT-008,DOC,مستند مصروف,PARTIAL_TEMPLATE_PARITY,Rebuild on central reporting/document renderer; do not duplicate financial calculation logic in web.
+LEG-PRINT-009,DOC,عرض سعر,PARTIAL_TEMPLATE_PARITY,Rebuild on central reporting/document renderer; do not duplicate financial calculation logic in web.
+LEG-PRINT-010,DOC,أمر شراء,PARTIAL_TEMPLATE_PARITY,Rebuild on central reporting/document renderer; do not duplicate financial calculation logic in web.
+LEG-PRINT-011,DOC,تحويل بين الخزن,PARTIAL_TEMPLATE_PARITY,Rebuild on central reporting/document renderer; do not duplicate financial calculation logic in web.
+LEG-PRINT-012,DOC,كشف حساب عميل,PARTIAL_TEMPLATE_PARITY,Rebuild on central reporting/document renderer; do not duplicate financial calculation logic in web.
+LEG-PRINT-013,DOC,كشف حساب مورد,PARTIAL_TEMPLATE_PARITY,Rebuild on central reporting/document renderer; do not duplicate financial calculation logic in web.
+LEG-PRINT-014,DOC,كشف حساب مندوب,PARTIAL_TEMPLATE_PARITY,Rebuild on central reporting/document renderer; do not duplicate financial calculation logic in web.
+LEG-PRINT-015,DOC,كشف حساب شامل للطرف,PARTIAL_TEMPLATE_PARITY,Rebuild on central reporting/document renderer; do not duplicate financial calculation logic in web.
+LEG-PRINT-016,DOC,كشف حركة خزنة / بنك,PARTIAL_TEMPLATE_PARITY,Rebuild on central reporting/document renderer; do not duplicate financial calculation logic in web.
+LEG-PRINT-017,DOC,كشف حساب أستاذ,PARTIAL_TEMPLATE_PARITY,Rebuild on central reporting/document renderer; do not duplicate financial calculation logic in web.
+LEG-PRINT-018,REPORT,قائمة الدخل,PRESENT_CANDIDATE,Rebuild on central reporting/document renderer; do not duplicate financial calculation logic in web.
+LEG-PRINT-019,REPORT,الميزانية العمومية,PRESENT_CANDIDATE,Rebuild on central reporting/document renderer; do not duplicate financial calculation logic in web.
+LEG-PRINT-020,REPORT,تقرير الضرائب,PRESENT_CANDIDATE,Rebuild on central reporting/document renderer; do not duplicate financial calculation logic in web.
+LEG-PRINT-021,REPORT,قائمة التدفقات النقدية,VERIFY_REPORT_PARITY,Rebuild on central reporting/document renderer; do not duplicate financial calculation logic in web.
+LEG-PRINT-022,REPORT,ربحية برنامج عمرة,VERIFY_REPORT_PARITY,Rebuild on central reporting/document renderer; do not duplicate financial calculation logic in web.
+LEG-PRINT-023,REPORT,كشف توزيع الغرف,VERIFY_REPORT_PARITY,Rebuild on central reporting/document renderer; do not duplicate financial calculation logic in web.
+LEG-PRINT-024,REPORT,أعمار مديونية العملاء,PRESENT_CANDIDATE,Rebuild on central reporting/document renderer; do not duplicate financial calculation logic in web.
+LEG-PRINT-025,REPORT,أعمار مديونية الموردين,PRESENT_CANDIDATE,Rebuild on central reporting/document renderer; do not duplicate financial calculation logic in web.
+LEG-PRINT-026,REPORT,ربحية الخدمات,VERIFY_REPORT_PARITY,Rebuild on central reporting/document renderer; do not duplicate financial calculation logic in web.
+LEG-PRINT-027,REPORT,تقرير العمولات,VERIFY_REPORT_PARITY,Rebuild on central reporting/document renderer; do not duplicate financial calculation logic in web.
+LEG-PRINT-028,REPORT,تحليل المصروفات,VERIFY_REPORT_PARITY,Rebuild on central reporting/document renderer; do not duplicate financial calculation logic in web.
+LEG-PRINT-029,REPORT,أرباح وخسائر فروق العملة,VERIFY_REPORT_PARITY,Rebuild on central reporting/document renderer; do not duplicate financial calculation logic in web.
+LEG-PRINT-030,REPORT,التعرض للعملات الأجنبية,VERIFY_REPORT_PARITY,Rebuild on central reporting/document renderer; do not duplicate financial calculation logic in web.
+LEG-PRINT-031,REPORT,تقرير التحصيلات,VERIFY_REPORT_PARITY,Rebuild on central reporting/document renderer; do not duplicate financial calculation logic in web.
+LEG-PRINT-032,REPORT,تقرير المدفوعات,VERIFY_REPORT_PARITY,Rebuild on central reporting/document renderer; do not duplicate financial calculation logic in web.
+LEG-PRINT-033,REPORT,قائمة المسافرين,VERIFY_REPORT_PARITY,Rebuild on central reporting/document renderer; do not duplicate financial calculation logic in web.
+LEG-PRINT-034,REPORT,حالات الحجوزات,VERIFY_REPORT_PARITY,Rebuild on central reporting/document renderer; do not duplicate financial calculation logic in web.
+LEG-PRINT-035,REPORT,تقرير القيود,VERIFY_REPORT_PARITY,Rebuild on central reporting/document renderer; do not duplicate financial calculation logic in web.
+LEG-PRINT-036,REPORT,دفتر الأستاذ العام,VERIFY_REPORT_PARITY,Rebuild on central reporting/document renderer; do not duplicate financial calculation logic in web.
+LEG-PRINT-037,REPORT,تفاصيل الضرائب,VERIFY_REPORT_PARITY,Rebuild on central reporting/document renderer; do not duplicate financial calculation logic in web.
+LEG-PRINT-038,REPORT,المبيعات حسب العميل,VERIFY_REPORT_PARITY,Rebuild on central reporting/document renderer; do not duplicate financial calculation logic in web.
+LEG-PRINT-039,REPORT,المبيعات على المندوبين,VERIFY_REPORT_PARITY,Rebuild on central reporting/document renderer; do not duplicate financial calculation logic in web.
+LEG-PRINT-040,REPORT,تكاليف الموردين,VERIFY_REPORT_PARITY,Rebuild on central reporting/document renderer; do not duplicate financial calculation logic in web.
+LEG-PRINT-041,REPORT,الحركة اليومية للخزن والبنوك,VERIFY_REPORT_PARITY,Rebuild on central reporting/document renderer; do not duplicate financial calculation logic in web.
+LEG-PRINT-042,REPORT,انتهاء الجوازات,VERIFY_REPORT_PARITY,Rebuild on central reporting/document renderer; do not duplicate financial calculation logic in web.
+LEG-PRINT-043,REPORT,حالات التأشيرات,VERIFY_REPORT_PARITY,Rebuild on central reporting/document renderer; do not duplicate financial calculation logic in web.
+LEG-PRINT-044,REPORT,إشغال برامج العمرة,VERIFY_REPORT_PARITY,Rebuild on central reporting/document renderer; do not duplicate financial calculation logic in web.
