@@ -1,0 +1,87 @@
+legacy_id,item_type,legacy_text,target_owner,mapping_status
+LEG-HU-MAJOR-001,FIELD,اسم الموسم,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-002,FIELD,السنة الهجرية,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-003,FIELD,بداية الموسم,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-004,FIELD,نهاية الموسم,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-005,FIELD,بداية البيع,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-006,FIELD,نهاية البيع,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-007,FIELD,الفندق,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-008,FIELD,المدينة,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-009,FIELD,المورد,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-010,FIELD,الإعاشة,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-011,FIELD,سياسة الإلغاء,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-012,FIELD,شركة الطيران,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-013,FIELD,رحلة الذهاب,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-014,FIELD,رحلة العودة,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-015,FIELD,إجمالي المقاعد,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-016,FIELD,تكلفة المقعد,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-017,FIELD,آخر موعد إصدار,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-018,FIELD,درجة الحجز,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-019,FIELD,الأمتعة,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-020,FIELD,شركة النقل,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-021,FIELD,المسار,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-022,FIELD,نوع المركبة,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-023,FIELD,عدد المركبات,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-024,FIELD,سعة المركبة,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-025,FIELD,التكلفة الإجمالية,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-026,FIELD,حصة التأشيرات,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-027,FIELD,نوع البرنامج,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-028,FIELD,اسم البرنامج,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-029,FIELD,رقم المجموعة,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-030,FIELD,وصف المجموعة,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-031,FIELD,الموسم,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-032,FIELD,السعة,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-033,FIELD,السفر,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-034,FIELD,العودة,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-035,FIELD,مدة البرنامج,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-036,FIELD,عملة البيع,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-037,FIELD,سعر الصرف,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-038,FIELD,خزنة/بنك التحصيل,hajj-umrah / tourism-contract-inventory / traveler-management,PARITY_GAP_CANDIDATE
+LEG-HU-MAJOR-039,FIELD,مدة الحجز المؤقت — ساعة,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-040,FIELD,الحد الأدنى للعربون,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-041,FIELD,طريقة الربح المستهدف,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-042,FIELD,نسبة من سعر البيع,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-043,FIELD,مبلغ ثابت لكل فرد,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-044,FIELD,سعر الفردي,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-045,FIELD,سعر الثنائي,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-046,FIELD,سعر الثلاثي,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-047,FIELD,سعر الرباعي,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-048,FIELD,سعر الخماسي,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-049,FIELD,طفل بسرير,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-050,FIELD,طفل بدون سرير,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-051,FIELD,رضيع,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-052,FIELD,مصدر الإقامة,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-053,FIELD,العقود المناسبة المتاحة,hajj-umrah / tourism-contract-inventory / traveler-management,PARITY_GAP_CANDIDATE
+LEG-HU-MAJOR-054,ACTION,إنشاء برنامج حج/عمرة,hajj-umrah / tourism-contract-inventory / traveler-management,PRESENT_CANDIDATE
+LEG-HU-MAJOR-055,ACTION,إنشاء حجز حج/عمرة,hajj-umrah / tourism-contract-inventory / traveler-management,PRESENT_CANDIDATE
+LEG-HU-MAJOR-056,ACTION,استكمال حجز موجود,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-057,ACTION,تجهيز وتشغيل فوج,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-058,ACTION,تخصيص,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-059,ACTION,تعديل العقد,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-060,ACTION,ملحق تعاقدي,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-061,ACTION,تأكيد العقد,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-062,ACTION,عقد فندق,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-063,ACTION,بلوك طيران,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-064,ACTION,عقد نقل,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-065,ACTION,اتفاقية تأشيرات,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-066,ACTION,خدمة تعاقدية,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-067,ACTION,المشتريات,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-068,ACTION,تعديل الكمية,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-069,ACTION,تحرير كامل,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-070,ACTION,سداد,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-071,ACTION,طباعة ملخص البرنامج,hajj-umrah / tourism-contract-inventory / traveler-management,PARITY_GAP_CANDIDATE
+LEG-HU-MAJOR-072,ACTION,فتح للبيع,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-073,ACTION,مركز الجاهزية,hajj-umrah / tourism-contract-inventory / traveler-management,PRESENT_CANDIDATE
+LEG-HU-MAJOR-074,ACTION,فتح سجل المسافرين,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-075,ACTION,مرفقات الحجز,hajj-umrah / tourism-contract-inventory / traveler-management,PARITY_GAP_CANDIDATE
+LEG-HU-MAJOR-076,ACTION,توزيع الغرف,hajj-umrah / tourism-contract-inventory / traveler-management,PRESENT_CANDIDATE
+LEG-HU-MAJOR-077,ACTION,تأكيد الحجز,hajj-umrah / tourism-contract-inventory / traveler-management,PRESENT_CANDIDATE
+LEG-HU-MAJOR-078,ACTION,جاهز للسفر,hajj-umrah / tourism-contract-inventory / traveler-management,PRESENT_CANDIDATE
+LEG-HU-MAJOR-079,ACTION,تم التجمع,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-080,ACTION,مسافر,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-081,ACTION,عاد,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-082,ACTION,إغلاق الحجز,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-083,ACTION,إضافة المسافرين الجدد,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
+LEG-HU-MAJOR-084,ACTION,طباعة كشف التأشيرات,hajj-umrah / tourism-contract-inventory / traveler-management,PARITY_GAP_CANDIDATE
+LEG-HU-MAJOR-085,ACTION,إصدار,hajj-umrah / tourism-contract-inventory / traveler-management,PRESENT_CANDIDATE
+LEG-HU-MAJOR-086,ACTION,إلغاء البرنامج,hajj-umrah / tourism-contract-inventory / traveler-management,PARTIAL_OR_VERIFY
