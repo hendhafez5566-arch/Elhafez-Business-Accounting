@@ -1,26 +1,33 @@
 import{type FormEvent,useEffect,useMemo,useState}from'react';
 import{tourismOperationsApi,type ItineraryDay,type TourismBooking,type TourismProgram,type TourismProgramInput}from'./tourism-operations-client.js';
 import{TourismBookingsWorkspace}from'./tourism-bookings-workspace.js';
-import{ActionBar,Badge,Button,Card,DataGrid,Dialog,DisclosureCard,EmptyState,ErrorState,FormField,Input,LoadingState,MetricCard,Select,Tabs,Textarea,Toast}from'./ui.js';
+import{ActionBar,Badge,Button,Card,DataGrid,Dialog,DisclosureCard,EmptyState,ErrorState,FormField,Input,LoadingState,MetricCard,Select,Textarea,Toast}from'./ui.js';
 
 const programStatus:Record<string,string>={PREPARING:'تحت التجهيز',OPEN:'مفتوح للبيع',OPERATING:'قيد التشغيل',CLOSED:'مغلق',CANCELLED:'ملغي'};
 const blankProgram:TourismProgramInput={code:'',nameAr:'',departureDate:'',returnDate:'',salesOpen:'',salesClose:'',currency:'EGP',notes:''};
 const blankItinerary={dayNumber:'1',serviceDate:'',title:'',description:'',location:''};
 const today=()=>new Date().toISOString().slice(0,10);
 
-export function TourismOperationsPage({initialTab='programs'}:{initialTab?:'programs'|'bookings'|'itinerary'}={}){
- const[tab,setTab]=useState(initialTab),[programs,setPrograms]=useState<TourismProgram[]>([]),[bookings,setBookings]=useState<TourismBooking[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState(''),[notice,setNotice]=useState('');
+type TourismSurface='programs'|'bookings'|'itinerary';
+const surfaceMeta:Record<TourismSurface,{title:string;reference:string;description:string}>={
+ programs:{title:'البرامج السياحية',reference:'Master Module Template',description:'إدارة دورة البرنامج من التجهيز وفتح البيع حتى التشغيل والإغلاق.'},
+ bookings:{title:'الحجوزات السياحية',reference:'Tourism Bookings',description:'إدارة الحجوزات وربطها بالبرنامج والعميل والمسافرين والمخزون والتمويل المعتمد.'},
+ itinerary:{title:'البرنامج اليومي',reference:'Tourism Itinerary Builder',description:'بناء أيام الرحلة والأنشطة والمسار الزمني لكل برنامج سياحي.'},
+};
+
+export function TourismOperationsPage({initialTab='programs'}:{initialTab?:TourismSurface}={}){
+ const[programs,setPrograms]=useState<TourismProgram[]>([]),[bookings,setBookings]=useState<TourismBooking[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState(''),[notice,setNotice]=useState('');
  async function reload(){setLoading(true);setError('');try{const[p,b]=await Promise.all([tourismOperationsApi.programs(),tourismOperationsApi.bookings()]);setPrograms(p);setBookings(b);}catch(value){setError(value instanceof Error?value.message:'تعذر تحميل السياحة العامة.');}finally{setLoading(false);}}
  useEffect(()=>{void reload();},[]);
  if(loading)return <LoadingState/>;if(error)return <ErrorState message={error}/>;
- return <section dir="rtl" className="ui-dashboard" aria-label="السياحة العامة">
+ const meta=surfaceMeta[initialTab];
+ return <section dir="rtl" className="ui-dashboard" aria-label={meta.title} data-tourism-surface={initialTab}>
   {notice?<Toast tone="success">{notice}</Toast>:null}
-  <Card title="السياحة العامة"><p>مساحة تشغيل موحدة للبرامج والحجوزات والبرنامج اليومي، مع ربط التشغيل بالعميل والمسافرين والمخزون والتمويل المعتمد.</p><ActionBar><Button variant="secondary" onClick={()=>void reload()}>تحديث البيانات</Button></ActionBar></Card>
+  <Card title={meta.title}><div className="ui-inline"><Badge tone="info">{meta.reference}</Badge></div><p>{meta.description}</p><ActionBar><Button variant="secondary" onClick={()=>void reload()}>تحديث البيانات</Button></ActionBar></Card>
   <div className="ui-metric-grid" aria-label="مؤشرات السياحة العامة"><MetricCard label="إجمالي البرامج" value={programs.length}/><MetricCard label="مفتوح للبيع" value={programs.filter(p=>p.status==='OPEN').length} tone="success"/><MetricCard label="إجمالي الحجوزات" value={bookings.length}/><MetricCard label="حجوزات مؤكدة" value={bookings.filter(b=>b.status==='CONFIRMED').length} tone="success"/></div>
-  <Tabs tabs={[{id:'programs',label:'البرامج السياحية'},{id:'bookings',label:'الحجوزات'},{id:'itinerary',label:'البرنامج اليومي'}]} active={tab} onChange={id=>setTab(id as typeof tab)}/>
-  {tab==='programs'?<Programs programs={programs} done={async m=>{setNotice(m);await reload();}}/>:null}
-  {tab==='bookings'?<TourismBookingsWorkspace programs={programs} bookings={bookings} done={async m=>{setNotice(m);await reload();}}/>:null}
-  {tab==='itinerary'?<Itinerary programs={programs} done={setNotice}/>:null}
+  {initialTab==='programs'?<Programs programs={programs} done={async m=>{setNotice(m);await reload();}}/>:null}
+  {initialTab==='bookings'?<TourismBookingsWorkspace programs={programs} bookings={bookings} done={async m=>{setNotice(m);await reload();}}/>:null}
+  {initialTab==='itinerary'?<Itinerary programs={programs} done={setNotice}/>:null}
  </section>;
 }
 
@@ -47,7 +54,7 @@ function Programs({programs,done}:{programs:TourismProgram[];done:(message:strin
  function beginEdit(program:TourismProgram){setEditing(program);setEditForm({code:program.code,nameAr:program.nameAr,nameEn:program.nameEn,departureDate:program.departureDate,returnDate:program.returnDate,salesOpen:program.salesOpen,salesClose:program.salesClose,currency:program.currency,notes:program.notes});}
  async function saveEdit(e:FormEvent){e.preventDefault();if(!editing)return;await tourismOperationsApi.updateProgram(editing.id,editForm);setEditing(null);await done('تم تعديل البرنامج قبل فتحه للبيع.');}
  async function cancelProgram(e:FormEvent){e.preventDefault();if(!cancelling||!cancelReason.trim())return;const postingDate=today();await tourismOperationsApi.cancelProgram(cancelling.id,{reason:cancelReason.trim(),commandKey:`tourism-program-cancel:${cancelling.id}:${postingDate}`,postingDate});setCancelling(null);setCancelReason('');await done('تم إلغاء البرنامج بعد اجتياز فحص التسوية المالية.');}
- return <section className="ui-page-stack" aria-label="إدارة البرامج السياحية">
+ return <section className="ui-flow" aria-label="إدارة البرامج السياحية">
   <section className="ui-dashboard-grid" aria-label="إنشاء وتصفية البرامج">
    <DisclosureCard title="برنامج سياحي جديد" description="افتح النموذج عند إنشاء برنامج جديد؛ قائمة البرامج هي مساحة المتابعة."><form className="ui-filter-grid" onSubmit={submit}><ProgramFields form={form} setForm={setForm}/><Button type="submit">إنشاء البرنامج</Button></form></DisclosureCard>
    <Card title="بحث وتصفية البرامج"><div className="ui-filter-grid"><FormField label="بحث"><Input value={query} onChange={e=>setQuery(e.target.value)} placeholder="الكود أو اسم البرنامج"/></FormField><FormField label="الحالة"><Select value={status} onChange={e=>setStatus(e.target.value)}><option value="ACTIVE">الحالية</option><option value="ALL">الكل</option><option value="PREPARING">تحت التجهيز</option><option value="OPEN">مفتوح للبيع</option><option value="OPERATING">قيد التشغيل</option><option value="CLOSED">مغلق</option><option value="CANCELLED">ملغي</option></Select></FormField></div><p className="ui-results-count">البرامج المعروضة: {filtered.length} من {programs.length}</p></Card>
