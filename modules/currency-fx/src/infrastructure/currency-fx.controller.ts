@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Body, Controller, Get, Headers, Post, UnauthorizedException } from '@nestjs/common';
 import { currencyCode, executionContext, type ExecutionContext } from '@elhafez/contracts';
 import { PLATFORM_CORE_PERMISSIONS, PlatformCoreApplicationService } from '@elhafez/platform-core';
@@ -29,6 +30,6 @@ export class CurrencyFxController {
     @Body() input: { fromCurrency: string; toCurrency: string },
   ) {
     const context = await this.context(auth, company, branch, true);
-    return this.fx.refreshLiveRate(context.companyId, currencyCode(input.fromCurrency), currencyCode(input.toCurrency), crypto.randomUUID());
+    return this.fx.refreshLiveRate(context.companyId, currencyCode(input.fromCurrency), currencyCode(input.toCurrency), randomUUID());
   }
 }
