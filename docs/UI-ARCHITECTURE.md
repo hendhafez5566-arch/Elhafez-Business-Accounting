@@ -1,119 +1,238 @@
-# ELHAFEZ UI ARCHITECTURE
+# El-Hafez UI Architecture
 
-Status: **UI-02 — canonical foundation applied across application pages**
+This document defines the canonical structure and governance of the El-Hafez tenant web application's user interface.
 
-## Purpose
+## Core Principles
 
-The web interface is a design system, not a collection of page-specific styling patches.
-Business modules own business truth. The UI foundation owns reusable presentation primitives,
-layout, navigation behavior, design tokens, accessibility conventions and personal presentation
-preferences.
+### Theme vs. Structure
 
-## Canonical locations
+- **Theme** = visual presentation only: colors, typography, shadow depth, border radius, density, spacing scale, icon libraries.
+- **Screen Blueprint** = structural composition: grid layouts, split panes, master-detail, kanban columns, steppers, matrix tables, trees, directory listings, settings rails, entity-360 panes, workflows, dashboards, reports.
 
-- `apps/web/src/ui.tsx` — stable public facade used by existing web pages.
-- `apps/web/src/ui/primitives.tsx` — reusable controls and content primitives.
-- `apps/web/src/ui/icons.tsx` — shared icon vocabulary.
-- `apps/web/src/ui/navigation.tsx` — sidebar/topbar/navigation composition.
-- `apps/web/src/ui/preferences.tsx` — typed presentation preferences and persistence adapter.
-- `apps/web/src/ui/design-tokens.css` — colors, typography, density, spacing, radius, shadows and layout tokens.
-- `apps/web/src/styles.css` — canonical shell/component rules and all shared visual-theme sections consuming the design tokens.
-- `apps/web/src/app-shell.tsx` — one application shell for every route.
+A screen is **not** considered redesigned merely because colors, buttons, or card styling changed. Completion requires the internal layout to match its reference blueprint or the master-module baseline.
 
-## Rules for future work
+### No Wrapper-on-Wrapper Layouts
 
-1. A business page must consume shared UI components through `apps/web/src/ui.tsx`.
-2. Do not create a second Button, Input, Table, Card, Tabs, Badge, Dialog, Drawer, Toast, PageHeader or FormSection when the shared primitive can represent the behavior.
-3. Do not place inline `style={{...}}` declarations in application TSX.
-4. Do not add page/module CSS files under `apps/web/src`. Reusable patterns belong in the central UI foundation.
-5. New global colors, spacing, typography, breakpoints, radii or shadows must be introduced as design tokens, never as scattered literals.
-6. A suite/menu is presentation only. Styling must never move or duplicate business ownership.
-7. The shell remains RTL-first and responsive. The sidebar is physically on the right for desktop layouts.
-8. Accessibility behavior is part of the component contract: keyboard focus, labels, dialog semantics and mobile drawer behavior must remain intact.
-9. Global UI foundation paths are protected by Change Safety and CODEOWNERS. Local feature work must not edit them as a workaround.
-10. When a genuinely reusable visual pattern is missing, add it once to the UI foundation with tests, then consume it from business pages.
+The canonical page composition is the source of truth. Structural redesigns must:
+1. Modify the canonical business page composition itself.
+2. Export reusable structural primitives from the shared UI library if needed.
+3. **Never** wrap an obsolete layout with a new layout.
+4. **Never** add another wrapper above or below the canonical boundary.
+5. Remove the obsolete container and code before merging.
 
-## Replaceable visual themes
+### Route-to-Design Contract
 
-The canonical functional baseline remains the unscoped rules in `apps/web/src/styles.css`. A visual theme may only refine presentation on top of that baseline and must never own business behavior, data access, routing, validation or workflow logic.
+Every registered route **MUST** declare an explicit `ScreenDesign` containing:
+- A structural `blueprint` (one of the 15 families).
+- A `reference` ID (one of the 39 owner-defined references).
 
-The current theme registry is intentionally small:
+This contract is enforced at route definition time. Invalid designs cause startup failure.
 
-- `premium` — the ELHAFEZ premium commercial appearance and the default for new/unauthenticated entry.
-- `classic` — the canonical UI-02 baseline with no premium overrides.
+## Screen Structure Architecture
 
-Theme selection is part of `UiPreferences` and is applied through `html[data-ui-theme]`. The premium rules live in one clearly marked section inside the canonical `styles.css` file and every rule is scoped under `html[data-ui-theme='premium']`. Selecting `classic` therefore disables the premium appearance immediately without changing application code, data or business behavior.
+### Canonical Library Location
 
-The theme can be evaluated or removed safely:
+- **Module**: `apps/web/src/ui/screen-layouts.tsx`
+- **Exports**: `ScreenBlueprint`, `ScreenReferenceId`, `SCREEN_BLUEPRINTS`, `SCREEN_REFERENCE_IDS`, `ScreenDesign`, `isScreenDesign()`, `ScreenLayoutBoundary`, `SplitWorkspace`, `MasterDetailWorkspace`, `SettingsWorkspace`, `WorkspacePane`.
+- **Facade**: `apps/web/src/ui.tsx`
 
-1. For an immediate user-level rollback, select **الشكل الأساسي** from **المظهر والتنقل**.
-2. For a product-wide rollback, change the default `theme` in `DEFAULT_UI_PREFERENCES` to `classic`.
-3. For complete removal, delete only the block between `BEGIN ELHAFEZ PREMIUM THEME` and `END ELHAFEZ PREMIUM THEME` in `apps/web/src/styles.css`, then remove the `premium` registry option. No business module should require changes.
+### Structural Blueprint Families (15)
 
-Rules for future themes:
+| Blueprint | Purpose |
+|-----------|---------|
+| `dashboard` | Executive summary with metrics, KPIs, and status overview. |
+| `module` | Generic module container; used when no more specific blueprint fits. |
+| `directory` | Directory listing (table or card grid) with filtering and search. |
+| `master-detail` | Primary list (master) with detail pane/drawer on the right; responsive to single column. |
+| `entity-360` | Complete entity profile: tabs, sections, timelines, relationships, documents. |
+| `workflow` | Step-by-step process: tasks, approvals, transitions, status tracking. |
+| `kanban` | Columns with draggable cards; swimlanes or grouped columns. |
+| `split` | Two equal or weighted columns; both panes equally important. |
+| `settings` | Navigation rail (left/inline) + content area; subsections and toggle forms. |
+| `tree` | Hierarchical navigation and content; expandable nodes. |
+| `stepper` | Linear multi-step form or wizard with step indicators. |
+| `transaction` | Single record entry or ledger transaction; date, amount, account, memo fields. |
+| `matrix` | Multi-dimensional table (rows × columns × data); pivot tables, allocations, inventory. |
+| `documents` | Document listing, upload, preview, versioning. |
+| `reporting` | Report builder, filters, result table, export. |
 
-- Keep shared theme rules in a clearly marked section inside the canonical `apps/web/src/styles.css`; do not create parallel page/module CSS files.
-- Gate every optional theme rule behind its own `data-ui-theme` value.
-- Style the existing shell/primitives; do not duplicate components or create theme-specific business pages.
-- Keep the login/tenant-entry surface on the same shared controls and tokens as the authenticated application.
-- Do not make a theme a prerequisite for layout correctness, accessibility or functional behavior; the `classic` baseline must remain usable on its own.
+### Screen Reference IDs (39 Owner-Defined)
 
-## Sidebar modes
+```
+fleet-transport                 — Transport, vehicles, drivers, trip assignments.
+team-task-workflow             — Generic workflow: tasks, approvals, status tracking.
+customer-management            — Customer directory, contact, classification, financial position.
+trip-operations                — Kanban: trip tasks, readiness, assignments, incidents.
+tourism-bookings               — Workflow: booking creation, validation, confirmation, payment.
+supplier-disputes              — Supplier disputes and issue resolution workflow.
+tourism-contracts              — Contract management: terms, renewal, attachments.
+company-system-settings        — System settings: company data, branches, numbering, fields.
+bank-reconciliation            — Bank statement matching and reconciliation workflow.
+account-statement              — Account ledger, transactions, aging, status.
+agents-commissions             — Agent directory and commission tracking.
+currency-fx                    — Currency exchange rates and forex transactions.
+cost-centers-budgets           — Cost center management and budget allocation.
+vat-tax-returns                — VAT and tax return filing and tracking.
+purchase-orders                — Purchase order creation, approval, receipt, invoicing.
+audit-trail                    — Audit log and change history viewing.
+chart-of-accounts              — Chart of accounts structure and GL hierarchy.
+billing-invoicing              — Invoice generation, issuance, payment tracking.
+master-module                  — Service definitions, offerings, capacity, pricing.
+hr-payroll                     — Payroll processing, salary, deductions, reports.
+voucher-ticketing              — Voucher and ticket issuance and redemption.
+assets-depreciation            — Fixed asset register and depreciation schedules.
+tourism-inventory-matrix       — Multi-dimensional hotel, transport, activity allocation.
+crm-lead-pipeline              — Kanban: leads by stage, probability, value, conversion.
+rooming-allocation             — Matrix: guest rooms × occupants × dates.
+saas-control-plane             — Tenant/subscription management and monitoring.
+treasury-settlement            — Cash and settlement management, bank transfers.
+document-management            — Document repository, versioning, metadata, search.
+system-administration          — System admin panels: users, roles, audit, logs.
+tourism-itinerary-builder      — Workflow: daily itinerary planning, activities, timing.
+financial-reporting            — Reports: P&L, balance sheet, trial balance, custom.
+supplier-intelligence          — Entity-360: supplier profile, performance, contracts, disputes.
+hajj-umrah-kanban              — Kanban: programs, bookings, readiness by status.
+main-dashboard                 — Executive dashboard: KPIs, alerts, key metrics.
+journal-entry                  — Accounting: journal entry creation and posting.
+quotation-stepper              — Stepper: quotation creation, line items, approval, conversion.
+app-layout                     — Shell layout, navigation, branding, responsive.
+data-table                     — Reusable data table component and display patterns.
+atoms                          — Design system atoms: buttons, inputs, icons, badges, colors.
+```
 
-The shell owns exactly three persisted presentation modes:
+### Route-to-Design Mapping
 
-- `fixed`: full sidebar remains visible.
-- `compact`: icon-only sidebar remains visible.
-- `auto`: compact by default and expands on pointer hover or keyboard focus without shifting the content area.
+| Route Path | Blueprint | Reference | Purpose |
+|-----------|-----------|-----------|---------|
+| `/` | dashboard | main-dashboard | Executive summary. |
+| `/management/exceptions` | workflow | team-task-workflow | Task workflow. |
+| `/management/approvals` | workflow | team-task-workflow | Approval workflow. |
+| `/management/reports` | reporting | financial-reporting | Report center. |
+| `/management/outputs` | documents | document-management | Document outputs. |
+| `/notifications` | directory | data-table | Notification list. |
+| `/system-administration` | settings | system-administration | Settings panel. |
+| `/system-administration/custom-fields` | settings | company-system-settings | Custom field configuration. |
+| `/system-administration/document-numbering` | settings | company-system-settings | Document numbering setup. |
+| `/system-administration/automation` | workflow | team-task-workflow | Automation rules. |
+| `/crm/dashboard` | dashboard | main-dashboard | CRM dashboard. |
+| `/crm/leads` | kanban | crm-lead-pipeline | Lead pipeline. |
+| `/crm/followups` | workflow | team-task-workflow | Follow-up tasks. |
+| `/crm/customers` | directory | customer-management | Customer list. |
+| `/crm/customer-360` | entity-360 | customer-management | Customer profile. |
+| `/crm/customer-documents` | documents | document-management | Customer documents. |
+| `/crm/financial-action` | transaction | account-statement | Financial transaction. |
+| `/crm/agents` | directory | agents-commissions | Agent list. |
+| `/crm/agent-360` | entity-360 | agents-commissions | Agent profile. |
+| `/crm/agent-documents` | documents | document-management | Agent documents. |
+| `/crm/quotations` | stepper | quotation-stepper | Quotation creation. |
+| `/crm/travelers` | directory | data-table | Traveler list. |
+| `/procurement/suppliers` | directory | supplier-intelligence | Supplier list. |
+| `/procurement/supplier-documents` | documents | document-management | Supplier documents. |
+| `/procurement/supplier-intelligence` | entity-360 | supplier-intelligence | Supplier profile. |
+| `/procurement/sourcing` | workflow | purchase-orders | PO workflow. |
+| `/procurement/purchase-orders` | workflow | purchase-orders | Purchase orders. |
+| `/procurement/returns` | workflow | purchase-orders | Return orders. |
+| `/tourism/services` | directory | master-module | Service catalog. |
+| `/tourism/service-360` | entity-360 | master-module | Service profile. |
+| `/tourism/service-documents` | documents | document-management | Service documents. |
+| `/tourism/programs` | workflow | master-module | Program management. |
+| `/tourism/bookings` | workflow | tourism-bookings | Tourism bookings. |
+| `/tourism/itinerary` | workflow | tourism-itinerary-builder | Itinerary planning. |
+| `/tourism/contracts-inventory` | matrix | tourism-inventory-matrix | Contract allocation. |
+| `/accounting` | dashboard | financial-reporting | Accounting workspace. |
+| `/hajj-umrah/seasons` | directory | master-module | Season list. |
+| `/hajj-umrah/contracts-inventory` | matrix | tourism-inventory-matrix | Contract allocation. |
+| `/hajj-umrah/programs` | kanban | hajj-umrah-kanban | Program kanban. |
+| `/hajj-umrah/program-workspace` | master-detail | hajj-umrah-kanban | Program detail workspace. |
+| `/hajj-umrah/bookings` | workflow | hajj-umrah-kanban | Booking workflow. |
+| `/hajj-umrah/rooming` | matrix | rooming-allocation | Room allocation matrix. |
+| `/hajj-umrah/visas` | workflow | hajj-umrah-kanban | Visa workflow. |
+| `/hajj-umrah/ticketing` | workflow | voucher-ticketing | Ticketing workflow. |
+| `/hajj-umrah/transport` | workflow | fleet-transport | Transport workflow. |
+| `/hajj-umrah/trip-operations` | kanban | trip-operations | Trip operations kanban. |
+| `/hajj-umrah/readiness` | dashboard | hajj-umrah-kanban | Readiness dashboard. |
+| `/hajj-umrah/barcode` | module | master-module | Barcode module. |
+| `/settings/appearance` | settings | company-system-settings | Appearance settings. |
+| `/settings/account` | settings | company-system-settings | Account settings. |
 
-Mobile navigation remains a drawer and does not depend on the desktop mode.
+## Implementation
 
-## Typography and density
+### ScreenLayoutBoundary Component
 
-The initial font registry is deliberately local and dependency-free:
+The canonical structural boundary for all routes. It **replaces** the existing `ui-page-stack` div, not adds above or below it.
 
-- Tahoma
-- system UI
-- Arial
+**Location**: `apps/web/src/ui/screen-layouts.tsx`
 
-Adding a bundled/web font later is a registry/token change, not a page-by-page rewrite.
+```tsx
+<ScreenLayoutBoundary design={active.design} key={sessionKey}>
+  {children ?? active.element}
+</ScreenLayoutBoundary>
+```
 
-Font scale is one of `small | normal | large | xlarge`.
-Density is one of `comfortable | balanced | compact`.
-Pages must use rem/token-based sizing so these settings propagate consistently.
+Renders:
+- `.ui-page-stack` — the structural container itself
+- `.ui-screen-layout` — layout system marker
+- `.ui-screen-layout--{blueprint}` — blueprint family class
+- `data-screen-blueprint` — observable attribute
+- `data-screen-reference` — observable attribute
 
-## Preference persistence
+Zero extra nesting. Content flows directly into the boundary.
 
-Presentation preferences are stored behind a typed adapter and namespaced by a `preferenceScope`.
-The shell currently defaults to a local browser scope. When authenticated user identity is wired
-into the app entry, pass the stable user ID as `preferenceScope`; no component or storage format
-rewrite is required. A future cross-device preference service can implement the same typed boundary
-without changing pages.
+### Reusable Workspace Patterns
 
-## Extension procedure
+Four reusable structural patterns available in `apps/web/src/ui/screen-layouts.tsx`:
 
-When adding a new UI requirement:
+1. **SplitWorkspace**: Two equal or weighted columns.
+   ```tsx
+   <SplitWorkspace left={<LeftPane />} right={<RightPane />} />
+   ```
 
-1. Decide whether it is page-specific content or reusable presentation behavior.
-2. If reusable, extend the canonical primitive/pattern/token.
-3. Add focused behavior/accessibility tests.
-4. Use the new capability from the page through the public UI facade.
-5. Run Change Safety, typecheck, lint, architecture check and web tests.
-6. Do not create parallel styling paths.
+2. **MasterDetailWorkspace**: List (master) + detail pane.
+   ```tsx
+   <MasterDetailWorkspace master={<List />} detail={<Detail />} />
+   ```
 
-This keeps future additions additive, discoverable and replaceable without patch-on-patch work.
+3. **SettingsWorkspace**: Navigation rail + content.
+   ```tsx
+   <SettingsWorkspace navigation={<Nav />} content={<Content />} />
+   ```
 
+4. **WorkspacePane**: Single structural pane.
+   ```tsx
+   <WorkspacePane variant="primary">{content}</WorkspacePane>
+   ```
 
-## UI-02 application contract
+All patterns:
+- Own structure only, **no business state, APIs, or data access**.
+- **No theme colors or inline styles**.
+- Export through the canonical `ui.tsx` facade.
 
-UI-02 applies the foundation to the existing application without changing business ownership or business behavior.
+## Governance
 
-- The App Shell renders the canonical page header for every registered route.
-- Business pages render content inside the shared page stack; they do not create competing top-level page titles.
-- Existing forms, cards, filters, tables, metrics and administration tools use the shared primitives and central CSS patterns.
-- Application pages may use semantic `form`, `label`, `section` and `fieldset` elements, but interactive form controls must come from the shared UI facade.
-- Raw `button`, `input`, `select` and `textarea` elements in application pages are rejected by the architecture gate.
-- Dashboard metrics use the reusable `MetricCard` pattern; action rows use `ActionBar`; filters use the canonical grid pattern.
-- Print-only document styling remains isolated to the printable document flow and is not an application-page styling escape hatch.
+### Change Rules
 
-A future business module should therefore add business content only. It inherits the shell, page header, typography, density, responsive behavior and control styling without creating another visual foundation.
+- **New business pages**: Must declare a `ScreenDesign` in routes.tsx. Use an existing blueprint + reference if the structure matches; do not invent new blueprints or references.
+- **Structural redesign of a page**: Replace the canonical page composition with a new layout matching the reference blueprint. Remove the old code. Update the reference if needed (owner sign-off required).
+- **Theme-only changes** (colors, buttons, cards): Do not update the design metadata. Apply through CSS or theme provider.
+- **New references**: Owner approval only. Add to `SCREEN_REFERENCE_IDS` in screen-layouts.tsx and this document.
+
+### Testing
+
+- **routes.spec.ts**: All foundation routes must have valid explicit designs. Specific mapping tests for `/`, `/crm/leads`, `/accounting`, `/system-administration`, `/hajj-umrah/rooming`.
+- **screen-layouts.spec.tsx**: ScreenLayoutBoundary renders one canonical boundary with correct classes and attributes. Workspace patterns render expected structure.
+- **app-shell-contract.spec.ts**: AppShell route renders correct blueprint/reference data attributes.
+
+### Styling
+
+- **Location**: `apps/web/src/styles.css`, baseline section under "SCREEN LAYOUT ARCHITECTURE".
+- **Classes**: `.ui-workspace-split`, `.ui-workspace-master-detail`, `.ui-workspace-settings`, `.ui-workspace-pane`.
+- **Theme-specific**: None. Use design tokens only; no hard-coded colors.
+- **Responsive**: Stack single-column at ≤900px.
+
+## Change Manifest
+
+This architecture is tracked in `.changes/20260930-gemini-pro-full-ui-redesign.json`.
+- **Type**: architecture
+- **Affected paths**: `apps/web/src/**`, `docs/UI-ARCHITECTURE.md`
+- **Protected paths**: `apps/web/src/app-shell.tsx`, `apps/web/src/styles.css`, `apps/web/src/ui/**`
+- **Purpose**: Prevent future theme-only redesigns and patch-on-patch layouts; establish a clean structural gate before business screen migration.

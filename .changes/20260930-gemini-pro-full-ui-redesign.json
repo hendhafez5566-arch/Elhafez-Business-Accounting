@@ -4,20 +4,23 @@
   "type": "architecture",
   "allowedModules": [],
   "allowedPaths": [
-    "apps/web/src/**"
+    "apps/web/src/**",
+    "docs/UI-ARCHITECTURE.md"
   ],
   "protectedPaths": [
     "apps/web/src/app-shell.tsx",
     "apps/web/src/styles.css",
     "apps/web/src/ui/**"
   ],
-  "protectedReason": "Owner explicitly requested a system-wide UI/UX redesign, not a local feature style change. The 39 supplied references include App Layout, Design System Atoms, Master Module Template and Data Table specifications, so the canonical shell, shared primitives, tokens, navigation and central styles must be extended once and then consumed by existing pages without changing business ownership or data behavior.",
+  "protectedReason": "Owner explicitly requested a system-wide UI/UX redesign, not a local feature style change. The 39 supplied references include App Layout, Design System Atoms, Master Module Template and Data Table specifications, so the canonical shell, shared primitives, tokens, navigation and central styles must be extended once and then consumed by existing pages without changing business ownership or data behavior. The UI-ARCHITECTURE.md document defines the structural system rules that govern all redesign work.",
   "allowBreakingPublicApi": false,
   "publicApiBreakingReason": "",
   "testEvidence": [
     "apps/web/src/styles.spec.ts",
     "apps/web/src/ui/preferences.spec.ts",
     "apps/web/src/app-shell-contract.spec.ts",
-    "apps/web/src/app-entry-path.spec.tsx"
+    "apps/web/src/app-entry-path.spec.tsx",
+    "apps/web/src/routes.spec.ts",
+    "apps/web/src/ui/screen-layouts.spec.tsx"
   ]
 }

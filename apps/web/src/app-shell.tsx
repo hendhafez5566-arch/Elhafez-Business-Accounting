@@ -11,6 +11,7 @@ import {
   type UiPreferences,
   UiPreferencesProvider,
   useUiPreferences,
+  ScreenLayoutBoundary,
 } from './ui.js';
 import { NavigationMenu, Sidebar, Topbar } from './ui/navigation.js';
 
@@ -114,6 +115,8 @@ function AppShellFrame({
       className="app-shell"
       dir="rtl"
       data-route-id={active.id}
+      data-screen-blueprint={active.design.blueprint}
+      data-screen-reference={active.design.reference}
       data-sidebar-mode={preferences.sidebarMode}
       data-sidebar-expanded={sidebarExpanded ? 'true' : 'false'}
     >
@@ -146,7 +149,7 @@ function AppShellFrame({
       <main className="app-main">
         <div className="app-content" tabIndex={-1}>
           <PageHeader eyebrow={active.group} title={active.label} description={description} />
-          <div className="ui-page-stack" key={sessionKey}>{children ?? active.element}</div>
+          <ScreenLayoutBoundary design={active.design} key={sessionKey}>{children ?? active.element}</ScreenLayoutBoundary>
         </div>
       </main>
     </div>
