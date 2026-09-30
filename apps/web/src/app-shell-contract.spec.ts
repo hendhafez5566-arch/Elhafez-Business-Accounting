@@ -15,7 +15,7 @@ test('global shell contract preserves RTL, right sidebar, topbar, navigation and
   assert.match(html, /data-sidebar-mode="fixed"/);
   assert.match(html, /data-route-id="foundation"/);
   assert.match(html, /class="ui-page-header"/);
-  assert.match(html, /class="ui-page-stack"/);
+  assert.match(html, /class="[^"]*ui-page-stack[^"]*"/);
 });
 
 test('Gemini app layout exposes global route search and ERP brand through the canonical shell', () => {
@@ -48,6 +48,7 @@ test('local content renders inside the canonical shell without replacing shell s
   assert.match(html, /data-testid="local-content"/);
   assert.match(html, /class="app-sidebar"/);
   assert.match(html, /class="app-topbar"/);
+  assert.equal((html.match(/ui-page-stack/g) ?? []).length, 1);
 });
 
 test('appearance settings are reachable from canonical navigation', () => {
@@ -56,4 +57,20 @@ test('appearance settings are reachable from canonical navigation', () => {
   );
   assert.match(html, /المظهر والتنقل/);
   assert.match(html, /استعادة الافتراضي/);
+});
+
+test('shell exposes the active structural blueprint and reference as an observable contract', () => {
+  const html = renderToStaticMarkup(createElement(AppShell, { pathname: '/' }));
+  assert.match(html, /data-screen-blueprint="dashboard"/);
+  assert.match(html, /data-screen-reference="main-dashboard"/);
+  assert.match(html, /ui-screen-layout--dashboard/);
+});
+
+test('screen design changes with the route while the canonical shell remains single', () => {
+  const html = renderToStaticMarkup(createElement(AppShell, { pathname: '/crm/leads' }));
+  assert.match(html, /data-screen-blueprint="kanban"/);
+  assert.match(html, /data-screen-reference="crm-lead-pipeline"/);
+  assert.match(html, /ui-screen-layout--kanban/);
+  assert.equal((html.match(/class="app-shell"/g) ?? []).length, 1);
+  assert.equal((html.match(/ui-page-stack/g) ?? []).length, 1);
 });
