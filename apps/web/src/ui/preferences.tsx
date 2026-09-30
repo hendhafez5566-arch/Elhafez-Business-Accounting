@@ -67,6 +67,10 @@ export function normalizeUiPreferences(value: unknown): UiPreferences {
 }
 
 export function preferenceStorageKey(scope: string): string {
+  return 'elhafez.ui.preferences.v2:' + (scope.trim() || 'default');
+}
+
+function legacyPreferenceStorageKey(scope: string): string {
   return 'elhafez.ui.preferences.v1:' + (scope.trim() || 'default');
 }
 
@@ -86,7 +90,12 @@ export function loadUiPreferences(
   if (!storage) return DEFAULT_UI_PREFERENCES;
   try {
     const raw = storage.getItem(preferenceStorageKey(scope));
-    return raw ? normalizeUiPreferences(JSON.parse(raw)) : DEFAULT_UI_PREFERENCES;
+    if (raw) return normalizeUiPreferences(JSON.parse(raw));
+
+    const legacyRaw = storage.getItem(legacyPreferenceStorageKey(scope));
+    if (!legacyRaw) return DEFAULT_UI_PREFERENCES;
+    const legacy = normalizeUiPreferences(JSON.parse(legacyRaw));
+    return normalizeUiPreferences({ ...legacy, theme: 'gemini' });
   } catch {
     return DEFAULT_UI_PREFERENCES;
   }
