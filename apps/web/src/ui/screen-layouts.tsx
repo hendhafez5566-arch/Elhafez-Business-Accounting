@@ -145,18 +145,17 @@ export function WorkspaceNavigation({
   readonly ariaLabel?: string;
 }) {
   return (
-    <nav className="ui-workspace-nav" aria-label={ariaLabel}>
+    <nav className="ui-grid-sm" aria-label={ariaLabel}>
       {items.map((item) => (
         <Button
           key={item.id}
           type="button"
-          variant="ghost"
-          className="ui-workspace-nav__item"
+          variant={active === item.id ? 'primary' : 'secondary'}
           aria-current={active === item.id ? 'page' : undefined}
+          title={item.description}
           onClick={() => onChange(item.id)}
         >
-          <span className="ui-workspace-nav__label">{item.label}</span>
-          {item.description ? <small className="ui-workspace-nav__description">{item.description}</small> : null}
+          {item.label}
         </Button>
       ))}
     </nav>
