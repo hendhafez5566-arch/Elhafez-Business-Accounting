@@ -20,6 +20,12 @@ export class InMemoryCurrencyFxRepository implements CurrencyFxRepository {
     return this.currencies.get(companyId + ':' + code);
   }
 
+  async listCurrencies(companyId: CompanyId): Promise<readonly CurrencyConfiguration[]> {
+    return [...this.currencies.values()]
+      .filter((value) => value.companyId === companyId)
+      .sort((left, right) => Number(right.isBase) - Number(left.isBase) || left.code.localeCompare(right.code));
+  }
+
   async findBaseCurrency(companyId: CompanyId): Promise<CurrencyConfiguration | undefined> {
     return [...this.currencies.values()].find((x) => x.companyId === companyId && x.isBase);
   }
