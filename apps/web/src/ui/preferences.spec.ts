@@ -38,6 +38,23 @@ test('UI preferences preserve explicitly selected fallback themes', () => {
   assert.equal(normalizeUiPreferences({ theme: 'premium' }).theme, 'premium');
 });
 
+test('legacy v1 preferences retain ergonomics while migrating the visual theme', () => {
+  const storage = new MemoryStorage();
+  storage.setItem('elhafez.ui.preferences.v1:user-a', JSON.stringify({
+    sidebarMode: 'compact',
+    fontScale: 'large',
+    fontFamily: 'system',
+    density: 'compact',
+    theme: 'premium',
+  }));
+  const migrated = loadUiPreferences('user-a', storage);
+  assert.equal(migrated.sidebarMode, 'compact');
+  assert.equal(migrated.fontScale, 'large');
+  assert.equal(migrated.fontFamily, 'system');
+  assert.equal(migrated.density, 'compact');
+  assert.equal(migrated.theme, 'gemini');
+});
+
 test('UI preferences persist independently by scope for future authenticated user IDs', () => {
   const storage = new MemoryStorage();
   saveUiPreferences('user-a', {
