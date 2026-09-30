@@ -9,6 +9,7 @@ import {
   ScreenLayoutBoundary,
   SettingsWorkspace,
   SplitWorkspace,
+  WorkspaceNavigation,
   WorkspacePane,
   isScreenDesign,
 } from './screen-layouts.js';
@@ -61,14 +62,35 @@ test('MasterDetailWorkspace supports an optional detail pane', () => {
   assert.doesNotMatch(withoutDetail, /ui-workspace-pane--detail/);
 });
 
-test('SettingsWorkspace uses canonical navigation and content panes', () => {
+test('SettingsWorkspace keeps navigation surfaced and content unsurfaced to prevent nested card layers', () => {
   const markup = renderToStaticMarkup(createElement(SettingsWorkspace, { navigation: 'nav', content: 'settings' }));
   assert.match(markup, /ui-workspace-settings/);
-  assert.match(markup, /ui-workspace-pane--nav/);
-  assert.match(markup, /ui-workspace-pane--content/);
+  assert.match(markup, /class="ui-card ui-workspace-pane ui-workspace-pane--nav"/);
+  assert.match(markup, /class="ui-workspace-pane ui-workspace-pane--content"/);
 });
 
-test('WorkspacePane adds only canonical structural classes', () => {
+test('WorkspaceNavigation renders one canonical active state without local page navigation code', () => {
+  const markup = renderToStaticMarkup(createElement(WorkspaceNavigation, {
+    items: [
+      { id: 'overview', label: 'نظرة عامة' },
+      { id: 'accounts', label: 'دليل الحسابات' },
+    ],
+    active: 'accounts',
+    onChange: () => undefined,
+  }));
+  assert.match(markup, /aria-label="التنقل داخل مساحة العمل"/);
+  assert.match(markup, /aria-current="page"/);
+  assert.match(markup, /ui-button--primary/);
+  assert.match(markup, /ui-button--secondary/);
+});
+
+test('WorkspacePane adds only canonical structural classes by default', () => {
   const markup = renderToStaticMarkup(createElement(WorkspacePane, { variant: 'detail', className: 'extra', children: 'body' }));
   assert.match(markup, /ui-card ui-workspace-pane ui-workspace-pane--detail extra/);
+});
+
+test('WorkspacePane can omit the surface without creating another visual wrapper', () => {
+  const markup = renderToStaticMarkup(createElement(WorkspacePane, { variant: 'content', surface: false, children: 'body' }));
+  assert.match(markup, /class="ui-workspace-pane ui-workspace-pane--content"/);
+  assert.doesNotMatch(markup, /ui-card/);
 });
