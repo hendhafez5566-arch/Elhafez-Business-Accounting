@@ -28,6 +28,7 @@ import {
 } from './hajj-umrah-structural-pages.js';
 import { HajjUmrahReadinessPage } from './hajj-umrah-readiness-page.js';
 import { SystemAdministrationPage } from './system-administration-page.js';
+import { SystemAdministrationWorkspacePage } from './system-administration-structural-page.js';
 import { PlatformFoundationsPage } from './platform-foundations-page.js';
 import { TourismService360Page } from './tourism-service-360-page.js';
 import { TourismServiceDocumentsPage } from './tourism-service-documents-page.js';
@@ -78,7 +79,8 @@ export const foundationRoutes = defineRoutes(
   { id: 'management-reports', path: '/management/reports', label: 'مركز التقارير', group: 'الإدارة والتحكم', icon: 'analytics', design: { blueprint: 'dashboard', reference: 'financial-reporting-center' }, element: <ReportingCenterPage /> },
   { id: 'management-outputs', path: '/management/outputs', label: 'مركز المخرجات والاستحقاقات', group: 'الإدارة والتحكم', icon: 'analytics', design: { blueprint: 'data-table', reference: 'data-table' }, element: <ReportingOutputCenterPage /> },
   { id: 'notification-center', path: '/notifications', label: 'الإشعارات', group: 'الإدارة والتحكم', icon: 'bell', design: { blueprint: 'timeline', reference: 'audit-trail' }, element: <NotificationCenterPage /> },
-  { id: 'system-administration', path: '/system-administration', label: 'إدارة النظام', group: 'إدارة النظام', icon: 'settings', design: { blueprint: 'settings', reference: 'system-administration' }, element: <SystemAdministrationPage /> },
+  { id: 'system-administration', path: '/system-administration', label: 'إدارة النظام', group: 'إدارة النظام', icon: 'settings', design: { blueprint: 'settings', reference: 'system-administration' }, element: <SystemAdministrationWorkspacePage /> },
+  { id: 'system-administration-manage', path: '/system-administration/manage', label: 'أدوات إدارة النظام', group: 'إدارة النظام', icon: 'settings', navigation: false, design: { blueprint: 'settings', reference: 'system-administration' }, element: <SystemAdministrationPage /> },
   { id: 'system-custom-fields', path: '/system-administration/custom-fields', label: 'الحقول المخصصة', group: 'إدارة النظام', icon: 'settings', design: { blueprint: 'settings', reference: 'company-system-settings' }, element: <PlatformFoundationsPage initialTab="custom-fields" /> },
   { id: 'system-document-numbering', path: '/system-administration/document-numbering', label: 'ترقيم المستندات', group: 'إدارة النظام', icon: 'settings', design: { blueprint: 'settings', reference: 'company-system-settings' }, element: <PlatformFoundationsPage initialTab="numbering" /> },
   { id: 'system-automation', path: '/system-administration/automation', label: 'الأتمتة وسير العمل', group: 'إدارة النظام', icon: 'tasks', design: { blueprint: 'command-center', reference: 'team-task-workflow' }, element: <PlatformFoundationsPage initialTab="automation" /> },
