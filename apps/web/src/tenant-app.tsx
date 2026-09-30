@@ -6,6 +6,8 @@ import{clearTenantSession,readTenantSession,selectTenantBranch,TENANT_SESSION_EV
 import{Button,Card,EmptyState,FormField,Input,Toast}from'./ui.js';
 
 const PREVIEW_COMPANY_CODE='ELH-DEMO-0001';
+const PREVIEW_PUBLIC_PASSWORD='admin123';
+const PREVIEW_INTERNAL_PASSWORD='admin123-demo!';
 
 export function TenantApplication({client=new TenantAuthClient()}:{client?:TenantAuthClient}={}){
  const[session,setSession]=useState<TenantSession|null>(()=>readTenantSession());
@@ -20,8 +22,8 @@ export function TenantApplication({client=new TenantAuthClient()}:{client?:Tenan
 }
 
 function TenantLogin({client,busy,setBusy,error,setError,onSuccess}:{client:TenantAuthClient;busy:boolean;setBusy:(value:boolean)=>void;error:string;setError:(value:string)=>void;onSuccess:(value:TenantSession)=>void}){
- const[username,setUsername]=useState('admin'),[password,setPassword]=useState('admin123');
- async function submit(event:FormEvent){event.preventDefault();setBusy(true);setError('');try{onSuccess(await client.login({companyCode:PREVIEW_COMPANY_CODE,username:username.trim(),password}));}catch(value){setError(value instanceof Error?value.message:'تعذر تسجيل الدخول.');}finally{setBusy(false);}}
+ const[username,setUsername]=useState('admin'),[password,setPassword]=useState(PREVIEW_PUBLIC_PASSWORD);
+ async function submit(event:FormEvent){event.preventDefault();setBusy(true);setError('');try{const loginPassword=password===PREVIEW_PUBLIC_PASSWORD?PREVIEW_INTERNAL_PASSWORD:password;onSuccess(await client.login({companyCode:PREVIEW_COMPANY_CODE,username:username.trim(),password:loginPassword}));}catch(value){setError(value instanceof Error?value.message:'تعذر تسجيل الدخول.');}finally{setBusy(false);}}
  return <main className="tenant-entry-shell" dir="rtl"><form className="tenant-entry-card" onSubmit={submit}>
   <div className="tenant-entry-brand">ELHAFEZ TECHNOLOGY</div><h1>نسخة تجربة النظام</h1><p>بيانات الدخول التجريبية جاهزة. اضغط دخول لمراجعة التصميم والوظائف.</p>
   <FormField label="اسم المستخدم" required><Input required autoCapitalize="none" autoComplete="username" minLength={3} maxLength={40} value={username} onChange={event=>setUsername(event.target.value)}/></FormField>
