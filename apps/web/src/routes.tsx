@@ -26,6 +26,7 @@ import {
   HajjUmrahTransportFleetPage,
   HajjUmrahTripOperationsCommandPage,
 } from './hajj-umrah-structural-pages.js';
+import { HajjUmrahProgramCommandPage, HajjUmrahReadinessCommandPage } from './hajj-umrah-command-workspaces.js';
 import { HajjUmrahReadinessPage } from './hajj-umrah-readiness-page.js';
 import { SystemAdministrationPage } from './system-administration-page.js';
 import { SystemAdministrationWorkspacePage } from './system-administration-structural-page.js';
@@ -119,7 +120,8 @@ export const foundationRoutes = defineRoutes(
   { id: 'hajj-umrah-contract-inventory', path: '/hajj-umrah/contracts-inventory', label: 'التعاقدات والمخزون', group: 'الحج والعمرة', icon: 'workspace', design: { blueprint: 'matrix', reference: 'tourism-inventory-matrix' }, element: <TourismContractInventoryPage /> },
   { id: 'hajj-umrah-programs', path: '/hajj-umrah/programs', label: 'برامج الحج والعمرة', group: 'الحج والعمرة', icon: 'program', design: { blueprint: 'kanban', reference: 'hajj-umrah-kanban' }, element: <HajjUmrahProgramsBoardPage /> },
   { id: 'hajj-umrah-programs-manage', path: '/hajj-umrah/programs/manage', label: 'إدارة تعريف البرامج', group: 'الحج والعمرة', icon: 'program', navigation: false, design: { blueprint: 'module', reference: 'master-module-template' }, element: <ProgramsPage /> },
-  { id: 'hajj-umrah-program-workspace', path: '/hajj-umrah/program-workspace', label: 'مساحة عمل البرنامج', group: 'الحج والعمرة', icon: 'workspace', navigation: false, design: { blueprint: 'command-center', reference: 'hajj-umrah-kanban' }, element: <ProgramWorkspacePage /> },
+  { id: 'hajj-umrah-program-workspace', path: '/hajj-umrah/program-workspace', label: 'مساحة عمل البرنامج', group: 'الحج والعمرة', icon: 'workspace', navigation: false, design: { blueprint: 'command-center', reference: 'hajj-umrah-kanban' }, element: <HajjUmrahProgramCommandPage /> },
+  { id: 'hajj-umrah-program-workspace-manage', path: '/hajj-umrah/program-workspace/manage', label: 'إدارة دورة البرنامج', group: 'الحج والعمرة', icon: 'workspace', navigation: false, design: { blueprint: 'command-center', reference: 'hajj-umrah-kanban' }, element: <ProgramWorkspacePage /> },
   { id: 'hajj-umrah-bookings', path: '/hajj-umrah/bookings', label: 'الحجوزات', group: 'الحج والعمرة', icon: 'booking', design: { blueprint: 'data-table', reference: 'hajj-umrah-kanban' }, element: <BookingsPage /> },
   { id: 'hajj-umrah-rooming', path: '/hajj-umrah/rooming', label: 'تسكين الغرف', group: 'الحج والعمرة', icon: 'room', design: { blueprint: 'matrix', reference: 'rooming-allocation' }, element: <HajjUmrahRoomingMatrixPage /> },
   { id: 'hajj-umrah-rooming-manage', path: '/hajj-umrah/rooming/manage', label: 'إدارة التسكين', group: 'الحج والعمرة', icon: 'room', navigation: false, design: { blueprint: 'module', reference: 'rooming-allocation' }, element: <RoomingPage /> },
@@ -130,7 +132,8 @@ export const foundationRoutes = defineRoutes(
   { id: 'hajj-umrah-transport-manage', path: '/hajj-umrah/transport/manage', label: 'إدارة النقل والتفويج', group: 'الحج والعمرة', icon: 'transport', navigation: false, design: { blueprint: 'operations', reference: 'fleet-transport' }, element: <TransportPage /> },
   { id: 'hajj-umrah-trip-operations', path: '/hajj-umrah/trip-operations', label: 'تشغيل الرحلة', group: 'الحج والعمرة', icon: 'operations', design: { blueprint: 'operations', reference: 'trip-operations' }, element: <HajjUmrahTripOperationsCommandPage /> },
   { id: 'hajj-umrah-trip-operations-manage', path: '/hajj-umrah/trip-operations/manage', label: 'إدارة تشغيل الرحلة', group: 'الحج والعمرة', icon: 'operations', navigation: false, design: { blueprint: 'operations', reference: 'trip-operations' }, element: <TripOperationsPage /> },
-  { id: 'hajj-umrah-readiness', path: '/hajj-umrah/readiness', label: 'مركز الجاهزية والتشغيل', group: 'الحج والعمرة', icon: 'readiness', design: { blueprint: 'command-center', reference: 'hajj-umrah-kanban' }, element: <HajjUmrahReadinessPage /> },
+  { id: 'hajj-umrah-readiness', path: '/hajj-umrah/readiness', label: 'مركز الجاهزية والتشغيل', group: 'الحج والعمرة', icon: 'readiness', design: { blueprint: 'command-center', reference: 'hajj-umrah-kanban' }, element: <HajjUmrahReadinessCommandPage /> },
+  { id: 'hajj-umrah-readiness-manage', path: '/hajj-umrah/readiness/manage', label: 'أدوات الجاهزية والإغلاق', group: 'الحج والعمرة', icon: 'readiness', navigation: false, design: { blueprint: 'command-center', reference: 'hajj-umrah-kanban' }, element: <HajjUmrahReadinessPage /> },
   { id: 'hajj-umrah-barcode', path: '/hajj-umrah/barcode', label: 'باركود العمرة', group: 'الحج والعمرة', icon: 'barcode', design: { blueprint: 'form', reference: 'voucher-ticketing-center' }, element: <UmrahBarcodePage /> },
 
   { id: 'appearance-settings', path: '/settings/appearance', label: 'المظهر والتنقل', group: 'الإعدادات', icon: 'appearance', navigation: false, design: { blueprint: 'settings', reference: 'atoms' }, element: <AppearanceSettingsPage /> },
