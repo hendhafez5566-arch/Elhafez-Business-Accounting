@@ -3,7 +3,6 @@ import {
   ActionBar,
   Badge,
   Button,
-  Card,
   DataGrid,
   EmptyState,
   ErrorState,
@@ -135,10 +134,9 @@ export function HajjUmrahRoomingMatrixPage() {
   const groups = useMemo(() => {
     const map = new Map<string, RoomAssignment[]>();
     for (const row of active) {
-      const key = row.allocationId;
-      const bucket = map.get(key) ?? [];
+      const bucket = map.get(row.allocationId) ?? [];
       bucket.push(row);
-      map.set(key, bucket);
+      map.set(row.allocationId, bucket);
     }
     return [...map.entries()];
   }, [active]);
@@ -261,9 +259,9 @@ export function HajjUmrahTripOperationsCommandPage() {
   const openIncidents = incidents.filter(row => row.status === 'OPEN');
   const critical = openIncidents.filter(row => row.severity === 'CRITICAL');
   const timeline = [
-    ...openIncidents.map(row => ({ key: `incident-${row.id}`, kind: 'incident' as const, at: row.createdAt, row })),
-    ...openTasks.map(row => ({ key: `task-${row.id}`, kind: 'task' as const, at: row.dueAt, row })),
-  ].sort((left, right) => new Date(left.at).getTime() - new Date(right.at).getTime());
+    ...openIncidents.map(row => ({ key: `incident-${row.id}`, kind: 'incident' as const, row })),
+    ...openTasks.map(row => ({ key: `task-${row.id}`, kind: 'task' as const, row })),
+  ];
 
   return <section className="ui-dashboard" aria-label="غرفة العمليات الميدانية">
     <div className="ui-metric-grid">
@@ -275,7 +273,7 @@ export function HajjUmrahTripOperationsCommandPage() {
     <ActionBar><Button type="button" variant="secondary" onClick={() => void reload()}>تحديث الآن</Button><RouteAction href="/hajj-umrah/trip-operations/manage">إدارة المهام والبلاغات والخدمات</RouteAction></ActionBar>
     <SplitWorkspace
       left={<section className="ui-flow"><div className="ui-inline"><h2>الحالة الميدانية</h2>{critical.length ? <Badge tone="error">طارئ {critical.length}</Badge> : <Badge tone="success">لا توجد حالات حرجة</Badge>}</div>{!timeline.length ? <EmptyState title="لا توجد عناصر تشغيل مفتوحة" /> : timeline.map(item => item.kind === 'incident' ? <article className="ui-record-card ui-flow" key={item.key}><div className="ui-inline"><Badge tone={item.row.severity === 'CRITICAL' ? 'error' : item.row.severity === 'HIGH' ? 'warning' : 'info'}>{item.row.severity}</Badge><strong>{item.row.summary}</strong></div><small>البرنامج: {item.row.programId}</small><small>الحالة: {incidentStatusLabel[item.row.status]}</small></article> : <article className="ui-record-card ui-flow" key={item.key}><div className="ui-inline"><Badge tone="warning">مهمة</Badge><strong>{item.row.title}</strong></div><small>البرنامج: {item.row.programId}</small><small>الاستحقاق: {new Date(item.row.dueAt).toLocaleString('ar-EG')}</small><small>الحالة: {taskStatusLabel[item.row.status]}</small></article>)}</section>}
-      right={<section className="ui-flow"><h2>ملخص التنفيذ</h2><Card title="آخر الخدمات المنفذة">{!services.length ? <EmptyState title="لا توجد خدمات منفذة" /> : <DataGrid columns={['الخدمة', 'الحجز', 'الوقت']}>{services.slice(0, 8).map(row => <tr key={row.id}><td><strong>{row.category}</strong></td><td>{row.bookingId}</td><td>{new Date(row.executedAt).toLocaleString('ar-EG')}</td></tr>)}</DataGrid>}</Card><Card title="التوجيه السريع"><p>التشغيل الكتابي يظل في شاشة المعاملات الوحيدة، بينما هذه الغرفة تعرض الحالة الحية من نفس مصادر الحقيقة.</p><ActionBar><RouteAction href="/hajj-umrah/transport">النقل والتفويج</RouteAction><RouteAction href="/hajj-umrah/rooming">التسكين</RouteAction><RouteAction href="/hajj-umrah/ticketing">التذاكر</RouteAction></ActionBar></Card></section>}
+      right={<section className="ui-flow"><h2>ملخص التنفيذ</h2><h3>آخر الخدمات المنفذة</h3>{!services.length ? <EmptyState title="لا توجد خدمات منفذة" /> : <DataGrid columns={['الخدمة', 'الحجز', 'الوقت']}>{services.slice(0, 8).map(row => <tr key={row.id}><td><strong>{row.category}</strong></td><td>{row.bookingId}</td><td>{new Date(row.executedAt).toLocaleString('ar-EG')}</td></tr>)}</DataGrid>}<h3>التوجيه السريع</h3><p>التشغيل الكتابي يظل في شاشة المعاملات الوحيدة، بينما هذه الغرفة تعرض الحالة الحية من نفس مصادر الحقيقة.</p><ActionBar><RouteAction href="/hajj-umrah/transport">النقل والتفويج</RouteAction><RouteAction href="/hajj-umrah/rooming">التسكين</RouteAction><RouteAction href="/hajj-umrah/ticketing">التذاكر</RouteAction></ActionBar></section>}
     />
   </section>;
 }
