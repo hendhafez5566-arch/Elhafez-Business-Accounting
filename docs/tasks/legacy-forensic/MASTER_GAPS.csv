@@ -1,0 +1,18 @@
+gap_id,area,finding,required_rebuild
+GLOBAL-01,Raw internal IDs / UUIDs,عدة صفحات جديدة تعرض IDs بدل اختيار بالاسم/الكود,Replace with reusable entity pickers backed by canonical read models
+GLOBAL-02,JSON/manual technical inputs,ظهر خصوصًا في تكوين برنامج الحج والعمرة,Replace with structured business forms
+GLOBAL-03,Browser prompts,ظهر في تدفقات CRM/Suppliers/Quotations,Replace with Dialog/Form components
+CRM-360,Customer/Supplier/Agent 360 depth,الجديد موجود لكنه أضعف من القديم في التاريخ والمستندات والحركة,Rebuild 360 composition without duplicating domain data
+DOC-01,Central branded document renderer,القديم يملك قالب شركة موحدًا وPDF/WhatsApp/amount-in-words,Create shared renderer using current configuration owners
+TREASURY-01,Cheques lifecycle UI,الـbackend أقوى من الواجهة الحالية,Expose issue/deposit/clear/bounce/void/redeposit
+TREASURY-02,Bank reconciliation UI,Auto/manual match موجودة وظيفيًا لكن parity الواجهة غير مكتملة,"Expose bank lines, auto-match, manual-match, status filters"
+TREASURY-03,Cash count / transfers,القديم شاشة تشغيلية مباشرة,"Expose canonical treasury operations, no parallel storage"
+HU-01,Program composition,القديم لديه wizard عملي غني,"Structured itinerary/components/pricing/team/policies, no JSON"
+HU-02,Booking/rooming/visa/ticket/transport selectors,القديم يختار كيانات عمل؛ الجديد كان يطلب IDs في مواضع,"Human-readable selectors, keep IDs internal"
+HU-03,Print/output parity,ملخص برنامج وكشوف تأشيرات ومخرجات قديمة,Map to central document/report renderer
+SYS-01,Market readiness,موجود في القديم ولا يوجد route مكافئ واضح في baseline,Rebuild as read-only readiness over canonical owners
+SYS-02,Quick guide,موجود في القديم ولا يوجد route مكافئ واضح في baseline,Rebuild onboarding/quick-start without new source of truth
+SYS-03,Company legal/print identity,القديم أوضح في شعار/هاتف/ضريبي/سجل/توقيعات,Expose structured company/document settings
+ACC-UX,Advanced accounting IDs,بعض التدفقات الجديدة أقرب لأداة تقنية,"Actions should start from selected rows/pickers, never pasted IDs"
+REPORT-01,Exact legacy report catalog parity,الجديد Reporting Center قوي لكن لا يثبت كل قالب قديم واحدًا بواحد,Map every legacy report ID to current data source/template
+ATTACH-01,Attachments inside business 360,Files موجودة لكن الربط داخل ملفات الأعمال يحتاج parity,Embed attachments/activity panels
