@@ -26,7 +26,7 @@ export function Button({
   const classes = ['ui-button', 'ui-button--' + variant, className].filter(Boolean).join(' ');
   return (
     <button className={classes} disabled={disabled || loading} aria-busy={loading} {...props}>
-      {loading ? <><span className="ui-button__spinner" aria-hidden="true" />جارٍ الحفظ…</> : children}
+      {loading ? 'جارٍ الحفظ…' : children}
     </button>
   );
 }
@@ -105,13 +105,13 @@ export function PageHeader({
 }) {
   return (
     <header className="ui-page-header">
-      <div className="ui-page-header__content">
-        <nav className="ui-page-header__breadcrumbs" aria-label="مسار الصفحة">
+      <div>
+        <div className="ui-inline ui-page-header__eyebrow" aria-label="مسار الصفحة">
           <a href="/">الرئيسية</a>
           {eyebrow && <><span aria-hidden="true">‹</span><span>{eyebrow}</span></>}
           <span aria-hidden="true">‹</span>
           <strong>{title}</strong>
-        </nav>
+        </div>
         <h1 id={id}>{title}</h1>
         {description && <p className="ui-page-header__description">{description}</p>}
       </div>
