@@ -24,6 +24,7 @@
     "apps/web/src/ui/screen-layouts.spec.tsx",
     "apps/web/src/routes.spec.ts",
     "apps/web/src/app-shell-contract.spec.ts",
-    "apps/web/src/app-entry-path.spec.tsx"
+    "apps/web/src/app-entry-path.spec.tsx",
+    "apps/web/src/accounting-workspace-layout.spec.tsx"
   ]
 }
