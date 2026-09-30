@@ -1,0 +1,17 @@
+{
+  "id": "20260930-no-parallel-ui-owners",
+  "summary": "Prevent redesigns from preserving obsolete UI owners behind hidden manage routes. Each functional route must keep one canonical page owner and structural redesigns must happen in-place.",
+  "type": "architecture",
+  "allowedModules": [],
+  "allowedPaths": [
+    ".changes/20260930-no-parallel-ui-owners.json",
+    "apps/web/src/no-parallel-ui-owners.spec.tsx"
+  ],
+  "protectedPaths": [],
+  "protectedReason": "",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": "",
+  "testEvidence": [
+    "apps/web/src/no-parallel-ui-owners.spec.tsx"
+  ]
+}
