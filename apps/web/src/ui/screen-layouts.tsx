@@ -118,14 +118,16 @@ export function ScreenLayoutBoundary({
 export function WorkspacePane({
   variant,
   className = '',
+  surface = true,
   children,
 }: {
   readonly variant?: 'primary' | 'secondary' | 'master' | 'detail' | 'nav' | 'content';
   readonly className?: string;
+  readonly surface?: boolean;
   readonly children: ReactNode;
 }) {
   const classes = [
-    'ui-card',
+    surface ? 'ui-card' : '',
     'ui-workspace-pane',
     variant ? `ui-workspace-pane--${variant}` : '',
     className,
@@ -208,7 +210,7 @@ export function SettingsWorkspace({
   return (
     <div className={['ui-settings-grid', 'ui-workspace-settings', className].filter(Boolean).join(' ')}>
       <WorkspacePane variant="nav">{navigation}</WorkspacePane>
-      <WorkspacePane variant="content">{content}</WorkspacePane>
+      <WorkspacePane variant="content" surface={false}>{content}</WorkspacePane>
     </div>
   );
 }
