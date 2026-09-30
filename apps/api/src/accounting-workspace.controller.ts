@@ -58,7 +58,7 @@ export class AccountingWorkspaceController{
  private requireFx(){if(!this.fx)throw new BadRequestException('currency/FX service unavailable');return this.fx;}
  private requireAssets(){if(!this.assets)throw new BadRequestException('assets/financing service unavailable');return this.assets;}
  private requireChequeRead(){if(!this.chequeRead)throw new BadRequestException('cheque read service unavailable');return this.chequeRead;}
- private async branchVoucher(companyId:string,branchId:string,id:string){const value=(await this.treasury.listVouchers(companyId)).find(item=>item.id===id&&item.branchId===branchId);if(!value)throw new BadRequestException('voucher not found in current branch');return value;}
+ private async branchVoucher(companyId:Parameters<TreasurySettlementApplicationService['listVouchers']>[0],branchId:string,id:string){const value=(await this.treasury.listVouchers(companyId)).find(item=>item.id===id&&item.branchId===branchId);if(!value)throw new BadRequestException('voucher not found in current branch');return value;}
 
  @Get('capabilities')
  async capabilities(@Headers('authorization')auth?:string,@Headers('x-company-id')company?:string,@Headers('x-branch-id')branch?:string){
