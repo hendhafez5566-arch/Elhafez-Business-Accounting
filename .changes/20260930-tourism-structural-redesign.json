@@ -1,0 +1,18 @@
+{
+  "id": "20260930-tourism-structural-redesign",
+  "summary": "Make each tourism route own its canonical structural surface instead of reusing one legacy tab shell, while preserving the existing tourism operations APIs, booking truth and program lifecycle.",
+  "type": "architecture",
+  "allowedModules": [],
+  "allowedPaths": [
+    ".changes/20260930-tourism-structural-redesign.json",
+    "apps/web/src/tourism-operations-page.tsx",
+    "apps/web/src/tourism-structural-layout.spec.ts"
+  ],
+  "protectedPaths": [],
+  "protectedReason": "",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": "",
+  "testEvidence": [
+    "apps/web/src/tourism-structural-layout.spec.ts"
+  ]
+}
