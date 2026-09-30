@@ -1,8 +1,11 @@
 import{type FormEvent,useEffect,useState}from'react';
-import{accountingApi,type AccountingCapabilities,type AccountingOverview,type AccountClassification,type FinancialAction}from'./accounting-client.js';
+import{accountingApi,type AccountingCapabilities,type AccountingOverview,type AccountClassification,type FinancialAction,type PeriodCloseResult}from'./accounting-client.js';
 import{ActionBar,Badge,Button,Card,DataGrid,EmptyState,ErrorState,FormField,Input,LoadingState,MetricCard,Select,Tabs,Toast}from'./ui.js';
 import{AssetsFinancingSection,CostBudgetSection,CurrencyFxSection,ExpenseCommissionSection,PartyAccountingSection}from'./advanced-accounting-sections.js';
 import{AllowancesSection,RecognitionAccrualSection}from'./advanced-accounting-corrective-sections.js';
+import{FiscalYearClosePanel,OpeningBalancesPanel,TreasuryOperationsPanel}from'./accounting-parity-sections.js';
+import{AssetPayrollParityPanel,FxRevaluationPanel}from'./advanced-accounting-parity-sections.js';
+import{PeriodClosePanel}from'./period-close-panel.js';
 
 const emptyOverview:AccountingOverview={
  fiscalYears:[],periods:[],accounts:[],journals:[],invoices:[],treasuries:[],vouchers:[],taxPolicies:[],approvalPolicies:[],approvalRequests:[],controlIssues:[],
@@ -32,13 +35,13 @@ export function AccountingWorkspacePage(){
   {tab==='journals'?<Journals data={data} operate={cap.operate} done={done}/>:null}
   {tab==='periods'?<Periods data={data} operate={cap.operate} done={done}/>:null}
   {tab==='billing'?<Billing data={data} operate={cap.operate} done={done}/>:null}
-  {tab==='treasury'?<Treasury data={data} operate={cap.operate} done={done}/>:null}
-  {tab==='currency-fx'?(cap.operate?<CurrencyFxSection/>:<EmptyState title="صلاحية قراءة فقط">هذه المساحة تحتوي عمليات مالية وتحتاج صلاحية تشغيل المحاسبة.</EmptyState>):null}
+  {tab==='treasury'?<><Treasury data={data} operate={cap.operate} done={done}/><TreasuryOperationsPanel treasuries={data.treasuries} vouchers={data.vouchers} accounts={data.accounts} operate={cap.operate} done={done}/></>:null}
+  {tab==='currency-fx'?(cap.operate?<><CurrencyFxSection/><FxRevaluationPanel operate={cap.operate}/></>:<EmptyState title="صلاحية قراءة فقط">هذه المساحة تحتوي عمليات مالية وتحتاج صلاحية تشغيل المحاسبة.</EmptyState>):null}
   {tab==='cost-budget'?(cap.operate?<CostBudgetSection/>:<EmptyState title="صلاحية قراءة فقط">هذه المساحة تحتوي عمليات مالية وتحتاج صلاحية تشغيل المحاسبة.</EmptyState>):null}
   {tab==='party-accounting'?(cap.operate?<PartyAccountingSection/>:<EmptyState title="صلاحية قراءة فقط">هذه المساحة تحتوي عمليات مالية وتحتاج صلاحية تشغيل المحاسبة.</EmptyState>):null}
   {tab==='expense-commission'?(cap.operate?<ExpenseCommissionSection/>:<EmptyState title="صلاحية قراءة فقط">هذه المساحة تحتوي عمليات مالية وتحتاج صلاحية تشغيل المحاسبة.</EmptyState>):null}
   {tab==='recognition-accrual'?(cap.operate?<RecognitionAccrualSection accounts={data.accounts} invoices={data.invoices}/>:<EmptyState title="صلاحية قراءة فقط">هذه المساحة تحتوي عمليات مالية وتحتاج صلاحية تشغيل المحاسبة.</EmptyState>):null}
-  {tab==='assets-financing'?(cap.operate?<AssetsFinancingSection/>:<EmptyState title="صلاحية قراءة فقط">هذه المساحة تحتوي عمليات مالية وتحتاج صلاحية تشغيل المحاسبة.</EmptyState>):null}
+  {tab==='assets-financing'?(cap.operate?<><AssetsFinancingSection/><AssetPayrollParityPanel accounts={data.accounts} treasuries={data.treasuries} operate={cap.operate} done={done}/></>:<EmptyState title="صلاحية قراءة فقط">هذه المساحة تحتوي عمليات مالية وتحتاج صلاحية تشغيل المحاسبة.</EmptyState>):null}
   {tab==='allowances'?(cap.operate?<AllowancesSection accounts={data.accounts} invoices={data.invoices}/>:<EmptyState title="صلاحية قراءة فقط">هذه المساحة تحتوي عمليات مالية وتحتاج صلاحية تشغيل المحاسبة.</EmptyState>):null}
   {tab==='tax'?<Tax data={data} operate={cap.operate} done={done}/>:null}
   {tab==='controls'?<Controls data={data} operate={cap.operate} done={done}/>:null}
@@ -66,12 +69,26 @@ function Journals({data,operate,done}:{data:AccountingOverview;operate:boolean;d
 }
 
 function Periods({data,operate,done}:{data:AccountingOverview;operate:boolean;done:(message:string)=>Promise<void>}){
- const[year,setYear]=useState({startDate:'',endDate:''}),[period,setPeriod]=useState({fiscalYearId:'',startDate:'',endDate:''});
+ const[year,setYear]=useState({startDate:'',endDate:''}),[period,setPeriod]=useState({fiscalYearId:'',startDate:'',endDate:''}),[outcome,setOutcome]=useState<PeriodCloseResult|null>(null),[error,setError]=useState('');
  async function addYear(e:FormEvent){e.preventDefault();await accountingApi.createFiscalYear(year);setYear({startDate:'',endDate:''});await done('تم إنشاء السنة المالية.');}
  async function addPeriod(e:FormEvent){e.preventDefault();await accountingApi.createPeriod(period);setPeriod({fiscalYearId:'',startDate:'',endDate:''});await done('تم إنشاء الفترة المحاسبية.');}
- async function toggle(id:string,status:'OPEN'|'CLOSED'){await accountingApi.setPeriodStatus(id,status);await done(status==='CLOSED'?'تم إغلاق الفترة.':'تم إعادة فتح الفترة.');}
- return <><div className="ui-grid-md">{operate?<Card title="سنة مالية"><form onSubmit={addYear}><FormField label="من"><Input required type="date" value={year.startDate} onChange={e=>setYear({...year,startDate:e.target.value})}/></FormField><FormField label="إلى"><Input required type="date" value={year.endDate} onChange={e=>setYear({...year,endDate:e.target.value})}/></FormField><Button type="submit">إنشاء</Button></form></Card>:null}{operate?<Card title="فترة محاسبية"><form onSubmit={addPeriod}><FormField label="السنة"><Select required value={period.fiscalYearId} onChange={e=>setPeriod({...period,fiscalYearId:e.target.value})}><option value="">اختر</option>{data.fiscalYears.map(x=><option key={x.id} value={x.id}>{x.startDate} — {x.endDate}</option>)}</Select></FormField><FormField label="من"><Input required type="date" value={period.startDate} onChange={e=>setPeriod({...period,startDate:e.target.value})}/></FormField><FormField label="إلى"><Input required type="date" value={period.endDate} onChange={e=>setPeriod({...period,endDate:e.target.value})}/></FormField><Button type="submit">إنشاء</Button></form></Card>:null}</div>
- <DataGrid columns={['السنة','من','إلى','الحالة','الإجراء']}>{data.periods.map(x=><tr key={x.id}><td>{x.fiscalYearId}</td><td>{x.startDate}</td><td>{x.endDate}</td><td><Badge tone={x.status==='OPEN'?'success':'neutral'}>{x.status==='OPEN'?'مفتوحة':'مغلقة'}</Badge></td><td>{operate?<Button variant="secondary" onClick={()=>void toggle(x.id,x.status==='OPEN'?'CLOSED':'OPEN')}>{x.status==='OPEN'?'إغلاق':'إعادة فتح'}</Button>:null}</td></tr>)}</DataGrid></>;
+ async function toggle(id:string,status:'OPEN'|'CLOSED'){
+  setError('');
+  try{
+   if(status==='CLOSED'){
+    const result=await accountingApi.closePeriod(id,crypto.randomUUID());setOutcome(result);
+    if(result.closed)await done(result.alreadyClosed?'الفترة مغلقة بالفعل.':'تم إغلاق الفترة بعد اجتياز فحوصات الرقابة.');
+    return;
+   }
+   await accountingApi.reopenPeriod(id);setOutcome(null);await done('تمت إعادة فتح الفترة.');
+  }catch(value){setError(value instanceof Error?value.message:'تعذر تحديث حالة الفترة.');}
+ }
+ return <><div className="ui-grid-md">{error?<Toast tone="error">{error}</Toast>:null}{operate?<Card title="سنة مالية"><form onSubmit={addYear}><FormField label="من"><Input required type="date" value={year.startDate} onChange={e=>setYear({...year,startDate:e.target.value})}/></FormField><FormField label="إلى"><Input required type="date" value={year.endDate} onChange={e=>setYear({...year,endDate:e.target.value})}/></FormField><Button type="submit">إنشاء</Button></form></Card>:null}{operate?<Card title="فترة محاسبية"><form onSubmit={addPeriod}><FormField label="السنة"><Select required value={period.fiscalYearId} onChange={e=>setPeriod({...period,fiscalYearId:e.target.value})}><option value="">اختر</option>{data.fiscalYears.map(x=><option key={x.id} value={x.id}>{x.startDate} — {x.endDate}</option>)}</Select></FormField><FormField label="من"><Input required type="date" value={period.startDate} onChange={e=>setPeriod({...period,startDate:e.target.value})}/></FormField><FormField label="إلى"><Input required type="date" value={period.endDate} onChange={e=>setPeriod({...period,endDate:e.target.value})}/></FormField><Button type="submit">إنشاء</Button></form></Card>:null}</div>
+ <DataGrid columns={['السنة','من','إلى','الحالة','الإجراء']}>{data.periods.map(x=><tr key={x.id}><td>{x.fiscalYearId}</td><td>{x.startDate}</td><td>{x.endDate}</td><td><Badge tone={x.status==='OPEN'?'success':'neutral'}>{x.status==='OPEN'?'مفتوحة':'مغلقة'}</Badge></td><td>{operate?<Button variant="secondary" onClick={()=>void toggle(x.id,x.status==='OPEN'?'CLOSED':'OPEN')}>{x.status==='OPEN'?'إغلاق مضبوط':'إعادة فتح'}</Button>:null}</td></tr>)}</DataGrid>
+ <PeriodClosePanel outcome={outcome}/>
+ <FiscalYearClosePanel fiscalYears={data.fiscalYears} accounts={data.accounts} operate={operate} done={done}/>
+ <OpeningBalancesPanel accounts={data.accounts} operate={operate} done={done}/>
+ </>;
 }
 
 function Billing({data,operate,done}:{data:AccountingOverview;operate:boolean;done:(message:string)=>Promise<void>}){
