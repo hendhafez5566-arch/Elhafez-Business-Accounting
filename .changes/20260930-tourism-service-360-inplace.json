@@ -1,0 +1,18 @@
+{
+  "id": "20260930-tourism-service-360-inplace",
+  "summary": "Rebuild Tourism Service 360 in place as a canonical profile workspace without the legacy tab shell or a parallel UI owner.",
+  "type": "architecture",
+  "allowedModules": [],
+  "allowedPaths": [
+    ".changes/20260930-tourism-service-360-inplace.json",
+    "apps/web/src/tourism-service-360-page.tsx",
+    "apps/web/src/tourism-service-360-structural.spec.ts"
+  ],
+  "protectedPaths": [],
+  "protectedReason": "",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": "",
+  "testEvidence": [
+    "apps/web/src/tourism-service-360-structural.spec.ts"
+  ]
+}
