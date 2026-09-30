@@ -1,0 +1,19 @@
+{
+  "id": "20260930-crm-360-inplace",
+  "summary": "Rebuild Customer 360 and Agent 360 in place as canonical profile workspaces without legacy tab shells or parallel UI owners.",
+  "type": "architecture",
+  "allowedModules": [],
+  "allowedPaths": [
+    ".changes/20260930-crm-360-inplace.json",
+    "apps/web/src/crm-360-parity-pages.tsx",
+    "apps/web/src/crm-agent-parity-pages.tsx",
+    "apps/web/src/crm-360-structural.spec.ts"
+  ],
+  "protectedPaths": [],
+  "protectedReason": "",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": "",
+  "testEvidence": [
+    "apps/web/src/crm-360-structural.spec.ts"
+  ]
+}
