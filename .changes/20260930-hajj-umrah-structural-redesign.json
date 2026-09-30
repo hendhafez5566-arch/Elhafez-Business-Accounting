@@ -1,0 +1,21 @@
+{
+  "id": "20260930-hajj-umrah-structural-redesign",
+  "summary": "Route Hajj and Umrah operational areas through reference-aligned Kanban, matrix, ticketing, fleet and trip-command workspaces while keeping the existing transaction pages as the single hidden write owners.",
+  "type": "architecture",
+  "allowedModules": [],
+  "allowedPaths": [
+    ".changes/20260930-hajj-umrah-structural-redesign.json",
+    "apps/web/src/hajj-umrah-structural-pages.tsx",
+    "apps/web/src/hajj-umrah-structural-routes.spec.tsx",
+    "apps/web/src/routes.tsx"
+  ],
+  "protectedPaths": [
+    "apps/web/src/routes.tsx"
+  ],
+  "protectedReason": "The owner-requested full-system structural redesign requires the canonical route registry to point Hajj and Umrah routes at their declared blueprints; business/API ownership is unchanged and write owners remain single routes.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": "",
+  "testEvidence": [
+    "apps/web/src/hajj-umrah-structural-routes.spec.tsx"
+  ]
+}
