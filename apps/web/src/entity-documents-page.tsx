@@ -1,5 +1,5 @@
 import { type FormEvent, useEffect, useState } from 'react';
-import { Button, Card, DataGrid, EmptyState, ErrorState, FormField, Input, LoadingState } from './ui.js';
+import { ActionBar, Button, Card, DataGrid, EmptyState, ErrorState, FormField, Input, LoadingState, MetricCard } from './ui.js';
 import { crmDelete, crmGet, crmPost } from './crm-core-client.js';
 
 type StoredFile={id:string;companyId:string;contentType:string;size:number;checksum:string|null;createdBy:string|null;createdAt:string};
@@ -19,15 +19,19 @@ export function EntityDocumentsPanel({entityId,basePath,emptyTitle,uploadTitle='
  async function download(row:EntityFileLink){try{const stored=await crmGet<FileContent>(basePath+'/'+encodeURIComponent(row.fileId));const blob=new Blob([base64ToBytes(stored.contentBase64)],{type:stored.metadata.contentType});const url=URL.createObjectURL(blob),anchor=document.createElement('a');anchor.href=url;anchor.download=row.label?.trim()||`document-${row.fileId}`;anchor.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch(value){setNotice(msg(value));}}
  async function remove(row:EntityFileLink){if(!window.confirm(`حذف المستند ${row.label??row.fileId}؟`))return;try{await crmDelete(basePath+'/'+encodeURIComponent(row.fileId));setNotice('تم حذف المستند وفك رابطه من السجل.');setVersion(value=>value+1);}catch(value){setNotice(msg(value));}}
  if(!entityId)return <EmptyState title="اختر سجلًا لعرض مستنداته"/>;
- return <>
-  <Card title={uploadTitle}><form onSubmit={upload}><FormField label="اسم / وصف المستند"><Input value={label} onChange={event=>setLabel(event.target.value)} placeholder="مثال: عقد، تأكيد، فاتورة مرجعية أو هوية"/></FormField><FormField label="الملف" required><Input required type="file" onChange={event=>setFile(event.target.files?.[0]??null)}/></FormField>{file?<p>{file.name} — {Math.ceil(file.size/1024)} KB</p>:null}<Button type="submit" disabled={!file}>رفع المستند</Button></form>{notice?<p role="status">{notice}</p>:null}</Card>
-  <Card title={listTitle}>{loading?<LoadingState label="جارٍ تحميل المستندات…"/>:error?<ErrorState message={error}/>:!rows.length?<EmptyState title={emptyTitle}/>:<DataGrid columns={['الوصف','النوع','الحجم','التاريخ','إجراءات']}>{rows.map(row=><tr key={row.id}><td>{row.label??'—'}</td><td>{row.file.contentType}</td><td>{Math.ceil(row.file.size/1024)} KB</td><td>{new Date(row.createdAt).toLocaleString('ar-EG')}</td><td><Button onClick={()=>void download(row)}>تحميل</Button><Button variant="danger" onClick={()=>void remove(row)}>حذف</Button></td></tr>)}</DataGrid>}</Card>
- </>;
+ const totalSize=rows.reduce((sum,row)=>sum+row.file.size,0);
+ return <section className="ui-page-stack" aria-label="مساحة المستندات">
+  <div className="ui-metric-grid"><MetricCard label="عدد المستندات" value={rows.length}/><MetricCard label="إجمالي الحجم" value={`${Math.ceil(totalSize/1024)} KB`}/></div>
+  <section className="ui-dashboard-grid" aria-label="رفع وقائمة المستندات">
+   <Card title={uploadTitle}><form onSubmit={upload} className="ui-filter-grid"><FormField label="اسم / وصف المستند"><Input value={label} onChange={event=>setLabel(event.target.value)} placeholder="مثال: عقد، تأكيد، فاتورة مرجعية أو هوية"/></FormField><FormField label="الملف" required><Input required type="file" onChange={event=>setFile(event.target.files?.[0]??null)}/></FormField>{file?<p>{file.name} — {Math.ceil(file.size/1024)} KB</p>:null}<ActionBar><Button type="submit" disabled={!file}>رفع المستند</Button></ActionBar></form>{notice?<p role="status">{notice}</p>:null}</Card>
+   <Card title={listTitle}>{loading?<LoadingState label="جارٍ تحميل المستندات…"/>:error?<ErrorState message={error}/>:!rows.length?<EmptyState title={emptyTitle}/>:<DataGrid columns={['الوصف','النوع','الحجم','التاريخ','إجراءات']}>{rows.map(row=><tr key={row.id}><td><strong>{row.label??'—'}</strong></td><td>{row.file.contentType}</td><td>{Math.ceil(row.file.size/1024)} KB</td><td>{new Date(row.createdAt).toLocaleString('ar-EG')}</td><td><ActionBar><Button variant="secondary" onClick={()=>void download(row)}>تحميل</Button><Button variant="danger" onClick={()=>void remove(row)}>حذف</Button></ActionBar></td></tr>)}</DataGrid>}</Card>
+  </section>
+ </section>;
 }
 
 export function EntityDocumentsPage({entityId,basePath,title,emptyTitle,description}:{entityId:string;basePath:string;title:string;emptyTitle:string;description:string}){
- return <section className="ui-page-stack" aria-label={title}>
-  <Card title={title}><p>{description}</p><Button onClick={()=>history.back()}>العودة</Button></Card>
+ return <section className="ui-dashboard" aria-label={title}>
+  <Card title={title}><p>{description}</p><ActionBar><Button variant="secondary" onClick={()=>history.back()}>العودة</Button></ActionBar></Card>
   <EntityDocumentsPanel entityId={entityId} basePath={basePath} emptyTitle={emptyTitle}/>
  </section>;
 }
