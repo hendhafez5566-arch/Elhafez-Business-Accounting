@@ -1,0 +1,15 @@
+{
+  "id": "functional-closure-missing-final",
+  "summary": "Close legacy functional gaps with a canonical 44-item document catalog and centralized, scoped Arabic document rendering.",
+  "type": "phase",
+  "allowedModules": ["financial-reporting"],
+  "allowedPaths": [
+    ".changes/functional-closure-missing-final.json",
+    "docs/LEGACY_PARITY_MATRIX.md"
+  ],
+  "protectedPaths": ["modules/financial-reporting/module.json"],
+  "protectedReason": "The canonical reporting owner public contract is extended with backward-compatible document rendering exports.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": "",
+  "testEvidence": ["modules/financial-reporting/src/document-renderer.spec.ts"]
+}
