@@ -12,7 +12,8 @@
     "supplier-management",
     "agent-management",
     "hajj-umrah-programs",
-    "tourism-programs"
+    "tourism-programs",
+    "tourism-finance-orchestration"
   ],
   "allowedPaths": [
     ".changes/functional-closure-missing-final.json",
@@ -37,10 +38,11 @@
     "package.json",
     "pnpm-lock.yaml"
   ],
-  "protectedReason": "The owner-approved closure adds the planned barcode module, additive persistence, backward-compatible owner APIs, and existing-route composition wiring.",
+  "protectedReason": "The owner-approved closure adds the planned barcode module, additive persistence, backward-compatible owner APIs, existing-route composition wiring, and branch-provenance integration test alignment.",
   "allowBreakingPublicApi": false,
   "publicApiBreakingReason": "",
   "testEvidence": [
-    "apps/web/src/functional-closure-ui.spec.ts"
+    "apps/web/src/functional-closure-ui.spec.ts",
+    "modules/tourism-finance-orchestration/src/integration.spec.ts"
   ]
 }
