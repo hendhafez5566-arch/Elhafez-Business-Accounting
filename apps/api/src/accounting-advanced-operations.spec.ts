@@ -38,7 +38,7 @@ test('asset disposal is retry-safe and passes required clearing account for trea
   const calls: Record<string, unknown>[] = [];
   const service = { disposeAsset: capture(calls) } as never;
   const body = {
-    commandKey: 'k', assetId: 'a1', postingDate: '2026-06-01', proceeds: '100.00',
+    commandKey: 'k', assetId: 'a1', postingDate: '2026-06-01', proceeds: '100',
     proceedsMode: 'TREASURY', treasuryId: 't1', proceedsClearingAccountId: 'clearing', number: 'D1'
   };
   await disposeAssetOp(service, stableId, 'c1' as never, body);
@@ -54,7 +54,7 @@ test('payroll accrual validates exact liabilities and generates deterministic id
   const service = { accruePayroll: capture(calls) } as never;
   const body = {
     commandKey: 'k', sourceId: 's', payrollPeriod: '2026-01', postingDate: '2026-01-31', currency: 'EGP',
-    expenseTotal: '500.00', expenseAccountId: 'e', liabilities: [{ accountId: 'payable', amount: '500', label: 'صافي الرواتب' }], number: 'P1'
+    expenseTotal: '500', expenseAccountId: 'e', liabilities: [{ accountId: 'payable', amount: '500', label: 'صافي الرواتب' }], number: 'P1'
   };
   await accruePayrollOp(service, stableId, 'c1' as never, body);
   assert.equal(calls[0]!.id, 'c1|PAYROLL_ACCRUAL|k');
