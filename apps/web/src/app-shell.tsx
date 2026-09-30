@@ -90,6 +90,7 @@ function AppShellFrame({
     <div
       className="app-shell"
       dir="rtl"
+      data-route-id={active.id}
       data-sidebar-mode={preferences.sidebarMode}
       data-sidebar-expanded={sidebarExpanded ? 'true' : 'false'}
     >
@@ -117,7 +118,7 @@ function AppShellFrame({
         />
       </Drawer>
 
-      <Topbar onOpenMobile={() => setState((current) => setMobileDrawer(current, true))} companyLabel={companyLabel} branchLabel={branchLabel} branches={branches} branchId={branchId} onBranchChange={onBranchChange} onLogout={onLogout} />
+      <Topbar routes={routes} onOpenMobile={() => setState((current) => setMobileDrawer(current, true))} companyLabel={companyLabel} branchLabel={branchLabel} branches={branches} branchId={branchId} onBranchChange={onBranchChange} onLogout={onLogout} />
 
       <main className="app-main">
         <div className="app-content" tabIndex={-1}>
