@@ -1,6 +1,6 @@
 import{type FormEvent,useEffect,useState}from'react';
 import{accountingApi,type AccountingCapabilities,type AccountingOverview,type AccountClassification,type FinancialAction,type PeriodCloseResult}from'./accounting-client.js';
-import{ActionBar,Badge,Button,Card,DataGrid,EmptyState,ErrorState,FormField,Input,LoadingState,MetricCard,Select,Tabs,Toast}from'./ui.js';
+import{ActionBar,Badge,Button,Card,DataGrid,EmptyState,ErrorState,FormField,Input,LoadingState,MetricCard,Select,SettingsWorkspace,Toast}from'./ui.js';
 import{AssetsFinancingSection,CostBudgetSection,CurrencyFxSection,ExpenseCommissionSection,PartyAccountingSection}from'./advanced-accounting-sections.js';
 import{AllowancesSection,RecognitionAccrualSection}from'./advanced-accounting-corrective-sections.js';
 import{FiscalYearClosePanel,OpeningBalancesPanel,TreasuryOperationsPanel}from'./accounting-parity-sections.js';
@@ -10,37 +10,55 @@ import{PeriodClosePanel}from'./period-close-panel.js';
 const emptyOverview:AccountingOverview={fiscalYears:[],periods:[],accounts:[],journals:[],invoices:[],treasuries:[],vouchers:[],taxPolicies:[],approvalPolicies:[],approvalRequests:[],controlIssues:[],reports:{trialBalance:{rows:[]},incomeStatement:{rows:[]},balanceSheet:{rows:[]},treasury:{totals:[]},tax:{totals:[],facts:[]}}};
 const classLabel:Record<AccountClassification,string>={ASSET:'أصول',LIABILITY:'التزامات',EQUITY:'حقوق ملكية',REVENUE:'إيرادات',EXPENSE:'مصروفات'};
 const actionLabel:Record<FinancialAction,string>={PAYMENT:'دفعة',PAID_EXPENSE:'مصروف مدفوع',PARTY_NETTING:'مقاصة طرف',COMMISSION_APPROVAL:'اعتماد عمولة',BOOKING_DISCOUNT:'خصم حجز',SERVICE_DISCOUNT:'خصم خدمة'};
-const tabs=[{id:'overview',label:'نظرة عامة'},{id:'accounts',label:'دليل الحسابات'},{id:'journals',label:'القيود'},{id:'periods',label:'الفترات'},{id:'billing',label:'الذمم والفواتير'},{id:'treasury',label:'الخزائن والبنوك'},{id:'currency-fx',label:'العملات والصرف'},{id:'cost-budget',label:'مراكز التكلفة والموازنات'},{id:'party-accounting',label:'حسابات الأطراف والمقاصة'},{id:'expense-commission',label:'المصروفات والعمولات'},{id:'recognition-accrual',label:'الاستحقاق والاعتراف'},{id:'assets-financing',label:'الأصول والتمويل'},{id:'allowances',label:'مخصصات الديون'},{id:'tax',label:'الضرائب'},{id:'controls',label:'الرقابة والاعتمادات'},{id:'reports',label:'التقارير'}];
+
+const accountingSections=[
+ {id:'overview',label:'لوحة القيادة المالية',group:'القيادة المالية',reference:'Financial Reporting Center',description:'مؤشرات مالية وتشغيلية مختصرة مع البنود التي تحتاج متابعة.'},
+ {id:'accounts',label:'دليل الحسابات',group:'الأستاذ العام',reference:'Chart of Accounts',description:'إدارة شجرة الحسابات والتصنيفات من مالك General Ledger المعتمد.'},
+ {id:'journals',label:'القيود اليومية',group:'الأستاذ العام',reference:'Journal Entry Form',description:'إنشاء القيود اليدوية المتوازنة ومراجعة القيود المرحّلة.'},
+ {id:'periods',label:'الفترات والإقفال',group:'الأستاذ العام',reference:'Master Module Template',description:'إدارة السنوات والفترات والإقفال والافتتاح وفق ضوابط المحاسبة.'},
+ {id:'billing',label:'الفواتير والذمم',group:'الذمم والنقد',reference:'Billing & Invoicing',description:'فواتير العملاء والموردين والإلغاء المحاسبي مع الاحتفاظ بالتاريخ.'},
+ {id:'treasury',label:'الخزائن والبنوك',group:'الذمم والنقد',reference:'Treasury Settlement',description:'الخزائن والحسابات البنكية والتحصيل والسداد والتسويات المالية.'},
+ {id:'party-accounting',label:'حسابات الأطراف والمقاصة',group:'الذمم والنقد',reference:'Account Statement',description:'حسابات العملاء والموردين والمقاصة باستخدام مصادر الحقيقة المالية.'},
+ {id:'currency-fx',label:'العملات وأسعار الصرف',group:'التخطيط والمعالجة',reference:'Currency & FX Management',description:'إدارة العملات وأسعار الصرف وإعادة التقييم من المالك المالي.'},
+ {id:'cost-budget',label:'مراكز التكلفة والموازنات',group:'التخطيط والمعالجة',reference:'Cost Centers & Budgets',description:'مراكز التكلفة والموازنات والمتابعة التخطيطية.'},
+ {id:'expense-commission',label:'المصروفات والعمولات',group:'التخطيط والمعالجة',reference:'Master Module Template',description:'معالجة المصروفات والعمولات عبر المالك المحاسبي المعتمد.'},
+ {id:'recognition-accrual',label:'الاستحقاق والاعتراف',group:'التخطيط والمعالجة',reference:'Master Module Template',description:'الاستحقاقات والاعترافات مع الحفاظ على التاريخ الاقتصادي.'},
+ {id:'assets-financing',label:'الأصول والتمويل',group:'التخطيط والمعالجة',reference:'Assets & Depreciation',description:'إدارة الأصول والتمويل والإهلاكات والمعالجات المرتبطة بها.'},
+ {id:'allowances',label:'مخصصات الديون',group:'التخطيط والمعالجة',reference:'Master Module Template',description:'إدارة المخصصات المرتبطة بالذمم دون تكرار أرصدة الفواتير.'},
+ {id:'tax',label:'الضرائب والإقرارات',group:'التخطيط والمعالجة',reference:'VAT & Tax Returns',description:'سياسات الضرائب والحسابات المرتبطة بها وتقارير الضريبة.'},
+ {id:'controls',label:'الرقابة والاعتمادات',group:'الرقابة والتقارير',reference:'Bank Reconciliation',description:'سياسات الاعتماد ومشكلات الرقابة والتسوية دون تغيير مصدر الحقيقة.'},
+ {id:'reports',label:'التقارير المالية',group:'الرقابة والتقارير',reference:'Financial Reporting Center',description:'ميزان المراجعة وقائمة الدخل والمركز المالي وتقارير الخزينة والضرائب.'},
+]as const;
+type AccountingSectionId=typeof accountingSections[number]['id'];
+const accountingGroups=['القيادة المالية','الأستاذ العام','الذمم والنقد','التخطيط والمعالجة','الرقابة والتقارير']as const;
 
 export function AccountingWorkspacePage(){
- const[data,setData]=useState<AccountingOverview>(emptyOverview),[cap,setCap]=useState<AccountingCapabilities>({read:false,operate:false}),[tab,setTab]=useState('overview'),[loading,setLoading]=useState(true),[error,setError]=useState(''),[notice,setNotice]=useState('');
+ const[data,setData]=useState<AccountingOverview>(emptyOverview),[cap,setCap]=useState<AccountingCapabilities>({read:false,operate:false}),[section,setSection]=useState<AccountingSectionId>('overview'),[loading,setLoading]=useState(true),[error,setError]=useState(''),[notice,setNotice]=useState('');
  async function reload(){setLoading(true);setError('');try{const[c,o]=await Promise.all([accountingApi.capabilities(),accountingApi.overview()]);setCap(c);setData(o);}catch(value){setError(value instanceof Error?value.message:'تعذر تحميل المحاسبة.');}finally{setLoading(false);}}
  async function done(message:string){setNotice(message);await reload();}
  useEffect(()=>{void reload();},[]);
  if(loading)return <LoadingState/>;if(error)return <ErrorState message={error}/>;if(!cap.read)return <EmptyState title="لا توجد صلاحية للمحاسبة"/>;
+ return <AccountingWorkspaceView data={data} cap={cap} section={section} onSectionChange={setSection} notice={notice} reload={reload} done={done}/>;
+}
+
+export function AccountingWorkspaceView({data,cap,section,onSectionChange,notice,reload,done}:{data:AccountingOverview;cap:AccountingCapabilities;section:AccountingSectionId;onSectionChange:(section:AccountingSectionId)=>void;notice:string;reload:()=>Promise<void>;done:(message:string)=>Promise<void>}){
  const openInvoices=data.invoices.filter(x=>x.status==='POSTED'&&x.outstanding!=='0').length,pendingApprovals=data.approvalRequests.filter(x=>x.status==='PENDING').length,openIssues=data.controlIssues.filter(x=>!x.resolvedAt).length,openPeriods=data.periods.filter(x=>x.status==='OPEN').length,activeTreasuries=data.treasuries.filter(x=>x.active).length;
+ const active=accountingSections.find(item=>item.id===section)??accountingSections[0];
  return <section dir="rtl" className="ui-dashboard" aria-label="المحاسبة والمالية">
   <div className="ui-metric-grid"><MetricCard label="فواتير مفتوحة" value={openInvoices} tone={openInvoices?'warning':'neutral'}/><MetricCard label="طلبات اعتماد معلقة" value={pendingApprovals} tone={pendingApprovals?'warning':'neutral'}/><MetricCard label="مشكلات رقابة مفتوحة" value={openIssues} tone={openIssues?'warning':'success'}/><MetricCard label="فترات مفتوحة" value={openPeriods}/><MetricCard label="خزائن وبنوك نشطة" value={activeTreasuries}/><MetricCard label="القيود" value={data.journals.length}/></div>
   {notice?<Toast tone="success">{notice}</Toast>:null}
-  <Card title="المحاسبة والمالية"><p>Financial Command Center موحد يعتمد على مصادر الحقيقة المحاسبية المعتمدة؛ لا يحتفظ بأي رصيد أو قيد مكرر خارج مالكه الأصلي.</p><Tabs tabs={tabs} active={tab} onChange={setTab}/><ActionBar><Button variant="secondary" onClick={()=>void reload()}>تحديث البيانات</Button>{pendingApprovals?<Button variant="secondary" onClick={()=>setTab('controls')}>فتح الاعتمادات</Button>:null}{openIssues?<Button variant="secondary" onClick={()=>setTab('controls')}>فتح مشكلات الرقابة</Button>:null}</ActionBar></Card>
-  {tab==='overview'?<Overview data={data}/>:null}
-  {tab==='accounts'?<Accounts data={data} operate={cap.operate} done={done}/>:null}
-  {tab==='journals'?<Journals data={data} operate={cap.operate} done={done}/>:null}
-  {tab==='periods'?<Periods data={data} operate={cap.operate} done={done}/>:null}
-  {tab==='billing'?<Billing data={data} operate={cap.operate} done={done}/>:null}
-  {tab==='treasury'?<><Treasury data={data} operate={cap.operate} done={done}/><TreasuryOperationsPanel treasuries={data.treasuries} vouchers={data.vouchers} accounts={data.accounts} operate={cap.operate} done={done}/></>:null}
-  {tab==='currency-fx'?(cap.operate?<><CurrencyFxSection/><FxRevaluationPanel operate={cap.operate}/></>:<EmptyState title="صلاحية قراءة فقط">هذه المساحة تحتوي عمليات مالية وتحتاج صلاحية تشغيل المحاسبة.</EmptyState>):null}
-  {tab==='cost-budget'?(cap.operate?<CostBudgetSection/>:<EmptyState title="صلاحية قراءة فقط">هذه المساحة تحتوي عمليات مالية وتحتاج صلاحية تشغيل المحاسبة.</EmptyState>):null}
-  {tab==='party-accounting'?(cap.operate?<PartyAccountingSection/>:<EmptyState title="صلاحية قراءة فقط">هذه المساحة تحتوي عمليات مالية وتحتاج صلاحية تشغيل المحاسبة.</EmptyState>):null}
-  {tab==='expense-commission'?(cap.operate?<ExpenseCommissionSection/>:<EmptyState title="صلاحية قراءة فقط">هذه المساحة تحتوي عمليات مالية وتحتاج صلاحية تشغيل المحاسبة.</EmptyState>):null}
-  {tab==='recognition-accrual'?(cap.operate?<RecognitionAccrualSection accounts={data.accounts} invoices={data.invoices}/>:<EmptyState title="صلاحية قراءة فقط">هذه المساحة تحتوي عمليات مالية وتحتاج صلاحية تشغيل المحاسبة.</EmptyState>):null}
-  {tab==='assets-financing'?(cap.operate?<><AssetsFinancingSection/><AssetPayrollParityPanel accounts={data.accounts} treasuries={data.treasuries} operate={cap.operate} done={done}/></>:<EmptyState title="صلاحية قراءة فقط">هذه المساحة تحتوي عمليات مالية وتحتاج صلاحية تشغيل المحاسبة.</EmptyState>):null}
-  {tab==='allowances'?(cap.operate?<AllowancesSection accounts={data.accounts} invoices={data.invoices}/>:<EmptyState title="صلاحية قراءة فقط">هذه المساحة تحتوي عمليات مالية وتحتاج صلاحية تشغيل المحاسبة.</EmptyState>):null}
-  {tab==='tax'?<Tax data={data} operate={cap.operate} done={done}/>:null}
-  {tab==='controls'?<Controls data={data} operate={cap.operate} done={done}/>:null}
-  {tab==='reports'?<Reports data={data}/>:null}
+  <SettingsWorkspace
+   className="accounting-financial-workspace"
+   navigation={<AccountingNavigation active={section} onChange={onSectionChange} pendingApprovals={pendingApprovals} openIssues={openIssues}/>}
+   content={<div className="ui-flow"><header className="ui-flow"><div className="ui-inline"><Badge tone="info">{active.group}</Badge><Badge>{active.reference}</Badge></div><h2>{active.label}</h2><p className="ui-page-intro">{active.description}</p><ActionBar><Button variant="secondary" onClick={()=>void reload()}>تحديث البيانات</Button>{pendingApprovals&&section!=='controls'?<Button variant="secondary" onClick={()=>onSectionChange('controls')}>الاعتمادات ({pendingApprovals})</Button>:null}{openIssues&&section!=='controls'?<Button variant="secondary" onClick={()=>onSectionChange('controls')}>مشكلات الرقابة ({openIssues})</Button>:null}</ActionBar></header><AccountingSectionContent section={section} data={data} operate={cap.operate} done={done}/></div>}
+  />
  </section>;
 }
+
+function AccountingNavigation({active,onChange,pendingApprovals,openIssues}:{active:AccountingSectionId;onChange:(section:AccountingSectionId)=>void;pendingApprovals:number;openIssues:number}){return <nav aria-label="وحدات المحاسبة" className="ui-flow"><div><strong>وحدات المحاسبة</strong><p className="ui-page-intro">اختر مساحة العمل المطلوبة بدل شريط التبويبات الطويل.</p></div>{accountingGroups.map(group=><section key={group} className="ui-flow" aria-label={group}><small><strong>{group}</strong></small>{accountingSections.filter(item=>item.group===group).map(item=><Button key={item.id} type="button" variant={active===item.id?'primary':'ghost'} onClick={()=>onChange(item.id)} aria-pressed={active===item.id}>{item.label}{item.id==='controls'&&(pendingApprovals||openIssues)?` (${pendingApprovals+openIssues})`:''}</Button>)}</section>)}</nav>}
+
+function AccountingSectionContent({section,data,operate,done}:{section:AccountingSectionId;data:AccountingOverview;operate:boolean;done:(message:string)=>Promise<void>}){switch(section){case'overview':return <Overview data={data}/>;case'accounts':return <Accounts data={data} operate={operate} done={done}/>;case'journals':return <Journals data={data} operate={operate} done={done}/>;case'periods':return <Periods data={data} operate={operate} done={done}/>;case'billing':return <Billing data={data} operate={operate} done={done}/>;case'treasury':return <><Treasury data={data} operate={operate} done={done}/><TreasuryOperationsPanel treasuries={data.treasuries} vouchers={data.vouchers} accounts={data.accounts} operate={operate} done={done}/></>;case'currency-fx':return operate?<><CurrencyFxSection/><FxRevaluationPanel operate={operate}/></>:<ReadOnlyOperationState/>;case'cost-budget':return operate?<CostBudgetSection/>:<ReadOnlyOperationState/>;case'party-accounting':return operate?<PartyAccountingSection/>:<ReadOnlyOperationState/>;case'expense-commission':return operate?<ExpenseCommissionSection/>:<ReadOnlyOperationState/>;case'recognition-accrual':return operate?<RecognitionAccrualSection accounts={data.accounts} invoices={data.invoices}/>:<ReadOnlyOperationState/>;case'assets-financing':return operate?<><AssetsFinancingSection/><AssetPayrollParityPanel accounts={data.accounts} treasuries={data.treasuries} operate={operate} done={done}/></>:<ReadOnlyOperationState/>;case'allowances':return operate?<AllowancesSection accounts={data.accounts} invoices={data.invoices}/>:<ReadOnlyOperationState/>;case'tax':return <Tax data={data} operate={operate} done={done}/>;case'controls':return <Controls data={data} operate={operate} done={done}/>;case'reports':return <Reports data={data}/>;}}
+function ReadOnlyOperationState(){return <EmptyState title="صلاحية قراءة فقط">هذه المساحة تحتوي عمليات مالية وتحتاج صلاحية تشغيل المحاسبة.</EmptyState>}
 
 function Overview({data}:{data:AccountingOverview}){const pending=data.approvalRequests.filter(x=>x.status==='PENDING'),issues=data.controlIssues.filter(x=>!x.resolvedAt);return <><section className="ui-dashboard-grid"><Card title="الحالة المحاسبية"><div className="ui-metric-grid"><MetricCard label="الحسابات" value={data.accounts.length}/><MetricCard label="سنوات مالية" value={data.fiscalYears.length}/><MetricCard label="الفترات" value={data.periods.length}/><MetricCard label="سياسات ضرائب" value={data.taxPolicies.length}/></div></Card><Card title="يحتاج انتباه"><p>طلبات الاعتماد المعلقة: <strong>{pending.length}</strong></p><p>مشكلات الرقابة المفتوحة: <strong>{issues.length}</strong></p><p>الفواتير المفتوحة: <strong>{data.invoices.filter(x=>x.status==='POSTED'&&x.outstanding!=='0').length}</strong></p></Card></section><section className="ui-dashboard-grid"><Card title="الخزائن حسب العملة">{!data.reports.treasury.totals.length?<EmptyState title="لا توجد أرصدة خزائن معروضة"/>:<DataGrid columns={['العملة','الإجمالي']}>{data.reports.treasury.totals.map(x=><tr key={x.currency}><td>{x.currency}</td><td>{x.amount}</td></tr>)}</DataGrid>}</Card><Card title="ملخص الضرائب">{!data.reports.tax.totals.length?<EmptyState title="لا توجد حركة ضريبية"/>:<DataGrid columns={['العملة','الإجمالي']}>{data.reports.tax.totals.map(x=><tr key={x.currency}><td>{x.currency}</td><td>{x.amount}</td></tr>)}</DataGrid>}</Card></section></>}
 
