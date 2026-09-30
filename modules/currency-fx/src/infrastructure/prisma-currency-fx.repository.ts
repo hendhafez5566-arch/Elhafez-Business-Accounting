@@ -41,6 +41,13 @@ export class PrismaCurrencyFxRepository implements CurrencyFxRepository {
     })) as CurrencyConfiguration | undefined;
   }
 
+  async listCurrencies(companyId: CompanyId): Promise<readonly CurrencyConfiguration[]> {
+    return (await this.db.fxCurrency.findMany({
+      where: { companyId },
+      orderBy: [{ isBase: 'desc' }, { code: 'asc' }],
+    })) as CurrencyConfiguration[];
+  }
+
   async findBaseCurrency(companyId: CompanyId): Promise<CurrencyConfiguration | undefined> {
     return (await this.db.fxCurrency.findFirst({
       where: { companyId, isBase: true },
