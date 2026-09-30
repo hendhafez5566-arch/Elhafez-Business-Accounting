@@ -4,6 +4,8 @@ const base='/accounting/advanced';
 const enc=encodeURIComponent;
 
 export type AdvancedResult=Record<string,unknown>;
+export interface CurrencyConfiguration{companyId:string;code:string;precision:number;isBase:boolean;status:'ACTIVE'|'INACTIVE'}
+export interface FxRateSnapshot{rateId:string;companyId:string;fromCurrency:string;toCurrency:string;effectiveAt:string;rate:string;source:string}
 export interface RevaluationInput{positionReference:string;classification:'ASSET'|'LIABILITY'|'REVENUE'|'EXPENSE'|'EQUITY';monetary:boolean;foreignAmount:{amount:string;currency:string};priorBaseAmount:string;baseCurrency:string;at:string}
 export interface AssetDisposalInput{commandKey:string;assetId:string;postingDate:string;proceeds:string;proceedsMode:'TREASURY'|'NON_CASH';treasuryId?:string;proceedsClearingAccountId?:string;number:string}
 export interface PayrollLiabilityInput{id?:string;accountId:string;amount:string;label:string}
@@ -11,10 +13,12 @@ export interface PayrollAccrualInput{commandKey:string;sourceId:string;payrollPe
 export interface PayrollPaymentInput{runId:string;treasuryId:string;postingDate:string;number:string}
 
 export const advancedAccountingApi={
- baseCurrency:()=>crmGet<AdvancedResult>(base+'/base-currency'),
- configureCurrency:(input:{code:string;precision:number;isBase:boolean;status:'ACTIVE'|'INACTIVE'})=>crmPost<AdvancedResult>(base+'/currencies',input),
- publishRate:(input:{fromCurrency:string;toCurrency:string;effectiveAt:string;rate:string;source:string})=>crmPost<AdvancedResult>(base+'/fx-rates',input),
- resolveRate:(from:string,to:string,at:string)=>crmGet<AdvancedResult>(base+'/fx-rates/resolve?from='+enc(from)+'&to='+enc(to)+'&at='+enc(at)),
+ baseCurrency:()=>crmGet<CurrencyConfiguration>(base+'/base-currency'),
+ currencies:()=>crmGet<CurrencyConfiguration[]>(base+'/currencies'),
+ configureCurrency:(input:{code:string;precision:number;isBase:boolean;status:'ACTIVE'|'INACTIVE'})=>crmPost<CurrencyConfiguration>(base+'/currencies',input),
+ publishRate:(input:{fromCurrency:string;toCurrency:string;effectiveAt:string;rate:string;source:string})=>crmPost<FxRateSnapshot>(base+'/fx-rates',input),
+ refreshLiveRate:(input:{fromCurrency:string;toCurrency:string})=>crmPost<FxRateSnapshot>(base+'/fx-rates/live',input),
+ resolveRate:(from:string,to:string,at:string)=>crmGet<FxRateSnapshot>(base+'/fx-rates/resolve?from='+enc(from)+'&to='+enc(to)+'&at='+enc(at)),
  prepareRevaluation:(input:RevaluationInput)=>crmPost<AdvancedResult>(base+'/fx/revaluation/prepare',input),
  createCostCenter:(input:{code:string;name:string;parentId?:string})=>crmPost<AdvancedResult>(base+'/cost-centers',input),
  getCostCenter:(id:string)=>crmGet<AdvancedResult>(base+'/cost-centers/'+enc(id)),
