@@ -1,0 +1,42 @@
+{
+  "id": "accounting-legacy-parity-hardening",
+  "summary": "Complete Accounting legacy-parity operations through existing canonical owners: controlled period and fiscal close/reopen, opening balances, treasury and bank workflows, cheque operations, FX revaluation preparation, asset disposal, payroll operations, and Arabic workspace exposure without creating parallel financial truth.",
+  "type": "feature",
+  "allowedModules": [
+    "period-control",
+    "general-ledger",
+    "billing-subledgers",
+    "financial-controls",
+    "treasury-settlement",
+    "currency-fx",
+    "assets-financing"
+  ],
+  "allowedPaths": [
+    ".changes/accounting-legacy-parity-hardening.json",
+    "apps/api/src/accounting-input.ts",
+    "apps/api/src/accounting-period-close.ts",
+    "apps/api/src/accounting-period-close.spec.ts",
+    "apps/api/src/accounting-fiscal-close.ts",
+    "apps/api/src/accounting-fiscal-close.spec.ts",
+    "apps/api/src/accounting-advanced-operations.ts",
+    "apps/api/src/accounting-advanced-operations.spec.ts",
+    "apps/api/src/accounting-workspace.controller.ts",
+    "apps/api/src/accounting-workspace-parity.controller.spec.ts",
+    "apps/web/src/accounting-client.ts",
+    "apps/web/src/advanced-accounting-client.ts",
+    "apps/web/src/period-close-panel.tsx",
+    "apps/web/src/accounting-parity-sections.tsx",
+    "apps/web/src/advanced-accounting-parity-sections.tsx",
+    "apps/web/src/accounting-workspace-page.tsx"
+  ],
+  "protectedPaths": [],
+  "protectedReason": "",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": "",
+  "testEvidence": [
+    "apps/api/src/accounting-period-close.spec.ts",
+    "apps/api/src/accounting-fiscal-close.spec.ts",
+    "apps/api/src/accounting-advanced-operations.spec.ts",
+    "apps/api/src/accounting-workspace-parity.controller.spec.ts"
+  ]
+}
