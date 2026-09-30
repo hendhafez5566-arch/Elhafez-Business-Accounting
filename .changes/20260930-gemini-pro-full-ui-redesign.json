@@ -17,6 +17,7 @@
   "testEvidence": [
     "apps/web/src/styles.spec.ts",
     "apps/web/src/ui/preferences.spec.ts",
-    "apps/web/src/app-shell.spec.tsx"
+    "apps/web/src/app-shell-contract.spec.ts",
+    "apps/web/src/app-entry-path.spec.tsx"
   ]
 }
