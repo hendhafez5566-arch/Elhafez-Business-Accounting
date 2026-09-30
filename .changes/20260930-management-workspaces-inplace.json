@@ -1,0 +1,19 @@
+{
+  "id": "20260930-management-workspaces-inplace",
+  "summary": "Rebuild the canonical Approval Center and Notification Center in place using shared workspace composition without tab shells, nested page stacks, or parallel UI owners.",
+  "type": "architecture",
+  "allowedModules": [],
+  "allowedPaths": [
+    ".changes/20260930-management-workspaces-inplace.json",
+    "apps/web/src/approval-center-page.tsx",
+    "apps/web/src/notification-center-page.tsx",
+    "apps/web/src/management-workspaces-structural.spec.ts"
+  ],
+  "protectedPaths": [],
+  "protectedReason": "",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": "",
+  "testEvidence": [
+    "apps/web/src/management-workspaces-structural.spec.ts"
+  ]
+}
