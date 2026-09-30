@@ -116,19 +116,20 @@ export class TreasurySettlementApplicationService {
     const journal=await this.gl.post({id:`treasury-accounting:${input.id}`,companyId:input.companyId,number:input.number,postingDate:input.postingDate,sourceType:'TREASURY_ACCOUNTING_MOVEMENT',sourceId:`${input.sourceType}:${input.sourceId}`,lines:[...offset,treasuryLine]});
     voucher={...voucher,status:'POSTED',journalId:journal.id};await this.repo.saveVoucher(voucher);return voucher;
   }
-  async listTreasuries(companyId:CompanyId):Promise<Treasury[]>{
-    return this.repo.treasuries(companyId);
+  async listTreasuries(companyId:CompanyId,branchId?:string):Promise<Treasury[]>{
+    const values=await this.repo.treasuries(companyId);return branchId?values.filter(value=>value.branchId===branchId):values;
   }
   async listVouchers(companyId:CompanyId,treasuryId?:string):Promise<Voucher[]>{
     return this.repo.vouchers(companyId,treasuryId);
   }
-  async listBankLines(companyId:CompanyId,treasuryId:string):Promise<BankLine[]>{
-    return this.repo.bankLines(companyId,treasuryId);
+  async listBankLines(companyId:CompanyId,treasuryId:string,branchId?:string):Promise<BankLine[]>{
+    const values=await this.repo.bankLines(companyId,treasuryId);return branchId?values.filter(value=>value.branchId===branchId):values;
   }
 
   async createTreasury(input: {
     id: string;
     companyId: CompanyId;
+    branchId?: string;
     code: string;
     name: string;
     type: TreasuryType;
@@ -139,7 +140,7 @@ export class TreasurySettlementApplicationService {
       throw new ContractValidationError("treasury", "code and name required");
     if (
       (await this.repo.treasuries(input.companyId)).some(
-        (x) => x.code === input.code,
+        (x) => x.branchId === input.branchId && x.code === input.code,
       )
     )
       throw new ContractValidationError("code", "already used");
@@ -215,6 +216,7 @@ export class TreasurySettlementApplicationService {
   async postVoucher(input: PostVoucherInput): Promise<Voucher> {
     const amount = pos(input.amount),
       treasury = await this.required(input.companyId, input.treasuryId);
+    if(input.branchId&&treasury.branchId!==input.branchId)throw new ContractValidationError('branchId','treasury must belong to the current branch');
     if (!treasury.active)
       throw new ContractValidationError("treasury", "inactive");
     const requestHash = hash({ ...input, amount });
@@ -502,6 +504,7 @@ export class TreasurySettlementApplicationService {
   async transfer(input: {
     id: string;
     companyId: CompanyId;
+    branchId?: string;
     sourceTreasuryId: string;
     destinationTreasuryId: string;
     amount: DecimalAmount;
@@ -515,6 +518,7 @@ export class TreasurySettlementApplicationService {
     const amount = pos(input.amount),
       source = await this.required(input.companyId, input.sourceTreasuryId),
       dest = await this.required(input.companyId, input.destinationTreasuryId);
+    if(input.branchId&&(source.branchId!==input.branchId||dest.branchId!==input.branchId))throw new ContractValidationError('branchId','both treasuries must belong to the current branch');
     if (!source.active || !dest.active)
       throw new ContractValidationError("treasury", "transfer requires active treasuries");
     if (source.currency !== dest.currency)
@@ -542,6 +546,7 @@ export class TreasurySettlementApplicationService {
     const journal = await this.gl.post({
       id: "treasury-transfer:" + input.id,
       companyId: input.companyId,
+      ...(input.branchId?{branchId:input.branchId}:{}),
       number: input.number,
       postingDate: input.postingDate,
       sourceType: "TREASURY_TRANSFER",
@@ -633,6 +638,7 @@ export class TreasurySettlementApplicationService {
   async recordCashCount(input: {
     id: string;
     companyId: CompanyId;
+    branchId?: string;
     treasuryId: string;
     countedAmount: DecimalAmount;
     countDate: string;
@@ -640,6 +646,7 @@ export class TreasurySettlementApplicationService {
     number?: string;
   }) {
     const t = await this.required(input.companyId, input.treasuryId);
+    if(input.branchId&&t.branchId!==input.branchId)throw new ContractValidationError('branchId','cash treasury must belong to the current branch');
     if (t.type !== "CASH")
       throw new ContractValidationError(
         "treasury",
@@ -682,6 +689,7 @@ export class TreasurySettlementApplicationService {
       const j = await this.gl.post({
         id: "cash-count:" + input.id,
         companyId: input.companyId,
+        ...(input.branchId?{branchId:input.branchId}:{}),
         number: input.number,
         postingDate: input.countDate,
         sourceType: "TREASURY_CASH_COUNT",
@@ -715,6 +723,7 @@ export class TreasurySettlementApplicationService {
       return existing;
     }
     const t = await this.required(input.companyId, input.treasuryId);
+    if(input.branchId&&t.branchId!==input.branchId)throw new ContractValidationError('branchId','bank treasury must belong to the current branch');
     if (t.type !== "BANK" || t.currency !== currencyCode(input.currency))
       throw new ContractValidationError(
         "treasury",

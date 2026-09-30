@@ -770,6 +770,7 @@ model BillingSettlementGroup {
 model TreasuryTreasury {
   id                   String                      @id
   companyId            String                      @map("company_id")
+  branchId             String?                     @map("branch_id")
   code                 String
   name                 String
   type                 String
@@ -784,7 +785,8 @@ model TreasuryTreasury {
   bankLines            TreasuryBankStatementLine[]
 
   @@unique([companyId, id])
-  @@unique([companyId, code])
+  @@unique([companyId, branchId, code])
+  @@index([companyId, branchId, active])
   @@map("treasury_treasuries")
 }
 
@@ -848,6 +850,7 @@ model TreasuryVoucherAllocationRef {
 model TreasuryTransfer {
   id                    String           @id
   companyId             String           @map("company_id")
+  branchId              String?          @map("branch_id")
   sourceTreasuryId      String           @map("source_treasury_id")
   destinationTreasuryId String           @map("destination_treasury_id")
   amount                Decimal          @db.Decimal(38, 18)
@@ -862,6 +865,7 @@ model TreasuryTransfer {
 
   @@unique([companyId, id])
   @@unique([companyId, sourceType, sourceId])
+  @@index([companyId, branchId, status])
   @@map("treasury_transfers")
 }
 
@@ -889,6 +893,7 @@ model TreasuryCheque {
 model TreasuryCashCount {
   id                  String           @id
   companyId           String           @map("company_id")
+  branchId            String?          @map("branch_id")
   treasuryId          String           @map("treasury_id")
   countedAmount       Decimal          @map("counted_amount") @db.Decimal(38, 18)
   bookAmount          Decimal          @map("book_amount") @db.Decimal(38, 18)
@@ -899,12 +904,14 @@ model TreasuryCashCount {
   treasury            TreasuryTreasury @relation(fields: [companyId, treasuryId], references: [companyId, id], onDelete: Restrict)
 
   @@unique([companyId, id])
+  @@index([companyId, branchId, countDate])
   @@map("treasury_cash_counts")
 }
 
 model TreasuryBankStatementLine {
   id           String             @id
   companyId    String             @map("company_id")
+  branchId     String?            @map("branch_id")
   treasuryId   String             @map("treasury_id")
   currency     String
   signedAmount Decimal            @map("signed_amount") @db.Decimal(38, 18)
@@ -915,7 +922,7 @@ model TreasuryBankStatementLine {
   match        TreasuryBankMatch?
 
   @@unique([companyId, id])
-  @@index([companyId, treasuryId, status])
+  @@index([companyId, branchId, treasuryId, status])
   @@map("treasury_bank_statement_lines")
 }
 
@@ -931,6 +938,45 @@ model TreasuryBankMatch {
 
   @@unique([companyId, lineId])
   @@map("treasury_bank_matches")
+}
+
+model HuBarcodeRecord {
+  id         String   @id
+  companyId  String   @map("company_id")
+  branchId   String   @map("branch_id")
+  programId  String   @map("program_id")
+  visaCaseId String   @map("visa_case_id")
+  travelerId String   @map("traveler_id")
+  code       String
+  status     String
+  assignedBy String   @map("assigned_by")
+  assignedAt DateTime @map("assigned_at")
+  updatedAt  DateTime @map("updated_at")
+  revision   Int
+  history    HuBarcodeHistory[]
+
+  @@unique([companyId, branchId, id])
+  @@unique([companyId, branchId, code])
+  @@unique([companyId, branchId, visaCaseId])
+  @@index([companyId, branchId, programId, status])
+  @@map("hub_barcode_records")
+}
+
+model HuBarcodeHistory {
+  id         String   @id
+  companyId  String   @map("company_id")
+  branchId   String   @map("branch_id")
+  barcodeId  String   @map("barcode_id")
+  fromStatus String?  @map("from_status")
+  toStatus   String   @map("to_status")
+  actorId    String   @map("actor_id")
+  reason     String?
+  occurredAt DateTime @map("occurred_at")
+  barcode    HuBarcodeRecord @relation(fields: [companyId, branchId, barcodeId], references: [companyId, branchId, id], onDelete: Restrict)
+
+  @@unique([companyId, branchId, id])
+  @@index([companyId, branchId, barcodeId, occurredAt])
+  @@map("hub_barcode_history")
 }
 
 model PartyAccountingGroup {

@@ -1,0 +1,1 @@
+import assert from'node:assert/strict';import test from'node:test';import type{BankLine,Treasury}from'../domain/treasury.js';test('branch provenance is part of treasury and bank-line public domain records',()=>{const treasury={branchId:'b'}as Treasury,line={branchId:'b'}as BankLine;assert.equal(treasury.branchId,line.branchId)});

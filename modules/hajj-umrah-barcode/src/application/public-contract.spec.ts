@@ -1,0 +1,1 @@
+import assert from'node:assert/strict';import test from'node:test';import{BARCODE_PERMISSIONS}from'./hajj-umrah-barcode.application-service.js';test('barcode permissions keep read, management, use, and cancellation authority distinct',()=>{assert.equal(new Set(Object.values(BARCODE_PERMISSIONS)).size,4)});
