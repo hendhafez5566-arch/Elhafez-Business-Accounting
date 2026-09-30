@@ -1,22 +1,26 @@
 {
   "id": "20260930-gemini-pro-full-ui-redesign",
-  "summary": "Apply the owner-provided 39-screen Gemini Pro UI/UX reference set across the tenant web application as a coherent system-wide design language, preserving existing business behavior and real data flows while matching reference layouts, navigation, tables, cards, filters, workspaces, responsive behavior and RTL presentation.",
+  "summary": "Apply the owner-provided 39-screen Gemini Pro UI/UX reference set across the tenant web application as a coherent system-wide design language, separating replaceable visual themes from explicit structural screen blueprints while preserving existing business behavior and real data flows.",
   "type": "architecture",
   "allowedModules": [],
   "allowedPaths": [
-    "apps/web/src/**"
+    "apps/web/src/**",
+    "docs/UI-ARCHITECTURE.md"
   ],
   "protectedPaths": [
     "apps/web/src/app-shell.tsx",
     "apps/web/src/styles.css",
-    "apps/web/src/ui/**"
+    "apps/web/src/ui/**",
+    "docs/UI-ARCHITECTURE.md"
   ],
-  "protectedReason": "Owner explicitly requested a system-wide UI/UX redesign, not a local feature style change. The 39 supplied references include App Layout, Design System Atoms, Master Module Template and Data Table specifications, so the canonical shell, shared primitives, tokens, navigation and central styles must be extended once and then consumed by existing pages without changing business ownership or data behavior.",
+  "protectedReason": "Owner explicitly requested a system-wide UI/UX redesign and a permanent fix for the repeated theme-only redesign failure mode. The canonical UI architecture must distinguish visual themes from screen-layout blueprints, require a ScreenDesign for every route, and use one shared structural boundary without changing business ownership, APIs or data behavior.",
   "allowBreakingPublicApi": false,
   "publicApiBreakingReason": "",
   "testEvidence": [
     "apps/web/src/styles.spec.ts",
     "apps/web/src/ui/preferences.spec.ts",
+    "apps/web/src/ui/screen-layouts.spec.tsx",
+    "apps/web/src/routes.spec.ts",
     "apps/web/src/app-shell-contract.spec.ts",
     "apps/web/src/app-entry-path.spec.tsx"
   ]
