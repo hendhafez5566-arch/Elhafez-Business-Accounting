@@ -12,7 +12,7 @@ export const SIDEBAR_MODES = ['fixed', 'compact', 'auto'] as const;
 export const FONT_SCALES = ['small', 'normal', 'large', 'xlarge'] as const;
 export const FONT_FAMILIES = ['tahoma', 'system', 'arial'] as const;
 export const UI_DENSITIES = ['comfortable', 'balanced', 'compact'] as const;
-export const UI_THEMES = ['premium', 'classic'] as const;
+export const UI_THEMES = ['gemini', 'premium', 'classic'] as const;
 
 export type SidebarMode = (typeof SIDEBAR_MODES)[number];
 export type FontScale = (typeof FONT_SCALES)[number];
@@ -33,7 +33,7 @@ export const DEFAULT_UI_PREFERENCES: UiPreferences = Object.freeze({
   fontScale: 'normal',
   fontFamily: 'tahoma',
   density: 'comfortable',
-  theme: 'premium',
+  theme: 'gemini',
 });
 
 export interface PreferenceStorage {
