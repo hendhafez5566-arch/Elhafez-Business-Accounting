@@ -1,0 +1,22 @@
+{
+  "id": "ui-21-final-structural-closure",
+  "summary": "Complete the canonical structural redesign of supplier intelligence, system administration, reporting, platform foundations, and quotations in place, with whole-route regression coverage.",
+  "type": "phase",
+  "allowedModules": [],
+  "allowedPaths": [
+    ".changes/ui-21-final-structural-closure.json",
+    "apps/web/src/supplier-intelligence-page.tsx",
+    "apps/web/src/system-administration-page.tsx",
+    "apps/web/src/reporting-center-page.tsx",
+    "apps/web/src/platform-foundations-page.tsx",
+    "apps/web/src/quotation-pages.tsx",
+    "apps/web/src/ui-21-structural-closure.spec.ts"
+  ],
+  "protectedPaths": [],
+  "protectedReason": "",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": "",
+  "testEvidence": [
+    "apps/web/src/ui-21-structural-closure.spec.ts"
+  ]
+}

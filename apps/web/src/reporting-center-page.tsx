@@ -13,9 +13,9 @@ import {
   LoadingState,
   MetricCard,
   Select,
-  Tabs,
   Toast,
 } from './ui.js';
+import { WorkspaceNavigation, WorkspacePane } from './ui/screen-layouts.js';
 import {
   HttpReportingCenterClient,
   type AgingReport,
@@ -636,7 +636,7 @@ export function ReportingCenterPage({ client }: { client?: ReportingCenterClient
   }
 
   return (
-    <section dir="rtl" className="ui-page-stack" aria-label="مركز التقارير">
+    <section dir="rtl" className="ui-dashboard" aria-label="مركز التقارير">
       <Card title="مركز التقارير">
         <p>
           قراءة موحدة للتقارير المالية والتشغيلية من أصحاب البيانات الأصليين، مع حفظ طرق
@@ -658,17 +658,20 @@ export function ReportingCenterPage({ client }: { client?: ReportingCenterClient
           ) : null}
         </ActionBar>
       </Card>
-      <Tabs
-        tabs={[
-          { id: 'executive', label: 'ملخص تنفيذي' },
-          { id: 'financial', label: 'تقارير مالية' },
-          { id: 'parties', label: 'كشوف العملاء والموردين' },
-          { id: 'operations', label: 'تقارير تشغيلية ورقابية' },
-          { id: 'saved', label: 'التقارير المحفوظة والجدولة' },
-        ]}
-        active={tab}
-        onChange={(id) => setTab(id as Tab)}
-      />
+      <WorkspacePane variant="nav">
+        <WorkspaceNavigation
+          ariaLabel="أقسام مركز التقارير"
+          items={[
+            { id: 'executive', label: 'ملخص تنفيذي' },
+            { id: 'financial', label: 'تقارير مالية' },
+            { id: 'parties', label: 'كشوف العملاء والموردين' },
+            { id: 'operations', label: 'تقارير تشغيلية ورقابية' },
+            { id: 'saved', label: 'التقارير المحفوظة والجدولة' },
+          ]}
+          active={tab}
+          onChange={(id) => setTab(id as Tab)}
+        />
+      </WorkspacePane>
       {notice ? <Toast tone="success">{notice}</Toast> : null}
       {error ? <ErrorState message={error} /> : null}
       {loading ? <LoadingState /> : null}
@@ -709,7 +712,7 @@ export function ReportingCenterPage({ client }: { client?: ReportingCenterClient
       ) : null}
       {tab === 'operations' ? <Operations data={data} /> : null}
       {tab === 'saved' ? (
-        <section className="ui-page-stack">
+        <section className="ui-grid-md">
           <DisclosureCard
             title="حفظ تقرير"
             description="يحفظ اسم التقرير ونوعه ونطاق التاريخ والفلاتر اللازمة فقط؛ الأرقام تُقرأ من المصدر عند الفتح."
@@ -1026,7 +1029,7 @@ function Financial({
       ? data.accounting.reports.treasury.totals
       : data.accounting.reports.tax.totals);
   return (
-    <section className="ui-page-stack">
+    <section className="ui-grid-md">
       <Card title="نطاق التقرير">
         <div className="ui-filter-grid">
           <FormField label="التقرير المالي">
@@ -1143,7 +1146,7 @@ function PartyStatements({
   const positions =
     aging?.side === kind ? aging.positions.filter((row) => row.partyId === partyId) : [];
   return (
-    <section className="ui-page-stack">
+    <section className="ui-grid-md">
       <Card title={kind === 'CUSTOMER' ? 'كشف حساب عميل' : 'كشف حساب مورد'}>
         <div className="ui-filter-grid">
           <FormField label="نوع الطرف">

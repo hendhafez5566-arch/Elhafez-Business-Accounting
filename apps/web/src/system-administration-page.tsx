@@ -1,5 +1,6 @@
 import {useEffect,useState} from 'react';
-import {Button,Card,DisclosureCard,EmptyState,ErrorState,FormField,Input,LoadingState,Select,Tabs,Toast} from './ui.js';
+import {Button,Card,DisclosureCard,EmptyState,ErrorState,FormField,Input,LoadingState,Select,Toast} from './ui.js';
+import {SettingsWorkspace,WorkspaceNavigation} from './ui/screen-layouts.js';
 import {HttpAdministrationClient,type AdministrationClient,type AdministrationContext} from './system-administration-client.js';
 import {CompanyProfilePanel} from './company-profile-panel.js';
 import {tenantApiContext} from './tenant-session.js';
@@ -181,8 +182,8 @@ export function SystemAdministrationPage({client=new HttpAdministrationClient(),
  }
 
  return <section dir="rtl" aria-label="إدارة النظام والعمليات" className="ui-admin-page">
-  <Card title="إدارة المنصة"><p>لوحة عربية موحدة وآمنة لإدارة الوصول والبيانات واستمرارية التشغيل.</p><Tabs tabs={areas.map(([label,id])=>({id,label}))} active={selected} onChange={id=>{if(ctx.token)void selectArea(id)}}/></Card>
-  <section aria-live="polite" className="ui-section-space">
+  <Card title="إدارة المنصة"><p>لوحة عربية موحدة وآمنة لإدارة الوصول والبيانات واستمرارية التشغيل.</p></Card>
+  <SettingsWorkspace navigation={<WorkspaceNavigation ariaLabel="أقسام إدارة النظام" items={areas.map(([label,id])=>({id,label}))} active={selected} onChange={id=>{if(ctx.token)void selectArea(id)}}/>} content={<section aria-live="polite" className="ui-section-space">
    {!ctx.token?<EmptyState title="يلزم تسجيل الدخول">اختر الشركة والفرع وسجّل الدخول لعرض أدوات الإدارة.</EmptyState>:<>
     <div className="ui-inline"><Button type="button" variant="secondary" disabled={loading} onClick={()=>void Promise.all([load(),loadReferences()])}>تحديث البيانات</Button></div>
     {actions()}
@@ -190,6 +191,6 @@ export function SystemAdministrationPage({client=new HttpAdministrationClient(),
      {records.map((record,index)=><Card key={String(record.id??index)} className="ui-record-card">{Object.entries(record).filter(([key,value])=>labels[key]&&typeof value!=='object').map(([key,value])=><p key={key}><strong>{labels[key]}: </strong>{valueOf(value)}</p>)}</Card>)}
     </div>}
    </>}
-  </section>
+  </section>}/>
  </section>;
 }
