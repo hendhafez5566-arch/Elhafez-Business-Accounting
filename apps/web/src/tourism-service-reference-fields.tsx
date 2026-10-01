@@ -24,5 +24,5 @@ export function TourismPartyReferenceFields({value,onChange}:Props){
 export function TourismSupplierReferenceSelect({value,onChange,allowBlank=true}:{value:string;onChange:(value:string)=>void;allowBlank?:boolean}){
  const[rows,setRows]=useState<SupplierReference[]>([]),[warning,setWarning]=useState('');
  useEffect(()=>{let active=true;void tourismServicesApi.suppliers().then(value=>{if(active)setRows(value.filter(row=>row.supplier.status==='ACTIVE'&&row.supplier.approvalStatus==='APPROVED'));}).catch(()=>{if(active)setWarning('لا يمكن قراءة الموردين بالصلاحيات الحالية.');});return()=>{active=false};},[]);
- return <>{<Select required={!allowBlank} value={value} onChange={e=>onChange(e.target.value)}>{allowBlank&&<option value="">بدون مورد خارجي</option>}{rows.map(row=><option key={row.supplier.id} value={row.party.id}>{row.supplier.supplierCode} — {row.party.displayName}</option>)}</Select>}{warning&&<p role="note">{warning}</p>}</>;
+ return <>{<Select required={!allowBlank} value={value} onChange={e=>onChange(e.target.value)}>{allowBlank&&<option value="">بدون مورد خارجي</option>}{rows.map(row=><option key={row.supplier.id} value={row.supplier.id}>{row.supplier.supplierCode} — {row.party.displayName}</option>)}</Select>}{warning&&<p role="note">{warning}</p>}</>;
 }
