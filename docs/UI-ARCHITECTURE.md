@@ -85,7 +85,7 @@ Forbidden in route-owned CSS:
 
 If a route needs a different shell, change the route surface. Do not render the old shell and conceal it with CSS.
 
-Route-owned CSS must be imported by the page implementation that owns it. It must not be imported globally from the application entry point merely to force a page design to work.
+Route-owned CSS is included once through the canonical web build entry/bundle manifest and remains scoped to the page's own class namespace. It must not be injected through inline `<style>` blocks, duplicated inside TSX strings, or stored outside the governed source tree as a way around architecture checks.
 
 ## Non-negotiable anti-layering rules
 
