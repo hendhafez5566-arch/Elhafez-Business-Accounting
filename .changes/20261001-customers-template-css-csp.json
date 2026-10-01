@@ -1,0 +1,19 @@
+{
+  "id": "20261001-customers-template-css-csp",
+  "summary": "Deliver the owner-supplied Customers template through the production CSS bundle instead of an inline style tag blocked by CSP, and let that route own the full viewport so the legacy ERP shell does not remain visibly layered around the copied template.",
+  "type": "fix",
+  "allowedModules": [],
+  "allowedPaths": [
+    ".changes/20261001-customers-template-css-csp.json",
+    "apps/web/customers-template.css",
+    "apps/web/src/index.tsx",
+    "apps/web/src/customers-template-style.spec.ts"
+  ],
+  "protectedPaths": [],
+  "protectedReason": "",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": "",
+  "testEvidence": [
+    "apps/web/src/customers-template-style.spec.ts"
+  ]
+}
