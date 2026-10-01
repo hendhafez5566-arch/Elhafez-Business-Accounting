@@ -14,3 +14,10 @@ test('interrupted service operations remain actionable after reopening, under th
   assert.doesNotMatch(render(service, { ...capabilities, confirm: false }), /استئناف/);
   assert.doesNotMatch(render({ ...service, status: 'CANCELLATION_REQUESTED' }, { ...capabilities, cancel: false }), /استئناف/);
 });
+
+test('recovery actions stay hidden for settled service states', () => {
+  const capabilities: TourismCapabilities = { view: true, manage: true, confirm: true, cancel: true, fulfill: true, voucher: true };
+  const service: ServiceRow = { id: 'service-2', number: 'S-2', revision: 2, status: 'CONFIRMED' };
+  const html = renderToStaticMarkup(createElement(ServiceRecoveryActions, { service, capabilities, onConfirm: () => undefined, onCancel: () => undefined }));
+  assert.doesNotMatch(html, /استئناف/);
+});
