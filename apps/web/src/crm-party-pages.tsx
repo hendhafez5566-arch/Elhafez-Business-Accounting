@@ -1,7 +1,6 @@
 import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from 'react';
 import { Button, Input, Select, Textarea } from './ui.js';
 import { crmDelete, crmGet, crmPatch, crmPost } from './crm-core-client.js';
-import './pages/crm-customers/customers.css';
 
 type PartyKind = 'PERSON' | 'ORGANIZATION';
 type Party = { id: string; kind: PartyKind; displayName: string; legalName: string | null; phone: string | null; email: string | null; whatsappNumber: string | null; address: string | null; nationalIdentity: string | null; taxIdentity: string | null };
