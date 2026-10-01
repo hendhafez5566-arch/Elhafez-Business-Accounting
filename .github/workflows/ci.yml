@@ -88,6 +88,11 @@ jobs:
         if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
         run: pnpm test
 
+      - name: Diagnose SP-03 AppModule bootstrap
+        if: failure() && github.event_name == 'pull_request' && github.event.pull_request.draft == false
+        working-directory: apps/api
+        run: node --import ./scripts/typescript-test-runtime.mjs --test --test-concurrency=1 src/sp03-supplier-intelligence.spec.ts
+
       - name: Affected workspace tests (main smoke)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: pnpm --filter "...[${{ github.event.before }}]" run test
