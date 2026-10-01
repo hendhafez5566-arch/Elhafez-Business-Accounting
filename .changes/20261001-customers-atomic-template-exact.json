@@ -1,0 +1,22 @@
+{
+  "id": "20261001-customers-atomic-template-exact",
+  "summary": "Replace the legacy Customers page presentation with the owner-supplied customers-atomic visual template, enhanced with interactive KPI filtering from the second supplied design, while keeping the existing CRM, Billing, documents, quotations, tourism-service, permissions and lifecycle APIs as the only functional paths. Also restore the mistakenly targeted Tourism & Services page to its pre-change presentation.",
+  "type": "feature",
+  "allowedModules": [],
+  "allowedPaths": [
+    ".changes/20261001-customers-atomic-template-exact.json",
+    ".changes/20261001-tourism-services-clean-ui.json",
+    "apps/web/src/crm-party-pages.tsx",
+    "apps/web/src/crm-customers-template.spec.ts",
+    "apps/web/src/tourism-services-page.tsx",
+    "apps/web/src/tourism-services.spec.ts"
+  ],
+  "protectedPaths": [],
+  "protectedReason": "",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": "",
+  "testEvidence": [
+    "apps/web/src/crm-customers-template.spec.ts",
+    "apps/web/src/tourism-services.spec.ts"
+  ]
+}
