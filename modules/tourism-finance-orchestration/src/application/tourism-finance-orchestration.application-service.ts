@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { ContractValidationError, decimalAmount, type CompanyId, type DecimalAmount, type SourceReference } from '@elhafez/contracts';
 import type { TourismFinanceRepository } from './orchestration.repository.js';
-import type { BillingPort, CommissionPort, ControlsPort, CostPort, InventoryPort, ProcurementPort, TreasuryPort } from './ports.js';
+import type { BillingPort, CommissionPort, ControlsPort, CostPort, FxPort, InventoryPort, ProcurementPort, TreasuryPort } from './ports.js';
 import type { BookingReference, CancellationBlocker, FinancialSetup, ServiceCategory, ServiceFinancialSnapshot, StandaloneFinancialReference, Workflow, WorkflowKind } from '../domain/orchestration.js';
 
 function stable(value: unknown): string { if (value === null || typeof value !== 'object') return JSON.stringify(value); if (Array.isArray(value)) return `[${value.map(stable).join(',')}]`; return `{${Object.entries(value as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => `${JSON.stringify(key)}:${stable(item)}`).join(',')}}`; }
@@ -26,7 +26,7 @@ function bookingProcurementReferences(booking: BookingReference, extra?: Procure
 }
 
 export class TourismFinanceOrchestrationApplicationService {
-  constructor(private readonly repo: TourismFinanceRepository, private readonly billing: BillingPort, private readonly treasury: TreasuryPort, private readonly commission: CommissionPort, private readonly cost: CostPort, private readonly inventory: InventoryPort, private readonly procurement: ProcurementPort, private readonly controls: ControlsPort) {}
+  constructor(private readonly repo: TourismFinanceRepository, private readonly billing: BillingPort, private readonly treasury: TreasuryPort, private readonly commission: CommissionPort, private readonly cost: CostPort, private readonly inventory: InventoryPort, private readonly procurement: ProcurementPort, private readonly controls: ControlsPort, private readonly fx?: FxPort) {}
 
   async prepareStandaloneService(input:{companyId:CompanyId;branchId:string;service:SourceReference;revision:number;planId:string;planVersion:number}) {
     const plan=await this.inventory.standalonePlan(input.companyId,input.planId);
@@ -39,6 +39,21 @@ export class TourismFinanceOrchestrationApplicationService {
     return {ready:blockers.length===0,blockers,planId:input.planId,planVersion:input.planVersion};
   }
 
+  private async normalizedServiceCost(companyId:CompanyId,totals:Readonly<Record<string,DecimalAmount>>,toCurrency:string,postingDate:string){
+    let total=0n;
+    const at=`${postingDate}T23:59:59.999Z`;
+    const evidence:Array<{fromCurrency:string;toCurrency:string;sourceAmount:DecimalAmount;convertedAmount:DecimalAmount;rate:DecimalAmount;rateId:string;effectiveAt:string;source:string}>=[];
+    for(const [fromCurrency,sourceAmount] of Object.entries(totals).sort(([left],[right])=>left.localeCompare(right))){
+      if(sourceAmount==='0')continue;
+      if(fromCurrency===toCurrency){total+=units(sourceAmount);evidence.push({fromCurrency,toCurrency,sourceAmount,convertedAmount:sourceAmount,rate:decimalAmount('1'),rateId:'SAME_CURRENCY',effectiveAt:at,source:'SYSTEM'});continue;}
+      if(!this.fx)throw new ContractValidationError('currency',`FX conversion ${fromCurrency}/${toCurrency} requires currency-fx`);
+      const converted=await this.fx.convert({companyId,amount:sourceAmount,fromCurrency,toCurrency,at});
+      total+=units(converted.amount);
+      evidence.push({fromCurrency,toCurrency,sourceAmount,convertedAmount:converted.amount,rate:converted.rate,rateId:converted.rateId,effectiveAt:converted.effectiveAt,source:converted.source});
+    }
+    return {amount:fromUnits(total),evidence:Object.freeze(evidence)};
+  }
+
   async confirmStandaloneService(input:ConfirmStandaloneServiceInput):Promise<StandaloneFinancialReference> {
     required(input.branchId,'branchId');required(input.service.sourceId,'service.sourceId');required(input.debtorPartyId,'debtorPartyId');required(input.invoiceNumber,'invoiceNumber');
     const gross=nonNegative(input.grossAmount,'grossAmount');const discount=nonNegative(input.discountAmount,'discountAmount');
@@ -47,8 +62,8 @@ export class TourismFinanceOrchestrationApplicationService {
     const plan=await this.inventory.standalonePlan(input.companyId,input.planId);
     if(!plan||plan.branchId!==input.branchId||refKey(plan.service)!==refKey(input.service)||plan.serviceRevision!==input.revision||plan.version!==input.planVersion)throw new ContractValidationError('planId','reviewed plan does not match service revision');
     if(plan.residuals.some(item=>!item.supplierId||item.unitCost===undefined||!item.quoteReference))throw new ContractValidationError('planId','external procurement requires supplier and quote evidence');
-    if(Object.keys(plan.totalsByCurrency).some(currency=>currency!==input.currency))throw new ContractValidationError('currency','stock cost has another currency; FX evidence required');
-    const payload={branchId:input.branchId,service:input.service,revision:input.revision,category:input.category,debtorPartyId:input.debtorPartyId,currency:input.currency,grossAmount:gross,discountAmount:discount,postingDate:input.postingDate,dueDate:input.dueDate,invoiceNumber:input.invoiceNumber,planId:input.planId,planVersion:input.planVersion,inputHash:plan.inputHash,approvalRequestId:input.approvalRequestId??null,commission:input.commission??null};
+    const normalizedCost=await this.normalizedServiceCost(input.companyId,plan.totalsByCurrency,input.currency,input.postingDate);
+    const payload={branchId:input.branchId,service:input.service,revision:input.revision,category:input.category,debtorPartyId:input.debtorPartyId,currency:input.currency,grossAmount:gross,discountAmount:discount,postingDate:input.postingDate,dueDate:input.dueDate,invoiceNumber:input.invoiceNumber,planId:input.planId,planVersion:input.planVersion,inputHash:plan.inputHash,purchaseTotalsByCurrency:plan.totalsByCurrency,costConversion:normalizedCost.evidence,approvalRequestId:input.approvalRequestId??null,commission:input.commission??null};
     let workflow=await this.workflow('STANDALONE_CONFIRMATION',input,input.service,payload);
     const existing=await this.repo.standalone(input.companyId,input.service);
     const setup=existing?undefined:await this.repo.setup(input.companyId,input.category);
@@ -70,7 +85,7 @@ export class TourismFinanceOrchestrationApplicationService {
     const invoice=net==='0'?undefined:await this.effect(workflow,'SERVICE_BILLING',()=>this.billing.createServiceInvoice({id:`tfo-service-invoice:${workflow.id}`,companyId:input.companyId,branchId:input.branchId,partyId:input.debtorPartyId,number:input.invoiceNumber,postingDate:input.postingDate,dueDate:input.dueDate,currency:input.currency,sourceId:input.service.sourceId,receivableAccountId:financialSetup.receivableAccountId,revenueAccountId:financialSetup.revenueAccountId,amount:net}),value=>value.id);
     let commissionClaimId=claimed.commissionClaimId;
     if(input.commission){const expenseAccountId=financialSetup.commissionExpenseAccountId;const liabilityAccountId=financialSetup.commissionLiabilityAccountId;if(!expenseAccountId||!liabilityAccountId)throw new ContractValidationError('financialSetup','commission accounts required');const claim=await this.effect(workflow,'SERVICE_COMMISSION',()=>this.commission.createServiceCommission({id:`tfo-service-commission:${workflow.id}`,companyId:input.companyId,branchId:input.branchId,agentPartyId:input.commission!.agentPartyId,sourceId:input.service.sourceId,currency:input.currency,amount:input.commission!.amount,expenseAccountId,liabilityAccountId}),value=>value.id);commissionClaimId=claim.id;}
-    await this.effect(workflow,'SERVICE_FINANCIAL_SNAPSHOT',()=>this.confirmServiceFinancials({id:`tfo-service-snapshot:${workflow.id}`,companyId:input.companyId,service:input.service,category:input.category,currency:input.currency,saleAmount:net,costAmount:plan.totalsByCurrency[input.currency]??decimalAmount('0'),evidence:{planId:plan.planId,allocationIds:stock.allocationIds,invoiceId:invoice?.id??null}}),value=>value.id);
+    await this.effect(workflow,'SERVICE_FINANCIAL_SNAPSHOT',()=>this.confirmServiceFinancials({id:`tfo-service-snapshot:${workflow.id}`,companyId:input.companyId,service:input.service,category:input.category,currency:input.currency,saleAmount:net,costAmount:normalizedCost.amount,evidence:{planId:plan.planId,allocationIds:stock.allocationIds,invoiceId:invoice?.id??null,purchaseTotalsByCurrency:plan.totalsByCurrency,costConversion:normalizedCost.evidence}}),value=>value.id);
     const result:StandaloneFinancialReference={...claimed,status:'ACTIVE',allocationIds:stock.allocationIds,purchaseOrderIds,...(invoice?{invoiceId:invoice.id}:{}),...(commissionClaimId?{commissionClaimId}:{})};
     await this.repo.saveStandalone(result);
     return (await this.complete(workflow,result)).result as StandaloneFinancialReference;
@@ -145,12 +160,11 @@ export class TourismFinanceOrchestrationApplicationService {
 
   async recordBookingDeposit(input: { companyId: CompanyId; branchId?: string; commandKey: string; booking: SourceReference; treasuryId: string; number: string; postingDate: string; amount: DecimalAmount }) { const booking = await this.repo.booking(input.companyId, input.booking); if (!booking?.invoiceId) throw new ContractValidationError('booking', 'confirmed financial reference not found'); this.assertBranch(booking, input.branchId); const amount = nonNegative(input.amount, 'amount'); if (amount === '0') throw new ContractValidationError('amount', 'must be positive'); const setup = await this.requiredSetupForBooking(booking); const workflow = await this.workflow('BOOKING_DEPOSIT', input, input.booking, { ...input, amount }); if (workflow.status === 'COMPLETED') return workflow.result; const voucher = await this.effect(workflow, 'TREASURY_DEPOSIT', () => this.treasury.postDeposit({ id: `tfo-deposit:${workflow.id}`, companyId: input.companyId, ...(input.branchId ? { branchId: input.branchId } : {}), treasuryId: input.treasuryId, partyId: booking.customerPartyId, invoiceId: booking.invoiceId!, number: input.number, postingDate: input.postingDate, amount, controlAccountId: setup.receivableAccountId, advanceAccountId: setup.customerAdvanceAccountId }), (value) => value.id); if (!booking.depositVoucherIds.includes(voucher.id)) await this.repo.saveBooking({ ...booking, depositVoucherIds: [...booking.depositVoucherIds, voucher.id] }); return (await this.complete(workflow, { workflowId: workflow.id, voucherId: voucher.id, invoiceId: booking.invoiceId })).result; }
   private async requiredSetupForBooking(booking: BookingReference) {
-    // BLOCKER-5: Use snapshotted financial setup from booking confirmation
     return {
         receivableAccountId: booking.financialSetup.receivableAccountId,
         customerAdvanceAccountId: booking.financialSetup.customerAdvanceAccountId,
         revenueAccountId: booking.financialSetup.revenueAccountId,
-        costAccountId: '', // Not needed for deposit
+        costAccountId: '',
         commissionExpenseAccountId: booking.financialSetup.commissionExpenseAccountId,
         commissionLiabilityAccountId: booking.financialSetup.commissionLiabilityAccountId,
       };
@@ -204,7 +218,6 @@ export class TourismFinanceOrchestrationApplicationService {
   async getProgramDeletionEligibility(companyId: CompanyId, program: SourceReference) { const history = await this.repo.programHistory(companyId, program); const bookings = await this.repo.bookingsForProgram(companyId, program); const cancelled = history.some((item) => item.kind === 'CANCELLED'); const active = bookings.filter((item) => item.status !== 'CANCELLED'); return { deletable: cancelled && active.length === 0, retainedEvidenceReferences: [...history.map((item) => item.id), ...bookings.flatMap((item) => [item.invoiceId, item.commissionClaimId, ...item.allocations.map((allocation) => allocation.id), ...bookingProcurementReferences(item).map((reference) => procurementKey(reference))].filter((value): value is string => Boolean(value)))], ...(cancelled && active.length === 0 ? {} : { reason: cancelled ? 'ACTIVE_BOOKING_FINANCIAL_STATE' : 'PROGRAM_CANCELLATION_NOT_COMPLETED' }) }; }
   async evaluateFinancialReadiness(input: { companyId: CompanyId; branchId?: string; program: SourceReference; requiredCategories: readonly ServiceCategory[]; approvalRequestIds?: readonly string[]; allocationIds?: readonly string[]; procurementReferences?: readonly ProcurementReference[] }) {
     const blockers: string[] = []; const evidenceReferences: string[] = [refKey(input.program)];
-    // BR-053: Derive authoritative financial scope from persisted program/booking/workflow state
     const allBookings = await this.repo.bookingsForProgram(input.companyId, input.program);
     const allProgramWorkflows = await this.repo.workflowsForProgram(input.companyId, input.program);
     if (input.branchId && (allBookings.some((item) => item.branchId !== input.branchId) || allProgramWorkflows.some((item) => item.branchId && item.branchId !== input.branchId))) {
@@ -214,19 +227,13 @@ export class TourismFinanceOrchestrationApplicationService {
     const programWorkflows = input.branchId ? allProgramWorkflows.filter((item) => !item.branchId || item.branchId === input.branchId) : allProgramWorkflows;
     const bookingWorkflows = (await Promise.all(bookings.map((booking) => this.repo.workflowsForBooking(input.companyId, booking.booking)))).flat();
     const workflows = [...new Map([...programWorkflows, ...bookingWorkflows].map((item) => [item.id, item])).values()];
-    
-    // 1. Check required category setup (persisted)
     for (const category of input.requiredCategories) {
       const setup = await this.repo.setup(input.companyId, category);
       if (!setup?.active) blockers.push(`MISSING_SETUP:${category}`);
       else evidenceReferences.push(setup.id);
     }
-    
-    // 2. Check program Cost Center association (from Cost owned data)
     try { const center = await this.cost.resolveProgram(input.companyId, input.program); evidenceReferences.push(center.costCenterId); }
     catch { blockers.push('MISSING_PROGRAM_COST_CENTER'); }
-    
-    // 3. Check all persisted allocations from bookings
     const allAllocationIds = new Set<string>();
     for (const booking of bookings) {
       for (const allocation of booking.allocations) allAllocationIds.add(allocation.id);
@@ -237,8 +244,6 @@ export class TourismFinanceOrchestrationApplicationService {
       blockers.push(...ownerBlockers.map((item) => `INVENTORY:${allocationId}:${item.type}`));
       evidenceReferences.push(allocationId);
     }
-    
-    // 4. Check persisted commission claim references from bookings
     for (const booking of bookings) {
       if (booking.commissionClaimId) {
         const commEvidence = await this.commission.evidence(input.companyId, booking.commissionClaimId);
@@ -246,8 +251,6 @@ export class TourismFinanceOrchestrationApplicationService {
         evidenceReferences.push(booking.commissionClaimId);
       }
     }
-    
-    // 5. Check persisted procurement references from bookings
     const allProcurementRefs = new Map<string, ProcurementReference>();
     for (const booking of bookings) for (const reference of bookingProcurementReferences(booking)) { const key = procurementKey(reference); if (key) allProcurementRefs.set(key, reference); }
     for (const ref of input.procurementReferences ?? []) {
@@ -259,16 +262,11 @@ export class TourismFinanceOrchestrationApplicationService {
       blockers.push(...ownerBlockers.map((item) => `PROCUREMENT:${item.type}:${item.purchaseOrderId}`));
       evidenceReferences.push(reference.purchaseOrderId ?? reference.commitmentId!);
     }
-    
-    // 6. Check unresolved workflows (from AC-12 owned data)
     const unresolvedWorkflows = workflows.filter((w) => w.status === 'RUNNING' || w.status === 'BLOCKED' || w.status === 'SETTLEMENT_REQUIRED');
     for (const workflow of unresolvedWorkflows) {
       blockers.push(`UNRESOLVED_WORKFLOW:${workflow.kind}:${workflow.id}`);
       evidenceReferences.push(workflow.id);
     }
-    
-    // 7. A cancelled booking is financially settled only when its own cancellation workflow completed.
-    // Program cancellation history is not required for an individually cancelled booking.
     for (const booking of bookings) {
       if (booking.status !== 'CANCELLED') continue;
       const cancellationWorkflows = await this.repo.workflowsForBooking(input.companyId, booking.booking);
@@ -284,8 +282,6 @@ export class TourismFinanceOrchestrationApplicationService {
       blockers.push(`BOOKING_CANCELLATION_INCOMPLETE:${booking.id}`);
       evidenceReferences.push(booking.id);
     }
-    
-    // 8. Check approval requestId from booking confirmation evidence (from Controls owned data)
     const approvalRequestIdsFromBookings = new Set<string>();
     for (const booking of bookings) if (booking.approvalRequestId) approvalRequestIdsFromBookings.add(booking.approvalRequestId);
     const allApprovalRequestIds = new Set([...approvalRequestIdsFromBookings, ...(input.approvalRequestIds ?? [])]);
@@ -293,7 +289,6 @@ export class TourismFinanceOrchestrationApplicationService {
       if (!(await this.controls.approvalResolved(input.companyId, requestId))) blockers.push(`APPROVAL_UNRESOLVED:${requestId}`);
       else evidenceReferences.push(requestId);
     }
-    
     return { ready: blockers.length === 0, blockers, warnings: [], evidenceReferences };
   }
 
@@ -310,50 +305,42 @@ export class TourismFinanceOrchestrationApplicationService {
     }
     evidenceReferences.push(booking.id, booking.workflowId);
     if (booking.status !== 'ACTIVE') blockers.push(`BOOKING_FINANCIAL_STATE:${booking.status}`);
-
     for (const category of input.requiredCategories) {
       const setup = await this.repo.setup(input.companyId, category);
       if (!setup?.active) blockers.push(`MISSING_SETUP:${category}`);
       else evidenceReferences.push(setup.id);
     }
-
     try {
       const center = await this.cost.resolveProgram(input.companyId, input.program);
       evidenceReferences.push(center.costCenterId);
     } catch {
       blockers.push('MISSING_PROGRAM_COST_CENTER');
     }
-
     for (const allocation of booking.allocations) {
       const ownerBlockers = await this.inventory.blockers(input.companyId, allocation.id);
       blockers.push(...ownerBlockers.map((item) => `INVENTORY:${allocation.id}:${item.type}`));
       evidenceReferences.push(allocation.id);
     }
-
     if (booking.commissionClaimId) {
       const commissionEvidence = await this.commission.evidence(input.companyId, booking.commissionClaimId);
       if (commissionEvidence.hasPostedPaymentHistory) blockers.push(`PAID_COMMISSION:${booking.commissionClaimId}`);
       evidenceReferences.push(booking.commissionClaimId);
     }
-
     for (const reference of bookingProcurementReferences(booking)) {
       const ownerBlockers = await this.procurement.blockers(input.companyId, reference);
       blockers.push(...ownerBlockers.map((item) => `PROCUREMENT:${item.type}:${item.purchaseOrderId}`));
       const referenceId = reference.purchaseOrderId ?? reference.commitmentId;
       if (referenceId) evidenceReferences.push(referenceId);
     }
-
     const workflows = await this.repo.workflowsForBooking(input.companyId, input.booking);
     for (const workflow of workflows.filter((item) => item.status === 'RUNNING' || item.status === 'BLOCKED' || item.status === 'SETTLEMENT_REQUIRED')) {
       blockers.push(`UNRESOLVED_WORKFLOW:${workflow.kind}:${workflow.id}`);
       evidenceReferences.push(workflow.id);
     }
-
     if (booking.approvalRequestId) {
       if (!(await this.controls.approvalResolved(input.companyId, booking.approvalRequestId))) blockers.push(`APPROVAL_UNRESOLVED:${booking.approvalRequestId}`);
       else evidenceReferences.push(booking.approvalRequestId);
     }
-
     return { ready: blockers.length === 0, blockers, warnings: [], evidenceReferences: [...new Set(evidenceReferences)] };
   }
 
