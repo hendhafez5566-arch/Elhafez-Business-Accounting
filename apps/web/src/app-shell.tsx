@@ -2,18 +2,19 @@ import { type ReactNode, useState } from 'react';
 import { findRoute, foundationRoutes, type AppRoute } from './routes.js';
 import { routeSurfaceFor } from './route-surface.js';
 import {
-  initialShellState,
-  setAutoSidebarActive,
-  setMobileDrawer,
-} from './shell-state.js';
-import {
   Drawer,
   PageHeader,
+  RoutePresentationBoundary,
   ScreenLayoutBoundary,
   type UiPreferences,
   UiPreferencesProvider,
   useUiPreferences,
 } from './ui.js';
+import {
+  initialShellState,
+  setAutoSidebarActive,
+  setMobileDrawer,
+} from './shell-state.js';
 import { NavigationMenu, Sidebar, Topbar } from './ui/navigation.js';
 
 export interface AppShellProps {
@@ -124,7 +125,7 @@ function AppShellFrame({
         data-screen-blueprint={active.design.blueprint}
         data-screen-reference={active.design.reference}
       >
-        {routeContent}
+        <RoutePresentationBoundary mode="route-owned">{routeContent}</RoutePresentationBoundary>
       </div>
     );
   }
