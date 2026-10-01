@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -33,4 +34,16 @@ test('the customers full-bleed route renders template classes without the Gemini
   assert.match(html, /class="ct-fab"/);
   assert.doesNotMatch(html, /ui-button/);
   assert.doesNotMatch(html, /ui-input/);
+});
+
+test('route-owned customer CSS contains no force overrides or shell-hiding selectors', () => {
+  const css = readFileSync(new URL('./pages/crm-customers/customers.css', import.meta.url), 'utf8');
+  assert.doesNotMatch(css, /!important\b/);
+  assert.doesNotMatch(css, /:has\(/);
+  assert.doesNotMatch(css, /(?:\.app-shell|\.app-sidebar|\.app-topbar|\.app-main|\.app-content|\.app-route-surface|\.ui-page-stack)/);
+});
+
+test('the architecture command includes the replace-not-overlay guard', () => {
+  const packageJson = JSON.parse(readFileSync(new URL('../../../package.json', import.meta.url), 'utf8')) as { scripts?: Record<string, string> };
+  assert.match(packageJson.scripts?.['architecture:check'] ?? '', /check-replace-not-overlay\.ts/);
 });

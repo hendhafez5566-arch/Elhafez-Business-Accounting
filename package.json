@@ -7,7 +7,7 @@
     "build": "pnpm --recursive run build",
     "typecheck": "pnpm --recursive run typecheck",
     "lint": "eslint . --max-warnings=0",
-    "architecture:check": "tsx tools/architecture/check-architecture.ts && tsx tools/architecture/check-frontend-migration-names.ts && tsx tools/architecture/check-tourism-finance-orchestrator-budget.ts",
+    "architecture:check": "tsx tools/architecture/check-architecture.ts && tsx tools/architecture/check-replace-not-overlay.ts && tsx tools/architecture/check-frontend-migration-names.ts && tsx tools/architecture/check-tourism-finance-orchestrator-budget.ts",
     "test": "pnpm --recursive run test",
     "prisma:generate": "pnpm --filter @elhafez/platform-core run prisma:generate",
     "verify": "pnpm change-safety:check && pnpm engineering-integrity:check && pnpm prisma:generate && pnpm lint && pnpm typecheck && pnpm architecture:check && pnpm test && pnpm build",
