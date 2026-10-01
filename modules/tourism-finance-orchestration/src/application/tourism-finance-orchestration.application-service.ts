@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { ContractValidationError, decimalAmount, type CompanyId, type DecimalAmount, type SourceReference } from '@elhafez/contracts';
 import type { TourismFinanceRepository } from './orchestration.repository.js';
-import type { BillingPort, CommissionPort, ControlsPort, CostPort, InventoryPort, ProcurementPort, TreasuryPort } from './ports.js';
+import type { BillingPort, CommissionPort, ControlsPort, CostPort, FxPort, InventoryPort, ProcurementPort, TreasuryPort } from './ports.js';
 import type { BookingReference, CancellationBlocker, FinancialSetup, ServiceCategory, ServiceFinancialSnapshot, StandaloneFinancialReference, Workflow, WorkflowKind } from '../domain/orchestration.js';
 
 function stable(value: unknown): string { if (value === null || typeof value !== 'object') return JSON.stringify(value); if (Array.isArray(value)) return `[${value.map(stable).join(',')}]`; return `{${Object.entries(value as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => `${JSON.stringify(key)}:${stable(item)}`).join(',')}}`; }
@@ -26,7 +26,7 @@ function bookingProcurementReferences(booking: BookingReference, extra?: Procure
 }
 
 export class TourismFinanceOrchestrationApplicationService {
-  constructor(private readonly repo: TourismFinanceRepository, private readonly billing: BillingPort, private readonly treasury: TreasuryPort, private readonly commission: CommissionPort, private readonly cost: CostPort, private readonly inventory: InventoryPort, private readonly procurement: ProcurementPort, private readonly controls: ControlsPort) {}
+  constructor(private readonly repo: TourismFinanceRepository, private readonly billing: BillingPort, private readonly treasury: TreasuryPort, private readonly commission: CommissionPort, private readonly cost: CostPort, private readonly inventory: InventoryPort, private readonly procurement: ProcurementPort, private readonly controls: ControlsPort, private readonly fx?: FxPort) {}
 
   async prepareStandaloneService(input:{companyId:CompanyId;branchId:string;service:SourceReference;revision:number;planId:string;planVersion:number}) {
     const plan=await this.inventory.standalonePlan(input.companyId,input.planId);
@@ -39,6 +39,21 @@ export class TourismFinanceOrchestrationApplicationService {
     return {ready:blockers.length===0,blockers,planId:input.planId,planVersion:input.planVersion};
   }
 
+  private async normalizedServiceCost(companyId:CompanyId, totals:Readonly<Record<string,DecimalAmount>>, toCurrency:string, postingDate:string){
+    let total=0n;
+    const evidence:Array<{fromCurrency:string;toCurrency:string;sourceAmount:DecimalAmount;convertedAmount:DecimalAmount;rate:DecimalAmount;rateId:string;effectiveAt:string;source:string}>=[];
+    const at=`${postingDate}T23:59:59.999Z`;
+    for(const [fromCurrency,sourceAmount] of Object.entries(totals).sort(([a],[b])=>a.localeCompare(b))){
+      if(sourceAmount==='0')continue;
+      if(fromCurrency===toCurrency){total+=units(sourceAmount);evidence.push({fromCurrency,toCurrency,sourceAmount,convertedAmount:sourceAmount,rate:decimalAmount('1'),rateId:'SAME_CURRENCY',effectiveAt:at,source:'SYSTEM'});continue;}
+      if(!this.fx)throw new ContractValidationError('currency',`FX conversion ${fromCurrency}/${toCurrency} requires the canonical currency-fx owner`);
+      const converted=await this.fx.convert({companyId,amount:sourceAmount,fromCurrency,toCurrency,at});
+      total+=units(converted.amount);
+      evidence.push({fromCurrency,toCurrency,sourceAmount,convertedAmount:converted.amount,rate:converted.rate,rateId:converted.rateId,effectiveAt:converted.effectiveAt,source:converted.source});
+    }
+    return {amount:fromUnits(total),evidence:Object.freeze(evidence)};
+  }
+
   async confirmStandaloneService(input:ConfirmStandaloneServiceInput):Promise<StandaloneFinancialReference> {
     required(input.branchId,'branchId');required(input.service.sourceId,'service.sourceId');required(input.debtorPartyId,'debtorPartyId');required(input.invoiceNumber,'invoiceNumber');
     const gross=nonNegative(input.grossAmount,'grossAmount');const discount=nonNegative(input.discountAmount,'discountAmount');
@@ -47,8 +62,8 @@ export class TourismFinanceOrchestrationApplicationService {
     const plan=await this.inventory.standalonePlan(input.companyId,input.planId);
     if(!plan||plan.branchId!==input.branchId||refKey(plan.service)!==refKey(input.service)||plan.serviceRevision!==input.revision||plan.version!==input.planVersion)throw new ContractValidationError('planId','reviewed plan does not match service revision');
     if(plan.residuals.some(item=>!item.supplierId||item.unitCost===undefined||!item.quoteReference))throw new ContractValidationError('planId','external procurement requires supplier and quote evidence');
-    if(Object.keys(plan.totalsByCurrency).some(currency=>currency!==input.currency))throw new ContractValidationError('currency','stock cost has another currency; FX evidence required');
-    const payload={branchId:input.branchId,service:input.service,revision:input.revision,category:input.category,debtorPartyId:input.debtorPartyId,currency:input.currency,grossAmount:gross,discountAmount:discount,postingDate:input.postingDate,dueDate:input.dueDate,invoiceNumber:input.invoiceNumber,planId:input.planId,planVersion:input.planVersion,inputHash:plan.inputHash,approvalRequestId:input.approvalRequestId??null,commission:input.commission??null};
+    const normalizedCost=await this.normalizedServiceCost(input.companyId,plan.totalsByCurrency,input.currency,input.postingDate);
+    const payload={branchId:input.branchId,service:input.service,revision:input.revision,category:input.category,debtorPartyId:input.debtorPartyId,currency:input.currency,grossAmount:gross,discountAmount:discount,postingDate:input.postingDate,dueDate:input.dueDate,invoiceNumber:input.invoiceNumber,planId:input.planId,planVersion:input.planVersion,inputHash:plan.inputHash,purchaseTotalsByCurrency:plan.totalsByCurrency,costConversion:normalizedCost.evidence,approvalRequestId:input.approvalRequestId??null,commission:input.commission??null};
     let workflow=await this.workflow('STANDALONE_CONFIRMATION',input,input.service,payload);
     const existing=await this.repo.standalone(input.companyId,input.service);
     const setup=existing?undefined:await this.repo.setup(input.companyId,input.category);
@@ -70,7 +85,7 @@ export class TourismFinanceOrchestrationApplicationService {
     const invoice=net==='0'?undefined:await this.effect(workflow,'SERVICE_BILLING',()=>this.billing.createServiceInvoice({id:`tfo-service-invoice:${workflow.id}`,companyId:input.companyId,branchId:input.branchId,partyId:input.debtorPartyId,number:input.invoiceNumber,postingDate:input.postingDate,dueDate:input.dueDate,currency:input.currency,sourceId:input.service.sourceId,receivableAccountId:financialSetup.receivableAccountId,revenueAccountId:financialSetup.revenueAccountId,amount:net}),value=>value.id);
     let commissionClaimId=claimed.commissionClaimId;
     if(input.commission){const expenseAccountId=financialSetup.commissionExpenseAccountId;const liabilityAccountId=financialSetup.commissionLiabilityAccountId;if(!expenseAccountId||!liabilityAccountId)throw new ContractValidationError('financialSetup','commission accounts required');const claim=await this.effect(workflow,'SERVICE_COMMISSION',()=>this.commission.createServiceCommission({id:`tfo-service-commission:${workflow.id}`,companyId:input.companyId,branchId:input.branchId,agentPartyId:input.commission!.agentPartyId,sourceId:input.service.sourceId,currency:input.currency,amount:input.commission!.amount,expenseAccountId,liabilityAccountId}),value=>value.id);commissionClaimId=claim.id;}
-    await this.effect(workflow,'SERVICE_FINANCIAL_SNAPSHOT',()=>this.confirmServiceFinancials({id:`tfo-service-snapshot:${workflow.id}`,companyId:input.companyId,service:input.service,category:input.category,currency:input.currency,saleAmount:net,costAmount:plan.totalsByCurrency[input.currency]??decimalAmount('0'),evidence:{planId:plan.planId,allocationIds:stock.allocationIds,invoiceId:invoice?.id??null}}),value=>value.id);
+    await this.effect(workflow,'SERVICE_FINANCIAL_SNAPSHOT',()=>this.confirmServiceFinancials({id:`tfo-service-snapshot:${workflow.id}`,companyId:input.companyId,service:input.service,category:input.category,currency:input.currency,saleAmount:net,costAmount:normalizedCost.amount,evidence:{planId:plan.planId,allocationIds:stock.allocationIds,invoiceId:invoice?.id??null,purchaseTotalsByCurrency:plan.totalsByCurrency,costConversion:normalizedCost.evidence}}),value=>value.id);
     const result:StandaloneFinancialReference={...claimed,status:'ACTIVE',allocationIds:stock.allocationIds,purchaseOrderIds,...(invoice?{invoiceId:invoice.id}:{}),...(commissionClaimId?{commissionClaimId}:{})};
     await this.repo.saveStandalone(result);
     return (await this.complete(workflow,result)).result as StandaloneFinancialReference;
@@ -91,54 +106,7 @@ export class TourismFinanceOrchestrationApplicationService {
     for(const id of reference.purchaseOrderIds)await this.effect(workflow,`CANCEL_SERVICE_PO:${id}`,()=>this.procurement.cancelServicePurchaseOrder(input.companyId,id,`Cancel service ${input.service.sourceId}`),value=>value.id);
     if(reference.commissionClaimId)await this.effect(workflow,'REVERSE_SERVICE_COMMISSION',()=>this.commission.reverse(input.companyId,reference.commissionClaimId!,input.postingDate,`SV-C-${workflow.id}`),value=>value.id);
     if(reference.invoiceId)await this.effect(workflow,'CANCEL_SERVICE_INVOICE',()=>this.billing.cancelInvoice(input.companyId,reference.invoiceId!,input.postingDate,`SV-C-${workflow.id}`),value=>value.id);
-    for(const id of reference.allocationIds){const allocation=await this.inventory.allocation(input.companyId,id);if(!allocation)throw new ContractValidationError('inventory','canonical allocation missing');await this.effect(workflow,`RELEASE_SERVICE:${id}`,async key=>{const result=await this.inventory.release(input.companyId,id,allocation.quantity,key);if(!result.success)throw new ContractValidationError('inventory','release blocked');return result;},()=>id);}
-    await this.repo.saveStandalone({...reference,status:'CANCELLED'});
-    return (await this.complete(workflow,{cancelled:true,blockers:[],operationId:workflow.id})).result as {cancelled:boolean;blockers:readonly string[];operationId:string};
-  }
-
-  async configureFinancialSetup(input: FinancialSetup) { required(input.id, 'id'); const value = { ...input, active: true }; await this.repo.saveSetup(value); return value; }
-  private async workflow(kind: WorkflowKind, input: { companyId: CompanyId; branchId?: string; commandKey: string }, source: SourceReference, payload: unknown) { required(input.commandKey, 'commandKey'); const payloadHash = hash(payload); const old = await this.repo.workflow(input.companyId, input.commandKey); if (old) { if (old.payloadHash !== payloadHash || old.kind !== kind) throw new ContractValidationError('commandKey', 'conflicting replay'); return old; } const now = new Date().toISOString(); const value: Workflow = { id: hash([input.companyId, input.commandKey]).slice(0, 32), companyId: input.companyId, ...(input.branchId ? { branchId: input.branchId } : {}), kind, commandKey: input.commandKey, payloadHash, sourceType: source.sourceType, sourceId: source.sourceId, status: 'RUNNING', payload, createdAt: now, updatedAt: now }; const reserved = await this.repo.reserveWorkflow(value); if (reserved.payloadHash !== payloadHash) throw new ContractValidationError('commandKey', 'conflicting replay'); return reserved; }
-  private async effect<T>(workflow: Workflow, name: string, call: (key: string) => Promise<T>, reference: (result: T) => string | undefined): Promise<T> { const prior = await this.repo.step(workflow.companyId, workflow.id, name); if (prior?.status === 'COMPLETED') return prior.result as T; const step = prior ?? await this.repo.reserveStep({ id: hash([workflow.id, name]).slice(0, 32), companyId: workflow.companyId, workflowId: workflow.id, name, effectKey: `TFO:${workflow.id}:${name}`, status: 'PENDING', createdAt: new Date().toISOString() }); const result = await call(step.effectKey); await this.repo.completeStep(workflow.companyId, step.id, reference(result), result); return result; }
-  private async complete(workflow: Workflow, result: unknown, status: Workflow['status'] = 'COMPLETED') { const value = { ...workflow, status, result, updatedAt: new Date().toISOString() }; await this.repo.saveWorkflow(value); return value; }
-  private assertBranch(booking: BookingReference, branchId?: string) { if (booking.branchId !== branchId) throw new ContractValidationError('branchId', 'booking belongs to a different branch'); }
-
-  async confirmBooking(input: ConfirmBookingInput) {
-    required(input.booking.sourceId, 'booking.sourceId'); required(input.program.sourceId, 'program.sourceId'); required(input.customerPartyId, 'customerPartyId'); required(input.programStateEvidence, 'programStateEvidence'); required(input.dueDate, 'dueDate');
-    if (input.programState !== 'OPEN') throw new ContractValidationError('programState', 'selling requires OPEN program');
-    const gross = nonNegative(input.grossAmount, 'grossAmount'); const discount = nonNegative(input.discountAmount, 'discountAmount'); if (units(discount) > units(gross)) throw new ContractValidationError('discountAmount', 'cannot exceed gross'); const net = fromUnits(units(gross) - units(discount));
-    const inventories = [...(input.inventories ?? (input.inventory ? [input.inventory] : []))].sort((a,b)=>a.allocationId.localeCompare(b.allocationId));
-    if (!inventories.length) throw new ContractValidationError('inventory','at least one allocation is required');
-    if (new Set(inventories.map(item=>item.allocationId)).size!==inventories.length) throw new ContractValidationError('inventories','duplicate allocation identity');
-    const financialPayload = { branchId: input.branchId ?? null, booking: input.booking, program: input.program, programState: input.programState, programStateEvidence: input.programStateEvidence, category: input.category, costCenterId: input.costCenterId, customerPartyId: input.customerPartyId, currency: input.currency, grossAmount: gross, discountAmount: discount, approvalRequestId: input.approvalRequestId ?? null, postingDate: input.postingDate, dueDate: input.dueDate, invoiceNumber: input.invoiceNumber, inventories, commission: input.commission ?? null };
-    const confirmationPayloadHash = hash(financialPayload); let workflow = await this.workflow('BOOKING_CONFIRMATION', input, input.booking, financialPayload);
-    const existing = await this.repo.booking(input.companyId, input.booking);
-    const setup = existing ? undefined : await this.repo.setup(input.companyId, input.category);
-    if (!existing && !setup?.active) throw new ContractValidationError('financialSetup', `missing ${input.category} setup`);
-    const financialSetup = existing?.financialSetup ?? { receivableAccountId: setup!.receivableAccountId, customerAdvanceAccountId: setup!.customerAdvanceAccountId, revenueAccountId: setup!.revenueAccountId, ...(setup!.commissionExpenseAccountId ? { commissionExpenseAccountId: setup!.commissionExpenseAccountId } : {}), ...(setup!.commissionLiabilityAccountId ? { commissionLiabilityAccountId: setup!.commissionLiabilityAccountId } : {}) };
-    const reservation: BookingReference = { id: hash([input.companyId, refKey(input.booking)]).slice(0, 32), companyId: input.companyId, ...(input.branchId ? { branchId: input.branchId } : {}), booking: input.booking, program: input.program, customerPartyId: input.customerPartyId, confirmationPayloadHash, status: 'CONFIRMING', allocations: [], ...(input.approvalRequestId ? { approvalRequestId: input.approvalRequestId } : {}), depositVoucherIds: [], workflowId: workflow.id, financialSetup };
-    const claimed = await this.repo.reserveBooking(reservation);
-    if (claimed.confirmationPayloadHash !== confirmationPayloadHash) throw new ContractValidationError('booking', 'conflicting financial confirmation replay');
-    if (claimed.workflowId !== workflow.id) { const canonical = await this.repo.workflowById(input.companyId, claimed.workflowId); if (!canonical) throw new ContractValidationError('booking', 'canonical confirmation workflow is missing'); workflow = canonical; }
-    if (workflow.status === 'COMPLETED') return workflow.result;
-    const claimedSetup = claimed.financialSetup;
-    if (discount !== '0') await this.controls.authorizeDiscount({ companyId: input.companyId, ...(input.branchId ? { branchId: input.branchId } : {}), booking: input.booking, amount: discount, ...(input.approvalRequestId ? { approvalRequestId: input.approvalRequestId } : {}) });
-    await this.effect(workflow, 'COST_CENTER', () => this.cost.ensureProgram(input.companyId, input.program, input.costCenterId), (value) => value.costCenterId);
-    const allocations=[] as Array<{allocationId?:string;procurementReference?:string;quantity:DecimalAmount}>;
-    for(const request of inventories){const result=await this.effect(workflow,inventories.length===1?'INVENTORY':`INVENTORY:${request.allocationId}`,(key)=>this.inventory.allocate({companyId:input.companyId,...request,program:input.program},key),(value)=>value.allocationId??value.procurementReference);allocations.push({...result,quantity:request.quantity});}
-    const invoice = await this.effect(workflow, 'BILLING', () => this.billing.createBookingInvoice({ id: `tfo-invoice:${workflow.id}`, companyId: input.companyId, ...(input.branchId ? { branchId: input.branchId } : {}), partyId: input.customerPartyId, number: input.invoiceNumber, postingDate: input.postingDate, dueDate: input.dueDate, currency: input.currency, sourceId: workflow.id, receivableAccountId: claimedSetup.receivableAccountId, revenueAccountId: claimedSetup.revenueAccountId, amount: net }), (value) => value.id);
-    let commissionClaimId = claimed.commissionClaimId; if (input.commission) { const expenseAccountId = claimedSetup.commissionExpenseAccountId; const liabilityAccountId = claimedSetup.commissionLiabilityAccountId; if (!expenseAccountId || !liabilityAccountId) throw new ContractValidationError('financialSetup', 'commission accounts required'); const claim = await this.effect(workflow, 'COMMISSION', () => this.commission.create({ id: `tfo-commission:${workflow.id}`, companyId: input.companyId, ...(input.branchId ? { branchId: input.branchId } : {}), agentPartyId: input.commission!.agentPartyId, sourceId: workflow.id, currency: input.currency, amount: input.commission!.amount, expenseAccountId, liabilityAccountId }), (value) => value.id); commissionClaimId = claim.id; }
-    const procurementReferences = [...new Map(
-      allocations.flatMap((item) => item.procurementReference ? [[item.procurementReference, { purchaseOrderId: item.procurementReference } as ProcurementReference] as const] : []),
-    ).values()];
-    const finalBooking: BookingReference = {
-      ...claimed,
-      status: 'ACTIVE',
-      invoiceId: invoice.id,
-      allocations: allocations.flatMap((item) => item.allocationId ? [{ id: item.allocationId, quantity: item.quantity }] : []),
-      procurementReferences,
-      ...(procurementReferences.length === 1 ? { procurementReference: procurementReferences[0] } : {}),
-      ...(commissionClaimId ? { commissionClaimId } : {}),
-    };
+    for(const id of reference.allocationIds){const allocation=await this.inventory.allocation(input.companyId,id);if(!allocation)throw new ContractValidationError('inventory','canonical allocation missing');await this.effect(workflow,`RELEASE_SERVICE:${id}`,async key=>{const result=await this.inventory.release(input.companyId,id,allocation.quantity,key);if(!result.success)throw new ContractValidationError('inventory','owner rejected full allocation release');return result;},()=>id);}
     await this.repo.saveBooking(finalBooking);
     return (await this.complete(workflow, finalBooking)).result;
   }
