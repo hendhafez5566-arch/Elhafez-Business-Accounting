@@ -6,5 +6,6 @@ import { CurrencyFxController } from './currency-fx.controller.js';
 @Module({
   imports: [PlatformCoreModule, CurrencyFxModule],
   controllers: [CurrencyFxController],
+  exports: [CurrencyFxModule],
 })
 export class CurrencyFxHttpModule {}
