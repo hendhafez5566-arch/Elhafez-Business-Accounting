@@ -91,7 +91,25 @@ jobs:
       - name: Diagnose SP-03 AppModule bootstrap
         if: failure() && github.event_name == 'pull_request' && github.event.pull_request.draft == false
         working-directory: apps/api
-        run: node --import ./scripts/typescript-test-runtime.mjs --test --test-concurrency=1 src/sp03-supplier-intelligence.spec.ts
+        env:
+          NODE_ENV: test
+        run: |
+          node --import ./scripts/typescript-test-runtime.mjs --input-type=module <<'NODE'
+          import { NestFactory } from '@nestjs/core';
+          import { AppModule } from './src/app.module.js';
+
+          try {
+            const app = await NestFactory.createApplicationContext(AppModule, {
+              logger: false,
+              abortOnError: false,
+            });
+            await app.close();
+            console.error('SP-03 diagnostic: AppModule bootstrap unexpectedly succeeded');
+          } catch (error) {
+            console.error('SP-03 diagnostic bootstrap error:', error);
+            process.exitCode = 1;
+          }
+          NODE
 
       - name: Affected workspace tests (main smoke)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
