@@ -13,15 +13,12 @@ test('canonical controls keep the shared UI skin outside route-owned presentatio
 });
 
 test('route-owned presentation keeps shared behavior but removes canonical visual classes', () => {
+  const content = createElement('div', null,
+    createElement(Button, { className: 'ct-btn ct-btn--pri' }, 'حفظ'),
+    createElement(Input, { className: 'ct-in', value: 'عميل', readOnly: true }),
+  );
   const html = renderToStaticMarkup(
-    createElement(
-      RoutePresentationBoundary,
-      { mode: 'route-owned' },
-      createElement('div', null,
-        createElement(Button, { className: 'ct-btn ct-btn--pri' }, 'حفظ'),
-        createElement(Input, { className: 'ct-in', value: 'عميل', readOnly: true }),
-      ),
-    ),
+    createElement(RoutePresentationBoundary, { mode: 'route-owned', children: content }),
   );
   assert.match(html, /class="ct-btn ct-btn--pri"/);
   assert.match(html, /class="ct-in"/);
