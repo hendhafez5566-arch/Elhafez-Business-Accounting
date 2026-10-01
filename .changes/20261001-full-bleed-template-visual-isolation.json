@@ -1,0 +1,24 @@
+{
+  "id": "20261001-full-bleed-template-visual-isolation",
+  "summary": "Prevent the canonical Gemini visual skin from leaking into owner-supplied full-bleed templates while preserving shared control behavior, CSP, APIs and Replace-Not-Overlay route ownership.",
+  "type": "feature",
+  "allowedModules": [],
+  "allowedPaths": [
+    ".changes/20261001-full-bleed-template-visual-isolation.json",
+    "apps/web/src/app-shell.tsx",
+    "apps/web/src/ui.tsx",
+    "apps/web/src/ui/route-aware-controls.tsx",
+    "apps/web/src/route-presentation.spec.tsx"
+  ],
+  "protectedPaths": [
+    "apps/web/src/app-shell.tsx",
+    "apps/web/src/ui.tsx",
+    "apps/web/src/ui/**"
+  ],
+  "protectedReason": "This is a central UI architecture correction: full-bleed routes must own their visual presentation without inheriting the canonical Gemini skin. The change is implemented once at the protected UI boundary rather than through route CSS overrides or hidden layers.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": "",
+  "testEvidence": [
+    "apps/web/src/route-presentation.spec.tsx"
+  ]
+}
