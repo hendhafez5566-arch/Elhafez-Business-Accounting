@@ -14,6 +14,7 @@ test('global shell contract preserves RTL, right sidebar, topbar, navigation and
   assert.match(html, /aria-current="page"/);
   assert.match(html, /data-sidebar-mode="fixed"/);
   assert.match(html, /data-route-id="foundation"/);
+  assert.match(html, /data-route-surface="standard"/);
   assert.match(html, /class="ui-page-header"/);
   assert.match(html, /class="[^"]*ui-page-stack[^"]*"/);
 });
@@ -49,6 +50,17 @@ test('local content renders inside the canonical shell without replacing shell s
   assert.match(html, /class="app-sidebar"/);
   assert.match(html, /class="app-topbar"/);
   assert.equal((html.match(/ui-page-stack/g) ?? []).length, 1);
+});
+
+test('full-bleed route replaces the standard shell instead of rendering it and hiding it', () => {
+  const html = renderToStaticMarkup(createElement(AppShell, { pathname: '/crm/customers' }));
+  assert.match(html, /data-route-id="crm-customers"/);
+  assert.match(html, /data-route-surface="full-bleed"/);
+  assert.match(html, /class="ct-root"/);
+  assert.doesNotMatch(html, /class="app-sidebar"/);
+  assert.doesNotMatch(html, /class="app-topbar"/);
+  assert.doesNotMatch(html, /class="ui-page-header"/);
+  assert.doesNotMatch(html, /ui-page-stack/);
 });
 
 test('appearance settings are reachable from canonical navigation', () => {

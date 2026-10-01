@@ -1,0 +1,33 @@
+{
+  "id": "20261001-replace-not-overlay-ui",
+  "summary": "Replace the overly restrictive UI guardrail with a Replace-Not-Overlay architecture: explicit standard/full-bleed route surfaces, route-owned page CSS with anti-shell-hiding enforcement, and cleanup of the temporary Customers CSS workaround without changing CRM business ownership or APIs.",
+  "type": "phase",
+  "allowedModules": [],
+  "allowedPaths": [
+    ".changes/20261001-replace-not-overlay-ui.json",
+    "apps/web/customers-template.css",
+    "apps/web/src/app-shell.tsx",
+    "apps/web/src/app-shell-contract.spec.ts",
+    "apps/web/src/crm-party-pages.tsx",
+    "apps/web/src/customers-template-style.spec.ts",
+    "apps/web/src/index.tsx",
+    "apps/web/src/pages/crm-customers/customers.css",
+    "apps/web/src/route-surface.ts",
+    "apps/web/src/route-surface.spec.ts",
+    "docs/UI-ARCHITECTURE.md",
+    "tools/architecture/check-architecture.ts"
+  ],
+  "protectedPaths": [
+    "apps/web/src/app-shell.tsx",
+    "tools/architecture/**",
+    "docs/UI-ARCHITECTURE.md"
+  ],
+  "protectedReason": "The owner explicitly requested correction of the global UI protection itself so pages can be genuinely replaced instead of layered. This requires a central AppShell route-surface contract and architecture guard changes; the protection is being strengthened against overlays rather than bypassed.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": "",
+  "testEvidence": [
+    "apps/web/src/app-shell-contract.spec.ts",
+    "apps/web/src/route-surface.spec.ts",
+    "apps/web/src/customers-template-style.spec.ts"
+  ]
+}

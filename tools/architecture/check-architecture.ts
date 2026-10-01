@@ -14,6 +14,7 @@ const schemaPath = join(root, 'prisma', 'schema.prisma');
 const errors: string[] = [];
 const sourceExtensions = new Set(['.ts', '.tsx']);
 const canonicalWebCss = new Set(['apps/web/src/styles.css', 'apps/web/src/ui/design-tokens.css']);
+const pageStylePrefix = 'apps/web/src/pages/';
 const kernelPackages = new Set(['core', 'contracts']);
 
 function filesIn(directory: string): string[] {
@@ -285,8 +286,27 @@ function cssFilesIn(directory: string): string[] {
 
 for (const file of cssFilesIn(webSourceRoot)) {
   const from = relative(root, file).split(sep).join('/');
-  if (!canonicalWebCss.has(from)) {
-    errors.push(from + ': page/module CSS is forbidden; reusable styling belongs in the canonical UI foundation.');
+  if (canonicalWebCss.has(from)) continue;
+  if (!from.startsWith(pageStylePrefix)) {
+    errors.push(from + ': CSS must be canonical UI CSS or a route-owned page stylesheet under apps/web/src/pages/<route-id>/.');
+    continue;
+  }
+
+  const segments = from.split('/');
+  const owner = segments[4];
+  const content = readFileSync(file, 'utf8');
+  if (!owner || segments.length < 6) {
+    errors.push(from + ': route-owned page styles must live under apps/web/src/pages/<route-id>/.');
+    continue;
+  }
+  if (!content.includes(`page-style-owner: ${owner}`)) {
+    errors.push(from + `: route-owned page styles must declare /* page-style-owner: ${owner} */.`);
+  }
+  if (content.includes(':has(')) {
+    errors.push(from + ': page styles may not use :has() to detect or hide already-rendered shell/UI layers.');
+  }
+  if (/(?:^|[,{]\s*)(?:html\b|body\b|:root\b|\.app-shell\b|\.app-sidebar\b|\.app-topbar\b|\.app-main\b|\.app-content\b|\.app-route-surface\b|\.ui-page-stack\b)/m.test(content)) {
+    errors.push(from + ': page styles may not own global shell, document, or canonical page-stack selectors; choose the route surface before rendering instead.');
   }
 }
 

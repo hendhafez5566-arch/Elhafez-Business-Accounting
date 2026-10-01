@@ -1,59 +1,110 @@
 # ELHAFEZ UI ARCHITECTURE
 
-Status: **UI-04 — canonical theme + screen-layout separation**
+Status: **UI-05 — Replace, Not Overlay**
 
 ## Purpose
 
-The web interface is a design system, not a collection of page-specific styling patches.
-Business modules own business truth. The UI foundation owns reusable presentation primitives,
-layout, navigation behavior, design tokens, accessibility conventions and personal presentation
-preferences.
+The web interface must support major page redesigns without repeating the failure mode of the legacy system: a new page being rendered on top of an old page, old wrappers remaining underneath new wrappers, or CSS hiding obsolete UI after it has already been rendered.
 
-The UI architecture has two independent presentation concerns:
+Business modules continue to own business truth. UI code owns presentation only. A redesign may radically change the appearance and composition of a route, but it must not create a second API path, business service, table, financial owner or source of truth.
 
-1. **Visual theme** — colors, typography, density, radii, shadows and other appearance tokens.
-2. **Screen layout blueprint** — the structural composition of a screen: dashboard, split view,
-   master/detail, settings workspace, Kanban, matrix, form, stepper, timeline, documents,
-   command center, operations workspace, profile or data table.
+The governing rule is:
 
-A theme is never allowed to stand in for a screen redesign. Changing the theme alone must not be
-reported as changing a screen's structure.
+> **Replace, not overlay. A route has one active presentation path.**
+
+## Presentation layers
+
+The UI architecture separates three concerns:
+
+1. **Business behavior** — real APIs, permissions, state transitions and canonical module ownership.
+2. **Route surface** — whether a route uses the normal ERP shell or owns a full-bleed surface.
+3. **Page presentation** — the actual page composition and, when justified, route-owned styling.
+
+These concerns must not be simulated through CSS tricks.
 
 ## Canonical locations
 
-- `apps/web/src/ui.tsx` — stable public facade used by existing web pages.
+- `apps/web/src/ui.tsx` — stable public facade for reusable controls.
 - `apps/web/src/ui/primitives.tsx` — reusable controls and content primitives.
-- `apps/web/src/ui/screen-layouts.tsx` — canonical screen blueprint vocabulary and reusable structural workspaces.
+- `apps/web/src/ui/screen-layouts.tsx` — reusable structural screen blueprints.
 - `apps/web/src/ui/icons.tsx` — shared icon vocabulary.
-- `apps/web/src/ui/navigation.tsx` — sidebar/topbar/navigation composition.
-- `apps/web/src/ui/preferences.tsx` — typed presentation preferences and persistence adapter.
-- `apps/web/src/ui/design-tokens.css` — colors, typography, density, spacing, radius and shadows.
-- `apps/web/src/styles.css` — canonical shell/component rules and visual-theme sections consuming design tokens.
-- `apps/web/src/app-shell.tsx` — one application shell and one screen-layout boundary for every route.
-- `apps/web/src/routes.tsx` — route registry; every route must declare its structural `ScreenDesign`.
+- `apps/web/src/ui/navigation.tsx` — standard sidebar/topbar/navigation composition.
+- `apps/web/src/ui/preferences.tsx` — typed presentation preferences.
+- `apps/web/src/ui/design-tokens.css` — shared visual tokens.
+- `apps/web/src/styles.css` — standard application shell and reusable component styling.
+- `apps/web/src/app-shell.tsx` — chooses the route surface before rendering presentation chrome.
+- `apps/web/src/route-surface.ts` — explicit route-surface registry.
+- `apps/web/src/pages/<route-id>/*.css` — optional route-owned CSS for a page whose supplied design cannot be expressed cleanly through the standard shared styles.
+- `apps/web/src/routes.tsx` — route registry and structural `ScreenDesign` declarations.
 
-## Non-negotiable anti-patching rules
+## Route surfaces
 
-1. A business page must consume shared UI components through `apps/web/src/ui.tsx`.
-2. Do not create a second Button, Input, Table, Card, Tabs, Badge, Dialog, Drawer, Toast, PageHeader,
-   FormSection, AppShell or page-stack implementation when the canonical implementation exists.
-3. Do not place inline `style={{...}}` declarations in application TSX.
-4. Do not add page/module CSS files under `apps/web/src`. Reusable patterns belong in the central UI foundation.
-5. New global colors, spacing, typography, breakpoints, radii or shadows must be introduced as design tokens,
-   never as scattered literals.
-6. A suite/menu is presentation only. UI composition must never move or duplicate business ownership.
-7. The shell remains RTL-first and responsive. The sidebar is physically on the right for desktop layouts.
-8. Accessibility behavior is part of the component contract: keyboard focus, labels, dialog semantics and mobile drawer behavior must remain intact.
-9. Global UI foundation paths are protected by Change Safety and CODEOWNERS. Local feature work must not edit them as a workaround.
-10. When a genuinely reusable visual or structural pattern is missing, add it once to the canonical UI foundation with tests, then consume it from business pages.
-11. Do not put a new wrapper around an obsolete wrapper. Replace the canonical path and remove superseded local duplication.
-12. A redesign must not introduce a second data flow, API client, business service, table, financial owner or source of truth.
+There are two route surfaces:
+
+### `standard`
+
+The normal ERP surface. `AppShell` renders the canonical Sidebar, mobile Drawer, Topbar, PageHeader and exactly one `ScreenLayoutBoundary`.
+
+### `full-bleed`
+
+A deliberate replacement surface for a route whose accepted design owns the full viewport. `AppShell` does **not** render Sidebar, Drawer, Topbar, PageHeader or the standard page-stack and then hide them. Those elements are never rendered for that route.
+
+The route surface is chosen before rendering through `routeSurfaceFor(routeId)`. Unknown routes default to `standard`.
+
+A full-bleed route is not an escape from business architecture. It changes presentation composition only.
+
+## Route-owned page styling
+
+Page-specific CSS is allowed only when it is a real page implementation, not a patch over another implementation.
+
+Allowed location:
+
+```text
+apps/web/src/pages/<route-id>/*.css
+```
+
+Every route-owned stylesheet must declare its owner:
+
+```css
+/* page-style-owner: crm-customers */
+```
+
+Route-owned CSS may style the page's own classes. It may **not** style or hide global application structure.
+
+Forbidden in route-owned CSS:
+
+- `.app-shell`
+- `.app-sidebar`
+- `.app-topbar`
+- `.app-main`
+- `.app-content`
+- `.app-route-surface`
+- `.ui-page-stack`
+- `html`, `body` or `:root` ownership
+- `:has(...)` used to detect already-rendered layers and hide them
+
+If a route needs a different shell, change the route surface. Do not render the old shell and conceal it with CSS.
+
+Route-owned CSS is included once through the canonical web build entry/bundle manifest and remains scoped to the page's own class namespace. It must not be injected through inline `<style>` blocks, duplicated inside TSX strings, or stored outside the governed source tree as a way around architecture checks.
+
+## Non-negotiable anti-layering rules
+
+1. One route has one active presentation implementation.
+2. Do not render an obsolete shell/component and hide it with CSS.
+3. Do not keep V1 active while V2 is placed above it.
+4. Do not create `new`, `v2`, `final`, `copy`, or equivalent parallel implementations unless a temporary migration is explicit, tested and removes the superseded path before completion.
+5. Replacing presentation must not duplicate API clients, services, workflows, database tables, financial ownership or state machines.
+6. Shared controls such as Button, Input, Select and Textarea continue to come from `apps/web/src/ui.tsx` unless the canonical primitive itself is intentionally replaced centrally.
+7. Inline `style={{...}}` application styling remains forbidden.
+8. Inline `<style>` blocks are not a supported page-styling mechanism. CSP remains enabled; do not weaken security policy to make a page design work.
+9. Page-owned CSS must remain scoped to the page and may not control the global shell.
+10. Global design tokens and truly reusable visual patterns remain in the canonical UI foundation.
+11. A redesign must delete or disconnect the superseded presentation path rather than layering around it.
+12. Mock/localStorage prototype data must never replace production data ownership.
 
 ## Screen structure architecture
 
-### `ScreenDesign`
-
-Every registered route declares exactly one structural design:
+Every registered route still declares a `ScreenDesign`:
 
 ```ts
 interface ScreenDesign {
@@ -62,17 +113,11 @@ interface ScreenDesign {
 }
 ```
 
-`defineRoutes()` validates this declaration fail-closed. A new route without a valid canonical
-blueprint/reference is rejected before navigation can render it.
+For `standard` routes the App Shell consumes the design through one `ScreenLayoutBoundary`.
 
-The App Shell reads the route design and renders **one** `ScreenLayoutBoundary`. This component
-replaces the former bare `ui-page-stack`; it does not wrap another page stack. The root shell and
-boundary expose `data-screen-blueprint` and `data-screen-reference` so tests and visual QA can prove
-which structural specification is active.
+For `full-bleed` routes the design remains route metadata for testing, documentation and structural intent, while the accepted page implementation owns the viewport directly. The standard boundary is not rendered underneath it.
 
-### Canonical blueprint families
-
-The canonical blueprint vocabulary is deliberately small and reusable:
+Canonical blueprint families remain deliberately small:
 
 - `dashboard`
 - `module`
@@ -90,150 +135,67 @@ The canonical blueprint vocabulary is deliberately small and reusable:
 - `operations`
 - `profile`
 
-If a new screen appears to need a sixteenth family, first prove that none of these families can
-represent it cleanly. Do not create page-specific layout abstractions merely to match one mockup.
+## The owner-supplied references
 
-### Structural workspaces
+The supplied designs are implementation targets for presentation and structure, not sources of business truth. Their visual layout may be reproduced closely, including a route-specific visual identity, while real system data/actions remain connected to the existing backend.
 
-Reusable structural compositions belong in `ui/screen-layouts.tsx`. The initial canonical set is:
+For each supplied design:
 
-- `SplitWorkspace`
-- `MasterDetailWorkspace`
-- `SettingsWorkspace`
-- `WorkspacePane`
-
-They use the existing canonical Card/grid foundation. They do not own data, routing, business actions
-or API calls. Business pages provide content and handlers; the structural component only composes them.
-
-### The 39 owner-supplied references
-
-The supplied references are registered as **screen structure specifications**, not as theme names:
-
-1. Fleet & Transport Management
-2. Team Task Workflow
-3. Customer Management CRM
-4. Trip Operations Dashboard
-5. Tourism Bookings
-6. Supplier Disputes
-7. Tourism Contracts
-8. Company & System Settings
-9. Bank Reconciliation
-10. Account Statement
-11. Agents & Commissions
-12. Currency & FX Management
-13. Cost Centers & Budgets
-14. VAT & Tax Returns
-15. Purchase Orders
-16. Audit Trail & Logs
-17. Chart of Accounts
-18. Billing & Invoicing
-19. Master Module Template
-20. HR & Payroll Module
-21. Voucher & Ticketing Center
-22. Assets & Depreciation
-23. Tourism Inventory Matrix
-24. CRM Lead Pipeline
-25. Rooming Allocation
-26. SaaS Control Plane
-27. Treasury Settlement
-28. Document Management
-29. System Administration
-30. Tourism Itinerary Builder
-31. Financial Reporting Center
-32. Supplier Intelligence
-33. Hajj & Umrah Kanban Board
-34. Main Dashboard
-35. Journal Entry Form
-36. Quotation Stepper
-37. App Layout
-38. Data Table
-39. Design System Atoms
-
-A route may reuse the closest canonical reference when no one-to-one reference exists, but the page
-must still implement the appropriate structural blueprint. Reusing a reference never authorizes
-copying mock data into source truth.
+1. Identify the exact target route.
+2. Decide `standard` versus `full-bleed` before implementation.
+3. Remove or disconnect the superseded presentation for that route.
+4. Rebuild the accepted design using the existing real APIs and permissions.
+5. If route-owned CSS is required, place it under `apps/web/src/pages/<route-id>/` and scope it to the page.
+6. Never import prototype localStorage/seed behavior into production.
+7. Test that obsolete shell/page layers are not present in the rendered output.
 
 ## Redesign acceptance rule
 
-A screen is **not** considered redesigned merely because its colors, font, buttons, radius, cards or
-spacing changed.
+A redesign is complete only when all of the following are true:
 
-For a structural redesign to be accepted:
+1. The correct route renders the intended design.
+2. The route surface is explicit and tested.
+3. Superseded presentation layers are not rendered underneath the new page.
+4. There is one styling source for the page presentation; no inline duplicate remains.
+5. Existing real APIs, permissions and state transitions remain the source of behavior.
+6. No duplicate business/data path was introduced.
+7. Mobile and RTL behavior are verified.
+8. Change Safety, Engineering Integrity, typecheck, lint, architecture check, tests and build pass.
 
-1. The route has a valid `ScreenDesign`.
-2. The page composition matches its blueprint/reference intent (for example split view, Kanban,
-   master/detail, settings navigation, matrix, stepper, transaction form or command center).
-3. Existing real APIs, permissions, state transitions and owner modules remain the source of behavior.
-4. Mock reference data is never introduced as business truth.
-5. Mobile/RTL behavior is verified for the actual structure, not only for theme tokens.
-6. Tests cover the route design contract and any reusable structural component.
+## Architecture enforcement
 
-## Replaceable visual themes
+`tools/architecture/check-architecture.ts` enforces the relevant rules fail-closed:
 
-The canonical functional baseline remains the unscoped rules in `apps/web/src/styles.css`. A visual
-theme may refine presentation on top of that baseline and must never own business behavior, data
-access, routing, validation, workflow logic **or screen structure**.
+- only canonical global CSS and route-owned page CSS locations are accepted;
+- route-owned CSS must declare its route owner;
+- route-owned CSS cannot target global shell/document/page-stack selectors;
+- route-owned CSS cannot use `:has()` as a shell-hiding workaround;
+- raw application form controls remain prohibited outside the shared UI foundation;
+- inline style objects remain prohibited;
+- module/data ownership and dependency DAG checks remain unchanged.
 
-Theme selection is part of `UiPreferences` and is applied through `html[data-ui-theme]`. A theme may
-style the canonical shell/primitives/layouts, but must not create theme-specific business pages or a
-parallel screen hierarchy.
+The purpose of the guard is no longer to prevent pages from looking different. Its purpose is to prevent **stacked implementations, hidden obsolete layers and duplicated ownership**.
 
-Rules for future themes:
+## Security boundary
 
-- Keep shared theme rules in the canonical styling path; do not create parallel page/module CSS files.
-- Gate every optional theme rule behind its own `data-ui-theme` value.
-- Style the existing shell/primitives/layouts; do not duplicate components.
-- Keep the login/tenant-entry surface on the same shared controls and tokens as the authenticated application.
-- Do not make a theme a prerequisite for layout correctness, accessibility or functional behavior.
-- Never describe a theme-only change as a structural redesign.
+CSP is a security control, not a visual-style policy. It remains enabled. A legitimate redesign must work through bundled application assets and normal React rendering without enabling unsafe inline style/script execution.
 
-## Sidebar modes
-
-The shell owns exactly three persisted presentation modes:
-
-- `fixed`: full sidebar remains visible.
-- `compact`: icon-only sidebar remains visible.
-- `auto`: compact by default and expands on pointer hover or keyboard focus without shifting the content area.
-
-Mobile navigation remains a drawer and does not depend on the desktop mode.
-
-## Typography and density
-
-The font registry remains dependency-light and presentation-only. Font scale and density may change
-spacing and type size, but they must not select a different screen blueprint.
-
-Pages must use rem/token-based sizing so these settings propagate consistently.
-
-## Preference persistence
-
-Presentation preferences are stored behind a typed adapter and namespaced by a `preferenceScope`.
-The shell currently defaults to a local browser scope. A future cross-device preference service can
-implement the same typed boundary without changing pages or layout ownership.
-
-## Extension procedure
-
-When adding or redesigning a UI surface:
-
-1. Identify the business owner(s); do not let the screen become a business owner.
-2. Choose the canonical `ScreenBlueprint` and `ScreenReferenceId` in the route registry.
-3. Decide whether the page can use existing structural workspaces.
-4. If a reusable structural pattern is genuinely missing, extend `screen-layouts.tsx` once with tests.
-5. Compose the page around existing real data/actions; do not create parallel API/data paths.
-6. Add focused behavior/accessibility/structure tests.
-7. Run Change Safety, Engineering Integrity, typecheck, lint, architecture check and web tests.
-8. Inspect the final diff for wrapper-on-wrapper, duplicate primitives, duplicate services and unrelated styling churn.
+Do not weaken CSP to accommodate a template.
 
 ## Application contract
 
-- The App Shell renders the canonical page header for every registered route.
-- The App Shell renders exactly one canonical `ScreenLayoutBoundary` for route content.
-- Business pages do not create competing global shells or top-level page stacks.
-- Interactive form controls come from the shared UI facade.
-- Dashboard metrics use `MetricCard`; action rows use `ActionBar`; common tabular data uses `DataGrid` where appropriate.
-- Structural layouts come from the route blueprint and canonical structural helpers, not from the active visual theme.
-- Print-only document styling remains isolated to printable flows and is not an application-page styling escape hatch.
-- UI composition does not change canonical module/data ownership.
+For a `standard` route:
 
-This separation is the permanent protection against the repeated failure mode where a redesign only
-recolors the old page structure. Future visual themes remain replaceable, while screen composition is
-explicit, testable and independently evolvable without layering one UI architecture over another.
+- one canonical App Shell is rendered;
+- one Sidebar/Topbar navigation composition is rendered;
+- one PageHeader is rendered;
+- one `ScreenLayoutBoundary` is rendered.
+
+For a `full-bleed` route:
+
+- the standard Sidebar/Topbar/PageHeader/page-stack are not rendered at all;
+- the route page owns the viewport directly;
+- route-owned CSS styles only that page;
+- business ownership remains unchanged.
+
+This is the permanent protection against the legacy failure mode: **a redesign replaces the old presentation instead of becoming another layer above it.**
