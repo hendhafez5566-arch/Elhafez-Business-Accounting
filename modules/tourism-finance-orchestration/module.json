@@ -23,6 +23,7 @@
     "@elhafez/billing-subledgers",
     "@elhafez/treasury-settlement",
     "@elhafez/expense-commission-recognition",
-    "@elhafez/financial-controls"
+    "@elhafez/financial-controls",
+    "@elhafez/currency-fx"
   ]
 }

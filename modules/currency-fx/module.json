@@ -1,7 +1,9 @@
 {
   "name": "currency-fx",
   "publicApi": [
-    "src/public/index.ts"
+    "src/public/index.ts",
+    "src/public/nest.ts",
+    "src/public/http.ts"
   ],
   "ownedTables": [
     "fx_currencies",
@@ -10,6 +12,7 @@
   ],
   "allowedDependencies": [
     "@elhafez/contracts",
-    "@elhafez/core"
+    "@elhafez/core",
+    "@elhafez/platform-core"
   ]
 }

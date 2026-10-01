@@ -12,6 +12,7 @@ import {
   configureCurrency,
   makeRate,
   moneyDifference,
+  multiplyExact,
   type CurrencyConfiguration,
   type FxRate,
   type PositionClassification,
@@ -117,7 +118,7 @@ export class CurrencyFxApplicationService {
   ): Promise<Readonly<{ converted: Money; rate: FxRateSnapshot }>> {
     const rate = await this.resolveRate(companyId, amount.currency, to, at);
     return Object.freeze({
-      converted: money((await import('../domain/fx.js')).multiplyExact(amount.amount, rate.rate), to),
+      converted: money(multiplyExact(amount.amount, rate.rate), to),
       rate,
     });
   }
