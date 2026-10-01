@@ -1,7 +1,7 @@
 {
   "id": "20261001-full-bleed-template-visual-isolation",
   "summary": "Prevent the canonical Gemini visual skin from leaking into owner-supplied full-bleed templates while preserving shared control behavior, CSP, APIs and Replace-Not-Overlay route ownership.",
-  "type": "fix",
+  "type": "feature",
   "allowedModules": [],
   "allowedPaths": [
     ".changes/20261001-full-bleed-template-visual-isolation.json",
@@ -19,7 +19,6 @@
   "allowBreakingPublicApi": false,
   "publicApiBreakingReason": "",
   "testEvidence": [
-    "apps/web/src/route-presentation.spec.tsx",
-    "apps/web/src/app-shell-contract.spec.ts"
+    "apps/web/src/route-presentation.spec.tsx"
   ]
 }
