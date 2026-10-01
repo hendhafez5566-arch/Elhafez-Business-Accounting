@@ -1,7 +1,8 @@
 import { Module } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { TaxModule, TaxApplicationService } from '@elhafez/tax';
-import { CurrencyFxModule, CurrencyFxApplicationService } from '@elhafez/currency-fx';
+import { CurrencyFxApplicationService } from '@elhafez/currency-fx';
+import { CurrencyFxModule } from '@elhafez/currency-fx/nest';
 import { GeneralLedgerModule, GeneralLedgerApplicationService } from '@elhafez/general-ledger';
 import { PeriodControlModule } from '@elhafez/period-control';
 import { FinancialControlsModule } from '@elhafez/financial-controls';
