@@ -1,0 +1,23 @@
+{
+  "id": "20261001-replace-not-overlay-guardrails",
+  "summary": "Make Replace-Not-Overlay a fail-closed architecture rule before section-by-section UI replacement: full-bleed route ownership is explicit, route-owned CSS cannot hide the shell or use force overrides, and the guard runs in pnpm architecture:check.",
+  "type": "governance",
+  "allowedModules": [],
+  "allowedPaths": [
+    ".changes/20261001-replace-not-overlay-guardrails.json",
+    "package.json",
+    "tools/architecture/check-replace-not-overlay.ts",
+    "apps/web/src/pages/crm-customers/customers.css",
+    "apps/web/src/route-presentation.spec.tsx"
+  ],
+  "protectedPaths": [
+    "package.json",
+    "tools/architecture/**"
+  ],
+  "protectedReason": "This change intentionally strengthens the central architecture gate so future UI replacements fail closed when they attempt overlay/hiding/force-override patterns instead of replacing the route presentation cleanly.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": "",
+  "testEvidence": [
+    "apps/web/src/route-presentation.spec.tsx"
+  ]
+}
