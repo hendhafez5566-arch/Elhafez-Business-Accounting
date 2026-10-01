@@ -1,5 +1,6 @@
 import { type ReactNode, useState } from 'react';
 import { findRoute, foundationRoutes, type AppRoute } from './routes.js';
+import { routeSurfaceFor } from './route-surface.js';
 import {
   initialShellState,
   setAutoSidebarActive,
@@ -98,7 +99,9 @@ function AppShellFrame({
 }) {
   const [state, setState] = useState(initialShellState);
   const active = findRoute(pathname, routes);
+  const surface = routeSurfaceFor(active.id);
   const { preferences, updatePreferences } = useUiPreferences();
+  const routeContent = children ?? active.element;
   const sidebarExpanded =
     preferences.sidebarMode === 'fixed'
     || (preferences.sidebarMode === 'auto' && state.autoSidebarActive);
@@ -110,11 +113,27 @@ function AppShellFrame({
     });
   }
 
+  if (surface === 'full-bleed') {
+    return (
+      <div
+        className="app-route-surface app-route-surface--full-bleed"
+        dir="rtl"
+        data-route-id={active.id}
+        data-route-surface="full-bleed"
+        data-screen-blueprint={active.design.blueprint}
+        data-screen-reference={active.design.reference}
+      >
+        {routeContent}
+      </div>
+    );
+  }
+
   return (
     <div
       className="app-shell"
       dir="rtl"
       data-route-id={active.id}
+      data-route-surface="standard"
       data-screen-blueprint={active.design.blueprint}
       data-screen-reference={active.design.reference}
       data-sidebar-mode={preferences.sidebarMode}
@@ -149,7 +168,7 @@ function AppShellFrame({
       <main className="app-main">
         <div className="app-content" tabIndex={-1}>
           <PageHeader eyebrow={active.group} title={active.label} description={description} />
-          <ScreenLayoutBoundary design={active.design} key={sessionKey}>{children ?? active.element}</ScreenLayoutBoundary>
+          <ScreenLayoutBoundary design={active.design} key={sessionKey}>{routeContent}</ScreenLayoutBoundary>
         </div>
       </main>
     </div>
