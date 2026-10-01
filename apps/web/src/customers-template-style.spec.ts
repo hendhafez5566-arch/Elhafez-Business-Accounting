@@ -9,6 +9,6 @@ test('the supplied Customers template is bundled as an external stylesheet and o
   assert.match(entry, /import '\.\.\/customers-template\.css';/);
   assert.match(templateStyles, /\.ct-root\{/);
   assert.match(templateStyles, /\.ct-sheet--on\{transform:none\}/);
-  assert.match(templateStyles, /\.app-shell:has\(\.ct-root\).*\.app-sidebar/);
+  assert.match(templateStyles, /\.app-shell:has\(\.ct-root\)>.app-sidebar/);
   assert.match(templateStyles, /\.ct-fab\{/);
 });
