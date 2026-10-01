@@ -94,7 +94,8 @@ jobs:
         env:
           NODE_ENV: test
         run: |
-          node --import ./scripts/typescript-test-runtime.mjs --input-type=module <<'NODE'
+          set +e
+          node --import ./scripts/typescript-test-runtime.mjs --input-type=module > "$GITHUB_WORKSPACE/sp03-bootstrap-diagnostic.log" 2>&1 <<'NODE'
           import { NestFactory } from '@nestjs/core';
           import { AppModule } from './src/app.module.js';
 
@@ -107,9 +108,22 @@ jobs:
             console.error('SP-03 diagnostic: AppModule bootstrap unexpectedly succeeded');
           } catch (error) {
             console.error('SP-03 diagnostic bootstrap error:', error);
+            console.error('SP-03 diagnostic bootstrap stack:', error instanceof Error ? error.stack : String(error));
             process.exitCode = 1;
           }
           NODE
+          status=$?
+          cat "$GITHUB_WORKSPACE/sp03-bootstrap-diagnostic.log"
+          exit $status
+
+      - name: Upload SP-03 bootstrap diagnostic
+        if: failure() && github.event_name == 'pull_request' && github.event.pull_request.draft == false
+        uses: actions/upload-artifact@v4
+        with:
+          name: sp03-bootstrap-diagnostic
+          path: sp03-bootstrap-diagnostic.log
+          if-no-files-found: error
+          retention-days: 1
 
       - name: Affected workspace tests (main smoke)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
