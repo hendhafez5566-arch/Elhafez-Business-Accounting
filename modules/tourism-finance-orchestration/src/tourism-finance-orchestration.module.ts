@@ -12,6 +12,7 @@ import {
   ExpenseCommissionRecognitionApplicationService,
   ExpenseCommissionRecognitionModule,
 } from '@elhafez/expense-commission-recognition';
+import { CurrencyFxApplicationService, CurrencyFxModule } from '@elhafez/currency-fx';
 import { ProcurementFinanceApplicationService } from '@elhafez/procurement-finance';
 import { ProcurementFinanceModule } from '@elhafez/procurement-finance/nest';
 import {
@@ -40,6 +41,7 @@ import {
 } from './application/historical-import.repository.js';
 import { PrismaHistoricalImportRepository } from './infrastructure/prisma-historical-import.repository.js';
 import { PrismaTourismFinanceRepository } from './infrastructure/prisma-tourism-finance.repository.js';
+import { CurrencyFxAdapter } from './infrastructure/currency-fx.adapter.js';
 import {
   BillingAdapter,
   CommissionAdapter,
@@ -52,6 +54,7 @@ import {
 
 @Module({
   imports: [
+    CurrencyFxModule,
     CostBudgetAccountingModule,
     TourismContractInventoryModule,
     ProcurementFinanceModule,
@@ -94,6 +97,7 @@ import {
         inventory: TourismContractInventoryApplicationService,
         procurement: ProcurementFinanceApplicationService,
         controls: FinancialControlsApplicationService,
+        fx: CurrencyFxApplicationService,
       ) =>
         new TourismFinanceOrchestrationApplicationService(
           repository,
@@ -104,6 +108,7 @@ import {
           new InventoryAdapter(inventory),
           new ProcurementAdapter(procurement),
           new ControlsAdapter(controls),
+          new CurrencyFxAdapter(fx),
         ),
       inject: [
         TOURISM_FINANCE_REPOSITORY,
@@ -114,6 +119,7 @@ import {
         TOURISM_CONTRACT_INVENTORY_SERVICE,
         ProcurementFinanceApplicationService,
         FinancialControlsApplicationService,
+        CurrencyFxApplicationService,
       ],
     },
   ],
