@@ -8,7 +8,8 @@
     "billing-subledgers",
     "treasury-settlement",
     "expense-commission-recognition",
-    "assets-financing"
+    "assets-financing",
+    "tourism-finance-orchestration"
   ],
   "allowedPaths": [
     ".github/workflows/ci.yml",
@@ -24,9 +25,11 @@
     ".github/workflows/ci.yml",
     "package.json",
     "tools/architecture/check-frontend-migration-names.ts",
-    "tools/architecture/check-tourism-finance-orchestrator-budget.ts"
+    "tools/architecture/check-tourism-finance-orchestrator-budget.ts",
+    "modules/currency-fx/module.json",
+    "modules/tourism-finance-orchestration/module.json"
   ],
-  "protectedReason": "The change intentionally strengthens CI and architecture enforcement while explicitly keeping presentation structure and UI/UX redesign outside the protected invariants. Currency FX HTTP composition is separated from the reusable provider/application module so downstream financial modules do not inherit transport-layer decorators.",
+  "protectedReason": "The change intentionally strengthens CI and architecture enforcement while explicitly keeping presentation structure and UI/UX redesign outside the protected invariants. Currency FX HTTP composition is separated from the reusable provider/application module so downstream financial modules do not inherit transport-layer decorators. Module contracts are updated to declare the platform-core and currency-fx dependencies that the implementation already requires.",
   "allowBreakingPublicApi": false,
   "publicApiBreakingReason": "",
   "testEvidence": [
