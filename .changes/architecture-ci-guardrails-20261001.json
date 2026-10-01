@@ -1,12 +1,19 @@
 {
   "id": "architecture-ci-guardrails-20261001",
-  "summary": "Harden CI and architecture boundaries without constraining intentional UI/UX redesign.",
+  "summary": "Harden CI and architecture boundaries without constraining intentional UI/UX redesign, and isolate reusable FX composition from its HTTP adapter.",
   "type": "architecture",
   "allowedModules": [
-    "currency-fx"
+    "currency-fx",
+    "general-ledger",
+    "billing-subledgers",
+    "treasury-settlement",
+    "expense-commission-recognition",
+    "assets-financing"
   ],
   "allowedPaths": [
     ".github/workflows/ci.yml",
+    "apps/api/src/app.module.ts",
+    "apps/api/src/frontend-coverage.spec.ts",
     "apps/web/src/tourism-service-parity.spec.ts",
     "package.json",
     "pnpm-lock.yaml",
@@ -19,7 +26,13 @@
     "tools/architecture/check-frontend-migration-names.ts",
     "tools/architecture/check-tourism-finance-orchestrator-budget.ts"
   ],
-  "protectedReason": "The change intentionally strengthens CI and architecture enforcement while explicitly keeping presentation structure and UI/UX redesign outside the protected invariants.",
+  "protectedReason": "The change intentionally strengthens CI and architecture enforcement while explicitly keeping presentation structure and UI/UX redesign outside the protected invariants. Currency FX HTTP composition is separated from the reusable provider/application module so downstream financial modules do not inherit transport-layer decorators.",
   "allowBreakingPublicApi": false,
-  "publicApiBreakingReason": ""
+  "publicApiBreakingReason": "",
+  "testEvidence": [
+    "apps/api/src/frontend-coverage.spec.ts",
+    "apps/web/src/tourism-service-parity.spec.ts",
+    "modules/currency-fx/src/currency-fx.composition.spec.ts",
+    "modules/currency-fx/src/live-fx-rate-provider.spec.ts"
+  ]
 }
