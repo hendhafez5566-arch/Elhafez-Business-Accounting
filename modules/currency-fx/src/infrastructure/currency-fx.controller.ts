@@ -1,12 +1,15 @@
 import { randomUUID } from 'node:crypto';
-import { Body, Controller, Get, Headers, Post, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Inject, Post, UnauthorizedException } from '@nestjs/common';
 import { currencyCode, executionContext, type ExecutionContext } from '@elhafez/contracts';
 import { PLATFORM_CORE_PERMISSIONS, PlatformCoreApplicationService } from '@elhafez/platform-core';
 import { CurrencyFxApplicationService } from '../application/currency-fx.application-service.js';
 
 @Controller('accounting/advanced')
 export class CurrencyFxController {
-  constructor(private readonly platform: PlatformCoreApplicationService, private readonly fx: CurrencyFxApplicationService) {}
+  constructor(
+    @Inject(PlatformCoreApplicationService) private readonly platform: PlatformCoreApplicationService,
+    @Inject(CurrencyFxApplicationService) private readonly fx: CurrencyFxApplicationService,
+  ) {}
 
   private async context(auth?: string, company?: string, branch?: string, operate = false): Promise<ExecutionContext> {
     if (!auth?.startsWith('Bearer ') || !company || !branch) throw new UnauthorizedException('authenticated company and branch context required');
