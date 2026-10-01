@@ -116,6 +116,7 @@ function AppShellFrame({
   if (surface === 'full-bleed') {
     return (
       <div
+        key={sessionKey}
         className="app-route-surface app-route-surface--full-bleed"
         dir="rtl"
         data-route-id={active.id}
