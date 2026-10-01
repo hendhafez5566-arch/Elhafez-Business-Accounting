@@ -18,22 +18,14 @@ concurrency:
 
 jobs:
   quality:
-    runs-on: ${{ github.event_name == 'pull_request' && 'ubuntu-latest' || 'self-hosted' }}
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
-          # Pull requests run on an ephemeral GitHub-hosted runner while main keeps the persistent self-hosted runner.
-          # Git-tracked state is reset below and pnpm --frozen-lockfile verifies dependency truth on both paths.
-          clean: false
           # PR merge refs need only the merge commit and its parents.
           # Main keeps a wider fail-closed history window without fetching all history.
           fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 50 }}
-
-      - name: Sanitize workspace
-        run: |
-          git reset --hard HEAD
-          git clean -ffdx -e node_modules/ -e "**/node_modules/"
 
       - uses: pnpm/action-setup@v4
         with:
@@ -100,6 +92,9 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: pnpm --filter "...[${{ github.event.before }}]" run test
 
+      - name: Build
+        run: pnpm build
+
       - name: Main post-merge smoke complete
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: echo "Main governance, affected typecheck/tests, and architecture checks passed."
+        run: echo "Main governance, affected typecheck/tests, architecture checks, and build passed."
