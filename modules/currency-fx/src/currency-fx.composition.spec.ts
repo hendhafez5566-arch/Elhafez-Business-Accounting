@@ -23,7 +23,9 @@ test('HTTP controller is isolated from the reusable FX provider module', () => {
   const providerControllers = (Reflect.getMetadata('controllers', CurrencyFxModule) as unknown[] | undefined) ?? [];
   const httpControllers = (Reflect.getMetadata('controllers', CurrencyFxHttpModule) as unknown[] | undefined) ?? [];
   const httpImports = (Reflect.getMetadata('imports', CurrencyFxHttpModule) as unknown[] | undefined) ?? [];
+  const httpExports = (Reflect.getMetadata('exports', CurrencyFxHttpModule) as unknown[] | undefined) ?? [];
   assert.equal(providerControllers.length, 0);
   assert.ok(httpControllers.includes(CurrencyFxController));
   assert.ok(httpImports.includes(CurrencyFxModule));
+  assert.ok(httpExports.includes(CurrencyFxModule));
 });
