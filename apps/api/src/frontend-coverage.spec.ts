@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { CurrencyFxModule } from '@elhafez/currency-fx';
+import { CurrencyFxHttpModule } from '@elhafez/currency-fx/http';
 import { AppModule } from './app.module.js';
 import { AdvancedAccountingController, TourismContractInventoryController } from './frontend-coverage.controller.js';
 
@@ -9,7 +9,7 @@ test('frontend coverage composition registers canonical owner boundaries', () =>
   const imports = Reflect.getMetadata('imports', AppModule) as unknown[];
   assert.ok(controllers.includes(AdvancedAccountingController));
   assert.ok(controllers.includes(TourismContractInventoryController));
-  assert.ok(imports.includes(CurrencyFxModule));
+  assert.ok(imports.includes(CurrencyFxHttpModule));
 });
 
 
