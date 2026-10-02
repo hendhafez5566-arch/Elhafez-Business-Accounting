@@ -51,6 +51,9 @@ export interface ManualInvoiceInput {
   commandKey:string; type:'CUSTOMER'|'AGENT'; partyId:string; number:string; postingDate:string; dueDate?:string; recognitionDate?:string;
   paymentTerms?:string; currency:string; saveMode:'DRAFT'|'POSTED'; lines:ManualInvoiceLineInput[];
 }
+export interface InvoiceAdjustmentRow {
+  id:string; invoiceId:string; kind:'CREDIT_NOTE'|'DEBIT_NOTE'|'WRITE_OFF'; amount:string; appliedAmount:string; advanceAmount:string; journalId:string;
+}
 
 const base = '/accounting';
 const enc = encodeURIComponent;
@@ -78,6 +81,7 @@ export const accountingApi = {
   postManualInvoice: (id:string) => crmPost<InvoiceRow>(base + '/manual-invoices/' + enc(id) + '/post', {}),
   cancelManualInvoice: (id:string,input:{postingDate?:string;number?:string}) => crmPost<InvoiceRow>(base + '/manual-invoices/' + enc(id) + '/cancel', input),
   getManualInvoice: (id:string) => crmGet<InvoiceRow>(base + '/manual-invoices/' + enc(id)),
+  createManualInvoiceAdjustment: (id:string,input:{commandKey:string;kind:'CREDIT_NOTE'|'DEBIT_NOTE';amount:string;postingDate:string;number:string;offsetAccountId:string}) => crmPost<InvoiceAdjustmentRow>(base + '/manual-invoices/' + enc(id) + '/adjustments', input),
 
   createTreasury: (input:{code:string;name:string;type:'CASH'|'BANK';currency:string;glAccountId:string}) => crmPost<TreasuryRow>(base + '/treasuries', input),
   postSettlement: (input:{commandKey:string;invoiceId:string;treasuryId:string;number:string;postingDate:string;amount:string;advanceAccountId?:string;realizedFxGainAccountId?:string;realizedFxLossAccountId?:string;approvalRequestId?:string}) => crmPost<VoucherRow>(base + '/settlements', input),
