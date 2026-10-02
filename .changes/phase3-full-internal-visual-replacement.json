@@ -1,0 +1,24 @@
+{
+  "id": "phase3-full-internal-visual-replacement",
+  "summary": "Replace legacy-visible internal route presentation in place while retaining canonical target APIs and Phase 1 shell ownership.",
+  "type": "phase",
+  "allowedModules": [],
+  "allowedPaths": [
+    ".changes/phase3-full-internal-visual-replacement.json",
+    "apps/web/src/accounting-legacy-route-page.tsx",
+    "apps/web/src/accounting-legacy-routes.tsx",
+    "apps/web/src/accounting-workspace-page.tsx",
+    "apps/web/src/index.tsx",
+    "apps/web/src/phase3-accounting-visual-replacement.spec.ts",
+    "docs/migration/phase3/PHASE-03-CODEX-HANDOFF.md",
+    "docs/migration/phase3/PHASE-03-SCREEN-MATRIX.md",
+    "docs/migration/phase3/PHASE-03-LEGACY-VISUAL-NOTES.md"
+  ],
+  "protectedPaths": [],
+  "protectedReason": "",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": "",
+  "testEvidence": [
+    "apps/web/src/phase3-accounting-visual-replacement.spec.ts"
+  ]
+}
