@@ -30,8 +30,8 @@ function idOf(record:Record<string,unknown>){return text(record.id);}
 function userLabel(record:Record<string,unknown>){return `${text(record.displayName)||text(record.username)||idOf(record)}${text(record.username)?` — ${text(record.username)}`:''}`;}
 function permissionLabel(record:Record<string,unknown>){const name=text(record.name),parts=name.split('.'),key=name.startsWith('platform.')?parts.slice(0,2).join('.'):parts[0]??'';return `${(permissionAreas[key]??key)||'صلاحيات'} — ${name||idOf(record)}`;}
 
-export function SystemAdministrationPage({client=new HttpAdministrationClient(),context}:{client?:AdministrationClient;context?:AdministrationContext}={}){
- const [selected,setSelected]=useState('users');
+export function SystemAdministrationPage({client=new HttpAdministrationClient(),context,initialArea='users'}:{client?:AdministrationClient;context?:AdministrationContext;initialArea?:string}={}){
+ const [selected,setSelected]=useState(initialArea);
  const [rows,setRows]=useState<readonly unknown[]>([]);
  const [users,setUsers]=useState<readonly Record<string,unknown>[]>([]);
  const [roles,setRoles]=useState<readonly Record<string,unknown>[]>([]);
@@ -86,7 +86,7 @@ export function SystemAdministrationPage({client=new HttpAdministrationClient(),
  async function downloadExport(){const payload=await client.read(`exports/${field('exportJobId')}/download`,ctx);if(!downloadPayload(payload))throw new Error('ملف التصدير غير متاح');triggerDownload(payload);}
  async function downloadFile(){const payload=await client.read(`files/${field('fileId')}`,ctx);if(!filePayload(payload))throw new Error('الملف غير متاح');triggerDownload({fileName:`file-${payload.metadata.id}`,contentType:payload.metadata.contentType,contentBase64:payload.contentBase64});}
 
- useEffect(()=>{if(ctx.token){setSelected('users');void Promise.all([load('users'),loadReferences()]);}},[ctx.token,ctx.companyId,ctx.branchId]);
+ useEffect(()=>{if(ctx.token){setSelected(initialArea);void Promise.all([load(initialArea),loadReferences()]);}},[ctx.token,ctx.companyId,ctx.branchId,initialArea]);
  const records=rows.filter(objectRecord);
  const selectedDataset=datasets.find(value=>value.id===field('dataset'));
  const selectedUser=users.find(record=>idOf(record)===field('userId'));
@@ -127,6 +127,7 @@ export function SystemAdministrationPage({client=new HttpAdministrationClient(),
      {button('عرض جلسات المستخدم',()=>{setField('sessionUserId',field('userId'));setSelected('sessions');void load(`sessions/${field('userId')}`);})}
     </div>
    </DisclosureCard>
+   <Card title="حدود الاعتماد ومشاهدة التكلفة"><p>حد اعتماد المدفوعات والسياسات المالية يملكها مركز الموافقات، بينما مشاهدة التكلفة تُحكم بصلاحيات Platform Core. لا تُحفظ قيم موازية على المستخدم.</p><div className="ui-inline"><a href="/approvals">فتح الاعتمادات</a><a href="/accounting">فتح السياسات المالية</a></div></Card>
   </div>;
   if(selected==='roles')return <div className="ui-admin-workflows">
    <DisclosureCard title="إنشاء دور" description="الأسماء القديمة تظهر كاقتراحات UX فقط؛ نظام الصلاحيات الفعلي يظل Platform Core RBAC.">
