@@ -1,4 +1,3 @@
-import './portal-home-page.css';
 import { Icon } from './ui/icons.js';
 import { WORKSPACES } from './workspace-catalog.js';
 
