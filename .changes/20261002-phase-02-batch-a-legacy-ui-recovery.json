@@ -16,6 +16,7 @@
     "apps/web/src/reports-control-legacy-pages.tsx",
     "apps/web/src/administration-legacy-pages.tsx",
     "apps/web/src/system-administration-page.tsx",
+    "apps/web/src/management-control-page.tsx",
     "apps/web/src/phase2-batch-c-routes.tsx",
     "apps/web/src/phase2-batch-c-legacy-ui-recovery.spec.ts",
     "docs/migration/PHASE-02-BATCH-C-RECOVERY.md"
