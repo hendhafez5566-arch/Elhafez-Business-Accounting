@@ -74,12 +74,9 @@ import { PrismaHistoricalImportRepository } from './infrastructure/prisma-histor
     },
     {
       provide: ManualInvoiceWorkflowApplicationService,
-      useFactory: (
-        billing: BillingSubledgersApplicationService,
-        repository: BillingRepository,
-        workflow: ManualInvoiceRepository,
-      ) => new ManualInvoiceWorkflowApplicationService(billing, repository, workflow),
-      inject: [BillingSubledgersApplicationService, BILLING_REPOSITORY, MANUAL_INVOICE_REPOSITORY],
+      useFactory: (billing: BillingSubledgersApplicationService, workflow: ManualInvoiceRepository) =>
+        new ManualInvoiceWorkflowApplicationService(billing, workflow),
+      inject: [BillingSubledgersApplicationService, MANUAL_INVOICE_REPOSITORY],
     },
     {
       provide: PartyReceivableApplicationService,
