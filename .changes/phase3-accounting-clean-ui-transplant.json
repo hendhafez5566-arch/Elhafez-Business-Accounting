@@ -4,7 +4,8 @@
   "type": "phase",
   "allowedModules": [
     "billing-subledgers",
-    "cost-budget-accounting"
+    "cost-budget-accounting",
+    "expense-commission-recognition"
   ],
   "allowedPaths": [
     ".changes/phase3-accounting-clean-ui-transplant.json",
@@ -33,7 +34,7 @@
     "prisma/schema.prisma",
     "prisma/migrations/20261002183000_golden_sales_invoice_parity/migration.sql"
   ],
-  "protectedReason": "The approved golden sales-invoice vertical slice requires canonical Billing-owned persistence, API composition, and an immutable migration so legacy invoice workflow data is not faked or dropped. Accounting UI styling remains scoped beneath .accounting-route and does not alter shell ownership.",
+  "protectedReason": "The approved golden sales-invoice vertical slice requires canonical Billing-owned persistence, Cost Center validation, Revenue Recognition ownership, API composition, and an immutable migration so legacy invoice workflow data is not faked or dropped. Accounting UI styling remains scoped beneath .accounting-route and does not alter shell ownership.",
   "allowBreakingPublicApi": false,
   "publicApiBreakingReason": "All Billing contract additions are backward-compatible optional fields; existing create-and-post callers remain supported.",
   "testEvidence": [
