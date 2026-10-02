@@ -21,6 +21,7 @@ import { HISTORICAL_IMPORT_REPOSITORY, type HistoricalImportRepository } from '.
 import { PrismaHistoricalImportRepository } from './infrastructure/prisma-historical-import.repository.js';
 import { COMMISSION_READ_REPOSITORY, type CommissionReadRepository } from './application/commission-read.repository.js';
 import { CommissionReadApplicationService } from './application/commission-read.application-service.js';
+import { PrismaCommissionReadRepository } from './infrastructure/prisma-commission-read.repository.js';
 
 @Module({
   imports: [
