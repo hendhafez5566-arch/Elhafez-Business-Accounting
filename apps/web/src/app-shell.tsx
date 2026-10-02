@@ -25,33 +25,34 @@ export interface AppShellProps {
   readonly initialPreferences?: Partial<UiPreferences>;
   readonly companyLabel?: string;
   readonly branchLabel?: string;
-  readonly branches?: readonly {readonly id:string;readonly name:string}[];
+  readonly userLabel?: string;
+  readonly subscriptionStatus?: string;
+  readonly branches?: readonly { readonly id: string; readonly name: string }[];
   readonly branchId?: string;
-  readonly onBranchChange?: (id:string)=>void;
-  readonly onLogout?: ()=>void;
+  readonly onBranchChange?: (id: string) => void;
+  readonly onLogout?: () => void;
   readonly sessionKey?: string;
 }
 
-const groupDescriptions:Record<string,string>={
-  'الإدارة والتحكم':'متابعة مؤشرات الأداء، الاستثناءات، الأولويات وسير العمل من مصادر النظام المعتمدة.',
-  'إدارة النظام':'إدارة المستخدمين والصلاحيات والشركة والفروع والملفات وإعدادات تشغيل المنصة.',
-  'المبيعات والعملاء CRM':'إدارة دورة العميل والمندوب والمتابعة والعروض والفرص التجارية من مكان واحد.',
-  'المشتريات والموردون':'إدارة الموردين والتوريد وأوامر الشراء والتنفيذ والتقييم والمنازعات.',
-  'السياحة والخدمات':'إدارة البرامج والحجوزات والخدمات والعقود والمخزون والمسارات السياحية.',
-  'المحاسبة والمالية':'تشغيل القيود والفواتير والخزائن والبنوك والضرائب والتقارير من مصادر الحقيقة المالية.',
-  'الحج والعمرة':'تشغيل المواسم والبرامج والحجوزات والتسكين والتأشيرات والنقل والتفويج والجاهزية.',
-  'الإعدادات':'تهيئة تجربة الاستخدام وبيانات الحساب وتفضيلات النظام.',
+const groupDescriptions: Record<string, string> = {
+  'الإدارة والتحكم': 'متابعة مؤشرات الأداء، الاستثناءات، الأولويات وسير العمل من مصادر النظام المعتمدة.',
+  'إدارة النظام': 'إدارة المستخدمين والصلاحيات والشركة والفروع والملفات وإعدادات تشغيل المنصة.',
+  'المبيعات والعملاء CRM': 'إدارة دورة العميل والمندوب والمتابعة والعروض والفرص التجارية من مكان واحد.',
+  'المشتريات والموردون': 'إدارة الموردين والتوريد وأوامر الشراء والتنفيذ والتقييم والمنازعات.',
+  'السياحة والخدمات': 'إدارة البرامج والحجوزات والخدمات والعقود والمخزون والمسارات السياحية.',
+  'المحاسبة والمالية': 'تشغيل القيود والفواتير والخزائن والبنوك والضرائب والتقارير من مصادر الحقيقة المالية.',
+  'الحج والعمرة': 'تشغيل المواسم والبرامج والحجوزات والتسكين والتأشيرات والنقل والتفويج والجاهزية.',
+  'الإعدادات': 'تهيئة تجربة الاستخدام وبيانات الحساب وتفضيلات النظام.',
 };
 
-const routeDescriptions:Record<string,string>={
-  foundation:'ملخص تنفيذي لأهم مؤشرات التشغيل والمالية والبنود التي تحتاج متابعة الآن.',
-  'crm-customers':'السجل المركزي للعملاء أفرادًا وشركات مع التواصل والموقف التجاري والمالي.',
-  'tourism-bookings':'إدارة واعتماد حجوزات البرامج السياحية وربطها بالعميل والمسافرين والمخزون والتمويل.',
-  'tourism-contract-inventory':'متابعة عقود الفنادق والنقل والطيران والتأشيرات والمخزون والتخصيصات المرتبطة بها.',
-  'supplier-intelligence':'ملف المورد 360° للتقييم والأداء والمستحقات والمنازعات وحالات الإيقاف.',
-  'accounting-workspace':'مساحة مالية موحدة تشمل الدليل المحاسبي والقيود والفواتير والتسويات والضرائب والتقارير.',
-  'hajj-umrah-transport':'إدارة رحلات النقل والتفويج والمركبات والسائقين وكشوف المسافرين.',
-  'hajj-umrah-trip-operations':'غرفة التشغيل الميداني للمهام والخدمات والحوادث ومتابعة التنفيذ.',
+const routeDescriptions: Record<string, string> = {
+  'crm-customers': 'السجل المركزي للعملاء أفرادًا وشركات مع التواصل والموقف التجاري والمالي.',
+  'tourism-bookings': 'إدارة واعتماد حجوزات البرامج السياحية وربطها بالعميل والمسافرين والمخزون والتمويل.',
+  'tourism-contract-inventory': 'متابعة عقود الفنادق والنقل والطيران والتأشيرات والمخزون والتخصيصات المرتبطة بها.',
+  'supplier-intelligence': 'ملف المورد 360° للتقييم والأداء والمستحقات والمنازعات وحالات الإيقاف.',
+  'accounting-workspace': 'مساحة مالية موحدة تشمل الدليل المحاسبي والقيود والفواتير والتسويات والضرائب والتقارير.',
+  'hajj-umrah-transport': 'إدارة رحلات النقل والتفويج والمركبات والسائقين وكشوف المسافرين.',
+  'hajj-umrah-trip-operations': 'غرفة التشغيل الميداني للمهام والخدمات والحوادث ومتابعة التنفيذ.',
 };
 
 export function AppShell({
@@ -62,6 +63,8 @@ export function AppShell({
   initialPreferences,
   companyLabel,
   branchLabel,
+  userLabel,
+  subscriptionStatus,
   branches,
   branchId,
   onBranchChange,
@@ -70,7 +73,21 @@ export function AppShell({
 }: AppShellProps) {
   return (
     <UiPreferencesProvider scope={preferenceScope} initialPreferences={initialPreferences}>
-      <AppShellFrame routes={routes} pathname={pathname} companyLabel={companyLabel} branchLabel={branchLabel} branches={branches} branchId={branchId} onBranchChange={onBranchChange} onLogout={onLogout} sessionKey={sessionKey}>{children}</AppShellFrame>
+      <AppShellFrame
+        routes={routes}
+        pathname={pathname}
+        companyLabel={companyLabel}
+        branchLabel={branchLabel}
+        userLabel={userLabel}
+        subscriptionStatus={subscriptionStatus}
+        branches={branches}
+        branchId={branchId}
+        onBranchChange={onBranchChange}
+        onLogout={onLogout}
+        sessionKey={sessionKey}
+      >
+        {children}
+      </AppShellFrame>
     </UiPreferencesProvider>
   );
 }
@@ -81,6 +98,8 @@ function AppShellFrame({
   children,
   companyLabel,
   branchLabel,
+  userLabel,
+  subscriptionStatus,
   branches,
   branchId,
   onBranchChange,
@@ -92,10 +111,12 @@ function AppShellFrame({
   readonly children?: ReactNode;
   readonly companyLabel?: string;
   readonly branchLabel?: string;
-  readonly branches?: readonly {readonly id:string;readonly name:string}[];
+  readonly userLabel?: string;
+  readonly subscriptionStatus?: string;
+  readonly branches?: readonly { readonly id: string; readonly name: string }[];
   readonly branchId?: string;
-  readonly onBranchChange?: (id:string)=>void;
-  readonly onLogout?: ()=>void;
+  readonly onBranchChange?: (id: string) => void;
+  readonly onLogout?: () => void;
   readonly sessionKey?: string;
 }) {
   const [state, setState] = useState(initialShellState);
@@ -103,10 +124,10 @@ function AppShellFrame({
   const surface = routeSurfaceFor(active.id);
   const { preferences, updatePreferences } = useUiPreferences();
   const routeContent = children ?? active.element;
-  const sidebarExpanded =
-    preferences.sidebarMode === 'fixed'
+  const sidebarExpanded = preferences.sidebarMode === 'fixed'
     || (preferences.sidebarMode === 'auto' && state.autoSidebarActive);
-  const description=routeDescriptions[active.id]??groupDescriptions[active.group??''];
+  const description = routeDescriptions[active.id] ?? groupDescriptions[active.group ?? ''];
+  const portalHome = active.id === 'foundation';
 
   function quickToggle() {
     updatePreferences({
@@ -130,6 +151,40 @@ function AppShellFrame({
     );
   }
 
+  if (portalHome) {
+    return (
+      <div
+        className="app-shell app-shell--portal"
+        dir="rtl"
+        data-route-id={active.id}
+        data-route-surface="standard"
+        data-screen-blueprint={active.design.blueprint}
+        data-screen-reference={active.design.reference}
+        data-sidebar-mode={preferences.sidebarMode}
+        data-sidebar-expanded="false"
+      >
+        <Topbar
+          routes={routes}
+          activeId={active.id}
+          showMobileMenu={false}
+          onOpenMobile={() => undefined}
+          companyLabel={companyLabel}
+          branchLabel={branchLabel}
+          userLabel={userLabel}
+          branches={branches}
+          branchId={branchId}
+          onBranchChange={onBranchChange}
+          onLogout={onLogout}
+        />
+        <main className="app-main app-main--portal">
+          <div className="app-content app-content--portal" tabIndex={-1}>
+            <ScreenLayoutBoundary design={active.design} key={sessionKey}>{routeContent}</ScreenLayoutBoundary>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div
       className="app-shell"
@@ -146,26 +201,39 @@ function AppShellFrame({
         activeId={active.id}
         mode={preferences.sidebarMode}
         autoActive={state.autoSidebarActive}
-        onAutoActiveChange={(activeState) =>
-          setState((current) => setAutoSidebarActive(current, activeState))
-        }
+        onAutoActiveChange={activeState => setState(current => setAutoSidebarActive(current, activeState))}
         onQuickToggle={quickToggle}
+        companyLabel={companyLabel}
+        branchLabel={branchLabel}
+        userLabel={userLabel}
+        subscriptionStatus={subscriptionStatus}
       />
 
       <Drawer
         open={state.mobileDrawerOpen}
         title="التنقل"
-        onClose={() => setState((current) => setMobileDrawer(current, false))}
+        onClose={() => setState(current => setMobileDrawer(current, false))}
       >
         <NavigationMenu
           routes={routes}
           activeId={active.id}
           labelsVisible
-          onNavigate={() => setState((current) => setMobileDrawer(current, false))}
+          onNavigate={() => setState(current => setMobileDrawer(current, false))}
         />
       </Drawer>
 
-      <Topbar routes={routes} onOpenMobile={() => setState((current) => setMobileDrawer(current, true))} companyLabel={companyLabel} branchLabel={branchLabel} branches={branches} branchId={branchId} onBranchChange={onBranchChange} onLogout={onLogout} />
+      <Topbar
+        routes={routes}
+        activeId={active.id}
+        onOpenMobile={() => setState(current => setMobileDrawer(current, true))}
+        companyLabel={companyLabel}
+        branchLabel={branchLabel}
+        userLabel={userLabel}
+        branches={branches}
+        branchId={branchId}
+        onBranchChange={onBranchChange}
+        onLogout={onLogout}
+      />
 
       <main className="app-main">
         <div className="app-content" tabIndex={-1}>
