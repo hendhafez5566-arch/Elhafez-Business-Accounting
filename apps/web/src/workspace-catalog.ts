@@ -22,7 +22,7 @@ export const WORKSPACES: readonly WorkspaceDefinition[] = Object.freeze([
   },
   {
     id: 'crm',
-    label: 'المبيعات والعملاء CRM',
+    label: 'المبيعات والعملاء',
     description: 'العملاء والمندوبون والمتابعات والفرص وعروض الأسعار.',
     icon: 'customers',
     landingPath: '/crm/dashboard',
