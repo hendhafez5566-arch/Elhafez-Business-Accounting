@@ -5,12 +5,11 @@ import { createElement, type ComponentType } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { AccountingOverview } from '../../accounting-client.js';
 import type { AccountingPresentationProps } from './accounting-pages.js';
-import type { SalesInvoiceDraft } from './accounting-sales-invoice-dialog.js';
 
 Object.assign(globalThis, { React });
 const { filterAndSortRows } = await import('./accounting-page-shared.js');
 const { invoicesForTab } = await import('./accounting-invoices-page.js');
-const { salesInvoiceCompatibilityIssue } = await import('./accounting-sales-invoice-dialog.js');
+const { initialSalesInvoiceDraft } = await import('./accounting-sales-invoice-dialog.js');
 const { treasuryTabLabel } = await import('./accounting-treasury-page.js');
 const {
   AccountingLandingPage,
@@ -114,27 +113,18 @@ test('sales invoice create renders the deep legacy workflow rather than the comp
   assert.match(output, /legacy-invoice-dialog/);
   assert.match(output, /4100/);
   assert.match(output, /VAT14/);
+  assert.match(output, /noValidate/);
 });
 
-test('sales invoice compatibility gate never silently drops unsupported legacy semantics', () => {
-  const base: SalesInvoiceDraft = {
-    postingDate: '2026-10-02',
-    party: { kind: 'CUSTOMER', partyId: 'party-1', number: 'C-1', displayName: 'عميل اختبار' },
-    partyQuery: 'عميل اختبار',
-    currency: 'EGP',
-    dueDate: '2026-10-02',
-    recognitionDate: '',
-    saveMode: 'POSTED',
-    paymentTerms: '',
-    lines: [{ id: 'line-1', description: '', quantity: '1', price: '100', discountMode: 'FIXED', discount: '0', taxCode: '', accountId: 'revenue', costCenterId: '' }],
-  };
-  assert.equal(salesInvoiceCompatibilityIssue(base), undefined);
-  assert.match(salesInvoiceCompatibilityIssue({ ...base, saveMode: 'DRAFT' }) ?? '', /مسودة/);
-  assert.match(salesInvoiceCompatibilityIssue({ ...base, paymentTerms: '30 يوم' }) ?? '', /شروط الدفع/);
-  assert.match(salesInvoiceCompatibilityIssue({ ...base, lines: [{ ...base.lines[0]!, description: 'برنامج عمرة' }] }) ?? '', /بيان بند/);
-  assert.match(salesInvoiceCompatibilityIssue({ ...base, lines: [{ ...base.lines[0]!, quantity: '2' }] }) ?? '', /الكمية/);
-  assert.match(salesInvoiceCompatibilityIssue({ ...base, lines: [{ ...base.lines[0]!, discount: '10' }] }) ?? '', /خصم/);
-  assert.match(salesInvoiceCompatibilityIssue({ ...base, lines: [{ ...base.lines[0]!, costCenterId: 'cc-1' }] }) ?? '', /مركز تكلفة/);
+test('golden invoice draft retains the legacy commercial workflow fields without a compatibility gate', () => {
+  const draft = initialSalesInvoiceDraft(data);
+  assert.equal(draft.saveMode, 'POSTED');
+  assert.equal(draft.lines.length, 1);
+  assert.equal(draft.lines[0]?.quantity, '1');
+  assert.equal(draft.lines[0]?.accountId, 'revenue');
+  assert.equal(draft.lines[0]?.discountMode, 'FIXED');
+  assert.equal(draft.paymentTerms, '');
+  assert.equal(draft.recognitionDate, '');
 });
 
 test('treasury tab behavior has three exclusive business panels', () => {
