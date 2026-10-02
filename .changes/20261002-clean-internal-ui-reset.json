@@ -1,0 +1,26 @@
+{
+  "id": "20261002-clean-internal-ui-reset",
+  "summary": "Reset every authenticated internal route presentation to a clean blank white surface while preserving authentication, tenant/session context, route identities, navigation shell, permissions, APIs, backend/domain modules, and all underlying business code for a section-by-section UI rebuild.",
+  "type": "feature",
+  "allowedModules": [],
+  "allowedPaths": [
+    ".changes/20261002-clean-internal-ui-reset.json",
+    "apps/web/src/app-entry-path.spec.tsx",
+    "apps/web/src/app-shell-contract.spec.ts",
+    "apps/web/src/app-shell.tsx",
+    "apps/web/src/route-presentation.spec.tsx",
+    "apps/web/src/styles.css"
+  ],
+  "protectedPaths": [
+    "apps/web/src/app-shell.tsx",
+    "apps/web/src/styles.css"
+  ],
+  "protectedReason": "The requested reset must happen at the canonical authenticated presentation owner so existing route pages are not hidden, overlaid, duplicated, or individually destroyed. AppShell is the single mount point for internal route presentations, and styles.css owns the shell/content surface styling needed to make the reset genuinely blank and white.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": "",
+  "testEvidence": [
+    "apps/web/src/app-entry-path.spec.tsx",
+    "apps/web/src/app-shell-contract.spec.ts",
+    "apps/web/src/route-presentation.spec.tsx"
+  ]
+}
