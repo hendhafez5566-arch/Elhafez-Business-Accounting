@@ -1,0 +1,21 @@
+{
+  "id": "phase3-accounting-clean-ui-transplant",
+  "summary": "Replace all nineteen Accounting legacy route adapters with route-owned legacy-visible presentations backed by canonical Accounting APIs.",
+  "type": "phase",
+  "allowedModules": [],
+  "allowedPaths": [
+    ".changes/phase3-accounting-clean-ui-transplant.json",
+    "apps/web/src/accounting-legacy-route-page.tsx",
+    "apps/web/src/accounting-legacy-routes.tsx",
+    "apps/web/src/pages/accounting/accounting-pages.tsx",
+    "apps/web/src/pages/accounting/accounting-pages.spec.tsx",
+    "apps/web/src/phase2-batch-b-legacy-ui-recovery.spec.ts"
+  ],
+  "protectedPaths": [],
+  "protectedReason": "",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": "",
+  "testEvidence": [
+    "apps/web/src/pages/accounting/accounting-pages.spec.tsx"
+  ]
+}
