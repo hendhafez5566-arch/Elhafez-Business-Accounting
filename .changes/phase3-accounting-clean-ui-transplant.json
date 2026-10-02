@@ -37,6 +37,7 @@
   "allowBreakingPublicApi": false,
   "publicApiBreakingReason": "All Billing contract additions are backward-compatible optional fields; existing create-and-post callers remain supported.",
   "testEvidence": [
-    "apps/web/src/pages/accounting/accounting-pages.spec.tsx"
+    "apps/web/src/pages/accounting/accounting-pages.spec.tsx",
+    "modules/billing-subledgers/src/manual-invoice-workflow.spec.ts"
   ]
 }
