@@ -152,6 +152,7 @@ export function BackupCenterPage({
 
   const flat = useMemo(() => diagnostics.flatMap((item) => Object.entries(item)), [diagnostics]);
   const provider = flat.find(([key]) => key.toLocaleLowerCase().includes('backup'))?.[1];
+  const providerLabel = typeof provider === 'string' ? provider : provider ? 'مهيأ على مستوى المنصة' : 'غير متاح لهذه الصلاحية';
 
   return (
     <section className="ui-page-stack" dir="rtl" aria-label="النسخ الاحتياطي والاستعادة">
@@ -163,7 +164,7 @@ export function BackupCenterPage({
       {loading ? <LoadingState /> : !ctx.token ? <EmptyState title="يلزم تسجيل الدخول" /> : (
         <>
           <div className="ui-metric-grid">
-            <MetricCard label="موفر النسخ الاحتياطي" value={provider ? text(provider) : 'غير متاح لهذه الصلاحية'} tone={provider ? 'info' : 'neutral'} />
+            <MetricCard label="موفر النسخ الاحتياطي" value={providerLabel} tone={provider ? 'info' : 'neutral'} />
             <MetricCard label="إنشاء نسخة" value="Owner" />
             <MetricCard label="التحقق" value="Owner" />
             <MetricCard label="الاستعادة" value="Owner + MFA" />
@@ -191,7 +192,7 @@ export function PeriodArchivingPage() {
         <p className="ui-page-intro">واجهة الإدارة العامة للإقفال والأرشفة وصحة البيانات، مع إبقاء ملكية الفترات والقيود والأرصدة داخل المحاسبة.</p>
       </Card>
       <div className="ui-grid-md">
-        <Card title="الفترات والإقفال"><p>فتح وإغلاق الفترات المالية يتم من المالك المحاسبي الحالي.</p><ActionBar><a href="/periods">فتح الفترات المالية</a></ActionBar></Card>
+        <Card title="الفترات والإقفال"><p>فتح وإغلاق الفترات المالية يتم من المالك المحاسبي الحالي.</p><ActionBar><a href="/accounting/periods">فتح الفترات المالية</a></ActionBar></Card>
         <Card title="صحة البيانات"><p>راجع الفروق والتحذيرات وجاهزية الإقفال قبل الأرشفة.</p><ActionBar><a href="/audit">فتح الرقابة المالية</a></ActionBar></Card>
         <Card title="سجل المراجعة"><p>راجع كل إجراءات الإقفال والتغييرات من سجل النشاط المعتمد.</p><ActionBar><a href="/activity">فتح سجل النشاط</a></ActionBar></Card>
         <Card title="الاستعادة والمراجعة"><p>استعادة قاعدة البيانات ليست إجراءً ماليًا، وتظل محمية بعقد النسخ والاستعادة الخاص بالمنصة.</p><ActionBar><a href="/backup-center">فتح مركز النسخ الاحتياطي</a></ActionBar></Card>
@@ -240,6 +241,9 @@ export function AdministrationSettingsPage({
         <Card title="السياسات والمالية"><p>حدود الاعتماد والسياسات المالية تظل عند Approval/Accounting owners.</p><ActionBar><a href="/approvals">الاعتمادات</a><a href="/accounting">المحاسبة</a></ActionBar></Card>
         <Card title="حماية البيانات"><p>حالة النسخ والاستعادة واستمرارية التشغيل.</p><ActionBar><a href="/backup-center">مركز النسخ الاحتياطي</a><a href="/support">حالة النظام</a></ActionBar></Card>
       </div>
+      <Card title="إعدادات مرئية تنتظر Target Contract">
+        <p>حدود تنبيهات الجوازات والفواتير والبرامج والخزينة، وسياسات الورق A4/A5 والاتجاه والتوقيعات والتذييل وتحويل المبلغ إلى حروف لا تُحفظ محليًا لأن عقد إعدادات Tenant معتمدًا لها غير موجود حاليًا.</p>
+      </Card>
       <Card title="اختصارات الإدارة">
         <DataGrid columns={['القسم', 'الوصف', 'فتح']}>
           {adminLinks.map((item) => <tr key={item.path}><td>{item.label}</td><td>{item.detail}</td><td><a href={item.path}>فتح</a></td></tr>)}
