@@ -62,7 +62,17 @@ test('Accounting Phase 3 adapter keeps one canonical loader without a generic wo
   assert.equal(count(adapter, 'accountingApi.overview()'), 1);
   assert.equal(count(adapter, 'accountingApi.capabilities()'), 1);
   assert.doesNotMatch(adapter + pages, /AccountingWorkspaceView|AccountingSectionContent/);
-  assert.match(pages, /export function InvoicesPage/);
-  assert.match(pages, /export function TreasuryPage/);
+  assert.match(pages, /export \{ InvoicesPage \}/);
+  assert.match(pages, /export \{ TreasuryPage \}/);
   assert.match(pages, /export function TrialPage/);
+});
+
+test('Accounting standard-shell presentation has scoped dense RTL and responsive styling', () => {
+  const styles = source('./styles.css');
+  for (const selector of ['.accounting-route{', '.accounting-kpis', '.accounting-toolbar', '.accounting-launchpad', '.accounting-balance-cards', '.accounting-health', '.accounting-tree-child']) {
+    assert.match(styles, new RegExp(selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), selector);
+  }
+  assert.match(styles, /\.accounting-route\{[^}]*direction:rtl/);
+  assert.match(styles, /@media\(max-width:760px\)/);
+  assert.doesNotMatch(styles.slice(styles.indexOf('Accounting route presentation')), /!important|\.app-shell|\.app-sidebar|\.app-topbar/);
 });
