@@ -31,6 +31,7 @@ import { UmrahBarcodePage } from './hajj-umrah-barcode-page.js';
 import { ExecutiveDashboardPage, ManagementWorkCenterPage } from './management-control-page.js';
 import { AppearanceSettingsPage } from './ui/appearance-settings-page.js';
 import { accountingLegacyRoutes } from './accounting-legacy-routes.js';
+import { phase2BatchCLegacyRoutes } from './phase2-batch-c-routes.js';
 import { AccountSettingsPage } from './account-settings-page.js';
 import { NotificationCenterPage } from './notification-center-page.js';
 import { ApprovalCenterPage } from './approval-center-page.js';
@@ -68,16 +69,16 @@ export function defineRoutes(...routes: readonly AppRoute[]): readonly AppRoute[
 
 export const foundationRoutes = defineRoutes(
   { id: 'foundation', path: '/', label: 'الصفحة الرئيسية', icon: 'home', navigation: false, design: { blueprint: 'dashboard', reference: 'main-dashboard' }, element: <PortalHomePage /> },
-  { id: 'management-dashboard', path: '/management/dashboard', label: 'لوحة الإدارة', group: 'الإدارة والتحكم', icon: 'dashboard', design: { blueprint: 'dashboard', reference: 'main-dashboard' }, element: <ExecutiveDashboardPage /> },
-  { id: 'management-exceptions', path: '/management/exceptions', label: 'مركز العمل والاستثناءات', group: 'الإدارة والتحكم', icon: 'tasks', design: { blueprint: 'command-center', reference: 'team-task-workflow' }, element: <ManagementWorkCenterPage /> },
-  { id: 'management-approvals', path: '/management/approvals', label: 'مركز الموافقات', group: 'الإدارة والتحكم', icon: 'tasks', design: { blueprint: 'command-center', reference: 'team-task-workflow' }, element: <ApprovalCenterPage /> },
-  { id: 'management-reports', path: '/management/reports', label: 'مركز التقارير', group: 'الإدارة والتحكم', icon: 'analytics', design: { blueprint: 'dashboard', reference: 'financial-reporting-center' }, element: <ReportingCenterPage /> },
-  { id: 'management-outputs', path: '/management/outputs', label: 'مركز المخرجات والاستحقاقات', group: 'الإدارة والتحكم', icon: 'analytics', design: { blueprint: 'data-table', reference: 'data-table' }, element: <ReportingOutputCenterPage /> },
-  { id: 'notification-center', path: '/notifications', label: 'الإشعارات', group: 'الإدارة والتحكم', icon: 'bell', design: { blueprint: 'timeline', reference: 'audit-trail' }, element: <NotificationCenterPage /> },
-  { id: 'system-administration', path: '/system-administration', label: 'إدارة النظام', group: 'إدارة النظام', icon: 'settings', design: { blueprint: 'settings', reference: 'system-administration' }, element: <SystemAdministrationPage /> },
-  { id: 'system-custom-fields', path: '/system-administration/custom-fields', label: 'الحقول المخصصة', group: 'إدارة النظام', icon: 'settings', design: { blueprint: 'settings', reference: 'company-system-settings' }, element: <PlatformFoundationsPage initialTab="custom-fields" /> },
-  { id: 'system-document-numbering', path: '/system-administration/document-numbering', label: 'ترقيم المستندات', group: 'إدارة النظام', icon: 'settings', design: { blueprint: 'settings', reference: 'company-system-settings' }, element: <PlatformFoundationsPage initialTab="numbering" /> },
-  { id: 'system-automation', path: '/system-administration/automation', label: 'الأتمتة وسير العمل', group: 'إدارة النظام', icon: 'tasks', design: { blueprint: 'command-center', reference: 'team-task-workflow' }, element: <PlatformFoundationsPage initialTab="automation" /> },
+  { id: 'management-dashboard', path: '/management/dashboard', label: 'لوحة الإدارة', group: 'الإدارة والتحكم', icon: 'dashboard', navigation: false, design: { blueprint: 'dashboard', reference: 'main-dashboard' }, element: <ExecutiveDashboardPage /> },
+  { id: 'management-exceptions', path: '/management/exceptions', label: 'مركز العمل والاستثناءات', group: 'الإدارة والتحكم', icon: 'tasks', navigation: false, design: { blueprint: 'command-center', reference: 'team-task-workflow' }, element: <ManagementWorkCenterPage /> },
+  { id: 'management-approvals', path: '/management/approvals', label: 'مركز الموافقات', group: 'الإدارة والتحكم', icon: 'tasks', navigation: false, design: { blueprint: 'command-center', reference: 'team-task-workflow' }, element: <ApprovalCenterPage /> },
+  { id: 'management-reports', path: '/management/reports', label: 'مركز التقارير', group: 'الإدارة والتحكم', icon: 'analytics', navigation: false, design: { blueprint: 'dashboard', reference: 'financial-reporting-center' }, element: <ReportingCenterPage /> },
+  { id: 'management-outputs', path: '/management/outputs', label: 'مركز المخرجات والاستحقاقات', group: 'الإدارة والتحكم', icon: 'analytics', navigation: false, design: { blueprint: 'data-table', reference: 'data-table' }, element: <ReportingOutputCenterPage /> },
+  { id: 'notification-center', path: '/notifications', label: 'الإشعارات', group: 'الإدارة والتحكم', icon: 'bell', navigation: false, design: { blueprint: 'timeline', reference: 'audit-trail' }, element: <NotificationCenterPage /> },
+  { id: 'system-administration', path: '/system-administration', label: 'إدارة النظام', group: 'إدارة النظام', icon: 'settings', navigation: false, design: { blueprint: 'settings', reference: 'system-administration' }, element: <SystemAdministrationPage /> },
+  { id: 'system-custom-fields', path: '/system-administration/custom-fields', label: 'الحقول المخصصة', group: 'إدارة النظام', icon: 'settings', navigation: false, design: { blueprint: 'settings', reference: 'company-system-settings' }, element: <PlatformFoundationsPage initialTab="custom-fields" /> },
+  { id: 'system-document-numbering', path: '/system-administration/document-numbering', label: 'ترقيم المستندات', group: 'إدارة النظام', icon: 'settings', navigation: false, design: { blueprint: 'settings', reference: 'company-system-settings' }, element: <PlatformFoundationsPage initialTab="numbering" /> },
+  { id: 'system-automation', path: '/system-administration/automation', label: 'الأتمتة وسير العمل', group: 'إدارة النظام', icon: 'tasks', navigation: false, design: { blueprint: 'command-center', reference: 'team-task-workflow' }, element: <PlatformFoundationsPage initialTab="automation" /> },
 
   { id: 'crm-dashboard', path: '/crm/dashboard', label: 'لوحة المبيعات والعملاء', group: 'المبيعات والعملاء CRM', icon: 'dashboard', design: { blueprint: 'dashboard', reference: 'main-dashboard' }, element: <CrmSalesDashboardPage /> },
   { id: 'crm-leads', path: '/crm/leads', label: 'العملاء المحتملون والمتابعة', group: 'المبيعات والعملاء CRM', icon: 'leads', design: { blueprint: 'kanban', reference: 'crm-lead-pipeline' }, element: <LeadsPage /> },
@@ -123,6 +124,8 @@ export const foundationRoutes = defineRoutes(
   { id: 'hajj-umrah-trip-operations', path: '/hajj-umrah/trip-operations', label: 'تشغيل الرحلة', group: 'الحج والعمرة', icon: 'operations', design: { blueprint: 'operations', reference: 'trip-operations' }, element: <TripOperationsPage /> },
   { id: 'hajj-umrah-readiness', path: '/hajj-umrah/readiness', label: 'مركز الجاهزية والتشغيل', group: 'الحج والعمرة', icon: 'readiness', design: { blueprint: 'command-center', reference: 'hajj-umrah-kanban' }, element: <HajjUmrahReadinessPage /> },
   { id: 'hajj-umrah-barcode', path: '/hajj-umrah/barcode', label: 'باركود العمرة', group: 'الحج والعمرة', icon: 'barcode', design: { blueprint: 'form', reference: 'voucher-ticketing-center' }, element: <UmrahBarcodePage /> },
+
+  ...phase2BatchCLegacyRoutes,
 
   { id: 'appearance-settings', path: '/settings/appearance', label: 'المظهر والتنقل', group: 'الإعدادات', icon: 'appearance', navigation: false, design: { blueprint: 'settings', reference: 'atoms' }, element: <AppearanceSettingsPage /> },
   { id: 'account-settings', path: '/settings/account', label: 'بيانات الدخول', group: 'الإعدادات', icon: 'profile', navigation: false, design: { blueprint: 'settings', reference: 'company-system-settings' }, element: <AccountSettingsPage /> },
