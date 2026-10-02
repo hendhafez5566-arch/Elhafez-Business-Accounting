@@ -3,6 +3,7 @@ import { findRoute, foundationRoutes, type AppRoute } from './routes.js';
 import { routeSurfaceFor } from './route-surface.js';
 import {
   Drawer,
+  RoutePresentationBoundary,
   type UiPreferences,
   UiPreferencesProvider,
   useUiPreferences,
@@ -125,7 +126,9 @@ function AppShellFrame({
         data-screen-blueprint={active.design.blueprint}
         data-screen-reference={active.design.reference}
       >
-        <BlankInternalWorkspace />
+        <RoutePresentationBoundary mode="route-owned">
+          <BlankInternalWorkspace />
+        </RoutePresentationBoundary>
       </div>
     );
   }
