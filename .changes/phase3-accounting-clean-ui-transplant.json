@@ -37,8 +37,6 @@
   "allowBreakingPublicApi": false,
   "publicApiBreakingReason": "All Billing contract additions are backward-compatible optional fields; existing create-and-post callers remain supported.",
   "testEvidence": [
-    "modules/billing-subledgers/src/billing-subledgers.spec.ts",
-    "apps/api/src/accounting-workspace-parity.controller.spec.ts",
     "apps/web/src/pages/accounting/accounting-pages.spec.tsx"
   ]
 }
