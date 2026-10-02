@@ -38,45 +38,41 @@ test('Hajj and Umrah restores the legacy operating dashboard without replacing c
   assert.doesNotMatch(routes, /\/manage(?:['"/])/);
 });
 
-test('Accounting legacy entry routes all reuse the accepted canonical AccountingWorkspaceView', () => {
+test('Accounting legacy routes use route-owned Phase 3 presentations backed by canonical read APIs', () => {
   const routes = source('./accounting-legacy-routes.tsx');
-  const rootRoutes = source('./routes.tsx');
   const adapter = source('./accounting-legacy-route-page.tsx');
   const expected = [
     '/accounting/invoices', '/accounting/receipts', '/accounting/payments', '/accounting/expenses',
     '/accounting/settlements', '/accounting/accruals', '/accounting/cheques', '/accounting/treasury',
     '/accounting/currencies', '/accounting/taxes', '/accounting/periods', '/accounting/journal',
-    '/accounting/accounts', '/accounting/trial', '/accounting/cost-centers', '/accounting/assets',
+    '/accounting/accounts', '/accounting/trial', '/accounting/costcenters', '/accounting/assets',
     '/accounting/loans', '/accounting/budgets',
   ];
-  for (const path of expected) assert.equal(count(routes, `path: '${path}'`), 1, path);
-  assert.match(rootRoutes, /\.\.\.accountingLegacyRoutes/);
-  assert.match(adapter, /AccountingWorkspaceView/);
+  for (const path of expected) assert.equal(count(routes, `'${path}'`), 1, path);
+  for (const page of ['InvoicesPage','ReceiptsPage','PaymentsPage','ExpensesPage','SettlementsPage','AccrualsPage','ChequesPage','TreasuryPage','CurrenciesPage','TaxesPage','PeriodsPage','JournalPage','AccountsPage','TrialPage','CostCentersPage','AssetsPage','LoansPage','BudgetsPage']) assert.match(routes, new RegExp(page));
+  assert.doesNotMatch(adapter, /AccountingWorkspaceView|AccountingSectionContent/);
   assert.match(adapter, /accountingApi\.capabilities\(\)/);
   assert.match(adapter, /accountingApi\.overview\(\)/);
   assert.doesNotMatch(adapter, /localStorage|sessionStorage|\bany\b|ts-ignore/);
 });
 
-test('Accounting route adapter exposes the existing canonical financial sections rather than reimplementing them', () => {
-  const routes = source('./accounting-legacy-routes.tsx');
-  const pairs = [
-    ["/accounting/invoices", 'billing'],
-    ["/accounting/receipts", 'treasury'],
-    ["/accounting/payments", 'treasury'],
-    ["/accounting/expenses", 'expense-commission'],
-    ["/accounting/accruals", 'recognition-accrual'],
-    ["/accounting/currencies", 'currency-fx'],
-    ["/accounting/taxes", 'tax'],
-    ["/accounting/periods", 'periods'],
-    ["/accounting/journal", 'journals'],
-    ["/accounting/accounts", 'accounts'],
-    ["/accounting/trial", 'reports'],
-    ["/accounting/assets", 'assets-financing'],
-    ["/accounting/budgets", 'cost-budget'],
-  ] as const;
-  for (const [path, section] of pairs) {
-    const line = routes.split('\n').find((row) => row.includes(`path: '${path}'`));
-    assert.ok(line, path);
-    assert.match(line, new RegExp(`initialSection=\\"${section}\\"`));
+test('Accounting Phase 3 adapter keeps one canonical loader without a generic workspace visual substitute', () => {
+  const adapter = source('./accounting-legacy-route-page.tsx');
+  const pages = source('./pages/accounting/accounting-pages.tsx');
+  assert.equal(count(adapter, 'accountingApi.overview()'), 1);
+  assert.equal(count(adapter, 'accountingApi.capabilities()'), 1);
+  assert.doesNotMatch(adapter + pages, /AccountingWorkspaceView|AccountingSectionContent/);
+  assert.match(pages, /export \{ InvoicesPage \}/);
+  assert.match(pages, /export \{ TreasuryPage \}/);
+  assert.match(pages, /export function TrialPage/);
+});
+
+test('Accounting standard-shell presentation has scoped dense RTL and responsive styling', () => {
+  const styles = source('./styles.css');
+  for (const selector of ['.accounting-route{', '.accounting-kpis', '.accounting-toolbar', '.accounting-launchpad', '.accounting-balance-cards', '.accounting-health', '.accounting-tree-child']) {
+    assert.match(styles, new RegExp(selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), selector);
   }
+  assert.match(styles, /\.accounting-route\{[^}]*direction:rtl/);
+  assert.match(styles, /@media\(max-width:760px\)/);
+  assert.doesNotMatch(styles.slice(styles.indexOf('Accounting route presentation')), /!important|\.app-shell|\.app-sidebar|\.app-topbar/);
 });

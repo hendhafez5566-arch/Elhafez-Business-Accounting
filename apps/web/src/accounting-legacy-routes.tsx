@@ -1,24 +1,26 @@
 import type { AppRoute } from './routes.js';
 import { AccountingLegacyRoutePage } from './accounting-legacy-route-page.js';
+import { AccountingLandingPage, AccountsPage, AccrualsPage, AssetsPage, BudgetsPage, ChequesPage, CostCentersPage, CurrenciesPage, ExpensesPage, InvoicesPage, JournalPage, LoansPage, PaymentsPage, PeriodsPage, ReceiptsPage, SettlementsPage, TaxesPage, TreasuryPage, TrialPage } from './pages/accounting/accounting-pages.js';
 
-export const accountingLegacyRoutes: readonly AppRoute[] = [
-  { id: 'accounting-workspace', path: '/accounting', label: 'المحاسبة والمالية', group: 'المحاسبة والمالية', icon: 'analytics', design: { blueprint: 'dashboard', reference: 'financial-reporting-center' }, element: <AccountingLegacyRoutePage initialSection="overview" /> },
-  { id: 'accounting-invoices', path: '/accounting/invoices', label: 'الفواتير', group: 'المحاسبة والمالية', icon: 'analytics', design: { blueprint: 'data-table', reference: 'billing-invoicing' }, element: <AccountingLegacyRoutePage initialSection="billing" /> },
-  { id: 'accounting-receipts', path: '/accounting/receipts', label: 'سندات القبض', group: 'المحاسبة والمالية', icon: 'analytics', design: { blueprint: 'form', reference: 'treasury-settlement' }, element: <AccountingLegacyRoutePage initialSection="treasury" /> },
-  { id: 'accounting-payments', path: '/accounting/payments', label: 'سندات الصرف', group: 'المحاسبة والمالية', icon: 'analytics', design: { blueprint: 'form', reference: 'treasury-settlement' }, element: <AccountingLegacyRoutePage initialSection="treasury" /> },
-  { id: 'accounting-expenses', path: '/accounting/expenses', label: 'المصروفات', group: 'المحاسبة والمالية', icon: 'analytics', design: { blueprint: 'module', reference: 'master-module-template' }, element: <AccountingLegacyRoutePage initialSection="expense-commission" /> },
-  { id: 'accounting-settlements', path: '/accounting/settlements', label: 'التسويات', group: 'المحاسبة والمالية', icon: 'analytics', design: { blueprint: 'master-detail', reference: 'account-statement' }, element: <AccountingLegacyRoutePage initialSection="party-accounting" /> },
-  { id: 'accounting-accruals', path: '/accounting/accruals', label: 'الاستحقاقات', group: 'المحاسبة والمالية', icon: 'analytics', design: { blueprint: 'data-table', reference: 'data-table' }, element: <AccountingLegacyRoutePage initialSection="recognition-accrual" /> },
-  { id: 'accounting-cheques', path: '/accounting/cheques', label: 'الشيكات', group: 'المحاسبة والمالية', icon: 'analytics', design: { blueprint: 'data-table', reference: 'treasury-settlement' }, element: <AccountingLegacyRoutePage initialSection="treasury" /> },
-  { id: 'accounting-treasury', path: '/accounting/treasury', label: 'الخزينة والبنوك', group: 'المحاسبة والمالية', icon: 'analytics', design: { blueprint: 'master-detail', reference: 'treasury-settlement' }, element: <AccountingLegacyRoutePage initialSection="treasury" /> },
-  { id: 'accounting-currencies', path: '/accounting/currencies', label: 'العملات وأسعار الصرف', group: 'المحاسبة والمالية', icon: 'analytics', design: { blueprint: 'data-table', reference: 'currency-fx' }, element: <AccountingLegacyRoutePage initialSection="currency-fx" /> },
-  { id: 'accounting-taxes', path: '/accounting/taxes', label: 'الضرائب', group: 'المحاسبة والمالية', icon: 'analytics', design: { blueprint: 'data-table', reference: 'vat-tax-returns' }, element: <AccountingLegacyRoutePage initialSection="tax" /> },
-  { id: 'accounting-periods', path: '/accounting/periods', label: 'الفترات المالية', group: 'المحاسبة والمالية', icon: 'calendar', design: { blueprint: 'module', reference: 'master-module-template' }, element: <AccountingLegacyRoutePage initialSection="periods" /> },
-  { id: 'accounting-journal', path: '/accounting/journal', label: 'القيود اليومية', group: 'المحاسبة والمالية', icon: 'analytics', design: { blueprint: 'form', reference: 'journal-entry-form' }, element: <AccountingLegacyRoutePage initialSection="journals" /> },
-  { id: 'accounting-accounts', path: '/accounting/accounts', label: 'دليل الحسابات', group: 'المحاسبة والمالية', icon: 'analytics', design: { blueprint: 'master-detail', reference: 'chart-of-accounts' }, element: <AccountingLegacyRoutePage initialSection="accounts" /> },
-  { id: 'accounting-trial', path: '/accounting/trial', label: 'ميزان المراجعة', group: 'المحاسبة والمالية', icon: 'analytics', design: { blueprint: 'data-table', reference: 'financial-reporting-center' }, element: <AccountingLegacyRoutePage initialSection="reports" /> },
-  { id: 'accounting-cost-centers', path: '/accounting/cost-centers', label: 'مراكز التكلفة', group: 'المحاسبة والمالية', icon: 'analytics', design: { blueprint: 'master-detail', reference: 'cost-centers-budgets' }, element: <AccountingLegacyRoutePage initialSection="cost-budget" /> },
-  { id: 'accounting-assets', path: '/accounting/assets', label: 'الأصول', group: 'المحاسبة والمالية', icon: 'analytics', design: { blueprint: 'data-table', reference: 'assets-depreciation' }, element: <AccountingLegacyRoutePage initialSection="assets-financing" /> },
-  { id: 'accounting-loans', path: '/accounting/loans', label: 'القروض والتمويل', group: 'المحاسبة والمالية', icon: 'analytics', design: { blueprint: 'data-table', reference: 'assets-depreciation' }, element: <AccountingLegacyRoutePage initialSection="assets-financing" /> },
-  { id: 'accounting-budgets', path: '/accounting/budgets', label: 'الموازنات', group: 'المحاسبة والمالية', icon: 'analytics', design: { blueprint: 'data-table', reference: 'cost-centers-budgets' }, element: <AccountingLegacyRoutePage initialSection="cost-budget" /> },
+const route=(id:string,path:string,label:string,element:React.ComponentType<React.ComponentProps<typeof AccountingLandingPage>>,blueprint:AppRoute['design']['blueprint']='data-table'):AppRoute=>({id,path,label,group:'المحاسبة والمالية',icon:'analytics',design:{blueprint,reference:blueprint==='dashboard'?'financial-reporting-center':blueprint==='master-detail'?'account-statement':'data-table'},element:<AccountingLegacyRoutePage presentation={element}/>});
+export const accountingLegacyRoutes:readonly AppRoute[]=[
+ route('accounting-workspace','/accounting','المحاسبة والمالية',AccountingLandingPage,'dashboard'),
+ route('accounting-invoices','/accounting/invoices','الفواتير',InvoicesPage),
+ route('accounting-receipts','/accounting/receipts','سندات القبض',ReceiptsPage),
+ route('accounting-payments','/accounting/payments','سندات الصرف',PaymentsPage),
+ route('accounting-expenses','/accounting/expenses','المصروفات',ExpensesPage),
+ route('accounting-settlements','/accounting/settlements','التسويات',SettlementsPage,'master-detail'),
+ route('accounting-accruals','/accounting/accruals','الاستحقاقات',AccrualsPage),
+ route('accounting-cheques','/accounting/cheques','الشيكات',ChequesPage),
+ route('accounting-treasury','/accounting/treasury','الخزينة والبنوك',TreasuryPage,'master-detail'),
+ route('accounting-currencies','/accounting/currencies','العملات وأسعار الصرف',CurrenciesPage),
+ route('accounting-taxes','/accounting/taxes','الضرائب',TaxesPage),
+ route('accounting-periods','/accounting/periods','الفترات المالية',PeriodsPage),
+ route('accounting-journal','/accounting/journal','القيود اليومية',JournalPage),
+ route('accounting-accounts','/accounting/accounts','دليل الحسابات',AccountsPage,'master-detail'),
+ route('accounting-trial','/accounting/trial','ميزان المراجعة',TrialPage),
+ route('accounting-costcenters','/accounting/costcenters','مراكز التكلفة',CostCentersPage,'master-detail'),
+ route('accounting-assets','/accounting/assets','الأصول',AssetsPage),
+ route('accounting-loans','/accounting/loans','القروض والتمويل',LoansPage),
+ route('accounting-budgets','/accounting/budgets','الموازنات',BudgetsPage),
 ];
