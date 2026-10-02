@@ -4,51 +4,100 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { AppShell } from './app-shell.js';
 
-test('global shell contract preserves RTL, right sidebar, topbar, navigation and main landmarks', () => {
+const workspacePath = '/system-administration';
+
+test('portal home is the single root UI and intentionally renders without a sidebar or page header', () => {
   const html = renderToStaticMarkup(createElement(AppShell, { pathname: '/' }));
-  assert.match(html, /class="app-shell" dir="rtl"/);
-  assert.match(html, /class="app-sidebar"/);
+  assert.match(html, /class="app-shell app-shell--portal" dir="rtl"/);
   assert.match(html, /class="app-topbar"/);
-  assert.match(html, /aria-label="التنقل الرئيسي"/);
-  assert.match(html, /class="app-main"/);
-  assert.match(html, /aria-current="page"/);
-  assert.match(html, /data-sidebar-mode="fixed"/);
+  assert.match(html, /class="portal-home"/);
   assert.match(html, /data-route-id="foundation"/);
   assert.match(html, /data-route-surface="standard"/);
-  assert.match(html, /class="ui-page-header"/);
-  assert.match(html, /class="[^"]*ui-page-stack[^"]*"/);
-});
-
-test('Gemini app layout exposes global route search and ERP brand through the canonical shell', () => {
-  const html = renderToStaticMarkup(createElement(AppShell, { pathname: '/' }));
-  assert.match(html, /الحافظ ERP/);
+  assert.match(html, /الصفحة الرئيسية/);
+  assert.match(html, /اختر مساحة العمل المطلوبة/);
   assert.match(html, /aria-label="البحث في أقسام النظام"/);
   assert.match(html, /placeholder="ابحث عن شاشة أو قسم\.\.\."/);
-  assert.match(html, /الرئيسية/);
+  assert.doesNotMatch(html, /class="app-sidebar"/);
+  assert.doesNotMatch(html, /class="ui-page-header"/);
 });
 
-test('sidebar supports fixed, compact and auto preference modes through one canonical shell', () => {
+test('portal home exposes the seven legacy workspaces in canonical order', () => {
+  const html = renderToStaticMarkup(createElement(AppShell, { pathname: '/' }));
+  const labels = [
+    'الحج والعمرة',
+    'المبيعات والعملاء CRM',
+    'الخدمات السياحية',
+    'المشتريات والموردون',
+    'المحاسبة والمالية',
+    'التقارير والرقابة',
+    'الإدارة والإعدادات',
+  ];
+  let cursor = -1;
+  for (const label of labels) {
+    const index = html.indexOf(label, cursor + 1);
+    assert.ok(index > cursor, `${label} must appear once the previous workspace has rendered`);
+    cursor = index;
+  }
+  assert.equal((html.match(/class="portal-workspace-card"/g) ?? []).length, 7);
+});
+
+test('workspace shell preserves one RTL sidebar, one topbar and contextual navigation', () => {
+  const html = renderToStaticMarkup(
+    createElement(AppShell, {
+      pathname: workspacePath,
+      companyLabel: 'شركة الحافظ',
+      branchLabel: 'الفرع الرئيسي',
+      userLabel: 'المستخدم الحالي',
+      subscriptionStatus: 'active',
+    }),
+  );
+  assert.match(html, /class="app-shell" dir="rtl"/);
+  assert.equal((html.match(/class="app-sidebar"/g) ?? []).length, 1);
+  assert.equal((html.match(/class="app-topbar"/g) ?? []).length, 1);
+  assert.match(html, /aria-label="التنقل الرئيسي"/);
+  assert.match(html, /class="ui-page-header"/);
+  assert.match(html, /شركة الحافظ/);
+  assert.match(html, /الإدارة والإعدادات/);
+  assert.match(html, /واجهة القسم/);
+  assert.match(html, /مساحات العمل/);
+  assert.match(html, /المستخدم الحالي/);
+  assert.match(html, /الفرع الرئيسي/);
+});
+
+test('workspace shell exposes global search, workspace shortcuts, notifications and user menu', () => {
+  const html = renderToStaticMarkup(createElement(AppShell, { pathname: workspacePath }));
+  assert.match(html, /aria-label="البحث في أقسام النظام"/);
+  assert.match(html, /aria-label="اختصارات مساحات العمل"/);
+  assert.match(html, /aria-label="الإشعارات"/);
+  assert.match(html, /aria-label="قائمة المستخدم"/);
+  assert.match(html, /href="\/notifications"/);
+  assert.match(html, /href="\/settings\/account"/);
+  assert.match(html, /href="\/settings\/appearance"/);
+});
+
+test('sidebar supports fixed, compact and auto preference modes through one canonical workspace shell', () => {
   for (const sidebarMode of ['fixed', 'compact', 'auto'] as const) {
     const html = renderToStaticMarkup(
       createElement(AppShell, {
-        pathname: '/',
+        pathname: workspacePath,
         initialPreferences: { sidebarMode },
       }),
     );
     assert.match(html, new RegExp('data-sidebar-mode="' + sidebarMode + '"'));
+    assert.equal((html.match(/class="app-sidebar"/g) ?? []).length, 1);
   }
 });
 
-test('local content renders inside the canonical shell without replacing shell structure', () => {
+test('local content renders inside the canonical workspace shell without replacing shell structure', () => {
   const html = renderToStaticMarkup(
     createElement(AppShell, {
-      pathname: '/',
+      pathname: workspacePath,
       children: createElement('section', { 'data-testid': 'local-content' }, 'محتوى محلي'),
     }),
   );
   assert.match(html, /data-testid="local-content"/);
-  assert.match(html, /class="app-sidebar"/);
-  assert.match(html, /class="app-topbar"/);
+  assert.equal((html.match(/class="app-sidebar"/g) ?? []).length, 1);
+  assert.equal((html.match(/class="app-topbar"/g) ?? []).length, 1);
   assert.equal((html.match(/ui-page-stack/g) ?? []).length, 1);
 });
 
@@ -63,7 +112,7 @@ test('full-bleed route replaces the standard shell instead of rendering it and h
   assert.doesNotMatch(html, /ui-page-stack/);
 });
 
-test('appearance settings are reachable from canonical navigation', () => {
+test('appearance settings remain reachable from canonical navigation', () => {
   const html = renderToStaticMarkup(
     createElement(AppShell, { pathname: '/settings/appearance' }),
   );
@@ -78,7 +127,7 @@ test('shell exposes the active structural blueprint and reference as an observab
   assert.match(html, /ui-screen-layout--dashboard/);
 });
 
-test('screen design changes with the route while the canonical shell remains single', () => {
+test('screen design changes with a standard route while the canonical shell remains single', () => {
   const html = renderToStaticMarkup(createElement(AppShell, { pathname: '/crm/leads' }));
   assert.match(html, /data-screen-blueprint="kanban"/);
   assert.match(html, /data-screen-reference="crm-lead-pipeline"/);
