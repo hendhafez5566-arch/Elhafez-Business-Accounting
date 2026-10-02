@@ -4,7 +4,6 @@ import { companyId, decimalAmount } from '@elhafez/contracts';
 import type { BillingSubledgersApplicationService, CreateInvoiceInput } from './application/billing-subledgers.application-service.js';
 import { ManualInvoiceWorkflowApplicationService } from './application/manual-invoice-workflow.application-service.js';
 import type {
-  ManualInvoiceDraftCore,
   ManualInvoiceMetadata,
   ManualInvoiceRepository,
 } from './application/manual-invoice.repository.js';
@@ -53,7 +52,7 @@ function fixture() {
   const repository: ManualInvoiceRepository = {
     metadata: async () => metadata,
     saveMetadata: async (value) => { metadata = value; },
-    replaceDraft: async (_value: ManualInvoiceDraftCore) => undefined,
+    replaceDraft: async () => undefined,
     cancelDraft: async () => {
       if (!current) throw new Error('missing draft');
       current = { ...current, status: 'CANCELLED' };
