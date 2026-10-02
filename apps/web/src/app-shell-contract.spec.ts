@@ -3,45 +3,34 @@ import test from 'node:test';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { AppShell } from './app-shell.js';
+import { foundationRoutes } from './routes.js';
 
 const workspacePath = '/system-administration';
 
-test('portal home is the single root UI and intentionally renders without a sidebar or page header', () => {
+test('portal root keeps only the structural topbar and a blank white rebuild surface', () => {
   const html = renderToStaticMarkup(createElement(AppShell, { pathname: '/' }));
   assert.match(html, /class="app-shell app-shell--portal" dir="rtl"/);
   assert.match(html, /class="app-topbar"/);
-  assert.match(html, /class="portal-home"/);
   assert.match(html, /data-route-id="foundation"/);
   assert.match(html, /data-route-surface="standard"/);
-  assert.match(html, /الصفحة الرئيسية/);
-  assert.match(html, /اختر مساحة العمل المطلوبة/);
-  assert.match(html, /aria-label="البحث في أقسام النظام"/);
-  assert.match(html, /placeholder="ابحث عن شاشة أو قسم\.\.\."/);
+  assert.match(html, /data-ui-reset="blank"/);
   assert.doesNotMatch(html, /class="app-sidebar"/);
   assert.doesNotMatch(html, /class="ui-page-header"/);
+  assert.doesNotMatch(html, /class="portal-home"/);
+  assert.doesNotMatch(html, /class="portal-workspace-card"/);
 });
 
-test('portal home exposes the seven legacy workspaces in canonical order', () => {
-  const html = renderToStaticMarkup(createElement(AppShell, { pathname: '/' }));
-  const labels = [
-    'الحج والعمرة',
-    'المبيعات والعملاء CRM',
-    'الخدمات السياحية',
-    'المشتريات والموردون',
-    'المحاسبة والمالية',
-    'التقارير والرقابة',
-    'الإدارة والإعدادات',
-  ];
-  let cursor = -1;
-  for (const label of labels) {
-    const index = html.indexOf(label, cursor + 1);
-    assert.ok(index > cursor, `${label} must appear once the previous workspace has rendered`);
-    cursor = index;
+test('every registered internal route mounts the blank reset surface instead of its former page element', () => {
+  for (const route of foundationRoutes) {
+    const html = renderToStaticMarkup(createElement(AppShell, { pathname: route.path }));
+    assert.match(html, new RegExp(`data-route-id="${route.id}"`));
+    assert.match(html, /data-ui-reset="blank"/);
+    assert.doesNotMatch(html, /class="ui-page-header"/);
+    assert.doesNotMatch(html, /ui-page-stack/);
   }
-  assert.equal((html.match(/class="portal-workspace-card"/g) ?? []).length, 7);
 });
 
-test('workspace shell preserves one RTL sidebar, one topbar and contextual navigation', () => {
+test('standard workspace shell preserves navigation structure while route content stays blank', () => {
   const html = renderToStaticMarkup(
     createElement(AppShell, {
       pathname: workspacePath,
@@ -55,16 +44,14 @@ test('workspace shell preserves one RTL sidebar, one topbar and contextual navig
   assert.equal((html.match(/class="app-sidebar"/g) ?? []).length, 1);
   assert.equal((html.match(/class="app-topbar"/g) ?? []).length, 1);
   assert.match(html, /aria-label="التنقل الرئيسي"/);
-  assert.match(html, /class="ui-page-header"/);
+  assert.match(html, /data-ui-reset="blank"/);
+  assert.doesNotMatch(html, /class="ui-page-header"/);
   assert.match(html, /شركة الحافظ/);
-  assert.match(html, /الإدارة والإعدادات/);
-  assert.match(html, /واجهة القسم/);
-  assert.match(html, /مساحات العمل/);
   assert.match(html, /المستخدم الحالي/);
   assert.match(html, /الفرع الرئيسي/);
 });
 
-test('workspace shell exposes global search, workspace shortcuts, notifications and user menu', () => {
+test('workspace shell keeps global search, shortcuts, notifications and user menu', () => {
   const html = renderToStaticMarkup(createElement(AppShell, { pathname: workspacePath }));
   assert.match(html, /aria-label="البحث في أقسام النظام"/);
   assert.match(html, /aria-label="اختصارات مساحات العمل"/);
@@ -75,7 +62,7 @@ test('workspace shell exposes global search, workspace shortcuts, notifications 
   assert.match(html, /href="\/settings\/appearance"/);
 });
 
-test('sidebar supports fixed, compact and auto preference modes through one canonical workspace shell', () => {
+test('sidebar still supports fixed, compact and auto preference modes', () => {
   for (const sidebarMode of ['fixed', 'compact', 'auto'] as const) {
     const html = renderToStaticMarkup(
       createElement(AppShell, {
@@ -85,53 +72,47 @@ test('sidebar supports fixed, compact and auto preference modes through one cano
     );
     assert.match(html, new RegExp('data-sidebar-mode="' + sidebarMode + '"'));
     assert.equal((html.match(/class="app-sidebar"/g) ?? []).length, 1);
+    assert.match(html, /data-ui-reset="blank"/);
   }
 });
 
-test('local content renders inside the canonical workspace shell without replacing shell structure', () => {
+test('caller-provided route children cannot remount old or parallel internal presentation', () => {
   const html = renderToStaticMarkup(
     createElement(AppShell, {
       pathname: workspacePath,
       children: createElement('section', { 'data-testid': 'local-content' }, 'محتوى محلي'),
     }),
   );
-  assert.match(html, /data-testid="local-content"/);
+  assert.doesNotMatch(html, /data-testid="local-content"/);
+  assert.doesNotMatch(html, /محتوى محلي/);
+  assert.match(html, /data-ui-reset="blank"/);
   assert.equal((html.match(/class="app-sidebar"/g) ?? []).length, 1);
   assert.equal((html.match(/class="app-topbar"/g) ?? []).length, 1);
-  assert.equal((html.match(/ui-page-stack/g) ?? []).length, 1);
 });
 
-test('full-bleed route replaces the standard shell instead of rendering it and hiding it', () => {
+test('full-bleed customer route is genuinely blank rather than hidden under an overlay', () => {
   const html = renderToStaticMarkup(createElement(AppShell, { pathname: '/crm/customers' }));
   assert.match(html, /data-route-id="crm-customers"/);
   assert.match(html, /data-route-surface="full-bleed"/);
-  assert.match(html, /class="ct-root"/);
+  assert.match(html, /data-ui-reset="blank"/);
+  assert.doesNotMatch(html, /class="ct-root"/);
   assert.doesNotMatch(html, /class="app-sidebar"/);
   assert.doesNotMatch(html, /class="app-topbar"/);
   assert.doesNotMatch(html, /class="ui-page-header"/);
   assert.doesNotMatch(html, /ui-page-stack/);
 });
 
-test('appearance settings remain reachable from canonical navigation', () => {
-  const html = renderToStaticMarkup(
-    createElement(AppShell, { pathname: '/settings/appearance' }),
-  );
-  assert.match(html, /المظهر والتنقل/);
-  assert.match(html, /استعادة الافتراضي/);
-});
+test('route identity and structural design metadata remain available for the later rebuild', () => {
+  const rootHtml = renderToStaticMarkup(createElement(AppShell, { pathname: '/' }));
+  assert.match(rootHtml, /data-screen-blueprint="dashboard"/);
+  assert.match(rootHtml, /data-screen-reference="main-dashboard"/);
+  assert.match(rootHtml, /data-ui-reset="blank"/);
+  assert.doesNotMatch(rootHtml, /ui-screen-layout--dashboard/);
 
-test('shell exposes the active structural blueprint and reference as an observable contract', () => {
-  const html = renderToStaticMarkup(createElement(AppShell, { pathname: '/' }));
-  assert.match(html, /data-screen-blueprint="dashboard"/);
-  assert.match(html, /data-screen-reference="main-dashboard"/);
-  assert.match(html, /ui-screen-layout--dashboard/);
-});
-
-test('screen design changes with a standard route while the canonical shell remains single', () => {
-  const html = renderToStaticMarkup(createElement(AppShell, { pathname: '/crm/leads' }));
-  assert.match(html, /data-screen-blueprint="kanban"/);
-  assert.match(html, /data-screen-reference="crm-lead-pipeline"/);
-  assert.match(html, /ui-screen-layout--kanban/);
-  assert.equal((html.match(/class="app-shell"/g) ?? []).length, 1);
-  assert.equal((html.match(/ui-page-stack/g) ?? []).length, 1);
+  const crmHtml = renderToStaticMarkup(createElement(AppShell, { pathname: '/crm/leads' }));
+  assert.match(crmHtml, /data-route-id="crm-leads"/);
+  assert.match(crmHtml, /data-screen-blueprint="kanban"/);
+  assert.match(crmHtml, /data-screen-reference="crm-lead-pipeline"/);
+  assert.match(crmHtml, /data-ui-reset="blank"/);
+  assert.doesNotMatch(crmHtml, /ui-screen-layout--kanban/);
 });
