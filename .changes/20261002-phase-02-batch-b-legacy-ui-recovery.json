@@ -7,6 +7,7 @@
     ".changes/20261002-phase-02-batch-b-legacy-ui-recovery.json",
     "apps/web/src/routes.tsx",
     "apps/web/src/accounting-legacy-route-page.tsx",
+    "apps/web/src/accounting-legacy-routes.tsx",
     "apps/web/src/hajj-umrah-dashboard-page.tsx",
     "apps/web/src/phase2-batch-b-legacy-ui-recovery.spec.ts",
     "docs/migration/PHASE-02-BATCH-B-RECOVERY.md"
