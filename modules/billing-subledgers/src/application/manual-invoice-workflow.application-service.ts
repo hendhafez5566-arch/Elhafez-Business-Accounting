@@ -6,7 +6,10 @@ import {
   type CompanyId,
   type DecimalAmount,
 } from '@elhafez/contracts';
-import { BillingSubledgersApplicationService, type CreateInvoiceInput } from './billing-subledgers.application-service.js';
+import type {
+  BillingSubledgersApplicationService,
+  CreateInvoiceInput,
+} from './billing-subledgers.application-service.js';
 import type {
   ManualInvoiceLineMetadata,
   ManualInvoiceMetadata,
