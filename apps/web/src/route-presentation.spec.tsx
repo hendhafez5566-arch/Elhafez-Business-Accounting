@@ -27,11 +27,13 @@ test('route-owned presentation keeps shared behavior but removes canonical visua
   assert.doesNotMatch(html, /ui-input/);
 });
 
-test('the customers full-bleed route renders template classes without the Gemini control skin', () => {
+test('the customers full-bleed route mounts only the clean reset surface', () => {
   const html = renderToStaticMarkup(createElement(AppShell, { pathname: '/crm/customers' }));
   assert.match(html, /data-route-surface="full-bleed"/);
-  assert.match(html, /class="ct-kpi"/);
-  assert.match(html, /class="ct-fab"/);
+  assert.match(html, /data-ui-reset="blank"/);
+  assert.doesNotMatch(html, /class="ct-root"/);
+  assert.doesNotMatch(html, /class="ct-kpi"/);
+  assert.doesNotMatch(html, /class="ct-fab"/);
   assert.doesNotMatch(html, /ui-button/);
   assert.doesNotMatch(html, /ui-input/);
 });
