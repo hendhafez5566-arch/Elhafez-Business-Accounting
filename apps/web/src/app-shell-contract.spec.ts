@@ -6,37 +6,55 @@ import { AppShell } from './app-shell.js';
 import { foundationRoutes } from './routes.js';
 
 const workspacePath = '/system-administration';
+const portalSectionLabels = [
+  'الحج والعمرة',
+  'المبيعات والعملاء',
+  'الخدمات السياحية',
+  'المشتريات والموردون',
+  'المحاسبة والمالية',
+  'التقارير والرقابة',
+  'الإدارة والإعدادات',
+] as const;
 
-test('portal root keeps only the structural topbar and a blank white rebuild surface', () => {
+test('portal root keeps the structural topbar and mounts the seven primary sections in order', () => {
   const html = renderToStaticMarkup(createElement(AppShell, { pathname: '/' }));
   assert.match(html, /class="app-shell app-shell--portal" dir="rtl"/);
   assert.match(html, /class="app-topbar"/);
   assert.match(html, /data-route-id="foundation"/);
   assert.match(html, /data-route-surface="standard"/);
-  assert.match(html, /data-ui-reset="blank"/);
+  assert.match(html, /data-portal-section-index="true"/);
+  assert.equal((html.match(/class="portal-section-index__card"/g) ?? []).length, 7);
+  assert.doesNotMatch(html, /data-ui-reset="blank"/);
   assert.doesNotMatch(html, /class="app-sidebar"/);
-  assert.doesNotMatch(html, /class="ui-page-header"/);
   assert.doesNotMatch(html, /class="portal-home"/);
-  assert.doesNotMatch(html, /class="portal-workspace-card"/);
+  assert.doesNotMatch(html, /portal-home__banner/);
+
+  let previousPosition = -1;
+  for (const label of portalSectionLabels) {
+    const position = html.indexOf(label);
+    assert.ok(position > previousPosition, `expected ${label} after the previous portal section`);
+    previousPosition = position;
+  }
 });
 
-test('portal topbar keeps global navigation utilities while the former portal dashboard stays disconnected', () => {
+test('portal topbar keeps global navigation utilities while the seven-section portal is the canonical root presentation', () => {
   const html = renderToStaticMarkup(createElement(AppShell, { pathname: '/' }));
   assert.match(html, /aria-label="البحث في أقسام النظام"/);
   assert.match(html, /aria-label="اختصارات مساحات العمل"/);
   assert.match(html, /aria-label="الإشعارات"/);
   assert.match(html, /aria-label="قائمة المستخدم"/);
-  assert.match(html, /data-ui-reset="blank"/);
-  assert.doesNotMatch(html, /اختر مساحة العمل المطلوبة/);
+  assert.match(html, /data-portal-section-index="true"/);
+  assert.doesNotMatch(html, /data-ui-reset="blank"/);
 });
 
-test('every registered internal route mounts the blank reset surface instead of its former page element', () => {
-  for (const route of foundationRoutes) {
+test('every registered internal route except the portal root stays on the blank reset surface', () => {
+  for (const route of foundationRoutes.filter(route => route.id !== 'foundation')) {
     const html = renderToStaticMarkup(createElement(AppShell, { pathname: route.path }));
     assert.match(html, new RegExp(`data-route-id="${route.id}"`));
     assert.match(html, /data-ui-reset="blank"/);
     assert.doesNotMatch(html, /class="ui-page-header"/);
     assert.doesNotMatch(html, /ui-page-stack/);
+    assert.doesNotMatch(html, /data-portal-section-index="true"/);
   }
 });
 
@@ -124,7 +142,8 @@ test('route identity and structural design metadata remain available for the lat
   const rootHtml = renderToStaticMarkup(createElement(AppShell, { pathname: '/' }));
   assert.match(rootHtml, /data-screen-blueprint="dashboard"/);
   assert.match(rootHtml, /data-screen-reference="main-dashboard"/);
-  assert.match(rootHtml, /data-ui-reset="blank"/);
+  assert.match(rootHtml, /data-portal-section-index="true"/);
+  assert.doesNotMatch(rootHtml, /data-ui-reset="blank"/);
   assert.doesNotMatch(rootHtml, /ui-screen-layout--dashboard/);
 
   const crmHtml = renderToStaticMarkup(createElement(AppShell, { pathname: '/crm/leads' }));
