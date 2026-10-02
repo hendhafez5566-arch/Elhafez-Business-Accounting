@@ -37,7 +37,6 @@ function BlankInternalWorkspace() {
       className="clean-ui-reset-surface"
       data-ui-reset="blank"
       aria-hidden="true"
-      style={{ width: '100%', minHeight: '100%', background: '#fff' }}
     />
   );
 }
@@ -119,13 +118,12 @@ function AppShellFrame({
     return (
       <div
         key={sessionKey}
-        className="app-route-surface app-route-surface--full-bleed"
+        className="app-route-surface app-route-surface--full-bleed clean-ui-reset-container"
         dir="rtl"
         data-route-id={active.id}
         data-route-surface="full-bleed"
         data-screen-blueprint={active.design.blueprint}
         data-screen-reference={active.design.reference}
-        style={{ minHeight: '100vh', background: '#fff' }}
       >
         <BlankInternalWorkspace />
       </div>
@@ -157,7 +155,7 @@ function AppShellFrame({
           onBranchChange={onBranchChange}
           onLogout={onLogout}
         />
-        <main className="app-main app-main--portal app-main--clean-reset" style={{ background: '#fff' }}>
+        <main className="app-main app-main--portal app-main--clean-reset">
           <div className="app-content app-content--portal app-content--clean-reset" tabIndex={-1}>
             <BlankInternalWorkspace />
           </div>
@@ -216,7 +214,7 @@ function AppShellFrame({
         onLogout={onLogout}
       />
 
-      <main className="app-main app-main--clean-reset" style={{ background: '#fff' }}>
+      <main className="app-main app-main--clean-reset">
         <div className="app-content app-content--clean-reset" tabIndex={-1}>
           <BlankInternalWorkspace />
         </div>
