@@ -1,9 +1,10 @@
 import { createHash } from 'node:crypto';
 import { Body, Controller, Get, Headers, Inject, Param, Patch, Post, UnauthorizedException } from '@nestjs/common';
-import { executionContext, type ExecutionContext } from '@elhafez/contracts';
+import { decimalAmount, executionContext, type ExecutionContext } from '@elhafez/contracts';
 import { PLATFORM_CORE_PERMISSIONS, PlatformCoreApplicationService } from '@elhafez/platform-core';
 import { GeneralLedgerApplicationService, type Account, type AccountClassification } from '@elhafez/general-ledger';
 import {
+  BillingSubledgersApplicationService,
   ManualInvoiceWorkflowApplicationService,
   type ManualInvoiceLineInput,
   type ManualInvoiceSaveMode,
@@ -26,6 +27,15 @@ type ManualInvoiceBody = {
   lines: ManualInvoiceLineInput[];
 };
 
+type AdjustmentBody = {
+  commandKey: string;
+  kind: 'CREDIT_NOTE' | 'DEBIT_NOTE';
+  amount: string;
+  postingDate: string;
+  number: string;
+  offsetAccountId: string;
+};
+
 function stableId(...parts: string[]) {
   return createHash('sha256').update(parts.join('|')).digest('hex').slice(0, 32);
 }
@@ -35,6 +45,7 @@ export class ManualInvoiceController {
   constructor(
     @Inject(PlatformCoreApplicationService) private readonly platform: PlatformCoreApplicationService,
     @Inject(GeneralLedgerApplicationService) private readonly ledger: GeneralLedgerApplicationService,
+    @Inject(BillingSubledgersApplicationService) private readonly billing: BillingSubledgersApplicationService,
     @Inject(ManualInvoiceWorkflowApplicationService) private readonly invoices: ManualInvoiceWorkflowApplicationService,
     @Inject(CostBudgetAccountingApplicationService) private readonly costs: CostBudgetAccountingApplicationService,
   ) {}
@@ -225,6 +236,31 @@ export class ManualInvoiceController {
     const current = await this.invoices.get(c.companyId, id);
     if (!current || current.branchId !== c.branchId) throw new UnauthorizedException('invoice not found in current branch');
     return this.invoices.cancel(c.companyId, id, body.postingDate, body.number);
+  }
+
+  @Post(':id/adjustments')
+  async adjustment(
+    @Headers('authorization') authorization: string,
+    @Headers('x-company-id') companyId: string,
+    @Headers('x-branch-id') branchId: string,
+    @Param('id') id: string,
+    @Body() body: AdjustmentBody,
+  ) {
+    const c = await this.context(this.headers(authorization, companyId, branchId), PLATFORM_CORE_PERMISSIONS.accountingFinanceOperate);
+    const current = await this.invoices.get(c.companyId, id);
+    if (!current || current.branchId !== c.branchId) throw new UnauthorizedException('invoice not found in current branch');
+    return this.billing.createAdjustment({
+      id: stableId(c.companyId, 'MANUAL_INVOICE_ADJUSTMENT', body.commandKey),
+      companyId: c.companyId,
+      invoiceId: current.id,
+      kind: body.kind,
+      amount: decimalAmount(body.amount),
+      sourceType: 'MANUAL_ACCOUNTING_ADJUSTMENT',
+      sourceId: body.commandKey,
+      postingDate: body.postingDate,
+      number: body.number,
+      offsetAccountId: body.offsetAccountId,
+    });
   }
 
   @Get(':id')
