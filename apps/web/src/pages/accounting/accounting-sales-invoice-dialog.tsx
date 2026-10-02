@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import {
   accountingApi,
   type AccountingOverview,
+  type InvoiceRow,
   type ManualInvoiceReferences,
 } from '../../accounting-client.js';
 import { crmGet, crmPost } from '../../crm-core-client.js';
@@ -42,6 +43,7 @@ export interface SalesInvoiceLineDraft {
 }
 
 export interface SalesInvoiceDraft {
+  readonly number: string;
   readonly postingDate: string;
   readonly party?: PartyChoice;
   readonly partyQuery: string;
@@ -57,6 +59,7 @@ interface SalesInvoiceDialogProps {
   readonly open: boolean;
   readonly data: AccountingOverview;
   readonly operate: boolean;
+  readonly invoice?: InvoiceRow;
   readonly onClose: () => void;
   readonly onCreated: () => Promise<void>;
 }
@@ -82,6 +85,7 @@ export function initialSalesInvoiceDraft(data: AccountingOverview): SalesInvoice
   const date = today();
   const defaultAccountId = data.accounts.find((row) => row.active && row.postable && row.classification === 'REVENUE')?.id ?? '';
   return {
+    number: '',
     postingDate: date,
     partyQuery: '',
     currency: 'EGP',
@@ -144,7 +148,39 @@ function validateDraft(draft: SalesInvoiceDraft) {
   return undefined;
 }
 
-export function SalesInvoiceDialog({ open, data, operate, onClose, onCreated }: SalesInvoiceDialogProps) {
+function draftFromInvoice(invoice: InvoiceRow, parties: readonly PartyChoice[], defaultAccountId: string): SalesInvoiceDraft {
+  const kind: PartyChoice['kind'] = invoice.type === 'AGENT' ? 'AGENT' : 'CUSTOMER';
+  const party = parties.find((value) => value.kind === kind && value.partyId === invoice.partyId) ?? {
+    kind,
+    partyId: invoice.partyId,
+    number: invoice.partyId,
+    displayName: invoice.partyId,
+  };
+  return {
+    number: invoice.number,
+    postingDate: invoice.postingDate,
+    party,
+    partyQuery: partyLabel(party),
+    currency: invoice.currency,
+    dueDate: invoice.dueDate ?? invoice.postingDate,
+    recognitionDate: invoice.recognitionDate ?? '',
+    saveMode: 'DRAFT',
+    paymentTerms: invoice.paymentTerms ?? '',
+    lines: invoice.lines.length ? invoice.lines.map((line) => ({
+      id: line.id,
+      description: line.description ?? '',
+      quantity: line.quantity ?? '1',
+      price: line.unitPrice ?? line.amount,
+      discountMode: line.discountMode ?? 'FIXED',
+      discount: line.discount ?? '0',
+      taxCode: line.taxCode ?? '',
+      accountId: line.accountId || defaultAccountId,
+      costCenterId: line.costCenterId ?? '',
+    })) : [newLine(defaultAccountId)],
+  };
+}
+
+export function SalesInvoiceDialog({ open, data, operate, invoice, onClose, onCreated }: SalesInvoiceDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [draft, setDraft] = useState<SalesInvoiceDraft>(() => initialSalesInvoiceDraft(data));
   const [references, setReferences] = useState<ManualInvoiceReferences>();
@@ -174,24 +210,30 @@ export function SalesInvoiceDialog({ open, data, operate, onClose, onCreated }: 
       crmGet<CustomerReference[]>('/crm/customers?status=ACTIVE'),
       crmGet<AgentReference[]>('/crm/agents?status=ACTIVE'),
       accountingApi.ensureManualInvoiceSetup(),
-    ]).then(([customers, agents, nextReferences]) => {
+      invoice ? accountingApi.getManualInvoice(invoice.id) : Promise.resolve(undefined),
+    ]).then(([customers, agents, nextReferences, existing]) => {
       if (!active) return;
-      setReferences(nextReferences);
-      setParties([
+      const nextParties: PartyChoice[] = [
         ...customers.map((value) => ({ kind: 'CUSTOMER' as const, partyId: value.customer.partyId, number: value.customer.number, displayName: value.party.displayName })),
         ...agents.map((value) => ({ kind: 'AGENT' as const, partyId: value.agent.partyId, number: value.agent.number, displayName: value.party.displayName })),
-      ]);
-      setDraft((current) => ({
-        ...current,
-        lines: current.lines.map((line) => line.accountId ? line : { ...line, accountId: nextReferences.defaultRevenueAccountId ?? '' }),
-      }));
+      ];
+      setReferences(nextReferences);
+      setParties(nextParties);
+      if (existing) {
+        setDraft(draftFromInvoice(existing, nextParties, nextReferences.defaultRevenueAccountId ?? ''));
+      } else {
+        setDraft((current) => ({
+          ...current,
+          lines: current.lines.map((line) => line.accountId ? line : { ...line, accountId: nextReferences.defaultRevenueAccountId ?? '' }),
+        }));
+      }
     }).catch((value: unknown) => {
       if (active) setError(value instanceof Error ? value.message : 'تعذر تجهيز بيانات الفاتورة.');
     }).finally(() => {
       if (active) setLoadingReferences(false);
     });
     return () => { active = false; };
-  }, [open, data]);
+  }, [open, data, invoice]);
 
   const filteredParties = useMemo(() => {
     const query = draft.partyQuery.trim().toLocaleLowerCase('ar');
@@ -227,8 +269,8 @@ export function SalesInvoiceDialog({ open, data, operate, onClose, onCreated }: 
 
     setSaving(true);
     try {
-      const number = await allocateSalesInvoiceNumber(draft.postingDate);
-      await accountingApi.createManualInvoice({
+      const number = draft.number || await allocateSalesInvoiceNumber(draft.postingDate);
+      const input = {
         commandKey: crypto.randomUUID(),
         type: draft.party!.kind,
         partyId: draft.party!.partyId,
@@ -250,7 +292,9 @@ export function SalesInvoiceDialog({ open, data, operate, onClose, onCreated }: 
           ...(line.taxCode ? { taxCode: line.taxCode } : {}),
           ...(line.costCenterId ? { costCenterId: line.costCenterId } : {}),
         })),
-      });
+      };
+      if (invoice) await accountingApi.editManualInvoice(invoice.id, input);
+      else await accountingApi.createManualInvoice(input);
       await onCreated();
       onClose();
     } catch (value) {
@@ -269,7 +313,7 @@ export function SalesInvoiceDialog({ open, data, operate, onClose, onCreated }: 
           <header className="legacy-invoice-header">
             <div className="legacy-invoice-title-group">
               <span className="legacy-invoice-icon"><Icon name="quote" size={27} /></span>
-              <div><h2 id="legacy-sales-invoice-title">فاتورة مبيعات</h2><p>كل بند يمكن أن يحمل حسابًا ومركز تكلفة وضريبة مختلفة.</p></div>
+              <div><h2 id="legacy-sales-invoice-title">{invoice ? 'تعديل فاتورة مبيعات' : 'فاتورة مبيعات'}</h2><p>كل بند يمكن أن يحمل حسابًا ومركز تكلفة وضريبة مختلفة.</p></div>
             </div>
             <Button className="legacy-invoice-close" type="button" variant="ghost" onClick={onClose} aria-label="إغلاق">×</Button>
           </header>
@@ -355,7 +399,7 @@ export function SalesInvoiceDialog({ open, data, operate, onClose, onCreated }: 
 
           <footer className="legacy-invoice-footer">
             <Button type="button" variant="secondary" onClick={onClose}>إلغاء</Button>
-            <Button type="submit" loading={saving} disabled={!operate || loadingReferences}><span aria-hidden="true">▣</span> حفظ الفاتورة</Button>
+            <Button type="submit" loading={saving} disabled={!operate || loadingReferences}><span aria-hidden="true">▣</span> {invoice ? 'حفظ التعديلات' : 'حفظ الفاتورة'}</Button>
           </footer>
         </form>
       </dialog>
