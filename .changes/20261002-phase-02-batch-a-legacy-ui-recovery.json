@@ -1,6 +1,6 @@
 {
   "id": "20261002-phase-02-legacy-business-ui-recovery",
-  "summary": "Execute Phase 2 legacy business-workspace UI recovery on the Phase 1 integration base: preserve accepted canonical owners, restore legacy-visible workspace entry composition and interactions, and add regression coverage without donor backend, duplicate routes, fake persistence, or parallel business truth.",
+  "summary": "Execute Phase 2 legacy business-workspace UI recovery on the Phase 1 integration base: preserve accepted canonical owners, restore legacy-visible workspace entry composition and interactions across batches A, B and C, and add regression coverage without donor backend, duplicate routes, fake persistence, or parallel business truth.",
   "type": "phase",
   "allowedModules": [],
   "allowedPaths": [
@@ -12,16 +12,23 @@
     "apps/web/src/accounting-legacy-routes.tsx",
     "apps/web/src/hajj-umrah-dashboard-page.tsx",
     "apps/web/src/phase2-batch-b-legacy-ui-recovery.spec.ts",
-    "docs/migration/PHASE-02-BATCH-B-RECOVERY.md"
+    "docs/migration/PHASE-02-BATCH-B-RECOVERY.md",
+    "apps/web/src/reports-control-legacy-pages.tsx",
+    "apps/web/src/administration-legacy-pages.tsx",
+    "apps/web/src/system-administration-page.tsx",
+    "apps/web/src/phase2-batch-c-routes.tsx",
+    "apps/web/src/phase2-batch-c-legacy-ui-recovery.spec.ts",
+    "docs/migration/PHASE-02-BATCH-C-RECOVERY.md"
   ],
   "protectedPaths": [
     "apps/web/src/routes.tsx"
   ],
-  "protectedReason": "The canonical route registry is protected. Phase 2 updates it only to expose legacy-visible business entry routes and the Hajj/Umrah dashboard while preserving Phase 1 shell ownership, one route owner per path, and all accepted target business components/contracts.",
+  "protectedReason": "The canonical route registry is protected. Phase 2 updates it only to expose legacy-visible business entry routes for the accepted A+B+C owners while preserving Phase 1 shell ownership, keeping existing internal drill-down routes non-navigational, enforcing one route owner per path, and retaining target contracts as the sole business truth.",
   "allowBreakingPublicApi": false,
   "publicApiBreakingReason": "",
   "testEvidence": [
     "apps/web/src/phase2-batch-a-legacy-ui-recovery.spec.ts",
-    "apps/web/src/phase2-batch-b-legacy-ui-recovery.spec.ts"
+    "apps/web/src/phase2-batch-b-legacy-ui-recovery.spec.ts",
+    "apps/web/src/phase2-batch-c-legacy-ui-recovery.spec.ts"
   ]
 }
