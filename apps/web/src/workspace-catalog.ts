@@ -57,7 +57,7 @@ export const WORKSPACES: readonly WorkspaceDefinition[] = Object.freeze([
     label: 'التقارير والرقابة',
     description: 'التقارير والمخرجات والاستثناءات والموافقات والرقابة التشغيلية.',
     icon: 'dashboard',
-    landingPath: '/management/reports',
+    landingPath: '/management/dashboard',
     routeGroups: ['الإدارة والتحكم'],
   },
   {
