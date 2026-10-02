@@ -17,7 +17,12 @@
     "apps/web/src/pages/accounting/accounting-invoices-page.tsx",
     "apps/web/src/pages/accounting/accounting-treasury-page.tsx",
     "apps/web/src/route-presentation.spec.tsx",
-    "apps/web/src/styles.css"
+    "apps/web/src/styles.css",
+    "docs/migration/phase3/PHASE-03-ACCOUNTING-LEGACY-BLUEPRINT.md",
+    "docs/migration/phase3/PHASE-03-CODEX-HANDOFF.md",
+    "docs/migration/phase3/PHASE-03-LEGACY-VISUAL-NOTES.md",
+    "docs/migration/phase3/PHASE-03-SCREEN-MATRIX.md",
+    "docs/migration/phase3/PHASE-03-UI-TRANSPLANT-CONTRACT.md"
   ],
   "protectedPaths": [
     "apps/web/src/app-shell.tsx",
