@@ -25,38 +25,75 @@ import {
 } from './system-administration-client.js';
 import { tenantApiContext } from './tenant-session.js';
 
-const reportGroups = [
+type LegacyReportEntry = {
+  readonly name: string;
+  readonly target?: string;
+  readonly targetKind: 'REPORT' | 'SOURCE' | 'BLOCKED';
+};
+
+const reportGroups: readonly { readonly title: string; readonly reports: readonly LegacyReportEntry[] }[] = [
   {
     title: 'القوائم المالية',
-    reports: ['قائمة الدخل', 'الميزانية', 'التدفقات النقدية', 'الأستاذ العام', 'القيود'],
+    reports: [
+      { name: 'قائمة الدخل', target: '/management/reports', targetKind: 'REPORT' },
+      { name: 'الميزانية', target: '/management/reports', targetKind: 'REPORT' },
+      { name: 'التدفقات النقدية', targetKind: 'BLOCKED' },
+      { name: 'الأستاذ العام', target: '/accounting/accounts', targetKind: 'SOURCE' },
+      { name: 'القيود', target: '/accounting/journal', targetKind: 'SOURCE' },
+    ],
   },
   {
     title: 'العملاء والموردون',
     reports: [
-      'تفاصيل التعاملات',
-      'أعمار العملاء',
-      'أعمار الموردين',
-      'المبيعات حسب العميل',
-      'المبيعات حسب المندوب',
-      'تكاليف الموردين',
+      { name: 'تفاصيل التعاملات', target: '/management/reports', targetKind: 'REPORT' },
+      { name: 'أعمار العملاء', target: '/management/reports', targetKind: 'REPORT' },
+      { name: 'أعمار الموردين', target: '/management/reports', targetKind: 'REPORT' },
+      { name: 'المبيعات حسب العميل', targetKind: 'BLOCKED' },
+      { name: 'المبيعات حسب المندوب', targetKind: 'BLOCKED' },
+      { name: 'تكاليف الموردين', target: '/management/reports', targetKind: 'REPORT' },
     ],
   },
   {
     title: 'الخزينة والضرائب',
-    reports: ['التحصيلات', 'المدفوعات', 'الحركة اليومية للخزن', 'ملخص الضرائب', 'تفاصيل الضرائب'],
+    reports: [
+      { name: 'التحصيلات', target: '/accounting/receipts', targetKind: 'SOURCE' },
+      { name: 'المدفوعات', target: '/accounting/payments', targetKind: 'SOURCE' },
+      { name: 'الحركة اليومية للخزن', target: '/accounting/treasury', targetKind: 'SOURCE' },
+      { name: 'ملخص الضرائب', target: '/management/reports', targetKind: 'REPORT' },
+      { name: 'تفاصيل الضرائب', target: '/accounting/taxes', targetKind: 'SOURCE' },
+    ],
   },
   {
     title: 'الحج والعمرة',
-    reports: ['المسافرون', 'الحجوزات', 'إشغال البرامج', 'ربحية البرامج', 'انتهاء الجوازات', 'حالات التأشيرات'],
+    reports: [
+      { name: 'المسافرون', target: '/hajj-umrah/travelers', targetKind: 'SOURCE' },
+      { name: 'الحجوزات', target: '/hajj-umrah/bookings', targetKind: 'SOURCE' },
+      { name: 'إشغال البرامج', target: '/hajj-umrah/programs', targetKind: 'SOURCE' },
+      { name: 'ربحية البرامج', target: '/management/reports', targetKind: 'REPORT' },
+      { name: 'انتهاء الجوازات', targetKind: 'BLOCKED' },
+      { name: 'حالات التأشيرات', target: '/hajj-umrah/visas', targetKind: 'SOURCE' },
+    ],
   },
   {
     title: 'الإدارة والتحليل',
-    reports: ['ربحية الخدمات', 'العمولات', 'المصروفات', 'فروق العملة', 'التعرض للعملات'],
+    reports: [
+      { name: 'ربحية الخدمات', targetKind: 'BLOCKED' },
+      { name: 'العمولات', target: '/accounting/expenses', targetKind: 'SOURCE' },
+      { name: 'المصروفات', target: '/accounting/expenses', targetKind: 'SOURCE' },
+      { name: 'فروق العملة', target: '/accounting/currencies', targetKind: 'SOURCE' },
+      { name: 'التعرض للعملات', targetKind: 'BLOCKED' },
+    ],
   },
-] as const;
+];
 
 function errorText(error: unknown) {
   return error instanceof Error ? error.message : 'تعذر تحميل البيانات.';
+}
+
+function reportStatus(entry: LegacyReportEntry) {
+  if (entry.targetKind === 'REPORT') return <Badge tone="success">Target report</Badge>;
+  if (entry.targetKind === 'SOURCE') return <Badge tone="info">المصدر التشغيلي</Badge>;
+  return <Badge tone="warning">BLOCKED-BY-BACKEND</Badge>;
 }
 
 export function ReportsCatalogPage() {
@@ -65,7 +102,7 @@ export function ReportsCatalogPage() {
   return (
     <section className="ui-page-stack" dir="rtl" aria-label="التقارير">
       <Card title="التقارير">
-        <p className="ui-page-intro">اختر التقرير المطلوب. الحسابات والأرصدة والنتائج تُقرأ دائمًا من مركز التقارير والمالكين المعتمدين في النظام.</p>
+        <p className="ui-page-intro">اختر التقرير المطلوب. الحسابات والأرصدة والنتائج تُقرأ دائمًا من مركز التقارير والمالكين المعتمدين في النظام. أي تعريف Legacy بلا Target Contract يظل ظاهرًا وموسومًا بوضوح بدل إنشاء نتيجة وهمية.</p>
         <div className="ui-filter-grid">
           <FormField label="بحث في التقارير">
             <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="اسم التقرير" />
@@ -78,16 +115,17 @@ export function ReportsCatalogPage() {
       </Card>
       <div className="ui-grid-md" aria-label="مجموعات التقارير">
         {reportGroups.map((group) => {
-          const visible = group.reports.filter((name) => !normalized || name.toLocaleLowerCase('ar').includes(normalized));
+          const visible = group.reports.filter((entry) => !normalized || entry.name.toLocaleLowerCase('ar').includes(normalized));
           if (!visible.length) return null;
           return (
             <Card key={group.title} title={group.title}>
               <div className="ui-admin-workflows">
-                {visible.map((name) => (
-                  <section className="ui-disclosure-card" key={name}>
+                {visible.map((entry) => (
+                  <section className="ui-disclosure-card" key={entry.name}>
                     <div className="ui-disclosure-card__body ui-inline">
-                      <strong>{name}</strong>
-                      <a href="/management/reports">فتح التقرير</a>
+                      <strong>{entry.name}</strong>
+                      {reportStatus(entry)}
+                      {entry.target ? <a href={entry.target}>{entry.targetKind === 'REPORT' ? 'فتح التقرير' : 'فتح المصدر'}</a> : <span>لا يوجد عقد تنفيذ صالح حاليًا</span>}
                     </div>
                   </section>
                 ))}
@@ -96,7 +134,7 @@ export function ReportsCatalogPage() {
           );
         })}
       </div>
-      {normalized && !reportGroups.some((group) => group.reports.some((name) => name.toLocaleLowerCase('ar').includes(normalized))) ? (
+      {normalized && !reportGroups.some((group) => group.reports.some((entry) => entry.name.toLocaleLowerCase('ar').includes(normalized))) ? (
         <EmptyState title="لا توجد تقارير مطابقة للبحث" />
       ) : null}
     </section>
