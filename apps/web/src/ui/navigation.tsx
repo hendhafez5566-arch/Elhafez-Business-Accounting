@@ -163,7 +163,7 @@ export function Topbar({
           </select>
         ) : branchLabel ? <span className="topbar-branch-label">{branchLabel}</span> : null}
         <details className="ui-dropdown">
-          <summary aria-label="قائمة المستخدم"><Icon name="user" size={18} /></summary>
+          <summary aria-label="قائمة المستخدم"><Icon name="profile" size={18} /></summary>
           <div className="ui-dropdown__content ui-dropdown__content--user">
             {userLabel ? <strong>{userLabel}</strong> : null}
             {onLogout ? <button type="button" onClick={onLogout}>تسجيل الخروج</button> : null}
