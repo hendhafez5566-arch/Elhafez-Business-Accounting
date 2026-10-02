@@ -3,12 +3,19 @@ export {
   BillingSubledgersApplicationService,
   type CreateInvoiceInput,
 } from '../application/billing-subledgers.application-service.js';
+export {
+  ManualInvoiceWorkflowApplicationService,
+  type ManualInvoiceInput,
+  type ManualInvoiceLineInput,
+  type ManualInvoiceSaveMode,
+} from '../application/manual-invoice-workflow.application-service.js';
 export { PartyReceivableApplicationService, type ReceivablePartyKind } from '../application/party-receivable.application-service.js';
 export type {
   Invoice,
   InvoiceLine,
   InvoiceType,
   InvoiceStatus,
+  InvoiceDiscountMode,
   PartyKind,
   Allocation,
   Advance,
