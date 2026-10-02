@@ -29,6 +29,7 @@ export type IconName =
   | 'barcode'
   | 'appearance'
   | 'bell'
+  | 'search'
   | 'menu';
 
 const iconContent: Record<IconName, ReactNode> = {
@@ -60,6 +61,7 @@ const iconContent: Record<IconName, ReactNode> = {
   barcode: <><path d="M4 5v14M7 5v14M10 5v14M14 5v14M17 5v14M20 5v14"/></>,
   appearance: <><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/><path d="M5.5 6.5h13M5.5 17.5h13"/></>,
   bell: <><path d="M6 17h12l-1.5-2.5V10a4.5 4.5 0 0 0-9 0v4.5z"/><path d="M10 20h4"/></>,
+  search: <><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></>,
   menu: <><path d="M4 7h16M4 12h16M4 17h16"/></>,
 };
 

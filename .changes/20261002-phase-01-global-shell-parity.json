@@ -1,0 +1,35 @@
+{
+  "id": "20261002-phase-01-global-shell-parity",
+  "summary": "Recover and replace the canonical global tenant UI shell with legacy-parity boot/auth/setup, portal home, workspace shell, sidebar, topbar, global search, notifications/user menus, dialogs, toast styling, and shared print preview while preserving the new platform architecture and replace-not-overlay route ownership.",
+  "type": "feature",
+  "allowedModules": [],
+  "allowedPaths": [
+    ".changes/20261002-phase-01-global-shell-parity.json",
+    "apps/web/src/app-shell-contract.spec.ts",
+    "apps/web/src/app-shell.tsx",
+    "apps/web/src/portal-home-page.tsx",
+    "apps/web/src/routes.tsx",
+    "apps/web/src/styles.css",
+    "apps/web/src/tenant-app.tsx",
+    "apps/web/src/ui.tsx",
+    "apps/web/src/ui/icons.tsx",
+    "apps/web/src/ui/navigation.tsx",
+    "apps/web/src/ui/print-preview.tsx",
+    "apps/web/src/workspace-catalog.ts"
+  ],
+  "protectedPaths": [
+    "apps/web/src/app-shell.tsx",
+    "apps/web/src/routes.tsx",
+    "apps/web/src/styles.css",
+    "apps/web/src/ui.tsx",
+    "apps/web/src/ui/icons.tsx",
+    "apps/web/src/ui/navigation.tsx",
+    "apps/web/src/ui/print-preview.tsx"
+  ],
+  "protectedReason": "Phase 1 intentionally replaces the existing canonical shell owners in place. These protected files are the current routing, shell, navigation, shared UI facade, icon vocabulary, and presentation owners; changing them directly is required to achieve one active UI per route without overlays, duplicate routes, wrappers, or hidden legacy screens.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": "",
+  "testEvidence": [
+    "apps/web/src/app-shell-contract.spec.ts"
+  ]
+}

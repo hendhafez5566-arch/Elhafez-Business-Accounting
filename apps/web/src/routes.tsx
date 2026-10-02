@@ -35,6 +35,7 @@ import { NotificationCenterPage } from './notification-center-page.js';
 import { ApprovalCenterPage } from './approval-center-page.js';
 import { ReportingCenterPage } from './reporting-center-page.js';
 import { ReportingOutputCenterPage } from './reporting-output-center-page.js';
+import { PortalHomePage } from './portal-home-page.js';
 import type { IconName } from './ui/icons.js';
 import { isScreenDesign, type ScreenDesign } from './ui/screen-layouts.js';
 
@@ -65,7 +66,8 @@ export function defineRoutes(...routes: readonly AppRoute[]): readonly AppRoute[
 }
 
 export const foundationRoutes = defineRoutes(
-  { id: 'foundation', path: '/', label: 'الرئيسية', group: 'الإدارة والتحكم', icon: 'home', design: { blueprint: 'dashboard', reference: 'main-dashboard' }, element: <ExecutiveDashboardPage /> },
+  { id: 'foundation', path: '/', label: 'الصفحة الرئيسية', icon: 'home', navigation: false, design: { blueprint: 'dashboard', reference: 'main-dashboard' }, element: <PortalHomePage /> },
+  { id: 'management-dashboard', path: '/management/dashboard', label: 'لوحة الإدارة', group: 'الإدارة والتحكم', icon: 'dashboard', design: { blueprint: 'dashboard', reference: 'main-dashboard' }, element: <ExecutiveDashboardPage /> },
   { id: 'management-exceptions', path: '/management/exceptions', label: 'مركز العمل والاستثناءات', group: 'الإدارة والتحكم', icon: 'tasks', design: { blueprint: 'command-center', reference: 'team-task-workflow' }, element: <ManagementWorkCenterPage /> },
   { id: 'management-approvals', path: '/management/approvals', label: 'مركز الموافقات', group: 'الإدارة والتحكم', icon: 'tasks', design: { blueprint: 'command-center', reference: 'team-task-workflow' }, element: <ApprovalCenterPage /> },
   { id: 'management-reports', path: '/management/reports', label: 'مركز التقارير', group: 'الإدارة والتحكم', icon: 'analytics', design: { blueprint: 'dashboard', reference: 'financial-reporting-center' }, element: <ReportingCenterPage /> },
