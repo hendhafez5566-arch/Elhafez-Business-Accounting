@@ -20,6 +20,16 @@ test('portal root keeps only the structural topbar and a blank white rebuild sur
   assert.doesNotMatch(html, /class="portal-workspace-card"/);
 });
 
+test('portal topbar keeps global navigation utilities while the former portal dashboard stays disconnected', () => {
+  const html = renderToStaticMarkup(createElement(AppShell, { pathname: '/' }));
+  assert.match(html, /aria-label="البحث في أقسام النظام"/);
+  assert.match(html, /aria-label="اختصارات مساحات العمل"/);
+  assert.match(html, /aria-label="الإشعارات"/);
+  assert.match(html, /aria-label="قائمة المستخدم"/);
+  assert.match(html, /data-ui-reset="blank"/);
+  assert.doesNotMatch(html, /اختر مساحة العمل المطلوبة/);
+});
+
 test('every registered internal route mounts the blank reset surface instead of its former page element', () => {
   for (const route of foundationRoutes) {
     const html = renderToStaticMarkup(createElement(AppShell, { pathname: route.path }));
@@ -100,6 +110,14 @@ test('full-bleed customer route is genuinely blank rather than hidden under an o
   assert.doesNotMatch(html, /class="app-topbar"/);
   assert.doesNotMatch(html, /class="ui-page-header"/);
   assert.doesNotMatch(html, /ui-page-stack/);
+});
+
+test('appearance settings route identity remains available but its old form is disconnected', () => {
+  const html = renderToStaticMarkup(createElement(AppShell, { pathname: '/settings/appearance' }));
+  assert.match(html, /data-route-id="appearance-settings"/);
+  assert.match(html, /data-ui-reset="blank"/);
+  assert.doesNotMatch(html, /استعادة الافتراضي/);
+  assert.doesNotMatch(html, /class="ui-page-header"/);
 });
 
 test('route identity and structural design metadata remain available for the later rebuild', () => {
