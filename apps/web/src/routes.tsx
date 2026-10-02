@@ -30,7 +30,7 @@ import { TourismContractInventoryPage } from './tourism-contract-inventory-page.
 import { UmrahBarcodePage } from './hajj-umrah-barcode-page.js';
 import { ExecutiveDashboardPage, ManagementWorkCenterPage } from './management-control-page.js';
 import { AppearanceSettingsPage } from './ui/appearance-settings-page.js';
-import { AccountingLegacyRoutePage } from './accounting-legacy-route-page.js';
+import { accountingLegacyRoutes } from './accounting-legacy-routes.js';
 import { AccountSettingsPage } from './account-settings-page.js';
 import { NotificationCenterPage } from './notification-center-page.js';
 import { ApprovalCenterPage } from './approval-center-page.js';
@@ -107,25 +107,7 @@ export const foundationRoutes = defineRoutes(
   { id: 'tourism-itinerary', path: '/tourism/itinerary', label: 'البرنامج اليومي', group: 'السياحة والخدمات', icon: 'calendar', design: { blueprint: 'operations', reference: 'tourism-itinerary-builder' }, element: <TourismOperationsPage initialTab="itinerary" /> },
   { id: 'tourism-contract-inventory', path: '/tourism/contracts-inventory', label: 'التعاقدات والمخزون', group: 'السياحة والخدمات', icon: 'workspace', design: { blueprint: 'matrix', reference: 'tourism-inventory-matrix' }, element: <TourismContractInventoryPage /> },
 
-  { id: 'accounting-workspace', path: '/accounting', label: 'المحاسبة والمالية', group: 'المحاسبة والمالية', icon: 'analytics', design: { blueprint: 'dashboard', reference: 'financial-reporting-center' }, element: <AccountingLegacyRoutePage initialSection="overview" /> },
-  { id: 'accounting-invoices', path: '/accounting/invoices', label: 'الفواتير', group: 'المحاسبة والمالية', icon: 'analytics', design: { blueprint: 'data-table', reference: 'billing-invoicing' }, element: <AccountingLegacyRoutePage initialSection="billing" /> },
-  { id: 'accounting-receipts', path: '/accounting/receipts', label: 'سندات القبض', group: 'المحاسبة والمالية', icon: 'analytics', design: { blueprint: 'form', reference: 'treasury-settlement' }, element: <AccountingLegacyRoutePage initialSection="treasury" /> },
-  { id: 'accounting-payments', path: '/accounting/payments', label: 'سندات الصرف', group: 'المحاسبة والمالية', icon: 'analytics', design: { blueprint: 'form', reference: 'treasury-settlement' }, element: <AccountingLegacyRoutePage initialSection="treasury" /> },
-  { id: 'accounting-expenses', path: '/accounting/expenses', label: 'المصروفات', group: 'المحاسبة والمالية', icon: 'analytics', design: { blueprint: 'module', reference: 'master-module-template' }, element: <AccountingLegacyRoutePage initialSection="expense-commission" /> },
-  { id: 'accounting-settlements', path: '/accounting/settlements', label: 'التسويات', group: 'المحاسبة والمالية', icon: 'analytics', design: { blueprint: 'master-detail', reference: 'account-statement' }, element: <AccountingLegacyRoutePage initialSection="party-accounting" /> },
-  { id: 'accounting-accruals', path: '/accounting/accruals', label: 'الاستحقاقات', group: 'المحاسبة والمالية', icon: 'analytics', design: { blueprint: 'data-table', reference: 'data-table' }, element: <AccountingLegacyRoutePage initialSection="recognition-accrual" /> },
-  { id: 'accounting-cheques', path: '/accounting/cheques', label: 'الشيكات', group: 'المحاسبة والمالية', icon: 'analytics', design: { blueprint: 'data-table', reference: 'treasury-settlement' }, element: <AccountingLegacyRoutePage initialSection="treasury" /> },
-  { id: 'accounting-treasury', path: '/accounting/treasury', label: 'الخزينة والبنوك', group: 'المحاسبة والمالية', icon: 'analytics', design: { blueprint: 'master-detail', reference: 'treasury-settlement' }, element: <AccountingLegacyRoutePage initialSection="treasury" /> },
-  { id: 'accounting-currencies', path: '/accounting/currencies', label: 'العملات وأسعار الصرف', group: 'المحاسبة والمالية', icon: 'analytics', design: { blueprint: 'data-table', reference: 'currency-fx-management' }, element: <AccountingLegacyRoutePage initialSection="currency-fx" /> },
-  { id: 'accounting-taxes', path: '/accounting/taxes', label: 'الضرائب', group: 'المحاسبة والمالية', icon: 'analytics', design: { blueprint: 'data-table', reference: 'vat-tax-returns' }, element: <AccountingLegacyRoutePage initialSection="tax" /> },
-  { id: 'accounting-periods', path: '/accounting/periods', label: 'الفترات المالية', group: 'المحاسبة والمالية', icon: 'calendar', design: { blueprint: 'module', reference: 'master-module-template' }, element: <AccountingLegacyRoutePage initialSection="periods" /> },
-  { id: 'accounting-journal', path: '/accounting/journal', label: 'القيود اليومية', group: 'المحاسبة والمالية', icon: 'analytics', design: { blueprint: 'form', reference: 'journal-entry-form' }, element: <AccountingLegacyRoutePage initialSection="journals" /> },
-  { id: 'accounting-accounts', path: '/accounting/accounts', label: 'دليل الحسابات', group: 'المحاسبة والمالية', icon: 'analytics', design: { blueprint: 'tree', reference: 'chart-of-accounts' }, element: <AccountingLegacyRoutePage initialSection="accounts" /> },
-  { id: 'accounting-trial', path: '/accounting/trial', label: 'ميزان المراجعة', group: 'المحاسبة والمالية', icon: 'analytics', design: { blueprint: 'data-table', reference: 'financial-reporting-center' }, element: <AccountingLegacyRoutePage initialSection="reports" /> },
-  { id: 'accounting-cost-centers', path: '/accounting/cost-centers', label: 'مراكز التكلفة', group: 'المحاسبة والمالية', icon: 'analytics', design: { blueprint: 'tree', reference: 'cost-centers-budgets' }, element: <AccountingLegacyRoutePage initialSection="cost-budget" /> },
-  { id: 'accounting-assets', path: '/accounting/assets', label: 'الأصول', group: 'المحاسبة والمالية', icon: 'analytics', design: { blueprint: 'data-table', reference: 'assets-depreciation' }, element: <AccountingLegacyRoutePage initialSection="assets-financing" /> },
-  { id: 'accounting-loans', path: '/accounting/loans', label: 'القروض والتمويل', group: 'المحاسبة والمالية', icon: 'analytics', design: { blueprint: 'data-table', reference: 'assets-depreciation' }, element: <AccountingLegacyRoutePage initialSection="assets-financing" /> },
-  { id: 'accounting-budgets', path: '/accounting/budgets', label: 'الموازنات', group: 'المحاسبة والمالية', icon: 'analytics', design: { blueprint: 'data-table', reference: 'cost-centers-budgets' }, element: <AccountingLegacyRoutePage initialSection="cost-budget" /> },
+  ...accountingLegacyRoutes,
 
   { id: 'hajj-umrah-dashboard', path: '/hajj-umrah', label: 'لوحة الحج والعمرة', group: 'الحج والعمرة', icon: 'dashboard', design: { blueprint: 'dashboard', reference: 'hajj-umrah-kanban' }, element: <HajjUmrahDashboardPage /> },
   { id: 'hajj-umrah-seasons', path: '/hajj-umrah/seasons', label: 'المواسم', group: 'الحج والعمرة', icon: 'calendar', design: { blueprint: 'module', reference: 'master-module-template' }, element: <SeasonsPage /> },
