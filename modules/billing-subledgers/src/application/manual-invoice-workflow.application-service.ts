@@ -7,7 +7,6 @@ import {
   type DecimalAmount,
 } from '@elhafez/contracts';
 import { BillingSubledgersApplicationService, type CreateInvoiceInput } from './billing-subledgers.application-service.js';
-import type { BillingRepository } from './billing.repository.js';
 import type {
   ManualInvoiceLineMetadata,
   ManualInvoiceMetadata,
@@ -117,7 +116,6 @@ function normalizeLine(line: ManualInvoiceLineInput): ManualInvoiceLineMetadata 
 export class ManualInvoiceWorkflowApplicationService {
   constructor(
     private readonly billing: BillingSubledgersApplicationService,
-    private readonly billingRepository: BillingRepository,
     private readonly workflowRepository: ManualInvoiceRepository,
   ) {}
 
@@ -175,9 +173,7 @@ export class ManualInvoiceWorkflowApplicationService {
   }
 
   async save(input: ManualInvoiceInput, mode: ManualInvoiceSaveMode): Promise<Invoice> {
-    const existing = input.invoiceId
-      ? await this.billing.getInvoice(input.companyId, input.invoiceId)
-      : undefined;
+    const existing = input.invoiceId ? await this.billing.getInvoice(input.companyId, input.invoiceId) : undefined;
     if (input.invoiceId && !existing) throw new ContractValidationError('invoice', 'not found');
     if (existing && existing.status !== 'DRAFT') throw new ContractValidationError('invoice', 'only draft invoices may be edited');
     if (existing && existing.type !== input.type) throw new ContractValidationError('type', 'draft invoice type cannot change');
