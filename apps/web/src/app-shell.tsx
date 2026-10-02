@@ -14,6 +14,7 @@ import {
   setMobileDrawer,
 } from './shell-state.js';
 import { NavigationMenu, Sidebar, Topbar } from './ui/navigation.js';
+import { PortalHomePage } from './portal-home-page.js';
 
 export interface AppShellProps {
   readonly routes?: readonly AppRoute[];
@@ -158,9 +159,9 @@ function AppShellFrame({
           onBranchChange={onBranchChange}
           onLogout={onLogout}
         />
-        <main className="app-main app-main--portal app-main--clean-reset">
-          <div className="app-content app-content--portal app-content--clean-reset" tabIndex={-1}>
-            <BlankInternalWorkspace />
+        <main className="app-main app-main--portal">
+          <div className="app-content app-content--portal" tabIndex={-1}>
+            <PortalHomePage />
           </div>
         </main>
       </div>
