@@ -56,6 +56,19 @@ test('Reports and Control entry screens consume canonical services and do not cr
   assert.doesNotMatch(pages, /crmPost|crmPatch|accountingApi\.post|approval.*create/i);
 });
 
+test('Legacy Work Center keeps target filtering and restores expandable grouped actions', () => {
+  const workCenter = source('./management-control-page.tsx');
+  assert.match(workCenter, /aria-label="مركز العمل اليومي"/);
+  assert.match(workCenter, /<details[^>]*className="ui-disclosure-card"[^>]*open>/);
+  assert.match(workCenter, /تحتاج متابعة/);
+  assert.match(workCenter, /مالية واعتمادات/);
+  assert.match(workCenter, /filters\.domain/);
+  assert.match(workCenter, /filters\.severity/);
+  assert.match(workCenter, /filters\.from/);
+  assert.match(workCenter, /filters\.to/);
+  assert.doesNotMatch(workCenter, /localStorage|sessionStorage|ts-ignore|\bany\b/);
+});
+
 test('Administration legacy routes reuse the canonical SystemAdministrationPage with explicit initial areas', () => {
   const registry = source('./phase2-batch-c-routes.tsx');
   const admin = source('./system-administration-page.tsx');
@@ -94,8 +107,11 @@ test('Administration supplementary legacy screens remain projections or links ov
   assert.match(pages, /CompanyProfilePanel/);
   assert.match(pages, /client\.list\('operations\/diagnostics'/);
   assert.match(pages, /href="\/system-administration\/document-numbering"/);
+  assert.match(pages, /href="\/accounting\/periods"/);
+  assert.doesNotMatch(pages, /href="\/periods"/);
   assert.match(pages, /href="\/approvals"/);
   assert.match(pages, /href="\/accounting"/);
   assert.match(pages, /Owner \+ MFA/);
+  assert.match(pages, /Target Contract/);
   assert.doesNotMatch(pages, /localStorage|sessionStorage|ts-ignore|\bany\b|fake|mock/i);
 });
