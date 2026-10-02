@@ -5,20 +5,20 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { browserPathname } from './app-entry-path.js';
 import { AppShell } from './app-shell.js';
 
-test('shipped app entry pathname resolves each CRM Core route through the existing shell', () => {
+test('shipped app entry pathname still resolves CRM Core routes into the clean rebuild surface', () => {
   const cases = [
-    ['/crm/customers', '<h1>العملاء</h1>', 'إضافة عميل'],
-    ['/crm/agents', '<h1>الوكلاء</h1>', 'إضافة وكيل'],
-    ['/crm/leads', '<h1>العملاء المحتملون</h1>', 'إضافة عميل محتمل'],
-    ['/crm/followups', '<h1>المتابعات</h1>', 'جدولة متابعة'],
+    ['/crm/customers', 'crm-customers'],
+    ['/crm/agents', 'crm-agents'],
+    ['/crm/leads', 'crm-leads'],
+    ['/crm/followups', 'crm-followups'],
   ] as const;
 
-  for (const [pathname, heading, pageText] of cases) {
+  for (const [pathname, routeId] of cases) {
     const html = renderToStaticMarkup(
       createElement(AppShell, { pathname: browserPathname({ pathname }) }),
     );
-    assert.match(html, new RegExp(heading));
-    assert.match(html, new RegExp(pageText));
+    assert.match(html, new RegExp(`data-route-id="${routeId}"`));
+    assert.match(html, /data-ui-reset="blank"/);
   }
 });
 

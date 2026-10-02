@@ -1,0 +1,40 @@
+{
+  "id": "phase3-accounting-clean-ui-transplant",
+  "summary": "Phase 3 presentation work: preserve the Accounting presentation implementation in source while resetting every authenticated internal route to a clean blank white rebuild surface, keeping canonical routes, shell navigation, APIs, permissions, backend/domain modules, and business logic intact.",
+  "type": "phase",
+  "allowedModules": [],
+  "allowedPaths": [
+    ".changes/phase3-accounting-clean-ui-transplant.json",
+    "apps/web/src/accounting-legacy-route-page.tsx",
+    "apps/web/src/accounting-legacy-routes.tsx",
+    "apps/web/src/app-entry-path.spec.tsx",
+    "apps/web/src/app-shell-contract.spec.ts",
+    "apps/web/src/app-shell.tsx",
+    "apps/web/src/pages/accounting/accounting-pages.tsx",
+    "apps/web/src/pages/accounting/accounting-pages.spec.tsx",
+    "apps/web/src/phase2-batch-b-legacy-ui-recovery.spec.ts",
+    "apps/web/src/pages/accounting/accounting-page-shared.tsx",
+    "apps/web/src/pages/accounting/accounting-invoices-page.tsx",
+    "apps/web/src/pages/accounting/accounting-treasury-page.tsx",
+    "apps/web/src/route-presentation.spec.tsx",
+    "apps/web/src/styles.css",
+    "docs/migration/phase3/PHASE-03-ACCOUNTING-LEGACY-BLUEPRINT.md",
+    "docs/migration/phase3/PHASE-03-CODEX-HANDOFF.md",
+    "docs/migration/phase3/PHASE-03-LEGACY-VISUAL-NOTES.md",
+    "docs/migration/phase3/PHASE-03-SCREEN-MATRIX.md",
+    "docs/migration/phase3/PHASE-03-UI-TRANSPLANT-CONTRACT.md"
+  ],
+  "protectedPaths": [
+    "apps/web/src/app-shell.tsx",
+    "apps/web/src/styles.css"
+  ],
+  "protectedReason": "Phase 3 intentionally changes canonical presentation owners. Accounting styling remains scoped in canonical styles.css, while the requested whole-system clean reset must occur at AppShell so former route pages are disconnected from rendering rather than hidden, overlaid, duplicated, or deleted. Backend, API, route registry, permissions, and business/domain ownership remain unchanged.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": "",
+  "testEvidence": [
+    "apps/web/src/pages/accounting/accounting-pages.spec.tsx",
+    "apps/web/src/app-entry-path.spec.tsx",
+    "apps/web/src/app-shell-contract.spec.ts",
+    "apps/web/src/route-presentation.spec.tsx"
+  ]
+}

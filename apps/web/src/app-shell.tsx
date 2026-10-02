@@ -3,9 +3,7 @@ import { findRoute, foundationRoutes, type AppRoute } from './routes.js';
 import { routeSurfaceFor } from './route-surface.js';
 import {
   Drawer,
-  PageHeader,
   RoutePresentationBoundary,
-  ScreenLayoutBoundary,
   type UiPreferences,
   UiPreferencesProvider,
   useUiPreferences,
@@ -34,31 +32,19 @@ export interface AppShellProps {
   readonly sessionKey?: string;
 }
 
-const groupDescriptions: Record<string, string> = {
-  'الإدارة والتحكم': 'متابعة مؤشرات الأداء، الاستثناءات، الأولويات وسير العمل من مصادر النظام المعتمدة.',
-  'إدارة النظام': 'إدارة المستخدمين والصلاحيات والشركة والفروع والملفات وإعدادات تشغيل المنصة.',
-  'المبيعات والعملاء CRM': 'إدارة دورة العميل والمندوب والمتابعة والعروض والفرص التجارية من مكان واحد.',
-  'المشتريات والموردون': 'إدارة الموردين والتوريد وأوامر الشراء والتنفيذ والتقييم والمنازعات.',
-  'السياحة والخدمات': 'إدارة البرامج والحجوزات والخدمات والعقود والمخزون والمسارات السياحية.',
-  'المحاسبة والمالية': 'تشغيل القيود والفواتير والخزائن والبنوك والضرائب والتقارير من مصادر الحقيقة المالية.',
-  'الحج والعمرة': 'تشغيل المواسم والبرامج والحجوزات والتسكين والتأشيرات والنقل والتفويج والجاهزية.',
-  'الإعدادات': 'تهيئة تجربة الاستخدام وبيانات الحساب وتفضيلات النظام.',
-};
-
-const routeDescriptions: Record<string, string> = {
-  'crm-customers': 'السجل المركزي للعملاء أفرادًا وشركات مع التواصل والموقف التجاري والمالي.',
-  'tourism-bookings': 'إدارة واعتماد حجوزات البرامج السياحية وربطها بالعميل والمسافرين والمخزون والتمويل.',
-  'tourism-contract-inventory': 'متابعة عقود الفنادق والنقل والطيران والتأشيرات والمخزون والتخصيصات المرتبطة بها.',
-  'supplier-intelligence': 'ملف المورد 360° للتقييم والأداء والمستحقات والمنازعات وحالات الإيقاف.',
-  'accounting-workspace': 'مساحة مالية موحدة تشمل الدليل المحاسبي والقيود والفواتير والتسويات والضرائب والتقارير.',
-  'hajj-umrah-transport': 'إدارة رحلات النقل والتفويج والمركبات والسائقين وكشوف المسافرين.',
-  'hajj-umrah-trip-operations': 'غرفة التشغيل الميداني للمهام والخدمات والحوادث ومتابعة التنفيذ.',
-};
+function BlankInternalWorkspace() {
+  return (
+    <div
+      className="clean-ui-reset-surface"
+      data-ui-reset="blank"
+      aria-hidden="true"
+    />
+  );
+}
 
 export function AppShell({
   routes = foundationRoutes,
   pathname = '/',
-  children,
   preferenceScope = 'local-user',
   initialPreferences,
   companyLabel,
@@ -85,9 +71,7 @@ export function AppShell({
         onBranchChange={onBranchChange}
         onLogout={onLogout}
         sessionKey={sessionKey}
-      >
-        {children}
-      </AppShellFrame>
+      />
     </UiPreferencesProvider>
   );
 }
@@ -95,7 +79,6 @@ export function AppShell({
 function AppShellFrame({
   routes,
   pathname,
-  children,
   companyLabel,
   branchLabel,
   userLabel,
@@ -108,7 +91,6 @@ function AppShellFrame({
 }: {
   readonly routes: readonly AppRoute[];
   readonly pathname: string;
-  readonly children?: ReactNode;
   readonly companyLabel?: string;
   readonly branchLabel?: string;
   readonly userLabel?: string;
@@ -123,10 +105,8 @@ function AppShellFrame({
   const active = findRoute(pathname, routes);
   const surface = routeSurfaceFor(active.id);
   const { preferences, updatePreferences } = useUiPreferences();
-  const routeContent = children ?? active.element;
   const sidebarExpanded = preferences.sidebarMode === 'fixed'
     || (preferences.sidebarMode === 'auto' && state.autoSidebarActive);
-  const description = routeDescriptions[active.id] ?? groupDescriptions[active.group ?? ''];
   const portalHome = active.id === 'foundation';
 
   function quickToggle() {
@@ -139,14 +119,16 @@ function AppShellFrame({
     return (
       <div
         key={sessionKey}
-        className="app-route-surface app-route-surface--full-bleed"
+        className="app-route-surface app-route-surface--full-bleed clean-ui-reset-container"
         dir="rtl"
         data-route-id={active.id}
         data-route-surface="full-bleed"
         data-screen-blueprint={active.design.blueprint}
         data-screen-reference={active.design.reference}
       >
-        <RoutePresentationBoundary mode="route-owned">{routeContent}</RoutePresentationBoundary>
+        <RoutePresentationBoundary mode="route-owned">
+          <BlankInternalWorkspace />
+        </RoutePresentationBoundary>
       </div>
     );
   }
@@ -176,9 +158,9 @@ function AppShellFrame({
           onBranchChange={onBranchChange}
           onLogout={onLogout}
         />
-        <main className="app-main app-main--portal">
-          <div className="app-content app-content--portal" tabIndex={-1}>
-            <ScreenLayoutBoundary design={active.design} key={sessionKey}>{routeContent}</ScreenLayoutBoundary>
+        <main className="app-main app-main--portal app-main--clean-reset">
+          <div className="app-content app-content--portal app-content--clean-reset" tabIndex={-1}>
+            <BlankInternalWorkspace />
           </div>
         </main>
       </div>
@@ -235,10 +217,9 @@ function AppShellFrame({
         onLogout={onLogout}
       />
 
-      <main className="app-main">
-        <div className="app-content" tabIndex={-1}>
-          <PageHeader eyebrow={active.group} title={active.label} description={description} />
-          <ScreenLayoutBoundary design={active.design} key={sessionKey}>{routeContent}</ScreenLayoutBoundary>
+      <main className="app-main app-main--clean-reset">
+        <div className="app-content app-content--clean-reset" tabIndex={-1}>
+          <BlankInternalWorkspace />
         </div>
       </main>
     </div>
