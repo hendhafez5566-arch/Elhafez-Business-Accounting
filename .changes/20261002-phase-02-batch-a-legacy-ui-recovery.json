@@ -14,8 +14,10 @@
     "apps/web/src/phase2-batch-b-legacy-ui-recovery.spec.ts",
     "docs/migration/PHASE-02-BATCH-B-RECOVERY.md"
   ],
-  "protectedPaths": [],
-  "protectedReason": "Phase 1 shell is not modified. Existing CRM, Tourism, Procurement, Hajj/Umrah and Accounting owners remain authoritative; Phase 2 only recovers legacy-visible UI composition and route organization over canonical target contracts.",
+  "protectedPaths": [
+    "apps/web/src/routes.tsx"
+  ],
+  "protectedReason": "The canonical route registry is protected. Phase 2 updates it only to expose legacy-visible business entry routes and the Hajj/Umrah dashboard while preserving Phase 1 shell ownership, one route owner per path, and all accepted target business components/contracts.",
   "allowBreakingPublicApi": false,
   "publicApiBreakingReason": "",
   "testEvidence": [
