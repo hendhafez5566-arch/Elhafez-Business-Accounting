@@ -1,0 +1,18 @@
+{
+  "id": "20261002-phase-02-batch-a-legacy-ui-recovery",
+  "summary": "Close Phase 2 Batch A recovery for CRM, Tourism Services, and Procurement/Suppliers by preserving the already-integrated canonical parity owners, adding explicit regression coverage for legacy-visible routes/forms/actions, and recording the one confirmed backend contract blocker without reintroducing donor backend or duplicate UI owners.",
+  "type": "feature",
+  "allowedModules": [],
+  "allowedPaths": [
+    ".changes/20261002-phase-02-batch-a-legacy-ui-recovery.json",
+    "apps/web/src/phase2-batch-a-legacy-ui-recovery.spec.ts",
+    "docs/migration/PHASE-02-BATCH-A-RECOVERY.md"
+  ],
+  "protectedPaths": [],
+  "protectedReason": "Batch A reuses the current canonical UI owners already present at the Phase 1 integration base. No shell, routing owner, backend, persistence, or donor architecture is replaced in this closure commit.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": "",
+  "testEvidence": [
+    "apps/web/src/phase2-batch-a-legacy-ui-recovery.spec.ts"
+  ]
+}
