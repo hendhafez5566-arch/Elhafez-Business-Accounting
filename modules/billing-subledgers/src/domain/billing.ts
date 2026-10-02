@@ -3,11 +3,19 @@ import type { CompanyId, DecimalAmount } from '@elhafez/contracts';
 export type InvoiceType = 'CUSTOMER' | 'SUPPLIER' | 'AGENT' | 'OPENING_CUSTOMER_BALANCE';
 export type InvoiceStatus = 'DRAFT' | 'POSTING' | 'POSTED' | 'CANCELLING' | 'CANCELLED';
 export type PartyKind = 'CUSTOMER' | 'SUPPLIER' | 'AGENT';
+export type InvoiceDiscountMode = 'FIXED' | 'PERCENT';
 
 export interface InvoiceLine {
   id: string;
   accountId: string;
+  /** Canonical net amount before tax, after quantity/price/discount calculation. */
   amount: DecimalAmount;
+  description?: string;
+  quantity?: DecimalAmount;
+  unitPrice?: DecimalAmount;
+  discountMode?: InvoiceDiscountMode;
+  discount?: DecimalAmount;
+  costCenterId?: string;
   taxCode?: string;
   taxSnapshotId?: string;
   taxAmount?: DecimalAmount;
@@ -26,6 +34,10 @@ export interface Invoice {
   postingDate: string;
   /** Contractual due date used by BR-010. Never inferred from posting date. */
   dueDate?: string;
+  /** Commercial/service recognition date preserved from the user workflow. */
+  recognitionDate?: string;
+  /** User-entered payment terms or invoice notes. */
+  paymentTerms?: string;
   currency: string;
   fxRateId?: string;
   sourceType: string;

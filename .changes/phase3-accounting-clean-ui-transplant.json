@@ -1,10 +1,20 @@
 {
   "id": "phase3-accounting-clean-ui-transplant",
-  "summary": "Replace all nineteen Accounting legacy route adapters with route-owned legacy-visible presentations backed by canonical Accounting APIs.",
+  "summary": "Reconstruct the legacy-visible Accounting experience on canonical target owners, including full functional parity for the golden sales-invoice workflow.",
   "type": "phase",
-  "allowedModules": [],
+  "allowedModules": [
+    "billing-subledgers",
+    "cost-budget-accounting",
+    "expense-commission-recognition"
+  ],
   "allowedPaths": [
     ".changes/phase3-accounting-clean-ui-transplant.json",
+    "apps/api/src/app.module.ts",
+    "apps/api/src/manual-invoice.controller.ts",
+    "apps/api/src/accounting-workspace.controller.ts",
+    "apps/api/src/accounting-workspace-parity.controller.spec.ts",
+    "apps/api/src/accounting-workspace.spec.ts",
+    "apps/web/src/accounting-client.ts",
     "apps/web/src/accounting-legacy-route-page.tsx",
     "apps/web/src/accounting-legacy-routes.tsx",
     "apps/web/src/pages/accounting/accounting-pages.tsx",
@@ -12,16 +22,23 @@
     "apps/web/src/phase2-batch-b-legacy-ui-recovery.spec.ts",
     "apps/web/src/pages/accounting/accounting-page-shared.tsx",
     "apps/web/src/pages/accounting/accounting-invoices-page.tsx",
+    "apps/web/src/pages/accounting/accounting-sales-invoice-dialog.tsx",
     "apps/web/src/pages/accounting/accounting-treasury-page.tsx",
-    "apps/web/src/styles.css"
+    "apps/web/src/styles.css",
+    "prisma/schema.prisma",
+    "prisma/migrations/20261002183000_golden_sales_invoice_parity/migration.sql"
   ],
   "protectedPaths": [
-    "apps/web/src/styles.css"
+    "apps/api/src/app.module.ts",
+    "apps/web/src/styles.css",
+    "prisma/schema.prisma",
+    "prisma/migrations/20261002183000_golden_sales_invoice_parity/migration.sql"
   ],
-  "protectedReason": "Accounting routes use the standard ERP shell; the UI architecture permits standard-route presentation styles only through canonical styles.css, scoped exclusively beneath .accounting-route.",
+  "protectedReason": "The approved golden sales-invoice vertical slice requires canonical Billing-owned persistence, Cost Center validation, Revenue Recognition ownership, API composition, and an immutable migration so legacy invoice workflow data is not faked or dropped. Accounting UI styling remains scoped beneath .accounting-route and does not alter shell ownership.",
   "allowBreakingPublicApi": false,
-  "publicApiBreakingReason": "",
+  "publicApiBreakingReason": "All Billing contract additions are backward-compatible optional fields; existing create-and-post callers remain supported.",
   "testEvidence": [
-    "apps/web/src/pages/accounting/accounting-pages.spec.tsx"
+    "apps/web/src/pages/accounting/accounting-pages.spec.tsx",
+    "modules/billing-subledgers/src/manual-invoice-workflow.spec.ts"
   ]
 }

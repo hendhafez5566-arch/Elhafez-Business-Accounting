@@ -98,6 +98,7 @@ import { SaasControlPlaneModule } from '@elhafez/saas-control-plane/nest';
 import { SaasOwnerController, SaasTenantController } from './saas.controller.js';
 import { SaasSubscriptionGuard } from './saas-subscription.guard.js';
 import { AccountingWorkspaceController } from './accounting-workspace.controller.js';
+import { ManualInvoiceController } from './manual-invoice.controller.js';
 import { TourismOperationsController } from './tourism-operations.controller.js';
 import { PlatformOwnerOperationsController } from './platform-owner-operations.controller.js';
 import { HealthController } from './health.controller.js';
@@ -112,7 +113,7 @@ import { AdvancedAccountingController, TourismContractInventoryController } from
     ExpenseCommissionRecognitionModule, CostBudgetAccountingModule, AssetsFinancingModule, ProcurementFinanceModule, TourismContractInventoryModule,
     TourismFinanceOrchestrationModule, TourismProgramsModule, TourismItinerariesModule, TourismBookingsModule, StandaloneServicesModule, ServiceFulfillmentModule, ServiceVouchersModule, HajjUmrahSeasonsModule, HajjUmrahProgramsModule, HajjUmrahBookingsModule, HajjUmrahRoomingModule, HajjUmrahVisaOperationsModule, HajjUmrahTicketingModule, HajjUmrahTransportOperationsModule, HajjUmrahTripOperationsModule, HajjUmrahReadinessModule, FinancialReportingModule, SaasControlPlaneModule, Ac14MigrationModule,
   ],
-  controllers: [HealthController, UserNotificationsController, AdvancedAccountingController, TourismContractInventoryController, TourismContractInventoryReadController, TourismContractFilesController, TourismAccountingReferencesController, SaasOwnerController, PlatformOwnerOperationsController, SaasTenantController, AccountingWorkspaceController, FinancialReportingController, FinancialControlHistoryController, ReportDeliveryController, SystemAdministrationController, CrmAgentFilesController, CrmCustomerFilesController, SupplierFilesController, CrmFinancialOperationsController, CrmSalesReadModelController, SupplierIntelligenceReadModelController, HajjUmrahController, HajjUmrahOperationsController, HajjUmrahReadinessController, ManagementControlController, TourismServicesController, TourismServiceFinancialReadController, TourismServiceFilesController, TourismOperationsController],
+  controllers: [HealthController, UserNotificationsController, AdvancedAccountingController, TourismContractInventoryController, TourismContractInventoryReadController, TourismContractFilesController, TourismAccountingReferencesController, SaasOwnerController, PlatformOwnerOperationsController, SaasTenantController, AccountingWorkspaceController, ManualInvoiceController, FinancialReportingController, FinancialControlHistoryController, ReportDeliveryController, SystemAdministrationController, CrmAgentFilesController, CrmCustomerFilesController, SupplierFilesController, CrmFinancialOperationsController, CrmSalesReadModelController, SupplierIntelligenceReadModelController, HajjUmrahController, HajjUmrahOperationsController, HajjUmrahReadinessController, ManagementControlController, TourismServicesController, TourismServiceFinancialReadController, TourismServiceFilesController, TourismOperationsController],
   providers: [
     FinancialReportingEvidenceAdapter,
     ReportDeliveryWorker,
