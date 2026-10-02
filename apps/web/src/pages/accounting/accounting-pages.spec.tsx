@@ -43,8 +43,9 @@ const data: AccountingOverview = {
   ],
   journals: [],
   invoices: [
-    { id: 'i', type: 'CUSTOMER', status: 'POSTED', partyId: 'عميل-1', number: 'INV-1', postingDate: '2026-10-01', currency: 'EGP', baseTotal: '100.00', outstanding: '25.00', controlAccountId: 'ar', sourceType: 'TEST', sourceId: '1', lines: [], createdAt: '2026-10-01' },
-    { id: 's', type: 'SUPPLIER', status: 'POSTED', partyId: 'مورد-1', number: 'SUP-2', postingDate: '2026-10-02', currency: 'EGP', baseTotal: '200.00', outstanding: '200.00', controlAccountId: 'cash', sourceType: 'TEST', sourceId: '2', lines: [], createdAt: '2026-10-02' },
+    { id: 'i', type: 'CUSTOMER', status: 'POSTED', partyId: 'عميل-1', number: 'INV-1', postingDate: '2026-10-01', currency: 'EGP', baseTotal: '100.00', outstanding: '25.00', controlAccountId: 'ar', sourceType: 'MANUAL_ACCOUNTING_INVOICE', sourceId: '1', lines: [], createdAt: '2026-10-01' },
+    { id: 'd', type: 'CUSTOMER', status: 'DRAFT', partyId: 'عميل-2', number: 'INV-DRAFT', postingDate: '2026-10-02', currency: 'EGP', baseTotal: '0', outstanding: '0', controlAccountId: 'ar', sourceType: 'MANUAL_ACCOUNTING_INVOICE', sourceId: 'draft', lines: [{ id: 'dl', accountId: 'revenue', amount: '200', description: 'برنامج عمرة', quantity: '2', unitPrice: '100', discountMode: 'FIXED', discount: '0' }], createdAt: '2026-10-02' },
+    { id: 's', type: 'SUPPLIER', status: 'POSTED', partyId: 'مورد-1', number: 'SUP-2', postingDate: '2026-10-03', currency: 'EGP', baseTotal: '200.00', outstanding: '200.00', controlAccountId: 'cash', sourceType: 'TEST', sourceId: '2', lines: [], createdAt: '2026-10-03' },
   ],
   treasuries: [{ id: 't', code: 'CASH', name: 'الخزنة الرئيسية', type: 'CASH', currency: 'EGP', glAccountId: 'cash', active: true }],
   vouchers: [{ id: 'v', treasuryId: 't', kind: 'RECEIPT', partyKind: 'CUSTOMER', partyId: 'عميل-1', number: 'REC-1', postingDate: '2026-10-01', currency: 'EGP', amount: '75.00', status: 'POSTED', sourceType: 'TEST', sourceId: '1', allocationIds: ['allocation-1'] }],
@@ -80,11 +81,12 @@ test('invoice, receipt, account and treasury screens render canonical target dat
 test('invoice tab behavior switches the canonical data set and create semantics', () => {
   const sales = invoicesForTab(data.invoices, 'sales');
   const purchases = invoicesForTab(data.invoices, 'purchases');
-  assert.deepEqual(sales.map((row) => row.number), ['INV-1']);
+  assert.deepEqual(sales.map((row) => row.number), ['INV-1', 'INV-DRAFT']);
   assert.deepEqual(purchases.map((row) => row.number), ['SUP-2']);
   const initial = html(InvoicesPage);
   assert.match(initial, /فاتورة مبيعات/);
   assert.match(initial, /INV-1/);
+  assert.match(initial, /INV-DRAFT/);
   assert.doesNotMatch(initial, /SUP-2/);
 });
 
@@ -113,11 +115,12 @@ test('sales invoice create renders the deep legacy workflow rather than the comp
   assert.match(output, /legacy-invoice-dialog/);
   assert.match(output, /4100/);
   assert.match(output, /VAT14/);
-  assert.match(output, /noValidate/);
+  assert.match(output, /novalidate/);
 });
 
 test('golden invoice draft retains the legacy commercial workflow fields without a compatibility gate', () => {
   const draft = initialSalesInvoiceDraft(data);
+  assert.equal(draft.number, '');
   assert.equal(draft.saveMode, 'POSTED');
   assert.equal(draft.lines.length, 1);
   assert.equal(draft.lines[0]?.quantity, '1');
@@ -139,11 +142,13 @@ test('search and sorting filter canonical rows without calculating financial tru
   const rows = filterAndSortRows(data.invoices, { query: 'مورد', sort: 'desc' }, (row) => [row.number, row.partyId, row.postingDate], (row) => `${row.postingDate}-${row.number}`);
   assert.deepEqual(rows.map((row) => row.number), ['SUP-2']);
   const ordered = filterAndSortRows(data.invoices, { query: '', sort: 'asc' }, (row) => [row.number], (row) => `${row.postingDate}-${row.number}`);
-  assert.deepEqual(ordered.map((row) => row.number), ['INV-1', 'SUP-2']);
+  assert.deepEqual(ordered.map((row) => row.number), ['INV-1', 'INV-DRAFT', 'SUP-2']);
 });
 
-test('invoice rows expose supported and blocked legacy actions explicitly', () => {
+test('invoice rows expose functional lifecycle actions without blocked placeholders', () => {
   const output = html(InvoicesPage);
-  for (const label of ['تحصيل', 'طباعة', 'إشعار دائن/مدين', 'إلغاء']) assert.match(output, new RegExp(label));
-  assert.match(output, /BLOCKED-BY-BACKEND/);
+  for (const label of ['ترحيل', 'تعديل', 'إلغاء المسودة', 'تحصيل', 'طباعة', 'إشعار دائن/مدين', 'إلغاء']) {
+    assert.match(output, new RegExp(label));
+  }
+  assert.doesNotMatch(output, /BLOCKED-BY-BACKEND/);
 });
