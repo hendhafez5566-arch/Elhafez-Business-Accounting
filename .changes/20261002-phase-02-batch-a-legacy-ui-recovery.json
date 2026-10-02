@@ -1,6 +1,6 @@
 {
   "id": "20261002-phase-02-legacy-business-ui-recovery",
-  "summary": "Execute Phase 2 legacy business-workspace UI recovery on the Phase 1 integration base: preserve accepted canonical owners, restore legacy-visible workspace entry composition and interactions across batches A, B and C, and add regression coverage without donor backend, duplicate routes, fake persistence, or parallel business truth.",
+  "summary": "Execute Phase 2 legacy business-workspace UI recovery on the Phase 1 integration base: preserve accepted canonical owners, restore legacy-visible workspace entry composition and interactions across batches A, B and C, and add regression/replace-not-overlay coverage without donor backend, duplicate routes, fake persistence, or parallel business truth.",
   "type": "phase",
   "allowedModules": [],
   "allowedPaths": [
@@ -19,6 +19,7 @@
     "apps/web/src/management-control-page.tsx",
     "apps/web/src/phase2-batch-c-routes.tsx",
     "apps/web/src/phase2-batch-c-legacy-ui-recovery.spec.ts",
+    "apps/web/src/phase2-final-closure.spec.ts",
     "docs/migration/PHASE-02-BATCH-C-RECOVERY.md"
   ],
   "protectedPaths": [
@@ -30,6 +31,7 @@
   "testEvidence": [
     "apps/web/src/phase2-batch-a-legacy-ui-recovery.spec.ts",
     "apps/web/src/phase2-batch-b-legacy-ui-recovery.spec.ts",
-    "apps/web/src/phase2-batch-c-legacy-ui-recovery.spec.ts"
+    "apps/web/src/phase2-batch-c-legacy-ui-recovery.spec.ts",
+    "apps/web/src/phase2-final-closure.spec.ts"
   ]
 }
