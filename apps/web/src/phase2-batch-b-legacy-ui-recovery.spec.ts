@@ -39,7 +39,8 @@ test('Hajj and Umrah restores the legacy operating dashboard without replacing c
 });
 
 test('Accounting legacy entry routes all reuse the accepted canonical AccountingWorkspaceView', () => {
-  const routes = source('./routes.tsx');
+  const routes = source('./accounting-legacy-routes.tsx');
+  const rootRoutes = source('./routes.tsx');
   const adapter = source('./accounting-legacy-route-page.tsx');
   const expected = [
     '/accounting/invoices', '/accounting/receipts', '/accounting/payments', '/accounting/expenses',
@@ -49,6 +50,7 @@ test('Accounting legacy entry routes all reuse the accepted canonical Accounting
     '/accounting/loans', '/accounting/budgets',
   ];
   for (const path of expected) assert.equal(count(routes, `path: '${path}'`), 1, path);
+  assert.match(rootRoutes, /\.\.\.accountingLegacyRoutes/);
   assert.match(adapter, /AccountingWorkspaceView/);
   assert.match(adapter, /accountingApi\.capabilities\(\)/);
   assert.match(adapter, /accountingApi\.overview\(\)/);
@@ -56,7 +58,7 @@ test('Accounting legacy entry routes all reuse the accepted canonical Accounting
 });
 
 test('Accounting route adapter exposes the existing canonical financial sections rather than reimplementing them', () => {
-  const routes = source('./routes.tsx');
+  const routes = source('./accounting-legacy-routes.tsx');
   const pairs = [
     ["/accounting/invoices", 'billing'],
     ["/accounting/receipts", 'treasury'],
