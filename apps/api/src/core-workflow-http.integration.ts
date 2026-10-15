@@ -81,6 +81,13 @@ await test('core workflow actual AppModule and PostgreSQL',async t=>{
    const ecr=app.get(ExpenseCommissionRecognitionApplicationService);for(const claim of claims)await ecr.approveCommission(cid,claim.id,'2026-10-15','CORE-COMMISSION-'+claim.id);
    const deposit={companyId:cid,branchId:tenant.defaultBranchId,commandKey:'core-deposit',booking:sourceReference('HAJJ_UMRAH_BOOKING',financialBooking.id),treasuryId:cash.id,number:'CORE-RECEIPT',postingDate:'2026-10-15',amount:decimalAmount('2500')};await finance.recordBookingDeposit(deposit);await finance.recordBookingDeposit(deposit);
    const statement=await request<{rows:Array<{allocationBasis:string}>;totals:Array<{currency:string;charged:string;paid:string;outstanding:string}>}>('/hajj-umrah/family-statement?reference=FAMILY-4',undefined,headers(tenant),200);assert.deepEqual(statement.totals,[{currency:'EGP',charged:'4000',paid:'2500',outstanding:'1500'}]);assert.ok(statement.rows.every(x=>x.allocationBasis==='SHARED_NOT_DISTRIBUTED'));assert.ok(!JSON.stringify(statement).includes('commission'));
+   const concurrent=[{...deposit,commandKey:'concurrent-cash-a',number:'CONCURRENT-A',amount:decimalAmount('10')},{...deposit,commandKey:'concurrent-cash-b',number:'CONCURRENT-B',amount:decimalAmount('20')}];
+   const outcomes=await Promise.allSettled(concurrent.map(input=>finance.recordBookingDeposit(input)));
+   for(const [index,outcome] of outcomes.entries())if(outcome.status==='rejected')await finance.recordBookingDeposit(concurrent[index]!);
+   const reference=await db.tfoBookingReference.findFirstOrThrow({where:{companyId:cid,bookingId:financialBooking.id}});
+   assert.equal((reference.depositVoucherIds as string[]).length,3,'distinct concurrent receipts must all remain available for cancellation/recovery');
+   const updated=await request<{totals:Array<{outstanding:string}>}>('/hajj-umrah/family-statement?reference=FAMILY-4',undefined,headers(tenant),200);assert.equal(updated.totals[0]?.outstanding,'1470');
+
   });
   if(process.env.CORE_BROWSER_PACKAGE){await t.test('production browser saves encrypted offline request and synchronizes through actual AppModule',async()=>{
    await new Promise<void>((resolve,reject)=>{const child=spawn(process.execPath,['tools/experiments/core-workflow/browser.mjs'],{env:{...process.env,CORE_API_ORIGIN:origin},stdio:['pipe','pipe','pipe']});let output='';child.stdout.on('data',chunk=>output+=String(chunk));child.stderr.on('data',chunk=>output+=String(chunk));child.on('error',reject);child.on('exit',code=>code===0?resolve():reject(Error('browser acceptance failed: '+output.slice(-2000))));child.stdin.end(JSON.stringify({tenant:{...tenant,mustChangePassword:false},programId,customerId,responsibleId,travelerIds,financialTreasuryId}));});

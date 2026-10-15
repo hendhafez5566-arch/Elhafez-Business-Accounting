@@ -58,7 +58,14 @@ try{
  await page.reload();await panel.getByLabel('عبارة حماية سجل الجهاز').fill('Offline-test-secret-12345');
  await panel.getByRole('button',{name:'فتح السجل المحلي',exact:true}).click();await panel.getByText('اعتمده المالك على الخادم',{exact:true}).first().waitFor();
  const statement=page.getByRole('region',{name:'كشف الأسرة'});await statement.getByLabel('مرجع الأسرة أو المجموعة').fill('BROWSER-FAMILY');await statement.getByRole('button',{name:'عرض الكشف من الحسابات'}).click();await statement.getByRole('cell',{name:'BROWSER-OFFLINE',exact:true}).waitFor();
+ await statement.getByLabel('مرجع الأسرة أو المجموعة').fill('FAMILY-4');await statement.getByRole('button',{name:'عرض الكشف من الحسابات'}).click();await statement.getByRole('cell',{name:'CORE-FINANCIAL',exact:true}).waitFor();
+ await statement.getByRole('cell',{name:'1270',exact:true}).waitFor();
  await page.screenshot({path:output+'/family-and-sync-rtl.png',fullPage:true,animations:'disabled',timeout:60000});
+ // Revoke through the real public API after caching the delegation: the cash observation must remain reviewable.
+ await page.evaluate(async()=>{const s=JSON.parse(globalThis.sessionStorage.getItem('elhafez.tenantSession')),headers={authorization:'Bearer '+s.token,'x-company-id':s.companyId,'x-branch-id':s.branchId,'content-type':'application/json'};const r=await fetch('/api/offline/commands',{headers}),commands=await r.json(),cash=commands.find(x=>x.operation==='BOOKING_DEPOSIT'&&x.state==='ACCEPTED');if(!cash)throw Error('Accepted cash receipt missing');const revoked=await fetch('/api/offline/delegations/'+cash.grantId+'/revoke',{method:'POST',headers,body:'{}'});if(!revoked.ok)throw Error('Delegation revocation failed');});
+ await panel.getByRole('combobox').selectOption({label:'CORE-FINANCIAL'});await panel.getByLabel('الخزينة المستلمة').fill(fixture.financialTreasuryId);await panel.getByLabel('رقم السند الرسمي المطلوب عند الاعتماد').fill('BROWSER-REVIEW-1');await panel.getByLabel('تاريخ الاستلام').fill('2026-10-15');await panel.getByLabel('المبلغ بعملة الحساب والخزينة').fill('5');
+ await panel.getByRole('button',{name:'حفظ إثبات استلام مؤقت',exact:true}).click();await panel.getByRole('status').filter({hasText:'حُفظ إثبات الاستلام'}).waitFor();await panel.getByRole('button',{name:'مزامنة المعلّق بنفس الهويات'}).click();await panel.getByText('يحتاج مراجعة وتسوية',{exact:true}).waitFor();
+ await page.screenshot({path:output+'/cash-review-rtl.png',fullPage:true,animations:'disabled',timeout:60000});
  const utility=await build({entryPoints:['apps/web/src/offline-command-store.ts'],bundle:true,write:false,format:'esm',platform:'browser'});
  await page.route('**/core-vault-test.js',route=>route.fulfill({contentType:'text/javascript',body:utility.outputFiles[0].text}));
  const storage=await page.evaluate(async()=>{
