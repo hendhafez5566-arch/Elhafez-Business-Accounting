@@ -1,3 +1,4 @@
+import { commissionShares } from '../domain/commission-agreement.js';
 import { randomUUID } from 'node:crypto';
 import { ContractValidationError, type ExecutionContext } from '@elhafez/contracts';
 import { partyId, type DuplicateCandidate, type Party, type PartyDraft } from '@elhafez/party-registry';
@@ -25,6 +26,16 @@ export class AgentManagementApplicationService{
   const at=this.now().toISOString();const seq=await this.repository.nextNumber(c.companyId);const value:Agent={id:agentId(this.newId()),companyId:c.companyId,partyId:resolved.party.id,parentAgentId:null,number:'AGT-'+String(seq).padStart(6,'0'),status:'ACTIVE',notes:input.notes?.trim()||null,commission:commissionTerms(input.commission),createdAt:at,updatedAt:at};
   try{await this.repository.create(value);}catch(error){const concurrent=await this.repository.findByParty(c.companyId,resolved.party.id);if(concurrent)return{status:'EXISTING',value:{agent:concurrent,party:resolved.party}};throw error;}
   await this.parties.ensureRoleForIntegration(c,resolved.party.id,'AGENT');await this.access.audit(c,'agent.created','agent',value.id,{number:value.number});return{status:'CREATED',value:{agent:value,party:resolved.party}};
+ }
+ async commissionAgreements(c:ExecutionContext,id:AgentId){await this.perm(c,AGENT_PERMISSIONS.read);const agent=await this.require(c,id,false);return{parentAgentId:agent.parentAgentId??null,agreements:await this.repository.listCommissionAgreements(c.companyId,id)};}
+ async agreeCommission(c:ExecutionContext,id:AgentId,input:{requestId?:unknown;parentAgentId?:unknown;expectedVersion?:unknown;principalPercent?:unknown;reason?:unknown}){
+  await this.perm(c,AGENT_PERMISSIONS.manage);
+  if(!input||typeof input.requestId!=='string'||!/^[A-Za-z0-9][A-Za-z0-9_-]{15,127}$/.test(input.requestId))throw new ContractValidationError('requestId','stable request identity is required');
+  if(typeof input.parentAgentId!=='string'||!input.parentAgentId.trim())throw new ContractValidationError('parentAgentId','principal agent is required');
+  if(typeof input.expectedVersion!=='number'||!Number.isSafeInteger(input.expectedVersion)||input.expectedVersion<0||input.expectedVersion>=2147483647)throw new ContractValidationError('expectedVersion','valid prior version is required');
+  if(typeof input.reason!=='string'||!input.reason.trim()||input.reason.trim().length>2000)throw new ContractValidationError('reason','agreement reason is required, up to 2000 characters');
+  const result=await this.repository.saveCommissionAgreement({id:this.newId(),companyId:c.companyId,agentId:id,parentAgentId:agentId(input.parentAgentId),requestId:input.requestId,expectedVersion:input.expectedVersion,...commissionShares(input.principalPercent),reason:input.reason.trim(),actorId:c.actorId,createdAt:this.now().toISOString()});
+  await this.access.audit(c,'agent.commission-agreed','agent',id,{agreementId:result.id,version:result.version,parentAgentId:result.parentAgentId});return result;
  }
  async setParent(c:ExecutionContext,id:AgentId,parent:unknown):Promise<Agent>{
   await this.perm(c,AGENT_PERMISSIONS.manage);

@@ -2324,6 +2324,8 @@ model AmAgent {
   parentAgentId      String?            @map("parent_agent_id")
   parentAgent        AmAgent?           @relation("AgentHierarchy", fields: [companyId, parentAgentId], references: [companyId, id], onDelete: Restrict, onUpdate: NoAction)
   childAgents        AmAgent[]          @relation("AgentHierarchy")
+  subordinateAgreements AmCommissionAgreement[] @relation("CommissionSubordinate")
+  principalAgreements AmCommissionAgreement[] @relation("CommissionPrincipal")
   number             String
   status             String             @default("ACTIVE")
   notes              String?
@@ -4170,4 +4172,24 @@ model PsAward {
   @@unique([companyId, branchId, rfqId])
   @@index([companyId, branchId, requisitionId])
   @@map("ps_awards")
+}
+
+model AmCommissionAgreement {
+ id String @id
+ companyId String @map("company_id")
+ agentId String @map("agent_id")
+ parentAgentId String @map("parent_agent_id")
+ requestId String @map("request_id")
+ version Int
+ principalPercent Decimal @map("principal_percent") @db.Decimal(9, 6)
+ subordinatePercent Decimal @map("subordinate_percent") @db.Decimal(9, 6)
+ reason String
+ actorId String @map("actor_id")
+ createdAt DateTime @map("created_at")
+ subordinate AmAgent @relation("CommissionSubordinate", map: "am_agreement_child_fk", fields: [companyId, agentId], references: [companyId, id], onDelete: Restrict, onUpdate: NoAction)
+ principal AmAgent @relation("CommissionPrincipal", map: "am_agreement_parent_fk", fields: [companyId, parentAgentId], references: [companyId, id], onDelete: Restrict, onUpdate: NoAction)
+ @@unique([companyId, requestId], name: "companyId_requestId")
+ @@unique([companyId, agentId, version])
+ @@index([companyId, parentAgentId])
+ @@map("am_commission_agreements")
 }

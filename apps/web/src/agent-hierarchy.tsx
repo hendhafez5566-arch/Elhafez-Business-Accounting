@@ -1,3 +1,4 @@
+import { AgentCommissionAgreements } from './agent-commission-agreements.js';
 import { useEffect, useState } from 'react';
 import { Button, Card, DataGrid, FormField, Select } from './ui.js';
 import { crmGet, crmPost } from './crm-core-client.js';
@@ -22,5 +23,6 @@ export function AgentHierarchy(){
   <Button type="button" disabled={busy||!child} onClick={()=>void save()}>حفظ علاقة المندوب</Button><Button type="button" disabled={busy} onClick={()=>void load()}>تحديث علاقات المندوبين</Button>
   {notice?<p role="status">{notice}</p>:null}
   {rows.length?<DataGrid columns={['المندوب','الرئيسي','التابعون المباشرون']}>{rows.map(v=><tr key={v.agent.id}><td>{label(v.agent.id)}</td><td>{label(v.agent.parentAgentId)}</td><td>{counts.get(v.agent.id)??0}</td></tr>)}</DataGrid>:null}
+  <AgentCommissionAgreements agents={rows}/>
  </Card>;
 }

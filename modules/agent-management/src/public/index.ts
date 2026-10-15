@@ -1,1 +1,3 @@
 export { AgentManagementApplicationService,AGENT_PERMISSIONS } from '../application/agent-management.application-service.js';export type { CreateAgentInput,UpdateAgentInput,AgentView,AgentCreateResult } from '../application/agent-management.application-service.js';export { agentId } from '../domain/agent.js';export type { AgentId,AgentStatus,CommissionKind,AgentCommissionTerms,Agent,AgentReference } from '../domain/agent.js';
+
+export type { AgentCommissionAgreement } from '../domain/commission-agreement.js';

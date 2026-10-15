@@ -77,6 +77,13 @@ await test('real AppModule HTTP + company sessions + subscription + RBAC + Postg
    await request(path,{headers:headers(tenant),body:{},status:400});await request(path,{headers:headers(tenant),body:{parentAgentId:foreign},status:400});
    const rows=await request<Array<{agent:{id:string;parentAgentId:string|null}}>>('/crm/agents',{method:'GET',headers:headers(tenant),status:200});assert.equal(rows.find(v=>v.agent.id===agentChildId)?.agent.parentAgentId,agentParentId);
   });
+  await t.test('real commercial commission agreement stores exact versioned terms with stable retries',async()=>{
+   const path='/crm/agents/'+agentChildId+'/commission-agreements',body={requestId:randomUUID(),parentAgentId:agentParentId,expectedVersion:0,principalPercent:'33.333333',reason:'HTTP commercial agreement',actorId:'forged-actor'};
+   const first=await request<{id:string;version:number;principalPercent:string;subordinatePercent:string;actorId:string}>(path,{headers:headers(tenant),body});assert.equal(first.principalPercent,'33.333333');assert.equal(first.subordinatePercent,'66.666667');assert.equal(first.actorId,tenant.userId);
+   assert.equal((await request<{id:string}>(path,{headers:headers(tenant),body})).id,first.id);
+   await request(path,{headers:headers(tenant),body:{...body,reason:'changed'},status:400});await request(path,{headers:headers(tenant),body:{...body,requestId:randomUUID(),principalPercent:'100.000001'},status:400});
+   const result=await request<{agreements:Array<{version:number}>}>(path,{method:'GET',headers:headers(tenant),status:200});assert.deepEqual(result.agreements.map(v=>v.version),[1]);
+  });
   let acceptedCommand:ReturnType<typeof command>;
   await t.test('twenty authenticated concurrent requests produce one real follow-up and one history',async()=>{
    acceptedCommand=command();const results=await Promise.all(Array.from({length:20},()=>request<Followup>('/crm/followups',{headers:headers(tenant),body:acceptedCommand})));
@@ -120,6 +127,7 @@ await test('real AppModule HTTP + company sessions + subscription + RBAC + Postg
    await platform.grantPermission(tenant.companyId,roleId,permissionId);await request('/crm/followups',{headers:headers(limited),body:limitedCommand});
   });
   await t.test('a follow-up-only role cannot alter agent hierarchy through the real endpoint',async()=>{
+   await request('/crm/agents/'+agentChildId+'/commission-agreements',{headers:headers(limited),body:{},status:403});
    await request('/crm/agents/'+agentChildId+'/parent',{headers:headers(limited),body:{parentAgentId:null},status:403});
    const rows=await request<Array<{agent:{id:string;parentAgentId:string|null}}>>('/crm/agents',{method:'GET',headers:headers(tenant),status:200});assert.equal(rows.find(v=>v.agent.id===agentChildId)?.agent.parentAgentId,agentParentId);
   });
