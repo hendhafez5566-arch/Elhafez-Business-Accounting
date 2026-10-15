@@ -45,6 +45,7 @@
     "modules/tourism-finance-orchestration/src/ac12.spec.ts",
     "modules/expense-commission-recognition/src/domain/commission-distribution.spec.ts",
     "modules/offline-coordination/src/offline-coordination.spec.ts",
-    "apps/api/src/write-authority.guard.spec.ts"
+    "apps/api/src/write-authority.guard.spec.ts",
+    "apps/web/src/family-statement-print.spec.ts"
   ]
 }

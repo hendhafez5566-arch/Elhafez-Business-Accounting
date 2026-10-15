@@ -45,7 +45,7 @@ try{
  // A browser reload uses the encrypted durable queue; nothing is re-entered or duplicated.
  await panel.getByRole('button',{name:'تجهيز تفويض الحجز والقبض للمخوّل',exact:true}).click();
  await panel.getByRole('status').filter({hasText:'حُفظ تفويض الجهاز'}).waitFor();
- await panel.getByLabel('الحجز',{exact:true}).selectOption({label:'CORE-FINANCIAL'});
+ await panel.getByRole('combobox').selectOption({label:'CORE-FINANCIAL'});
  await panel.getByLabel('الخزينة المستلمة').fill(fixture.financialTreasuryId);
  await panel.getByLabel('رقم السند الرسمي المطلوب عند الاعتماد').fill('BROWSER-CASH-1');
  await panel.getByLabel('تاريخ الاستلام').fill('2026-10-15');
@@ -64,11 +64,12 @@ try{
  const storage=await page.evaluate(async()=>{
   const m=await import('/core-vault-test.js'),scope={companyId:'utility-company',branchId:'utility-branch',userId:'utility-user'},secret='Utility-secret-123456',now=Date.now();
   const grant={id:crypto.randomUUID(),companyId:scope.companyId,branchId:scope.branchId,actorId:scope.userId,deviceId:crypto.randomUUID(),operations:['BOOKING_CREATE','BOOKING_DEPOSIT'],issuedAt:new Date(now-1000).toISOString(),expiresAt:new Date(now+60000).toISOString(),revokedAt:null};
-  await m.saveDeviceGrant(scope,secret,grant);
-  const first=await m.enqueueCommand(scope,secret,'BOOKING_CREATE',{code:'UTILITY'},[],now);
+  const granted=await m.saveDeviceGrant(scope,secret,grant);
+  const captureAt=Math.max(Date.now(),granted.lastSeen);
+  const first=await m.enqueueCommand(scope,secret,'BOOKING_CREATE',{code:'UTILITY'},[],captureAt);
   let wrongSecret=false,rollback=false,expired=false;
   try{await m.loadCommandVault(scope,'Wrong-secret-123456');}catch{wrongSecret=true;}
-  try{await m.enqueueCommand(scope,secret,'BOOKING_CREATE',{code:'ROLLBACK'},[],now-1);}catch{rollback=true;}
+  try{await m.enqueueCommand(scope,secret,'BOOKING_CREATE',{code:'ROLLBACK'},[],captureAt-1);}catch{rollback=true;}
   try{await m.enqueueCommand(scope,secret,'BOOKING_CREATE',{code:'EXPIRED'},[],now+60001);}catch{expired=true;}
   const cash=await m.enqueueCommand(scope,secret,'BOOKING_DEPOSIT',{amount:'100',receipt:'TEMPORARY'},[],now+60001);
   const isolated=await m.loadCommandVault({...scope,branchId:'other-branch'},secret);

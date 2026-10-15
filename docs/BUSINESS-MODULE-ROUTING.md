@@ -43,7 +43,7 @@ Before editing:
 | مندوب / agent operational profile | `agent-management` |
 | lead/opportunity | `crm-leads` |
 | follow-up | `crm-followups` |
-| offline device command envelopes, durable sync receipts/checkpoints/conflicts, bounded delegation metadata | `offline-coordination` (PLANNED; explicitly authorized by `docs/planning/CODEX_CORE_WORKFLOW_OFFLINE.md`; business truth stays with existing owners) |
+| offline device command envelopes, durable sync receipts/checkpoints/conflicts, bounded delegation metadata | `offline-coordination` (IMPLEMENTATION CANDIDATE; explicitly authorized by `docs/planning/CODEX_CORE_WORKFLOW_OFFLINE.md`; business truth stays with existing owners) |
 | quotation | `quotations` |
 | مورد supplier operational profile/approval | `supplier-management` |
 | purchase requisition / PR / RFQ / supplier bid / quote comparison / sourcing award | `procurement-sourcing` |

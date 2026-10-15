@@ -27,6 +27,6 @@ export class FamilyStatementController {
    rows.push({bookingId:booking.id,code:booking.code,status:booking.status,travelerIds:booking.travelerIds,financialCustomerId:booking.financialCustomerId??booking.customerId,invoiceId:invoice?.invoiceId??null,currency:invoice?.currency??null,charged:active?invoice.documentTotal:'0',paid:active?amount(units(invoice.documentTotal)-units(invoice.outstanding)):'0',outstanding:active?invoice.outstanding:'0',allocationBasis:booking.travelerIds.length===1?'INDIVIDUAL':'SHARED_NOT_DISTRIBUTED'});
   }
   // Explicit customer projection: never spread owner results containing cost/commission data.
-  return {reference:reference.trim(),rows,totals:[...totals].map(([currency,v])=>({currency,charged:amount(v.charged),paid:amount(v.paid),outstanding:amount(v.outstanding)})),note:'Shared booking payments are not attributed to individual travelers without an explicit allocation.'};
+  return {reference:reference.trim(),rows,totals:[...totals].map(([currency,v])=>({currency,charged:amount(v.charged),paid:amount(v.paid),outstanding:amount(v.outstanding)})),note:'Settled amounts are document total minus outstanding and include owner adjustments as well as collections; they are not a cash-only total. Shared amounts are never attributed to individual travelers without explicit allocation.'};
  }
 }
