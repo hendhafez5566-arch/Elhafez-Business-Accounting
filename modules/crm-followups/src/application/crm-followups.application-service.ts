@@ -1,10 +1,29 @@
+import { acceptedSchedule, scheduleRequest } from './schedule-request.js';
 import{randomUUID}from'node:crypto';import{ContractValidationError,type ExecutionContext}from'@elhafez/contracts';import{leadId,type LeadId}from'@elhafez/crm-leads';import type{CrmFollowupsAccess}from'./crm-followups-access.js';import type{FollowupLeadPort}from'./crm-followups-dependencies.port.js';import type{CrmFollowupsRepository}from'./crm-followups.repository.js';import{followupId,interaction,required,when,type Followup,type FollowupHistory,type FollowupHistoryKind,type FollowupId,type InteractionType}from'../domain/followup.js';
 export const CRM_FOLLOWUP_PERMISSIONS=Object.freeze({read:'crm.followup.read',manage:'crm.followup.manage',correct:'crm.followup.correct'});
-export interface ScheduleFollowupInput{readonly leadId:string;readonly responsibleUserId:string;readonly interactionType:InteractionType;readonly scheduledAt:string;readonly nextAction?:string;}
+export interface ScheduleFollowupInput{readonly requestId?:string;readonly leadId:string;readonly responsibleUserId:string;readonly interactionType:InteractionType;readonly scheduledAt:string;readonly nextAction?:string;}
 export interface CompleteFollowupInput{readonly outcome:string;readonly nextAction?:string;readonly nextScheduledAt?:string;readonly nextInteractionType?:InteractionType;readonly nextResponsibleUserId?:string;}
 export class CrmFollowupsApplicationService{constructor(private readonly repository:CrmFollowupsRepository,private readonly leads:FollowupLeadPort,private readonly access:CrmFollowupsAccess,private readonly now:()=>Date=()=>new Date(),private readonly newId:()=>string=()=>randomUUID()){}
  private async branch(c:ExecutionContext){await this.access.requireBranch(c);}private async perm(c:ExecutionContext,p:string){await this.branch(c);await this.access.requirePermission(c,p);}
- async schedule(c:ExecutionContext,input:ScheduleFollowupInput,previous:FollowupId|null=null):Promise<Followup>{await this.perm(c,CRM_FOLLOWUP_PERMISSIONS.manage);const lid=leadId(input.leadId),lead=await this.leads.getForIntegration(c,lid);if(lead.status==='WON'||lead.status==='LOST')throw new ContractValidationError('leadId','follow-up cannot be scheduled for a closed lead');const at=this.now().toISOString(),value:Followup={id:followupId(this.newId()),companyId:c.companyId,branchId:c.branchId,leadId:lid,responsibleUserId:required(input.responsibleUserId,'responsibleUserId'),interactionType:interaction(input.interactionType),scheduledAt:when(input.scheduledAt),status:'SCHEDULED',outcome:null,nextAction:input.nextAction?.trim()||null,previousFollowupId:previous,completedAt:null,cancelledAt:null,completionVoidedAt:null,completionVoidReason:null,createdAt:at,updatedAt:at};await this.repository.create(value,this.event(c,value,'SCHEDULED',null,value.scheduledAt,null));await this.access.audit(c,'followup.scheduled','followup',value.id,{leadId:lid});return value;}
+ async schedule(c:ExecutionContext,input:ScheduleFollowupInput,previous:FollowupId|null=null):Promise<Followup>{
+  await this.perm(c,CRM_FOLLOWUP_PERMISSIONS.manage);
+  const lid=leadId(input.leadId),responsibleUserId=required(input.responsibleUserId,'responsibleUserId');
+  const interactionType=interaction(input.interactionType),scheduledAt=when(input.scheduledAt),nextAction=input.nextAction?.trim()||null;
+  const request=input.requestId===undefined?null:scheduleRequest(input.requestId,c.actorId,[lid,responsibleUserId,interactionType,scheduledAt,nextAction,previous]);
+  if(request){const accepted=await this.repository.findScheduleRequest(c.companyId,c.branchId,request);if(accepted){const value=acceptedSchedule(accepted,request);await this.access.audit(c,'followup.schedule_replayed','followup',value.id,{requestId:request.id});return value;}}
+  const lead=await this.leads.getForIntegration(c,lid);
+  if(lead.status==='WON'||lead.status==='LOST')throw new ContractValidationError('leadId','follow-up cannot be scheduled for a closed lead');
+  const at=this.now().toISOString();
+  const value:Followup={id:followupId(this.newId()),companyId:c.companyId,branchId:c.branchId,leadId:lid,responsibleUserId,interactionType,scheduledAt,status:'SCHEDULED',outcome:null,nextAction,previousFollowupId:previous,completedAt:null,cancelledAt:null,completionVoidedAt:null,completionVoidReason:null,createdAt:at,updatedAt:at};
+  const history=this.event(c,value,'SCHEDULED',null,value.scheduledAt,null);
+  if(request){
+   const result=await this.repository.createScheduledRequest(value,history,request);
+   const accepted=acceptedSchedule(result,request);
+   if(!result.created){await this.access.audit(c,'followup.schedule_replayed','followup',accepted.id,{requestId:request.id});return accepted;}
+  }else await this.repository.create(value,history);
+  await this.access.audit(c,'followup.scheduled','followup',value.id,{leadId:lid,...request?{requestId:request.id}:{}});
+  return value;
+ }
  async get(c:ExecutionContext,id:FollowupId){await this.perm(c,CRM_FOLLOWUP_PERMISSIONS.read);return this.require(c,id);}
  async forLead(c:ExecutionContext,id:LeadId){await this.perm(c,CRM_FOLLOWUP_PERMISSIONS.read);await this.leads.getForIntegration(c,id);return this.repository.listForLead(c.companyId,c.branchId,id);}
  async due(c:ExecutionContext,through:string,responsibleUserId?:string){await this.perm(c,CRM_FOLLOWUP_PERMISSIONS.read);return this.repository.scheduledThrough(c.companyId,c.branchId,when(through,'through'),responsibleUserId?.trim());}

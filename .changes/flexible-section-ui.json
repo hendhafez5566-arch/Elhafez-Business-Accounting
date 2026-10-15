@@ -1,8 +1,10 @@
 {
   "id": "flexible-section-ui",
-  "summary": "Flexible section UI and complete web regressions, requirements mapping, and an isolated browser/SQLite offline feasibility experiment with no production business effects. Add encrypted, tenant/user-scoped local follow-up drafts in the canonical web form; no automatic replay or server scheduling changes.",
+  "summary": "Allow independent section UI, correct web regression coverage, map 296 requirements, prove isolated offline feasibility, add encrypted local follow-up drafts, and add optional actor-scoped durable scheduling request identities in crm-followups. Production offline synchronization remains disabled pending native PostgreSQL acceptance.",
   "type": "architecture",
-  "allowedModules": [],
+  "allowedModules": [
+    "crm-followups"
+  ],
   "allowedPaths": [
     "AGENTS.md",
     "AI_CHANGE_PROTOCOL.md",
@@ -22,15 +24,19 @@
     "apps/web/src/followup-draft-store.ts",
     "apps/web/src/followup-draft-controls.tsx",
     "tools/experiments/followup-draft-browser/**",
-    "apps/web/src/crm-lead-followup-parity-pages.tsx"
+    "apps/web/src/crm-lead-followup-parity-pages.tsx",
+    "prisma/schema.prisma",
+    "prisma/migrations/20261015110000_followup_schedule_retry/migration.sql"
   ],
   "protectedPaths": [
     "AGENTS.md",
     "AI_CHANGE_PROTOCOL.md",
     "docs/UI-ARCHITECTURE.md",
-    "tools/architecture/check-architecture.ts"
+    "tools/architecture/check-architecture.ts",
+    "prisma/schema.prisma",
+    "prisma/migrations/20261015110000_followup_schedule_retry/migration.sql"
   ],
-  "protectedReason": "The owner explicitly requested removing premature visual-layout restrictions across ALL sections while preserving accounting, security, module ownership, shared-shell change scope and migration integrity. Replace blanket presentation bans with scoped-stylesheet checks and executable isolation tests.",
+  "protectedReason": "The owner explicitly requested removing premature visual-layout restrictions across ALL sections while preserving accounting, security, module ownership, shared-shell change scope and migration integrity. Replace blanket presentation bans with scoped-stylesheet checks and executable isolation tests. Add nullable request identity columns and a unique index only on crm-followups-owned rows through a new additive migration; no accepted migration changes.",
   "allowBreakingPublicApi": false,
   "publicApiBreakingReason": "",
   "testEvidence": [
@@ -39,6 +45,7 @@
     "apps/web/src/quotations.spec.ts",
     "apps/web/src/frontend-coverage.spec.ts",
     "tools/experiments/offline-proof/offline-proof.spec.mjs",
-    "tools/experiments/followup-draft-browser/browser.spec.mjs"
+    "tools/experiments/followup-draft-browser/browser.spec.mjs",
+    "modules/crm-followups/src/schedule-retry.spec.ts"
   ]
 }

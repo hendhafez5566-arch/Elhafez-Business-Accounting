@@ -2716,9 +2716,13 @@ model CfFollowup {
   completionVoidReason String?              @map("completion_void_reason")
   createdAt            DateTime            @default(now()) @map("created_at")
   updatedAt            DateTime            @updatedAt @map("updated_at")
+  scheduleRequestId    String?             @map("schedule_request_id")
+  scheduleActorId      String?             @map("schedule_actor_id")
+  scheduleFingerprint  String?             @map("schedule_fingerprint")
   history              CfFollowupHistory[]
 
   @@unique([companyId, branchId, id], name: "companyId_branchId_id")
+  @@unique([companyId, branchId, scheduleActorId, scheduleRequestId], name: "companyId_branchId_scheduleActorId_scheduleRequestId", map: "cf_followups_schedule_request_key")
   @@index([companyId, branchId, status, scheduledAt])
   @@index([companyId, branchId, responsibleUserId, status, scheduledAt])
   @@index([companyId, branchId, leadId, scheduledAt])

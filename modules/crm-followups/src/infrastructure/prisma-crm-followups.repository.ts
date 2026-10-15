@@ -1,3 +1,4 @@
+import type { ScheduleRequest, ScheduledRequestResult } from '../application/schedule-request.js';
 import type { PrismaClient } from '@prisma/client';
 import type { BranchId, CompanyId } from '@elhafez/contracts';
 import { leadId } from '@elhafez/crm-leads';
@@ -6,6 +7,29 @@ import { followupId, type Followup, type FollowupHistory, type FollowupId } from
 
 export class PrismaCrmFollowupsRepository implements CrmFollowupsRepository {
   constructor(private readonly db:PrismaClient){}
+  async findScheduleRequest(c:CompanyId,b:BranchId,r:ScheduleRequest):Promise<ScheduledRequestResult|undefined>{
+    const row=await this.db.cfFollowup.findUnique({where:{companyId_branchId_scheduleActorId_scheduleRequestId:{companyId:c,branchId:b,scheduleActorId:r.actorId,scheduleRequestId:r.id}}});
+    if(!row)return undefined;
+    if(!row.scheduleFingerprint)throw new Error('accepted scheduling fingerprint missing');
+    return {followup:map(row),fingerprint:row.scheduleFingerprint,created:false};
+  }
+  async createScheduledRequest(v:Followup,h:FollowupHistory,r:ScheduleRequest):Promise<ScheduledRequestResult>{
+    try{
+      await this.db.$transaction(async tx=>{
+        await tx.cfFollowup.create({data:{...data(v),scheduleActorId:r.actorId,scheduleRequestId:r.id,scheduleFingerprint:r.fingerprint}});
+        await tx.cfFollowupHistory.create({data:history(h)});
+      });
+      return {followup:v,fingerprint:r.fingerprint,created:true};
+    }catch(error){
+      // PostgreSQL's unique index arbitrates concurrent submissions. Only a matching
+      // committed receipt is recoverable; all other failures propagate unchanged.
+      if(error&&typeof error==='object'&&'code' in error&&error.code==='P2002'){
+        const accepted=await this.findScheduleRequest(v.companyId,v.branchId,r);
+        if(accepted)return accepted;
+      }
+      throw error;
+    }
+  }
   async create(v:Followup,h:FollowupHistory){await this.db.$transaction(async tx=>{await tx.cfFollowup.create({data:data(v)});await tx.cfFollowupHistory.create({data:history(h)});});}
   async update(v:Followup,h:FollowupHistory){await this.db.$transaction(async tx=>{await tx.cfFollowup.update({where:{companyId_branchId_id:{companyId:v.companyId,branchId:v.branchId,id:v.id}},data:data(v)});await tx.cfFollowupHistory.create({data:history(h)});});}
   async completeWithOptionalNext(completed:Followup,completedHistory:FollowupHistory,next:Followup|null,nextHistory:FollowupHistory|null){
