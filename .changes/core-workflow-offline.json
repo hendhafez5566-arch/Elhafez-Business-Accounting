@@ -1,0 +1,19 @@
+{
+  "id": "core-workflow-offline",
+  "summary": "Prepare the authorized large Codex core customer/family/booking/finance/offline implementation package and planned coordination ownership; preparation only, no runtime implementation claimed.",
+  "type": "architecture",
+  "allowedModules": [],
+  "allowedPaths": [
+    "docs/planning/CODEX_CORE_WORKFLOW_OFFLINE.md",
+    "docs/BUSINESS-MODULE-ROUTING.md",
+    "docs/BUSINESS-MODULE-ARCHITECTURE.md"
+  ],
+  "protectedPaths": [
+    "docs/BUSINESS-MODULE-ROUTING.md",
+    "docs/BUSINESS-MODULE-ARCHITECTURE.md"
+  ],
+  "protectedReason": "The owner requested one large implementation package including remaining offline. Map the distinct planned coordination metadata owner before implementation to prevent an unmapped ownership blocker; existing financial and security ownership stays intact.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": "",
+  "testEvidence": []
+}

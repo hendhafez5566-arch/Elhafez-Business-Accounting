@@ -282,3 +282,11 @@ This projection/configuration owner stores saved-report definitions and report d
 ### `procurement-sourcing` — ERP PRODUCT COMPLETION CANDIDATE
 
 This owner is the single pre-PO procurement source of truth for purchase requisitions, RFQs, supplier invitations, supplier bid snapshots, comparison/award evidence, and the immutable reference that links an award to the resulting Purchase Order. It must never own Purchase Order economics, receipt quantities, supplier invoices, payables, or payments. Award conversion calls `procurement-finance` through its public application API; receipt/execution remains `procurement-fulfillment`, supplier invoice/payable truth remains Billing, and settlement remains Treasury.
+
+## Planned offline coordination owner
+
+`offline-coordination` is PLANNED for the explicitly authorized core-workflow/offline package. Create it from `modules/_template` only if durable coordination metadata requires this owner. Its scope is COMPANY_BRANCH and its owned table prefix is `oc_`: command identities, device envelopes, receipts, checkpoints, conflicts and bounded delegation metadata. Specify actual tables and migrations when implementing; this is not a registered or implemented module yet.
+
+It does not own customers, bookings, inventory, invoices, cash, balances, journals, users, roles or subscription authority. Amounts in an immutable intent are input, never canonical accounting truth. Dependencies may use core/contracts/platform-core public boundaries; application composition invokes business owners through their public APIs. Business owners must not depend back on the coordinator. Platform-core retains identity/RBAC, and the SaaS control plane retains entitlement authority. Offline grants cannot silently extend expiry or mint roles/licenses.
+
+Office/cloud write authority, fencing, detached-device limitations and financial acceptance must be proved under the package work order before production-readiness claims. This planned route does not certify multi-master synchronization.
