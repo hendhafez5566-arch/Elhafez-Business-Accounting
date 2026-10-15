@@ -1,119 +1,100 @@
 # ELHAFEZ UI ARCHITECTURE
 
-Status: **UI-02 — canonical foundation applied across application pages**
+Status: **Owner-authorized development policy — flexible presentation for every section**
 
-## Purpose
+## Purpose and ownership
 
-The web interface is a design system, not a collection of page-specific styling patches.
-Business modules own business truth. The UI foundation owns reusable presentation primitives,
-layout, navigation behavior, design tokens, accessibility conventions and personal presentation
-preferences.
+Every section can change its whole visual composition without recreating business
+ownership, persistence, financial rules or authorization. This supersedes the UI-02
+blanket bans on page CSS, native controls and element-local styles. It applies to
+Customers, Suppliers, Accounting, Hajj/Umrah, Tourism, Administration, Reports and
+future sections equally. This policy change itself redesigns no production page.
 
-## Canonical locations
+Business truth stays in `modules/<owner>` and its public contracts. Browser
+presentation stays in `apps/web/src`. A section may colocate components/styles in
+`features/<section>/`, or beside an existing page; relocating all pages is unnecessary.
+Shared controls/tokens/navigation remain reusable in `ui/`, `ui.tsx`, `styles.css`
+and `app-shell.tsx`. A new presentation never justifies another balance, invoice,
+capacity owner or persistence path.
 
-- `apps/web/src/ui.tsx` — stable public facade used by existing web pages.
-- `apps/web/src/ui/primitives.tsx` — reusable controls and content primitives.
-- `apps/web/src/ui/icons.tsx` — shared icon vocabulary.
-- `apps/web/src/ui/navigation.tsx` — sidebar/topbar/navigation composition.
-- `apps/web/src/ui/preferences.tsx` — typed presentation preferences and persistence adapter.
-- `apps/web/src/ui/design-tokens.css` — colors, typography, density, spacing, radius, shadows and layout tokens.
-- `apps/web/src/styles.css` — canonical shell/component rules and all shared visual-theme sections consuming the design tokens.
-- `apps/web/src/app-shell.tsx` — one application shell for every route.
+## Freedom during construction
 
-## Rules for future work
+A redesign may replace tables with cards, change forms/columns, introduce drawers,
+change internal navigation and replace obsolete page composition. Keep one active
+route owner. Do not overlay a second implementation on the old page.
 
-1. A business page must consume shared UI components through `apps/web/src/ui.tsx`.
-2. Do not create a second Button, Input, Table, Card, Tabs, Badge, Dialog, Drawer, Toast, PageHeader or FormSection when the shared primitive can represent the behavior.
-3. Do not place inline `style={{...}}` declarations in application TSX.
-4. Do not add page/module CSS files under `apps/web/src`. Reusable patterns belong in the central UI foundation.
-5. New global colors, spacing, typography, breakpoints, radii or shadows must be introduced as design tokens, never as scattered literals.
-6. A suite/menu is presentation only. Styling must never move or duplicate business ownership.
-7. The shell remains RTL-first and responsive. The sidebar is physically on the right for desktop layouts.
-8. Accessibility behavior is part of the component contract: keyboard focus, labels, dialog semantics and mobile drawer behavior must remain intact.
-9. Global UI foundation paths are protected by Change Safety and CODEOWNERS. Local feature work must not edit them as a workaround.
-10. When a genuinely reusable visual pattern is missing, add it once to the UI foundation with tests, then consume it from business pages.
+Shared primitives are preferred when they fit, not required templates. Semantic
+native controls and section-owned components are permitted; preserve labels,
+keyboard/focus behavior, validation, accessibility, RTL and responsive behavior.
+Use element-local dynamic React styles when useful. Never inject global selectors
+or use presentation to bypass validation, authorization or business ownership.
+Use shared design tokens where appropriate without forcing the same layout.
 
-## Replaceable visual themes
+No page is required to reproduce `ui-page-stack`, Card/DataGrid, the existing filter
+grid or a fixed header arrangement merely because an earlier page used it.
 
-The canonical functional baseline remains the unscoped rules in `apps/web/src/styles.css`. A visual theme may only refine presentation on top of that baseline and must never own business behavior, data access, routing, validation or workflow logic.
+## Isolated stylesheet contract
 
-The current theme registry is intentionally small:
+Import a colocated `*.module.css` file as a class map. TypeScript support lives in
+`apps/web/src/css-modules.d.ts`. The production esbuild bundler generates distinct
+class names, even when two sections both use a class called `layout`.
 
-- `premium` — the ELHAFEZ premium commercial appearance and the default for new/unauthenticated entry.
-- `classic` — the canonical UI-02 baseline with no premium overrides.
+```tsx
+import styles from './customers.module.css';
+export function CustomerLayout() {
+  return <section className={styles.layout}>...</section>;
+}
+```
 
-Theme selection is part of `UiPreferences` and is applied through `html[data-ui-theme]`. The premium rules live in one clearly marked section inside the canonical `styles.css` file and every rule is scoped under `html[data-ui-theme='premium']`. Selecting `classic` therefore disables the premium appearance immediately without changing application code, data or business behavior.
+The architecture gate allows CSS Modules and continues rejecting new unscoped page
+CSS. Each comma-separated selector must start with a local class; nested selectors
+start with `&` beneath a scoped rule. Conditional containers and keyframes work.
 
-The theme can be evaluated or removed safely:
+```css
+.layout { display: grid; grid-template-columns: 18rem 1fr; }
+.layout :is(button, input) { font: inherit; }
+.layout { &[data-active='yes'] { opacity: 1; } }
+@media (max-width: 700px) { .layout { display: block; } }
+```
 
-1. For an immediate user-level rollback, select **الشكل الأساسي** from **المظهر والتنقل**.
-2. For a product-wide rollback, change the default `theme` in `DEFAULT_UI_PREFERENCES` to `classic`.
-3. For complete removal, delete only the block between `BEGIN ELHAFEZ PREMIUM THEME` and `END ELHAFEZ PREMIUM THEME` in `apps/web/src/styles.css`, then remove the `premium` registry option. No business module should require changes.
+No `:global`, composition from global or `@import` escape hatches. Bare html/body,
+`:root` and universal selectors do not belong in section files. Shared fonts,
+resets and themes stay in the explicit global foundation. Its current canonical
+CSS files remain `styles.css` and `ui/design-tokens.css`; this change deletes neither.
 
-Rules for future themes:
+## Protected does not mean frozen
 
-- Keep shared theme rules in a clearly marked section inside the canonical `apps/web/src/styles.css`; do not create parallel page/module CSS files.
-- Gate every optional theme rule behind its own `data-ui-theme` value.
-- Style the existing shell/primitives; do not duplicate components or create theme-specific business pages.
-- Keep the login/tenant-entry surface on the same shared controls and tokens as the authenticated application.
-- Do not make a theme a prerequisite for layout correctness, accessibility or functional behavior; the `classic` baseline must remain usable on its own.
+Shared shell/routes/primitives/tokens retain protection against accidental changes
+for local field tasks. A complete or cross-section redesign MAY change them: declare
+necessary paths and reason in the change manifest and test the shared behavior.
+Never interpret protection as a prohibition on the owner's requested design.
 
-## Sidebar modes
+Design approval establishes a baseline, not permanent immutability. A later explicit
+redesign updates its visual baseline/tests. Business/isolation/validation tests
+remain enforced; do not weaken assertions merely to make CI green.
 
-The shell owns exactly three persisted presentation modes:
+## Existing shared defaults
 
-- `fixed`: full sidebar remains visible.
-- `compact`: icon-only sidebar remains visible.
-- `auto`: compact by default and expands on pointer hover or keyboard focus without shifting the content area.
+Premium/classic themes, RTL shell, mobile drawer, fixed/compact/auto sidebar,
+typography and density remain reusable defaults. Sections can use different
+compositions under the same theme. Themes must not own business behavior.
+Preferences remain behind the typed `ui/preferences.tsx` boundary.
 
-Mobile navigation remains a drawer and does not depend on the desktop mode.
+## Acceptance of later redesigns
 
-## Typography and density
+1. Define the full reference, page/interaction scope and viewport sizes.
+2. Inspect route owner, API clients, validation and existing functionality.
+3. Replace composition with scoped styles and suitable components.
+4. Keep permissions, data contracts, financial sources and one route owner.
+5. Test interactions/keyboard/RTL/responsiveness and compare actual browser renders
+   with the reference. Typecheck alone is not visual acceptance.
+6. Report differences; recoloring is not structural replacement.
+7. Run change-safety, integrity, lint, typecheck, architecture and test gates.
 
-The initial font registry is deliberately local and dependency-free:
+## Executable regression evidence
 
-- Tahoma
-- system UI
-- Arial
-
-Adding a bundled/web font later is a registry/token change, not a page-by-page rewrite.
-
-Font scale is one of `small | normal | large | xlarge`.
-Density is one of `comfortable | balanced | compact`.
-Pages must use rem/token-based sizing so these settings propagate consistently.
-
-## Preference persistence
-
-Presentation preferences are stored behind a typed adapter and namespaced by a `preferenceScope`.
-The shell currently defaults to a local browser scope. When authenticated user identity is wired
-into the app entry, pass the stable user ID as `preferenceScope`; no component or storage format
-rewrite is required. A future cross-device preference service can implement the same typed boundary
-without changing pages.
-
-## Extension procedure
-
-When adding a new UI requirement:
-
-1. Decide whether it is page-specific content or reusable presentation behavior.
-2. If reusable, extend the canonical primitive/pattern/token.
-3. Add focused behavior/accessibility tests.
-4. Use the new capability from the page through the public UI facade.
-5. Run Change Safety, typecheck, lint, architecture check and web tests.
-6. Do not create parallel styling paths.
-
-This keeps future additions additive, discoverable and replaceable without patch-on-patch work.
-
-
-## UI-02 application contract
-
-UI-02 applies the foundation to the existing application without changing business ownership or business behavior.
-
-- The App Shell renders the canonical page header for every registered route.
-- Business pages render content inside the shared page stack; they do not create competing top-level page titles.
-- Existing forms, cards, filters, tables, metrics and administration tools use the shared primitives and central CSS patterns.
-- Application pages may use semantic `form`, `label`, `section` and `fieldset` elements, but interactive form controls must come from the shared UI facade.
-- Raw `button`, `input`, `select` and `textarea` elements in application pages are rejected by the architecture gate.
-- Dashboard metrics use the reusable `MetricCard` pattern; action rows use `ActionBar`; filters use the canonical grid pattern.
-- Print-only document styling remains isolated to the printable document flow and is not an application-page styling escape hatch.
-
-A future business module should therefore add business content only. It inherits the shell, page header, typography, density, responsive behavior and control styling without creating another visual foundation.
+`apps/web/src/ui-presentation-policy.spec.ts` executes the actual checker against
+isolated repository fixtures: different layouts and controls are allowed, global
+leakage is rejected, and domain/UI boundaries remain enforced. It also bundles
+identically named CSS classes from two sections through esbuild to prove isolation.
+The ordinary web test command discovers these tests; no optional gate is required.

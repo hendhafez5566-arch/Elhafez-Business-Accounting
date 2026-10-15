@@ -1,0 +1,12 @@
+{
+  "id": "flexible-section-ui",
+  "summary": "Owner-authorized presentation policy revision for every section: permit isolated CSS Modules, custom layouts and semantic controls without relaxing financial, ownership or tenant boundaries.",
+  "type": "architecture",
+  "allowedModules": [],
+  "allowedPaths": ["AGENTS.md", "AI_CHANGE_PROTOCOL.md", "docs/UI-ARCHITECTURE.md", "tools/architecture/check-architecture.ts", "apps/web/src/ui-presentation-policy.spec.ts", "apps/web/src/css-modules.d.ts"],
+  "protectedPaths": ["AGENTS.md", "AI_CHANGE_PROTOCOL.md", "docs/UI-ARCHITECTURE.md", "tools/architecture/check-architecture.ts"],
+  "protectedReason": "The owner explicitly requested removing premature visual-layout restrictions across ALL sections while preserving accounting, security, module ownership, shared-shell change scope and migration integrity. Replace blanket presentation bans with scoped-stylesheet checks and executable isolation tests.",
+  "allowBreakingPublicApi": false,
+  "publicApiBreakingReason": "",
+  "testEvidence": ["apps/web/src/ui-presentation-policy.spec.ts"]
+}

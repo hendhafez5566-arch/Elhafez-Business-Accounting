@@ -260,20 +260,8 @@ for (const required of requiredUiFoundation) {
   if (!existsSync(join(root, required))) errors.push(required + ': canonical UI foundation file is required.');
 }
 
-for (const file of filesIn(webSourceRoot)) {
-  const from = relative(root, file).split(sep).join('/');
-  const content = readFileSync(file, 'utf8');
-  if (/style\s*=\s*\{\{/.test(content)) {
-    errors.push(from + ': inline style objects are forbidden; use the central UI foundation and design tokens.');
-  }
-
-  const isUiFoundation = from === 'apps/web/src/ui.tsx' || from.startsWith('apps/web/src/ui/');
-  const isTestFile = /\.spec\.tsx?$/.test(from);
-  if (!isUiFoundation && !isTestFile && from.endsWith('.tsx') && /<(?:button|input|select|textarea)\b/.test(content)) {
-    errors.push(from + ': raw form controls are forbidden in application pages; consume shared UI primitives from apps/web/src/ui.tsx.');
-  }
-}
-
+// Section layout, semantic controls and element-local dynamic styles are presentation
+// choices. Business ownership checks above remain mandatory for every redesign.
 function cssFilesIn(directory: string): string[] {
   if (!existsSync(directory)) return [];
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -285,8 +273,69 @@ function cssFilesIn(directory: string): string[] {
 
 for (const file of cssFilesIn(webSourceRoot)) {
   const from = relative(root, file).split(sep).join('/');
-  if (!canonicalWebCss.has(from)) {
-    errors.push(from + ': page/module CSS is forbidden; reusable styling belongs in the canonical UI foundation.');
+  if (canonicalWebCss.has(from)) continue;
+  if (!from.endsWith('.module.css')) {
+    errors.push(from + ': section styles must use an isolated .module.css file; global styles belong in the canonical UI foundation.');
+    continue;
+  }
+  const css = readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  if (/:global\b|@import\b|\bcomposes\s*:[^;{}]*\bglobal\b/i.test(css)) {
+    errors.push(from + ': CSS Modules must not escape local scope or import unscoped styles.');
+  }
+  // Class scoping alone does not isolate bare element/universal selectors.
+  // Require a local class in each selector; nested selectors must be rooted via &.
+  const blocks: Array<'scoped' | 'container' | 'keyframes' | 'declarations'> = [];
+  let header = '';
+  let quote = '';
+  let escaped = false;
+  let parentheses = 0;
+  for (const character of css) {
+    if (quote) {
+      if (escaped) escaped = false;
+      else if (character === '\\') escaped = true;
+      else if (character === quote) quote = '';
+      header += character;
+      continue;
+    }
+    if (character === '"' || character === "'") { quote = character; header += character; continue; }
+    if (character === '(') parentheses++;
+    if (character === ')') parentheses--;
+    if (character === '{' && parentheses === 0) {
+      const selector = header.trim();
+      const parent = blocks[blocks.length - 1];
+      if (/^@(?:-webkit-)?keyframes\b/i.test(selector)) blocks.push('keyframes');
+      else if (selector.startsWith('@')) {
+        if (!/^@(media|supports|container|layer|starting-style)\b/i.test(selector)) {
+          errors.push(from + ': section CSS supports scoped rules, keyframes and conditional containers only.');
+        }
+        blocks.push('container');
+      } else if (parent === 'keyframes') blocks.push('declarations');
+      else {
+        const hasScopedParent = blocks.includes('scoped');
+        const selectors: string[] = [];
+        let part = '';
+        let depth = 0;
+        for (const token of selector) {
+          if (token === '(' || token === '[') depth++;
+          if (token === ')' || token === ']') depth--;
+          if (token === ',' && depth === 0) { selectors.push(part); part = ''; }
+          else part += token;
+        }
+        selectors.push(part);
+        const safe = selectors.every(part => {
+          const value = part.trim();
+          return /^\.[_a-zA-Z][\w-]*(?=[\s.#:[>+~]|$)/.test(value) ||
+            (hasScopedParent && value.startsWith('&'));
+        });
+        if (!safe) errors.push(from + ': each section selector must start with a local class (or a nested &); unscoped selectors are forbidden.');
+        blocks.push('scoped');
+      }
+      header = '';
+    } else if (character === '}' && parentheses === 0) { blocks.pop(); header = ''; }
+    else if (character === ';' && parentheses === 0) {
+      if (/^\s*@import\b/i.test(header)) errors.push(from + ': section CSS cannot import global styles.');
+      header = '';
+    } else header += character;
   }
 }
 
