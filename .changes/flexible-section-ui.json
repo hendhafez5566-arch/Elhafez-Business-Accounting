@@ -1,6 +1,6 @@
 {
   "id": "flexible-section-ui",
-  "summary": "Allow independent section UI, correct web regression coverage, map 296 requirements, prove isolated offline feasibility, add encrypted local follow-up drafts, and add optional actor-scoped durable scheduling request identities in crm-followups. Production offline synchronization remains disabled pending native PostgreSQL acceptance. Repair native bootstrap file-key incompatibility using a new data-preserving prerequisite migration. Wire manual follow-up scheduling through an encrypted durable client request with CAS isolation, immutable retry identity and explicit acceptance before starting another request. Add real production AppModule HTTP/session/subscription/RBAC/PostgreSQL acceptance; map schedule contract validation to HTTP 400 without weakening guards. Extend local follow-up submissions to an encrypted multi-item queue with explicit selection, non-destructive new intents and atomic legacy migration. Precache the public production shell for offline cold starts without caching API, session or Owner responses.",
+  "summary": "Allow independent section UI, correct web regression coverage, map 296 requirements, prove isolated offline feasibility, add encrypted local follow-up drafts, and add optional actor-scoped durable scheduling request identities in crm-followups. Production offline synchronization remains disabled pending native PostgreSQL acceptance. Repair native bootstrap file-key incompatibility using a new data-preserving prerequisite migration. Wire manual follow-up scheduling through an encrypted durable client request with CAS isolation, immutable retry identity and explicit acceptance before starting another request. Add real production AppModule HTTP/session/subscription/RBAC/PostgreSQL acceptance; map schedule contract validation to HTTP 400 without weakening guards. Extend local follow-up submissions to an encrypted multi-item queue with explicit selection, non-destructive new intents and atomic legacy migration. Precache the public production shell for offline cold starts without caching API, session or Owner responses. Add explicit encrypted minimal follow-up selection snapshots for offline preparation, with capture timestamps and scope isolation; no offline authorization.",
   "type": "architecture",
   "allowedModules": [
     "crm-followups",
@@ -43,7 +43,9 @@
     "apps/web/src/index.tsx",
     "apps/web/src/offline-shell-status.tsx",
     "deploy/railway/static-proxy.mjs",
-    "tools/experiments/offline-shell-browser/**"
+    "tools/experiments/offline-shell-browser/**",
+    "apps/web/src/followup-reference-controls.tsx",
+    "tools/experiments/followup-references-browser/**"
   ],
   "protectedPaths": [
     "AGENTS.md",
@@ -75,6 +77,7 @@
     "tools/experiments/followup-submission-browser/browser.spec.mjs",
     "modules/crm-followups/src/infrastructure/schedule-http.spec.ts",
     "tools/experiments/followup-queue-browser/browser.spec.mjs",
-    "tools/experiments/offline-shell-browser/browser.spec.mjs"
+    "tools/experiments/offline-shell-browser/browser.spec.mjs",
+    "tools/experiments/followup-references-browser/browser.spec.mjs"
   ]
 }

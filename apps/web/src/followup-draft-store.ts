@@ -223,3 +223,40 @@ export async function beginAnotherFollowupSubmission(scope:DraftScope,secret:str
  const head=await readHead(scope);
  if(!await changeHead(scope,head?.revision??null,null))throw new Error('تغير اختيار القائمة في تبويب آخر. استرجع القائمة وحاول مرة أخرى.');
 }
+
+/** Minimal presentation references, never an offline authorization grant or customer record. */
+export interface FollowupLeadReference {
+ readonly id:string;readonly number:string;readonly displayName:string;
+ readonly status:'NEW'|'CONTACTED'|'QUALIFIED'|'QUOTED'|'WON'|'LOST';
+}
+export interface FollowupUserReference {readonly id:string;readonly displayName:string;}
+export interface FollowupReferences {
+ readonly capturedAt:string;
+ readonly leads:readonly FollowupLeadReference[];
+ readonly users:readonly FollowupUserReference[];
+}
+const referencesKey=(scope:DraftScope)=>scopeId(scope)+':references-v1';
+function validReferences(value:unknown):value is FollowupReferences {
+ if(!value||typeof value!=='object')return false;
+ const item=value as Partial<FollowupReferences>;
+ const text=(value:unknown)=>typeof value==='string'&&value.length>0&&value.length<=2048;
+ if(typeof item.capturedAt!=='string'||!Number.isFinite(Date.parse(item.capturedAt))||!Array.isArray(item.leads)||!Array.isArray(item.users))return false;
+ if(!item.leads.every(v=>v&&text(v.id)&&text(v.number)&&text(v.displayName)&&['NEW','CONTACTED','QUALIFIED','QUOTED','WON','LOST'].includes(v.status)))return false;
+ if(!item.users.every(v=>v&&text(v.id)&&text(v.displayName)))return false;
+ return new Set(item.leads.map(v=>v.id)).size===item.leads.length&&new Set(item.users.map(v=>v.id)).size===item.users.length;
+}
+export async function loadFollowupReferences(scope:DraftScope,secret:string):Promise<FollowupReferences|null> {
+ const record=await readRecord(referencesKey(scope));if(!record)return null;
+ const value=await decryptRecord(record,secret);
+ if(!validReferences(value))throw new Error('قوائم الاختيار المحفوظة غير صالحة.');
+ return value;
+}
+export async function saveFollowupReferences(scope:DraftScope,secret:string,value:FollowupReferences):Promise<void> {
+ if(!validReferences(value))throw new Error('قوائم الاختيار غير صالحة.');
+ // Check the existing key before replacing this independent snapshot.
+ await loadFollowupReferences(scope,secret);
+ // Explicit mapping prevents accidentally persisting full lead/contact/API objects.
+ const snapshot:FollowupReferences={capturedAt:value.capturedAt,leads:value.leads.map(v=>({id:v.id,number:v.number,displayName:v.displayName,status:v.status})),users:value.users.map(v=>({id:v.id,displayName:v.displayName}))};
+ await writeRecord(referencesKey(scope),await encryptRecord(referencesKey(scope),secret,snapshot));
+}
+export async function deleteFollowupReferences(scope:DraftScope):Promise<void>{await writeRecord(referencesKey(scope));}
