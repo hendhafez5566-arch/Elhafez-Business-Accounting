@@ -37,7 +37,7 @@ interface Tenant {token:string;userId:string;companyId:string;companyCode:string
 interface Booking {id:string;financialCustomerId:string;financialPartyId:string;customerId:string;travelerIds:string[];status:string;familyReference:string;}
 await test('core workflow actual AppModule and PostgreSQL',async t=>{
  const app=await NestFactory.create(AppModule,{logger:['error','warn']});app.useGlobalPipes(new GlobalRequestSafetyPipe());app.useGlobalFilters(new PlatformErrorFilter());await app.listen(0,'127.0.0.1');const origin=await app.getUrl();
- const db=new PrismaClient();let ownerToken='',mfaSecret='',tenant:Tenant,other:Tenant,booking:Booking,programId='',customerId='',responsibleId='',financialTreasuryId='';const travelerIds:string[]=[];
+ const db=new PrismaClient();let ownerToken='',mfaSecret='',tenant:Tenant,other:Tenant,booking:Booking,programId='',customerId='',responsibleId='',financialTreasuryId='',attachmentId='';const travelerIds:string[]=[];
  const ownerHeaders=()=>({authorization:'Bearer '+ownerToken,'x-owner-totp':otp(mfaSecret)});
  const headers=(v:Tenant)=>({authorization:'Bearer '+v.token,'x-company-id':v.companyId,'x-branch-id':v.defaultBranchId});
  async function request<T>(path:string,body?:unknown,auth:Record<string,string>={},status=201):Promise<T>{const r=await fetch(origin+path,{method:body===undefined?'GET':'POST',headers:{'content-type':'application/json',...auth},...(body===undefined?{}:{body:JSON.stringify(body)}),signal:AbortSignal.timeout(20000)});const result:unknown=await r.json();assert.equal(r.status,status,`${path}: ${JSON.stringify(result).slice(0,250)}`);return result as T;}
@@ -91,6 +91,7 @@ await test('core workflow actual AppModule and PostgreSQL',async t=>{
    const read=await request<{contentBase64:string}>('/crm/customers/'+customerId+'/files/'+link.fileId,undefined,headers(tenant),200);assert.deepEqual(Buffer.from(read.contentBase64,'base64'),content);
    const deviceId=randomUUID(),grant=await request<{id:string}>('/offline/delegations',{deviceId,operations:['BOOKING_CREATE'],durationMinutes:10},headers(tenant));
    const pending=await request<{state:string}>('/offline/commands',{id:randomUUID(),deviceId,grantId:grant.id,operation:'BOOKING_CREATE',payload:{code:'RECOVERY-PENDING',programId,customerId,travelerIds:[travelerIds[0]]},dependencies:[randomUUID()],capturedAt:new Date().toISOString()},headers(tenant));assert.equal(pending.state,'PENDING');
+   attachmentId=link.fileId;
    const file=await db.pcFile.findUniqueOrThrow({where:{id:link.fileId}});writeFileSync('/tmp/core-recovery-manifest.json',JSON.stringify({filesRoot,files:[{storageKey:file.storageKey,checksum:file.checksum}]}),{mode:0o600});
   });
   await t.test('enrolled office fences cloud or missing server identity without automatic promotion',async()=>{
@@ -111,5 +112,8 @@ await test('core workflow actual AppModule and PostgreSQL',async t=>{
     assert.equal((await fetch('http://127.0.0.1:54880/hajj-umrah/bookings')).status,200);
    }finally{child.kill('SIGTERM');await new Promise<void>(resolve=>child.once('exit',()=>resolve()));}
   });
+  if(process.env.CORE_LAN_IMAGE){await t.test('cold network-isolated LAN uses local login, subscription, files and the same owners',async()=>{
+   await new Promise<void>((resolve,reject)=>{const child=spawn(process.execPath,['tools/experiments/core-workflow/lan-isolation.mjs'],{env:process.env,stdio:['pipe','pipe','pipe']});let output='';child.stdout.on('data',x=>output+=String(x));child.stderr.on('data',x=>output+=String(x));child.on('error',reject);child.on('exit',code=>code===0?resolve():reject(Error(output.slice(-2000))));child.stdin.end(JSON.stringify({filesRoot,customerId,fileId:attachmentId,companyCode:tenant.companyCode,password:'Changed-'+password,userId:tenant.userId}));});
+  });}
  }finally{await db.$disconnect();await app.close();}
 });

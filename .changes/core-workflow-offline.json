@@ -44,7 +44,7 @@
     "modules/hajj-umrah-bookings/src/hajj-umrah-bookings.spec.ts",
     "modules/tourism-finance-orchestration/src/ac12.spec.ts",
     "modules/expense-commission-recognition/src/domain/commission-distribution.spec.ts",
-    "apps/api/src/core-workflow-http.integration.ts",
-    "modules/offline-coordination/src/offline-coordination.spec.ts"
+    "modules/offline-coordination/src/offline-coordination.spec.ts",
+    "apps/api/src/write-authority.guard.spec.ts"
   ]
 }

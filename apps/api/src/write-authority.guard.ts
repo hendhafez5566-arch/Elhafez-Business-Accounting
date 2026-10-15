@@ -2,7 +2,7 @@ import { ForbiddenException, type CanActivate, type ExecutionContext } from '@ne
 import { ContractValidationError } from '@elhafez/contracts';
 import type { WriteAuthorityApplicationService } from '@elhafez/offline-coordination';
 export class WriteAuthorityGuard implements CanActivate {
- constructor(private readonly authority:WriteAuthorityApplicationService,private readonly serverId:()=>string|undefined=()=>process.env.ELHAFEZ_WRITE_AUTHORITY_ID){}
+ constructor(private readonly authority:Pick<WriteAuthorityApplicationService,'assert'>,private readonly serverId:()=>string|undefined=()=>process.env.ELHAFEZ_WRITE_AUTHORITY_ID){}
  async canActivate(context:ExecutionContext){const request=context.switchToHttp().getRequest<{method:string;originalUrl?:string;url?:string;headers:Record<string,string|string[]|undefined>}>();
   if(['GET','HEAD','OPTIONS'].includes(request.method))return true;
   const path=(request.originalUrl??request.url??'').split('?')[0];
