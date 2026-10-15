@@ -1,3 +1,4 @@
+import { FollowupQueueBackupControls } from './followup-queue-backup-controls.js';
 import { useState } from 'react';
 import { Button, DataGrid } from './ui.js';
 import type { useFollowupSubmission } from './followup-submission.js';
@@ -19,6 +20,7 @@ export function FollowupSubmissionQueue({submission,leadLabel,responsibleLabel}:
   {visible.length?<DataGrid columns={['العميل المحتمل','المسؤول','الموعد','الإجراء التالي','حالة الإرسال','إجراءات']}>{visible.map(item=><tr key={item.requestId} aria-current={submission.selectedId===item.requestId?'true':undefined}>
    <td>{leadLabel(item.payload.leadId)}</td><td>{responsibleLabel(item.payload.responsibleUserId)}</td><td>{new Date(item.payload.scheduledAt).toLocaleString('ar-EG')}</td><td>{item.payload.nextAction||'—'}</td><td>{item.accepted?`مؤكد — ${submission.statusLabel(item.accepted.status)}`:'بانتظار تأكيد النتيجة'}</td><td><Button type="button" disabled={submission.busy} onClick={()=>void submission.restore(item.requestId)}>اختيار الطلب</Button>{!item.accepted?<Button type="button" disabled={submission.busy} onClick={()=>void submission.retry(item.requestId)}>إعادة إرسال هذا الطلب</Button>:null}</td>
   </tr>)}</DataGrid>:<p>لا توجد طلبات معروضة. أدخل عبارة الحماية واسترجع القائمة، أو احفظ طلبًا جديدًا.</p>}
+  <FollowupQueueBackupControls secret={submission.secret} disabled={submission.busy} onRestored={submission.showQueue}/>
   {submission.notice?<p role="status">{submission.notice}</p>:null}
  </aside>;
 }

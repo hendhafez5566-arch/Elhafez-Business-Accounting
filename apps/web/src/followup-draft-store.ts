@@ -260,3 +260,65 @@ export async function saveFollowupReferences(scope:DraftScope,secret:string,valu
  await writeRecord(referencesKey(scope),await encryptRecord(referencesKey(scope),secret,snapshot));
 }
 export async function deleteFollowupReferences(scope:DraftScope):Promise<void>{await writeRecord(referencesKey(scope));}
+
+export const FOLLOWUP_BACKUP_MAX_BYTES=5*1024*1024;
+const backupKey=(scope:DraftScope)=>scopeId(scope)+':queue-backup-v1';
+const backupFormat='elhafez-followup-queue';
+const backupLimit=500;
+function base64(bytes:Uint8Array<ArrayBuffer>):string{return btoa(Array.from(bytes,byte=>String.fromCharCode(byte)).join(''));}
+function decodeBase64(value:unknown,length?:number):Uint8Array<ArrayBuffer>{
+ if(typeof value!=='string'||value.length>FOLLOWUP_BACKUP_MAX_BYTES||value.length%4!==0||!/^[A-Za-z0-9+/]*={0,2}$/.test(value))throw new Error('ملف النسخة الاحتياطية غير صالح.');
+ const bytes=Uint8Array.from(atob(value),char=>char.charCodeAt(0));
+ if(length!==undefined?bytes.length!==length:bytes.length<16)throw new Error('ملف النسخة الاحتياطية غير صالح.');
+ return bytes;
+}
+/** Export scheduling intents only, not a device/company backup or an authorization token. */
+export async function createFollowupQueueBackup(scope:DraftScope,secret:string):Promise<string>{
+ await migrateLegacySubmission(scope,secret);
+ const records=await queueRecords(scope);
+ if(records.length>backupLimit)throw new Error('هذه النسخة تدعم حتى ٥٠٠ طلب؛ لم تُحذف أي بيانات.');
+ const submissions=await Promise.all(records.map(record=>decodeSubmission(record,secret)));
+ const sealed=await encryptRecord(backupKey(scope),secret,{createdAt:new Date().toISOString(),submissions});
+ const text=JSON.stringify({format:backupFormat,version:1,scope:{companyId:scope.companyId,branchId:scope.branchId,userId:scope.userId},salt:base64(sealed.salt),iv:base64(sealed.iv),ciphertext:base64(new Uint8Array(sealed.ciphertext))});
+ if(new TextEncoder().encode(text).length>FOLLOWUP_BACKUP_MAX_BYTES)throw new Error('حجم النسخة أكبر من الحد المدعوم؛ لم تُحذف أي بيانات.');
+ return text;
+}
+function sameStoredRecord(a:StoredDraft|undefined,b:StoredDraft|undefined):boolean{
+ if(!a||!b)return a===b;
+ const same=(left:Uint8Array<ArrayBuffer>,right:Uint8Array<ArrayBuffer>)=>left.length===right.length&&left.every((byte,i)=>byte===right[i]);
+ return a.id===b.id&&a.operationId===b.operationId&&same(a.salt,b.salt)&&same(a.iv,b.iv)&&same(new Uint8Array(a.ciphertext),new Uint8Array(b.ciphertext));
+}
+/** Add missing identities atomically; existing requests and selection are never overwritten. */
+export async function restoreFollowupQueueBackup(scope:DraftScope,secret:string,text:string):Promise<{added:number;retained:number}>{
+ if(new TextEncoder().encode(text).length>FOLLOWUP_BACKUP_MAX_BYTES)throw new Error('ملف النسخة أكبر من ٥ ميجابايت.');
+ let raw:unknown;try{raw=JSON.parse(text) as unknown;}catch{throw new Error('ملف النسخة الاحتياطية غير صالح.');}
+ if(!raw||typeof raw!=='object')throw new Error('ملف النسخة الاحتياطية غير صالح.');
+ const file=raw as {format?:unknown;version?:unknown;scope?:Partial<DraftScope>;salt?:unknown;iv?:unknown;ciphertext?:unknown};
+ if(file.format!==backupFormat||file.version!==1)throw new Error('نوع أو إصدار النسخة الاحتياطية غير مدعوم.');
+ if(!file.scope||file.scope.companyId!==scope.companyId||file.scope.branchId!==scope.branchId||file.scope.userId!==scope.userId)throw new Error('هذه النسخة تخص مستخدمًا أو شركة أو فرعًا آخر.');
+ const value=await decryptRecord({id:backupKey(scope),salt:decodeBase64(file.salt,16),iv:decodeBase64(file.iv,12),ciphertext:decodeBase64(file.ciphertext).buffer},secret);
+ if(!value||typeof value!=='object')throw new Error('بيانات النسخة الاحتياطية غير صالحة.');
+ const archive=value as {createdAt?:unknown;submissions?:unknown};
+ if(typeof archive.createdAt!=='string'||!Number.isFinite(Date.parse(archive.createdAt))||!Array.isArray(archive.submissions)||archive.submissions.length>backupLimit||!archive.submissions.every(validSubmission))throw new Error('بيانات النسخة الاحتياطية غير صالحة.');
+ const values:FollowupSubmission[]=archive.submissions;
+ if(new Set(values.map(v=>v.requestId)).size!==values.length)throw new Error('النسخة تحتوي هويات طلبات مكررة.');
+ await migrateLegacySubmission(scope,secret);
+ const existing=await queueRecords(scope),old=new Map(existing.map(row=>[row.operationId,row]));
+ const decoded=await Promise.all(existing.map(row=>decodeSubmission(row,secret))),prior=new Map(decoded.map(v=>[v.requestId,v]));
+ for(const v of values){const current=prior.get(v.requestId);if(current&&JSON.stringify(current.payload)!==JSON.stringify(v.payload))throw new Error('تعارض بيانات لنفس هوية الطلب؛ لم نستبدل أي طلب.');}
+ const missing=values.filter(v=>!prior.has(v.requestId));
+ const next=new Map(await Promise.all(missing.map(async v=>[v.requestId,await encryptRecord(submissionKey(scope,v.requestId),secret,v,v.requestId)] as const)));
+ const db=await openDatabase();
+ try{await new Promise<void>((resolve,reject)=>{
+  const tx=db.transaction(storeName,'readwrite'),store=tx.objectStore(storeName);
+  for(const value of values){
+   const q=store.get(submissionKey(scope,value.requestId));q.onsuccess=()=>{
+    if(!sameStoredRecord(q.result as StoredDraft|undefined,old.get(value.requestId))){tx.abort();return;}
+    const record=next.get(value.requestId);if(record)store.add(record);
+   };
+  }
+  tx.oncomplete=()=>resolve();tx.onabort=()=>reject(new Error('لم يتم الاسترجاع؛ قد تغيرت القائمة في تبويب آخر. الطلبات الأصلية محفوظة، حاول مجددًا.'));
+  tx.onerror=()=>reject(new Error('لم يتم الاسترجاع؛ الطلبات الأصلية محفوظة.'));
+ });}finally{db.close();}
+ return {added:missing.length,retained:values.length-missing.length};
+}
