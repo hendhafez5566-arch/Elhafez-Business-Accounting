@@ -10,15 +10,17 @@ export interface DraftScope { readonly companyId:string; readonly branchId:strin
 interface StoredDraft { readonly id:string; readonly salt:Uint8Array<ArrayBuffer>; readonly iv:Uint8Array<ArrayBuffer>; readonly ciphertext:ArrayBuffer; readonly operationId?:string; }
 const databaseName='elhafez.followup-drafts.v1';
 const storeName='drafts';
+const headStore='submissionHeads';
+interface SubmissionHead {readonly id:string;readonly requestId:string|null;readonly revision:string;}
 function scopeId(scope:DraftScope):string {
  if(!scope.companyId||!scope.branchId||!scope.userId)throw new Error('يلزم تسجيل الدخول واختيار الفرع.');
  return JSON.stringify([scope.companyId,scope.branchId,scope.userId]);
 }
 function openDatabase():Promise<IDBDatabase> {
  return new Promise((resolve,reject)=>{
-  const request=indexedDB.open(databaseName,1);
-  request.onupgradeneeded=()=>request.result.createObjectStore(storeName,{keyPath:'id'});
-  request.onsuccess=()=>resolve(request.result);
+  const request=indexedDB.open(databaseName,2);
+  request.onupgradeneeded=()=>{for(const name of [storeName,headStore])if(!request.result.objectStoreNames.contains(name))request.result.createObjectStore(name,{keyPath:'id'});};
+  request.onsuccess=()=>{request.result.onversionchange=()=>request.result.close();resolve(request.result);};
   request.onerror=()=>reject(new Error('تعذر فتح التخزين المحلي.'));
   request.onblocked=()=>reject(new Error('أغلق تبويبات النظام القديمة وحاول مرة أخرى.'));
  });
@@ -84,10 +86,12 @@ export interface FollowupPayload {
  readonly scheduledAt:string;readonly nextAction:string;
 }
 export interface FollowupSubmission {
- readonly requestId:string;readonly payload:FollowupPayload;
+ readonly requestId:string;readonly payload:FollowupPayload;readonly savedAt?:string;
  readonly accepted:null|{readonly id:string;readonly status:string};
 }
-const submissionKey=(scope:DraftScope)=>scopeId(scope)+':schedule-request-v1';
+const legacySubmissionKey=(scope:DraftScope)=>scopeId(scope)+':schedule-request-v1';
+const queuePrefix=(scope:DraftScope)=>scopeId(scope)+':schedule-queue-v2:';
+function submissionKey(scope:DraftScope,requestId:string){if(!/^[A-Za-z0-9][A-Za-z0-9_-]{15,127}$/.test(requestId))throw new Error('هوية طلب الإرسال غير صالحة.');return queuePrefix(scope)+requestId;}
 export function followupPayload(draft:FollowupDraft):FollowupPayload {
  if(!validDraft(draft)||!draft.leadId.trim()||!draft.responsibleUserId.trim()||!draft.scheduledAt||!Number.isFinite(Date.parse(draft.scheduledAt)))throw new Error('أكمل العميل والمسؤول وموعد المتابعة قبل الإرسال.');
  return {leadId:draft.leadId.trim(),responsibleUserId:draft.responsibleUserId.trim(),interactionType:draft.interactionType,scheduledAt:new Date(draft.scheduledAt).toISOString(),nextAction:draft.nextAction.trim()};
@@ -95,7 +99,7 @@ export function followupPayload(draft:FollowupDraft):FollowupPayload {
 function validSubmission(value:unknown):value is FollowupSubmission {
  if(!value||typeof value!=='object')return false;
  const v=value as Partial<FollowupSubmission>;
- return typeof v.requestId==='string'&&/^[A-Za-z0-9][A-Za-z0-9_-]{15,127}$/.test(v.requestId)&&validDraft(v.payload)&&Boolean(v.payload.leadId)&&Boolean(v.payload.responsibleUserId)&&Number.isFinite(Date.parse(v.payload.scheduledAt))&&(v.accepted===null||Boolean(v.accepted&&typeof v.accepted.id==='string'&&v.accepted.id&&['SCHEDULED','COMPLETED','CANCELLED'].includes(v.accepted.status)));
+ return (v.savedAt===undefined||typeof v.savedAt==='string'&&Number.isFinite(Date.parse(v.savedAt)))&&typeof v.requestId==='string'&&/^[A-Za-z0-9][A-Za-z0-9_-]{15,127}$/.test(v.requestId)&&validDraft(v.payload)&&Boolean(v.payload.leadId)&&Boolean(v.payload.responsibleUserId)&&Number.isFinite(Date.parse(v.payload.scheduledAt))&&(v.accepted===null||Boolean(v.accepted&&typeof v.accepted.id==='string'&&v.accepted.id&&['SCHEDULED','COMPLETED','CANCELLED'].includes(v.accepted.status)));
 }
 /** One atomic slot across tabs. No await between transaction read and write. */
 async function compareRecord(id:string,expected:string|null,next?:StoredDraft):Promise<boolean> {
@@ -114,33 +118,108 @@ async function compareRecord(id:string,expected:string|null,next?:StoredDraft):P
   tx.onerror=()=>reject(new Error('لم يُحفظ طلب الإرسال على الجهاز؛ لم نؤكد الجدولة.'));
  });}finally{db.close();}
 }
-export async function loadFollowupSubmission(scope:DraftScope,secret:string):Promise<FollowupSubmission|null> {
- const record=await readRecord(submissionKey(scope));if(!record)return null;
+async function readHead(scope:DraftScope):Promise<SubmissionHead|undefined>{
+ const db=await openDatabase();
+ try{return await new Promise((resolve,reject)=>{
+  const tx=db.transaction(headStore,'readonly'),q=tx.objectStore(headStore).get(scopeId(scope));let value:SubmissionHead|undefined;
+  q.onsuccess=()=>{value=q.result as SubmissionHead|undefined;};tx.oncomplete=()=>resolve(value);
+  tx.onabort=()=>reject(new Error('تعذر قراءة اختيار القائمة.'));tx.onerror=()=>reject(new Error('تعذر قراءة اختيار القائمة.'));
+ });}finally{db.close();}
+}
+async function queueRecords(scope:DraftScope,firstOnly=false):Promise<StoredDraft[]>{
+ const db=await openDatabase(),prefix=queuePrefix(scope);
+ try{return await new Promise((resolve,reject)=>{
+  const tx=db.transaction(storeName,'readonly'),q=tx.objectStore(storeName).getAll(IDBKeyRange.bound(prefix,prefix+'\uffff'),firstOnly?1:undefined);let values:StoredDraft[]=[];
+  q.onsuccess=()=>{values=q.result as StoredDraft[];};tx.oncomplete=()=>resolve(values);
+  tx.onabort=()=>reject(new Error('تعذر قراءة قائمة الإرسال.'));tx.onerror=()=>reject(new Error('تعذر قراءة قائمة الإرسال.'));
+ });}finally{db.close();}
+}
+async function decodeSubmission(record:StoredDraft,secret:string):Promise<FollowupSubmission>{
  const value=await decryptRecord(record,secret);
  if(!validSubmission(value)||record.operationId!==value.requestId)throw new Error('طلب الإرسال المحفوظ غير صالح.');
  return value;
 }
-export async function prepareFollowupSubmission(scope:DraftScope,secret:string,payload:FollowupPayload):Promise<FollowupSubmission> {
- const normalized=followupPayload(payload),key=submissionKey(scope);
- for(let attempt=0;attempt<3;attempt++){
-  const current=await loadFollowupSubmission(scope,secret);
-  if(current){
-   if(current.accepted)throw new Error('الطلب السابق مؤكّد بالفعل. اضغط بدء متابعة جديدة أولًا.');
-   if(JSON.stringify(current.payload)!==JSON.stringify(normalized))throw new Error('يوجد طلب إرسال محفوظ ببيانات مختلفة. استرجعه وراجع نتيجته قبل بدء متابعة أخرى.');
-   return current;
-  }
-  const value:FollowupSubmission={requestId:crypto.randomUUID(),payload:normalized,accepted:null};
-  if(await compareRecord(key,null,await encryptRecord(key,secret,value,value.requestId)))return value;
- }
- throw new Error('تغير طلب الإرسال في تبويب آخر. استرجع الطلب المحفوظ وحاول مرة أخرى.');
+/** Atomically migrate the old encrypted slot without dropping its identity or payload. */
+async function migrateLegacySubmission(scope:DraftScope,secret:string):Promise<void>{
+ const oldKey=legacySubmissionKey(scope),old=await readRecord(oldKey);if(!old)return;
+ const original=await decodeSubmission(old,secret),value={...original,savedAt:original.savedAt??new Date().toISOString()};
+ const record=await encryptRecord(submissionKey(scope,value.requestId),secret,value,value.requestId),db=await openDatabase();
+ try{await new Promise<void>((resolve,reject)=>{
+  const tx=db.transaction([storeName,headStore],'readwrite'),store=tx.objectStore(storeName),heads=tx.objectStore(headStore),q=store.get(oldKey);
+  q.onsuccess=()=>{
+   const current=q.result as StoredDraft|undefined;if(!current)return;
+   if(current.operationId!==value.requestId){tx.abort();return;}
+   const target=store.get(record.id);target.onsuccess=()=>{
+    if(target.result){tx.abort();return;}
+    store.put(record);store.delete(oldKey);
+    const head=heads.get(scopeId(scope));head.onsuccess=()=>{if(!head.result)heads.put({id:scopeId(scope),requestId:value.requestId,revision:crypto.randomUUID()});};
+   };
+  };
+  tx.oncomplete=()=>resolve();tx.onabort=()=>reject(new Error('لم يتم ترحيل الطلب القديم؛ احتفظنا بالبيانات الأصلية.'));
+  tx.onerror=()=>reject(new Error('لم يتم ترحيل الطلب القديم؛ احتفظنا بالبيانات الأصلية.'));
+ });}finally{db.close();}
 }
-export async function acceptFollowupSubmission(scope:DraftScope,secret:string,value:FollowupSubmission,result:{id:string;status:string}):Promise<void> {
- const next:FollowupSubmission={...value,accepted:result},key=submissionKey(scope);
+async function validateQueueSecret(scope:DraftScope,secret:string):Promise<void>{
+ const first=(await queueRecords(scope,true))[0];if(first)await decodeSubmission(first,secret);
+ // Derivation still validates the minimum length on the first empty queue write.
+}
+async function changeHead(scope:DraftScope,expected:string|null,nextRequestId:string|null,record?:StoredDraft):Promise<boolean>{
+ const db=await openDatabase();
+ try{return await new Promise((resolve,reject)=>{
+  const tx=db.transaction([storeName,headStore],'readwrite'),heads=tx.objectStore(headStore),q=heads.get(scopeId(scope));let changed=false;
+  q.onsuccess=()=>{
+   const current=q.result as SubmissionHead|undefined;if((current?.revision??null)!==expected)return;
+   if(record)tx.objectStore(storeName).add(record);
+   heads.put({id:scopeId(scope),requestId:nextRequestId,revision:crypto.randomUUID()});changed=true;
+  };
+  tx.oncomplete=()=>resolve(changed);tx.onabort=()=>reject(new Error('لم يُحفظ طلب الإرسال على الجهاز؛ الطلبات السابقة محفوظة.'));
+  tx.onerror=()=>reject(new Error('لم يُحفظ طلب الإرسال على الجهاز؛ الطلبات السابقة محفوظة.'));
+ });}finally{db.close();}
+}
+export async function listFollowupSubmissions(scope:DraftScope,secret:string):Promise<FollowupSubmission[]>{
+ await migrateLegacySubmission(scope,secret);
+ const rows=await queueRecords(scope),values=await Promise.all(rows.map(record=>decodeSubmission(record,secret)));
+ return values.sort((a,b)=>(a.savedAt??'').localeCompare(b.savedAt??'')||a.requestId.localeCompare(b.requestId));
+}
+export async function loadFollowupSubmission(scope:DraftScope,secret:string,requestId?:string):Promise<FollowupSubmission|null>{
+ await migrateLegacySubmission(scope,secret);
+ const id=requestId??(await readHead(scope))?.requestId;if(!id)return null;
+ const record=await readRecord(submissionKey(scope,id));if(!record)throw new Error('الطلب المختار غير موجود. استرجع القائمة وراجع الاختيار.');
+ return decodeSubmission(record,secret);
+}
+export async function prepareFollowupSubmission(scope:DraftScope,secret:string,payload:FollowupPayload,selectedId?:string):Promise<FollowupSubmission>{
+ const normalized=followupPayload(payload);await migrateLegacySubmission(scope,secret);
+ const head=await readHead(scope),id=selectedId??head?.requestId;
+ const check=(current:FollowupSubmission)=>{
+  if(current.accepted)throw new Error('الطلب السابق مؤكّد بالفعل. اضغط بدء متابعة جديدة أولًا.');
+  if(JSON.stringify(current.payload)!==JSON.stringify(normalized))throw new Error('يوجد طلب إرسال محفوظ ببيانات مختلفة. استرجعه أو ابدأ متابعة أخرى مع الاحتفاظ به.');
+  return current;
+ };
+ if(id){const current=await loadFollowupSubmission(scope,secret,id);if(!current)throw new Error('الطلب المختار غير موجود.');return check(current);}
+ await validateQueueSecret(scope,secret);
+ const value:FollowupSubmission={requestId:crypto.randomUUID(),payload:normalized,accepted:null,savedAt:new Date().toISOString()};
+ const record=await encryptRecord(submissionKey(scope,value.requestId),secret,value,value.requestId);
+ if(await changeHead(scope,head?.revision??null,value.requestId,record))return value;
+ const currentHead=await readHead(scope);
+ if(!currentHead?.requestId)throw new Error('تغير اختيار القائمة في تبويب آخر. استرجع القائمة قبل المحاولة.');
+ const current=await loadFollowupSubmission(scope,secret,currentHead.requestId);if(!current)throw new Error('تغير اختيار القائمة.');return check(current);
+}
+export async function acceptFollowupSubmission(scope:DraftScope,secret:string,value:FollowupSubmission,result:{id:string;status:string}):Promise<void>{
+ const next:FollowupSubmission={...value,accepted:result},key=submissionKey(scope,value.requestId);
  if(!next.accepted||!validSubmission(next))throw new Error('رد الجدولة غير صالح؛ طلب الإرسال ما زال محفوظًا لإعادة المحاولة.');
  if(!await compareRecord(key,value.requestId,await encryptRecord(key,secret,next,value.requestId)))throw new Error('تغير الطلب المحفوظ في تبويب آخر. استرجع حالته قبل المتابعة.');
 }
-export async function clearAcceptedFollowupSubmission(scope:DraftScope,secret:string):Promise<void> {
- const current=await loadFollowupSubmission(scope,secret);if(!current)return;
- if(!current.accepted)throw new Error('لا يمكن حذف طلب لم تتأكد نتيجته. أعد المحاولة بنفس الطلب أولًا.');
- if(!await compareRecord(submissionKey(scope),current.requestId))throw new Error('تغير الطلب في تبويب آخر. استرجع حالته أولًا.');
+/** Release selection only. Accepted rows remain visible in local history. */
+export async function clearAcceptedFollowupSubmission(scope:DraftScope,secret:string,requestId?:string):Promise<void>{
+ const current=await loadFollowupSubmission(scope,secret,requestId);if(!current)return;
+ if(!current.accepted)throw new Error('لا يمكن حذف طلب لم تتأكد نتيجته. أعد المحاولة أو ابدأ متابعة أخرى مع الاحتفاظ به.');
+ const head=await readHead(scope);
+ if(head?.requestId===current.requestId&&!await changeHead(scope,head.revision,null))throw new Error('تغير اختيار القائمة في تبويب آخر.');
+}
+/** Explicit new intent; never modifies or deletes any prior pending/accepted row. */
+export async function beginAnotherFollowupSubmission(scope:DraftScope,secret:string):Promise<void>{
+ if(secret.length<12)throw new Error('استخدم عبارة حماية للمسودة من ١٢ حرفًا على الأقل.');
+ await migrateLegacySubmission(scope,secret);await validateQueueSecret(scope,secret);
+ const head=await readHead(scope);
+ if(!await changeHead(scope,head?.revision??null,null))throw new Error('تغير اختيار القائمة في تبويب آخر. استرجع القائمة وحاول مرة أخرى.');
 }
