@@ -47,7 +47,7 @@ await test('production public shell offline lifecycle; no cached authorization o
   });
   await t.test('browser restart with server unavailable loads deep link and offline notice',async()=>{
    await context.close();online=false;context=await launch();await context.setOffline(true);page=await context.newPage();page.setDefaultTimeout(8000);
-   await page.goto(origin+'/crm/followups');await page.getByRole('heading',{name:'منصة الحافظ لإدارة الأعمال'}).waitFor();
+   const response=await page.goto(origin+'/crm/followups');assert.match(response.headers()['content-security-policy'],/default-src 'self'/);assert.equal(response.headers()['x-frame-options'],'DENY');await page.getByRole('heading',{name:'منصة الحافظ لإدارة الأعمال'}).waitFor();
    await page.getByRole('status').filter({hasText:'الإنترنت غير متصل'}).waitFor();
    assert.equal(await page.evaluate(()=>globalThis.sessionStorage.getItem('elhafez.tenantSession')),null);
   });

@@ -14,7 +14,7 @@ self.addEventListener('install',event=>event.waitUntil((async()=>{
    if(!response.ok||response.redirected||!type.includes(expected))throw new Error('Invalid shell artifact: '+path);
    await cache.put(path,response);
   }
-  await cache.put('/index.html',new Response(HTML,{headers:{'content-type':'text/html; charset=utf-8'}}));
+  await cache.put('/index.html',new Response(HTML,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff','x-frame-options':'DENY','referrer-policy':'same-origin','content-security-policy':"default-src 'self'; connect-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:; base-uri 'self'; frame-ancestors 'none'"}}));
  }catch(error){await caches.delete(CACHE);throw error;}
 })()));
 // Updates wait for existing tabs to close; do not replace their code mid-operation.
