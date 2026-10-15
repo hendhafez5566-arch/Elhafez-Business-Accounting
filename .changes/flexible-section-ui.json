@@ -1,6 +1,6 @@
 {
   "id": "flexible-section-ui",
-  "summary": "Flexible section UI and complete web regressions, requirements mapping, and an isolated browser/SQLite offline feasibility experiment with no production business effects.",
+  "summary": "Flexible section UI and complete web regressions, requirements mapping, and an isolated browser/SQLite offline feasibility experiment with no production business effects. Add encrypted, tenant/user-scoped local follow-up drafts in the canonical web form; no automatic replay or server scheduling changes.",
   "type": "architecture",
   "allowedModules": [],
   "allowedPaths": [
@@ -18,7 +18,11 @@
     "apps/web/src/frontend-coverage.spec.ts",
     "apps/web/src/tourism-contract-inventory-workspace.tsx",
     "docs/planning/**",
-    "tools/experiments/offline-proof/**"
+    "tools/experiments/offline-proof/**",
+    "apps/web/src/followup-draft-store.ts",
+    "apps/web/src/followup-draft-controls.tsx",
+    "tools/experiments/followup-draft-browser/**",
+    "apps/web/src/crm-lead-followup-parity-pages.tsx"
   ],
   "protectedPaths": [
     "AGENTS.md",
@@ -34,6 +38,7 @@
     "apps/web/src/cs03-final-crm-integration.spec.ts",
     "apps/web/src/quotations.spec.ts",
     "apps/web/src/frontend-coverage.spec.ts",
-    "tools/experiments/offline-proof/offline-proof.spec.mjs"
+    "tools/experiments/offline-proof/offline-proof.spec.mjs",
+    "tools/experiments/followup-draft-browser/browser.spec.mjs"
   ]
 }
