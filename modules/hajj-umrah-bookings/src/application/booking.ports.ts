@@ -1,3 +1,4 @@
+import type { BookingCommissionAgreement } from '../domain/booking.js';
 import type { CompanyId, ExecutionContext, SourceReference } from '@elhafez/contracts';
 import type { Program } from '@elhafez/hajj-umrah-programs';
 import type { Traveler } from '@elhafez/traveler-management';
@@ -12,7 +13,7 @@ export interface BookingAccess {
 export interface BookingProgramPort { require(context: ExecutionContext, id: string): Promise<Program>; }
 export interface BookingTravelerPort { requireActive(context: ExecutionContext, id: string): Promise<Traveler>; }
 export interface BookingCustomerPort { requireActive(context: ExecutionContext, id: string): Promise<Customer>; register(context: ExecutionContext, id: string, bookingId: string): Promise<void>; }
-export interface BookingAgentPort { requireActive(context: ExecutionContext, id: string): Promise<Agent>; register(context: ExecutionContext, id: string, bookingId: string): Promise<void>; }
+export interface BookingAgentPort { snapshot?(context:ExecutionContext,id:string):Promise<BookingCommissionAgreement|null>; requireActive(context: ExecutionContext, id: string): Promise<Agent>; register(context: ExecutionContext, id: string, bookingId: string): Promise<void>; }
 
 export interface BookingFinanceInventoryRequest {
   readonly allocationId: string;
@@ -32,7 +33,7 @@ export interface BookingFinancePort {
     costCenterId: string; customerPartyId: string; currency: string; grossAmount: string; discountAmount: string;
     approvalRequestId?: string; postingDate: string; dueDate: string; invoiceNumber: string;
     inventories: readonly BookingFinanceInventoryRequest[];
-    commission?: { agentPartyId: string; amount: string };
+    commission?: { agentPartyId: string; amount: string; agreement?: BookingCommissionAgreement };
   }): Promise<unknown>;
   cancel(input: {
     companyId: CompanyId; branchId: string; commandKey: string; bookingId: string;

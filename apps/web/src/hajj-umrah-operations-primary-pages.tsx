@@ -1,3 +1,5 @@
+import { FamilyStatement } from './family-statement.js';
+import { OfflineBookingControls } from './offline-booking-controls.js';
 import { type FormEvent, type ReactNode, useEffect, useState } from 'react';
 import {
   Badge,Button,Card,DataGrid,Dialog,EmptyState,ErrorState,FormField,Input,LoadingState,Select,Textarea,Toast,
@@ -40,14 +42,14 @@ export function PermissionState({allowed,children}:{readonly allowed:boolean;rea
 export function BookingsPage({api=hajjUmrahOperationsApi}:{readonly api?:HajjUmrahOperationsApi}={}){
   const [rows,setRows]=useState<Booking[]>([]),[cap,setCap]=useState<OperationsCapabilities>(emptyOperationsCapabilities);
   const [loading,setLoading]=useState(true),[error,setError]=useState(''),[notice,setNotice]=useState('');
-  const [form,setForm]=useState({code:'',programId:'',customerId:'',agentId:'',travelerIds:''});
+  const [form,setForm]=useState({code:'',programId:'',customerId:'',financialCustomerId:'',familyReference:'',agentId:'',travelerIds:''});
   const [confirmId,setConfirmId]=useState<string|null>(null),[cancelId,setCancelId]=useState<string|null>(null);
   const [confirm,setConfirm]=useState({category:'OTHER' as ConfirmBookingInput['category'],costCenterId:'',currency:'SAR',grossAmount:'0',discountAmount:'0',postingDate:'',dueDate:'',invoiceNumber:'',commissionAmount:''});
   const [inventories,setInventories]=useState<InventoryRowForm[]>([emptyInventoryRow()]);
   const [cancel,setCancel]=useState({postingDate:'',reason:''});
   async function reload(){setLoading(true);try{const [data,capabilities]=await Promise.all([api.listBookings(),api.capabilities()]);setRows(data);setCap(capabilities);setError('')}catch(value){setError(errorMessage(value))}finally{setLoading(false)}}
   useEffect(()=>{void reload()},[api]);
-  async function create(event:FormEvent){event.preventDefault();try{await api.createBooking({code:form.code,programId:form.programId,customerId:form.customerId,...(form.agentId.trim()?{agentId:form.agentId.trim()}:{}),travelerIds:csv(form.travelerIds)});setForm({code:'',programId:'',customerId:'',agentId:'',travelerIds:''});setNotice('تم إنشاء الحجز المبدئي على الخادم.');await reload()}catch(value){setNotice(errorMessage(value))}}
+  async function create(event:FormEvent){event.preventDefault();try{await api.createBooking({code:form.code,programId:form.programId,customerId:form.customerId,...(form.financialCustomerId.trim()?{financialCustomerId:form.financialCustomerId.trim()}:{}),...(form.familyReference.trim()?{familyReference:form.familyReference.trim()}:{}),...(form.agentId.trim()?{agentId:form.agentId.trim()}:{}),travelerIds:csv(form.travelerIds)});setForm({code:'',programId:'',customerId:'',financialCustomerId:'',familyReference:'',agentId:'',travelerIds:''});setNotice('تم إنشاء الحجز المبدئي على الخادم.');await reload()}catch(value){setNotice(errorMessage(value))}}
   function openConfirm(row:Booking){setConfirmId(row.id);setConfirm(value=>({...value,invoiceNumber:`HU-${row.code}`}));setInventories([emptyInventoryRow()]);}
   function updateInventory(index:number,patch:Partial<InventoryRowForm>){setInventories(values=>values.map((value,i)=>i===index?{...value,...patch}:value));}
   async function confirmBooking(event:FormEvent){event.preventDefault();if(!confirmId)return;try{const requests=inventories.map(inventoryRequest);await api.confirmBooking(confirmId,{commandKey:makeOperationCommandKey('booking-confirm',confirmId,confirm.invoiceNumber),category:confirm.category,costCenterId:confirm.costCenterId,currency:confirm.currency,grossAmount:confirm.grossAmount,discountAmount:confirm.discountAmount,postingDate:confirm.postingDate,dueDate:confirm.dueDate,invoiceNumber:confirm.invoiceNumber,inventories:requests,...(confirm.commissionAmount.trim()?{commissionAmount:confirm.commissionAmount.trim()}: {})});setConfirmId(null);setNotice('تم تأكيد الحجز عبر مسار التمويل والمخزون المعتمد.');await reload()}catch(value){setNotice(errorMessage(value))}}
@@ -60,12 +62,16 @@ export function BookingsPage({api=hajjUmrahOperationsApi}:{readonly api?:HajjUmr
         <FormField label="كود الحجز" required><Input required value={form.code} onChange={e=>setForm({...form,code:e.target.value})}/></FormField>
         <FormField label="معرّف البرنامج" required><Input required value={form.programId} onChange={e=>setForm({...form,programId:e.target.value})}/></FormField>
         <FormField label="معرّف العميل" required><Input required value={form.customerId} onChange={e=>setForm({...form,customerId:e.target.value})}/></FormField>
+        <FormField label="العميل المسؤول ماليًا (قد لا يسافر)"><Input value={form.financialCustomerId} onChange={e=>setForm({...form,financialCustomerId:e.target.value})}/></FormField>
+        <FormField label="مرجع الأسرة أو المجموعة"><Input value={form.familyReference} onChange={e=>setForm({...form,familyReference:e.target.value})}/></FormField>
         <FormField label="معرّف الوكيل"><Input value={form.agentId} onChange={e=>setForm({...form,agentId:e.target.value})}/></FormField>
         <FormField label="معرّفات المسافرين" required><Input required placeholder="traveler-1, traveler-2" value={form.travelerIds} onChange={e=>setForm({...form,travelerIds:e.target.value})}/></FormField>
         <Button type="submit">إنشاء حجز مبدئي</Button>
       </form></Card>}
       <Card title="الحجوزات التشغيلية">{loading?<LoadingState/>:error?<OperationsFailure message={error}/>:!rows.length?<EmptyState title="لا توجد حجوزات"/>:<DataGrid columns={['الكود','البرنامج','المسافرون','حالة الحجز','الحالة المالية','إجراءات']}>{rows.map(row=><tr key={row.id}><td>{row.code}</td><td>{row.programId}</td><td>{row.travelerIds.length}</td><td><BookingLifecycleState booking={row}/></td><td><BookingFinancialStateView booking={row}/></td><td>{cap.bookingConfirm&&row.status==='PRELIMINARY'&&<Button type="button" onClick={()=>openConfirm(row)}>تأكيد</Button>}{cap.bookingLifecycle&&row.status==='CONFIRMED'&&<Button type="button" onClick={()=>void lifecycle(row,'ready')}>تعيين جاهز</Button>}{cap.bookingLifecycle&&row.status==='READY'&&<Button type="button" onClick={()=>void lifecycle(row,'travel')}>بدء السفر</Button>}{cap.bookingLifecycle&&row.status==='TRAVELING'&&<Button type="button" onClick={()=>void lifecycle(row,'complete')}>إكمال</Button>}{cap.bookingCancel&&!['CANCELLED','COMPLETED'].includes(row.status)&&<Button type="button" onClick={()=>openCancel(row)}>إلغاء</Button>}</td></tr>)}</DataGrid>}</Card>
     </PermissionState>
+    <FamilyStatement/>
+    <OfflineBookingControls draft={{code:form.code,programId:form.programId,customerId:form.customerId,...(form.financialCustomerId.trim()?{financialCustomerId:form.financialCustomerId.trim()}:{}),...(form.familyReference.trim()?{familyReference:form.familyReference.trim()}:{}),...(form.agentId.trim()?{agentId:form.agentId.trim()}:{}),travelerIds:csv(form.travelerIds)}} bookings={rows} canCreate={cap.bookingManage} canConfirm={cap.bookingConfirm} {...(confirmId?{confirmation:{bookingId:confirmId,input:{...confirm,commandKey:'pending',inventories:inventories.map(inventoryRequest)}}}:{})}/>
     {notice&&<Toast tone={notice.includes('تعذر')?'error':'info'}>{notice}</Toast>}
     <Dialog open={Boolean(confirmId)} title="تأكيد الحجز" onClose={()=>setConfirmId(null)}><form onSubmit={confirmBooking}>
       <FormField label="الفئة المالية"><Select value={confirm.category} onChange={e=>setConfirm({...confirm,category:e.target.value as ConfirmBookingInput['category']})}><option value="OTHER">أخرى</option><option value="HOTEL">فندق</option><option value="FLIGHT">طيران</option><option value="TRANSPORT">نقل</option><option value="VISA">تأشيرة</option></Select></FormField>

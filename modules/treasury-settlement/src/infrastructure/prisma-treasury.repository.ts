@@ -174,6 +174,18 @@ export class PrismaTreasuryRepository implements TreasuryRepository {
       })
     ).map((value) => this.voucherValue(value));
   }
+  private voucherData(value:Voucher):Prisma.TreasuryVoucherUncheckedCreateInput {
+    return {id:value.id,companyId:value.companyId,branchId:value.branchId,treasuryId:value.treasuryId,
+      kind:value.kind,partyKind:value.partyKind,partyId:value.partyId,number:value.number,
+      postingDate:new Date(value.postingDate+'T00:00:00.000Z'),currency:value.currency,amount:new Prisma.Decimal(value.amount),
+      sourceType:value.sourceType,sourceId:value.sourceId,requestHash:value.requestHash,status:value.status,
+      actorId:value.actorId,approvalRequestId:value.approvalRequestId,journalId:value.journalId,reversalJournalId:value.reversalJournalId,
+      settlementId:value.settlementId,allocationIds:value.allocationIds,advanceId:value.advanceId,
+      carryingBaseAmount:value.carryingBaseAmount===undefined?null:new Prisma.Decimal(value.carryingBaseAmount),
+      settlementBaseAmount:value.settlementBaseAmount===undefined?null:new Prisma.Decimal(value.settlementBaseAmount),
+      realizedFx:value.realizedFx===undefined?null:new Prisma.Decimal(value.realizedFx),fxRateId:value.fxRateId};
+  }
+
   async reserveVoucher(value: Voucher, allowNegative: boolean) {
     return this.db.$transaction(
       async (tx) => {
@@ -205,12 +217,7 @@ export class PrismaTreasuryRepository implements TreasuryRepository {
           }
         }
         const created = await tx.treasuryVoucher.create({
-          data: {
-            ...value,
-            postingDate: new Date(value.postingDate + 'T00:00:00.000Z'),
-            amount: new Prisma.Decimal(value.amount),
-            allocationIds: value.allocationIds,
-          },
+          data:this.voucherData(value),
         });
         return this.voucherValue(created);
       },
@@ -219,15 +226,7 @@ export class PrismaTreasuryRepository implements TreasuryRepository {
   }
 
   async saveVoucher(value: Voucher) {
-    const data: any = {
-      ...value,
-      postingDate: new Date(value.postingDate + 'T00:00:00.000Z'),
-      amount: new Prisma.Decimal(value.amount),
-      allocationIds: value.allocationIds,
-      carryingBaseAmount: value.carryingBaseAmount ? new Prisma.Decimal(value.carryingBaseAmount) : null,
-      settlementBaseAmount: value.settlementBaseAmount ? new Prisma.Decimal(value.settlementBaseAmount) : null,
-      realizedFx: value.realizedFx ? new Prisma.Decimal(value.realizedFx) : null,
-    };
+    const data=this.voucherData(value);
     await this.db.treasuryVoucher.upsert({
       where: { companyId_id: { companyId: value.companyId, id: value.id } },
       create: data,

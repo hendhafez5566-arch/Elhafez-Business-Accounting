@@ -14,7 +14,13 @@ export type BookingFinancialState =
   | 'CANCELLATION_BLOCKED'
   | 'CANCELLED';
 
+export interface BookingCommissionAgreement { readonly agreementId:string; readonly agreementVersion:number; readonly principalPartyId:string; readonly subordinatePartyId:string; readonly principalPercent:string; }
+
 export interface Booking {
+  readonly revision?:number;
+  readonly createRequestHash?:string;
+  readonly createRequestId?:string;
+  readonly commissionAgreement?: BookingCommissionAgreement;
   readonly id: string;
   readonly companyId: CompanyId;
   readonly branchId: string;
@@ -22,6 +28,9 @@ export interface Booking {
   readonly programId: string;
   readonly customerId: string;
   readonly customerPartyId: string;
+  readonly financialCustomerId?: string;
+  readonly financialPartyId?: string;
+  readonly familyReference?: string;
   readonly agentId?: string;
   readonly agentPartyId?: string;
   readonly travelerIds: readonly string[];

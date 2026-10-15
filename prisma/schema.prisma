@@ -1879,6 +1879,7 @@ model TfoWorkflowStep {
  @@map("tfo_workflow_steps")
 }
 model TfoBookingReference {
+ commissionClaimIds Json? @map("commission_claim_ids")
  id String @id
  companyId String @map("company_id")
  branchId String? @map("branch_id")
@@ -3008,6 +3009,13 @@ model HupProgramHistory {
 
 // HU-02 — Hajj & Umrah operational booking truth.
 model HubBooking {
+ revision Int @default(0)
+ createRequestId String? @map("create_request_id")
+ createRequestHash String? @map("create_request_hash")
+ commissionAgreement Json? @map("commission_agreement")
+ financialCustomerId String? @map("financial_customer_id")
+ financialPartyId String? @map("financial_party_id")
+ familyReference String? @map("family_reference")
  id String @id
  companyId String @map("company_id")
  branchId String @map("branch_id")
@@ -3033,6 +3041,8 @@ model HubBooking {
  @@unique([companyId, confirmationCommandKey])
  @@index([companyId, branchId, programId, status])
  @@index([companyId, branchId, customerId])
+ @@index([companyId, branchId, familyReference],map:"hub_bookings_family_idx")
+ @@unique([companyId, branchId, createRequestId],map:"hub_bookings_create_request_idx")
  @@map("hub_bookings")
 }
 
@@ -4192,4 +4202,48 @@ model AmCommissionAgreement {
  @@unique([companyId, agentId, version])
  @@index([companyId, parentAgentId])
  @@map("am_commission_agreements")
+}
+
+// offline-coordination owns metadata only. Owner APIs determine every economic result.
+model OcDeviceGrant {
+ id String @id
+ companyId String @map("company_id")
+ branchId String @map("branch_id")
+ actorId String @map("actor_id")
+ deviceId String @map("device_id")
+ operations Json
+ issuedAt DateTime @map("issued_at")
+ expiresAt DateTime @map("expires_at")
+ revokedAt DateTime? @map("revoked_at")
+ @@index([companyId,branchId,actorId,deviceId])
+ @@map("oc_device_grants")
+}
+model OcCommand {
+ id String
+ companyId String @map("company_id")
+ branchId String @map("branch_id")
+ actorId String @map("actor_id")
+ deviceId String @map("device_id")
+ grantId String @map("grant_id")
+ operation String
+ payload Json
+ payloadHash String @map("payload_hash")
+ dependencies Json
+ capturedAt String @map("captured_at")
+ receivedAt DateTime @map("received_at")
+ state String
+ attempt Int @default(0)
+ leaseUntil DateTime? @map("lease_until")
+ result Json
+ reason String?
+ @@id([companyId,branchId,id])
+ @@index([companyId,branchId,actorId,receivedAt])
+ @@map("oc_commands")
+}
+model OcWriteAuthority {
+ companyId String @id @map("company_id")
+ authorityId String @map("authority_id")
+ enrolledBy String @map("enrolled_by")
+ enrolledAt DateTime @map("enrolled_at")
+ @@map("oc_write_authorities")
 }

@@ -1,0 +1,26 @@
+{
+  "name": "offline-coordination",
+  "publicApi": [
+    "src/public/index.ts"
+  ],
+  "ownedTables": [
+    "oc_device_grants",
+    "oc_commands",
+    "oc_write_authorities"
+  ],
+  "allowedDependencies": [
+    "@elhafez/contracts"
+  ],
+  "dataScope": "COMPANY_BRANCH",
+  "branchScopedTables": [
+    "oc_device_grants",
+    "oc_commands"
+  ],
+  "criticalInvariants": [
+    "Coordination never owns money, balances, capacity or final booking confirmation.",
+    "A command identity has one immutable payload within its company and branch.",
+    "All owner effects require current platform authorization and an unexpired scoped delegation.",
+    "Unknown outcomes retry with the same identity; denied observed cash requests remain reviewable.",
+    "An enrolled office authority fences every other server; no heartbeat-driven or automatic authority transfer exists."
+  ]
+}

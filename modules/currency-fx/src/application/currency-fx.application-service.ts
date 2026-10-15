@@ -53,6 +53,12 @@ export class CurrencyFxApplicationService {
     return value;
   }
 
+  async getCurrency(companyId:CompanyId,code:CurrencyCode):Promise<CurrencyConfiguration>{
+    const value=await this.repository.findCurrency(companyId,currencyCode(code));
+    if(!value||value.status!=='ACTIVE')throw new ContractValidationError('currency','active currency is not configured for company');
+    return Object.freeze(value);
+  }
+
   async getBaseCurrency(companyId: CompanyId): Promise<CurrencyConfiguration> {
     const value = await this.repository.findBaseCurrency(companyId);
     if (!value || value.status !== 'ACTIVE') {

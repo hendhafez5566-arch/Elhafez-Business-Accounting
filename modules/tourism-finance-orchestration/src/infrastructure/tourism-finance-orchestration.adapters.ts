@@ -95,6 +95,10 @@ export class TreasuryAdapter implements TreasuryPort {
 export class CommissionAdapter implements CommissionPort {
   constructor(private readonly expense: ExpenseCommissionRecognitionApplicationService) {}
 
+  plan(companyId:Parameters<NonNullable<CommissionPort['plan']>>[0],currency:string,total:Parameters<NonNullable<CommissionPort['plan']>>[2],agreement:Parameters<NonNullable<CommissionPort['plan']>>[3]) {
+    return this.expense.planCommissionDistribution(companyId,currency,total,agreement);
+  }
+
   create(input: Parameters<CommissionPort['create']>[0]) {
     return this.expense.createCommissionClaim({
       id: input.id,

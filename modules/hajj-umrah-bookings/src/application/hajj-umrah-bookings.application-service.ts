@@ -16,9 +16,12 @@ export const BOOKING_PERMISSIONS = Object.freeze({
 });
 
 export interface CreateBookingInput {
+  readonly requestId?:string;
   readonly code: string;
   readonly programId: string;
   readonly customerId: string;
+  readonly financialCustomerId?: string;
+  readonly familyReference?: string;
   readonly agentId?: string;
   readonly travelerIds: readonly string[];
   readonly sourceReference?: SourceReference;
@@ -71,15 +74,26 @@ export class HajjUmrahBookingsApplicationService {
     const customer=await this.customers.requireActive(c,required(input.customerId,'customerId'));
     const travelerIds=unique(input.travelerIds);
     if(!travelerIds.length)throw new ContractValidationError('travelerIds','at least one traveler is required');
-    for(const id of travelerIds){
-      const traveler=await this.travelers.requireActive(c,id);
-      if(traveler.customerId&&traveler.customerId!==customer.id)throw new ContractValidationError('travelerIds','traveler belongs to a different customer');
-    }
+    // Traveler identity is independent of the contracting customer and debtor.
+    for(const id of travelerIds)await this.travelers.requireActive(c,id);
+    const debtor=input.financialCustomerId?await this.customers.requireActive(c,required(input.financialCustomerId,'financialCustomerId')):customer;
+    const familyReference=input.familyReference===undefined?undefined:required(input.familyReference,'familyReference');
     const agent=input.agentId?await this.agents.requireActive(c,input.agentId):undefined;
-    const at=this.now().toISOString(),id=this.id();
-    const value:Booking={id,companyId:c.companyId,branchId:c.branchId,code:required(input.code,'code'),programId:program.id,customerId:customer.id,customerPartyId:customer.partyId,...(agent?{agentId:agent.id,agentPartyId:agent.partyId}:{}),travelerIds,status:'PRELIMINARY',financialState:'UNCONFIRMED',allocationIds:[],...(input.sourceReference?{sourceReference:input.sourceReference}:{}),createdAt:at,updatedAt:at};
-    const saved=await this.repo.create(value,this.history(c,id,'CREATED',undefined,'PRELIMINARY'));
+    const commissionAgreement=agent&&this.agents.snapshot?await this.agents.snapshot(c,agent.id):null;
+    if(input.requestId!==undefined&&!/^[A-Za-z0-9][A-Za-z0-9_-]{15,127}$/.test(input.requestId))throw new ContractValidationError('requestId','stable request identity required');
+    const createRequestHash=createHash('sha256').update(JSON.stringify({code:input.code.trim(),programId:program.id,customerId:customer.id,financialCustomerId:debtor.id,familyReference:familyReference??null,agentId:agent?.id??null,travelerIds:[...travelerIds].sort(),sourceReference:input.sourceReference??null})).digest('hex');
+    const at=this.now().toISOString(),id=input.requestId?createHash('sha256').update(JSON.stringify([c.companyId,c.branchId,input.requestId])).digest('hex').slice(0,32):this.id();
+    const value:Booking={...(input.requestId?{createRequestId:input.requestId,createRequestHash}:{}),...(commissionAgreement?{commissionAgreement}:{}),id,companyId:c.companyId,branchId:c.branchId,code:required(input.code,'code'),programId:program.id,customerId:customer.id,customerPartyId:customer.partyId,financialCustomerId:debtor.id,financialPartyId:debtor.partyId,...(familyReference?{familyReference}:{}),...(agent?{agentId:agent.id,agentPartyId:agent.partyId}:{}),travelerIds,status:'PRELIMINARY',financialState:'UNCONFIRMED',allocationIds:[],...(input.sourceReference?{sourceReference:input.sourceReference}:{}),createdAt:at,updatedAt:at};
+    let saved:Booking;
+    try{saved=await this.repo.create(value,this.history(c,id,'CREATED',undefined,'PRELIMINARY'));}
+    catch(error){
+      const prior=input.requestId?await this.repo.get(c.companyId,c.branchId,id):null;
+      if(!prior)throw error;
+      if(prior.createRequestHash!==createRequestHash)throw new ContractValidationError('requestId','conflicting booking creation replay');
+      saved=prior;
+    }
     await this.customers.register(c,customer.id,id);
+    if(debtor.id!==customer.id)await this.customers.register(c,debtor.id,id);
     if(agent)await this.agents.register(c,agent.id,id);
     await this.access.audit(c,'hajj-umrah.booking.created',id,{programId:program.id,travelerCount:travelerIds.length});
     return saved;
@@ -112,14 +126,16 @@ export class HajjUmrahBookingsApplicationService {
     const evidence=await this.finance.confirm({
       companyId:c.companyId,branchId:c.branchId,commandKey:required(input.commandKey,'commandKey'),bookingId:old.id,programId:program.id,
       programEvidence:`HUP:${program.id}:${program.currentVersionId}:BOOKABLE:OPEN`,category:input.category,costCenterId:required(input.costCenterId,'costCenterId'),
-      customerPartyId:old.customerPartyId,currency:required(input.currency,'currency'),grossAmount:input.grossAmount,discountAmount:input.discountAmount,
+      customerPartyId:old.financialPartyId??old.customerPartyId,currency:required(input.currency,'currency'),grossAmount:input.grossAmount,discountAmount:input.discountAmount,
       ...(input.approvalRequestId?{approvalRequestId:input.approvalRequestId}:{}),postingDate:required(input.postingDate,'postingDate'),dueDate:required(input.dueDate,'dueDate'),
       invoiceNumber:required(input.invoiceNumber,'invoiceNumber'),inventories:input.inventories,
-      ...(old.agentPartyId&&input.commissionAmount?{commission:{agentPartyId:old.agentPartyId,amount:input.commissionAmount}}:{}),
+      ...(old.agentPartyId&&input.commissionAmount?{commission:{agentPartyId:old.agentPartyId,amount:input.commissionAmount,...(old.commissionAgreement?{agreement:old.commissionAgreement}:{})}}:{}),
     });
     const allocationIds=this.extractAllocationIds(evidence);
     const next:Booking={...old,status:'CONFIRMED',financialState:'CONFIRMED',allocationIds,confirmationCommandKey:input.commandKey,confirmationPayloadHash:payloadHash,financialEvidence:evidence,updatedAt:this.now().toISOString()};
-    const saved=await this.repo.save(next,this.history(c,id,'CONFIRMED','PRELIMINARY','CONFIRMED',undefined,evidence));
+    let saved:Booking;
+    try{saved=await this.repo.save(next,this.history(c,id,'CONFIRMED','PRELIMINARY','CONFIRMED',undefined,evidence));}
+    catch(error){const current=await this.repo.get(c.companyId,c.branchId,id);if(current?.status==='CONFIRMED'&&current.confirmationCommandKey===input.commandKey&&current.confirmationPayloadHash===payloadHash)return current;throw error;}
     await this.access.audit(c,'hajj-umrah.booking.confirmed',id,{allocationIds});
     return saved;
   }
@@ -137,8 +153,7 @@ export class HajjUmrahBookingsApplicationService {
     const cancelled=Boolean((evidence as {cancelled?:boolean}|null)?.cancelled);
     if(!cancelled){
       const next:Booking={...old,financialState:'CANCELLATION_BLOCKED',cancellationEvidence:evidence,updatedAt:this.now().toISOString()};
-      await this.repo.save(next,this.history(c,id,'CANCELLATION_BLOCKED',old.status,old.status,reason,evidence));
-      return next;
+      return this.repo.save(next,this.history(c,id,'CANCELLATION_BLOCKED',old.status,old.status,reason,evidence));
     }
     const next:Booking={...old,status:'CANCELLED',financialState:'CANCELLED',cancellationEvidence:evidence,updatedAt:this.now().toISOString()};
     const saved=await this.repo.save(next,this.history(c,id,'CANCELLED',old.status,'CANCELLED',reason,evidence));

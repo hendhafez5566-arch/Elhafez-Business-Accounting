@@ -1,3 +1,4 @@
+import { distributeCommission, type CommissionDistribution } from '../domain/commission-distribution.js';
 import { createHash } from 'node:crypto';
 import { ContractValidationError, currencyCode, decimalAmount, money, type CompanyId, type DecimalAmount } from '@elhafez/contracts';
 import type { BillingSubledgersApplicationService } from '@elhafez/billing-subledgers';
@@ -19,8 +20,15 @@ export class ExpenseCommissionRecognitionApplicationService {
   private readonly billing:Pick<BillingSubledgersApplicationService,'recordRecognitionStarted'|'getOpenPosition'|'getAdvance'|'consumeAdvance'>,
   private readonly treasury:Pick<TreasurySettlementApplicationService,'postOwnerPayment'|'postSupplierAdvanceRefundReceipt'|'getTreasurySnapshot'>,
   private readonly gl:Pick<GeneralLedgerApplicationService,'post'|'reverse'>,
-  private readonly fx:Pick<CurrencyFxApplicationService,'getBaseCurrency'|'calculateSettlement'>,
+  private readonly fx:Pick<CurrencyFxApplicationService,'getBaseCurrency'|'calculateSettlement'> & Partial<Pick<CurrencyFxApplicationService,'getCurrency'>>,
   private readonly controls:Pick<FinancialControlsApplicationService,'evaluateApprovalRequirement'|'getApprovalRequest'|'getApprovalDecision'>){}
+
+ async planCommissionDistribution(companyId:CompanyId,currency:string,total:DecimalAmount,agreement:Omit<CommissionDistribution,'precision'>){
+  if(!this.fx.getCurrency)throw new ContractValidationError('currency','currency configuration provider required');
+  const config=await this.fx.getCurrency(companyId,currencyCode(currency));
+  const snapshot={...agreement,precision:config.precision};
+  return {snapshot,roundingPolicy:'PRINCIPAL_DOWN_SUBORDINATE_REMAINDER_V1' as const,shares:distributeCommission(total,snapshot)};
+ }
 
  async createExpense(input:{id:string;companyId:CompanyId;branchId?:string;form:ExpenseForm;sourceType:string;sourceId:string;currency:string;amount:DecimalAmount;baseAmount:DecimalAmount;expenseAccountId?:string;prepaidAccountId?:string;billingInvoiceId?:string;approvalRequestId?:string}):Promise<Expense>{
   const normalized={...input,currency:currencyCode(input.currency),amount:pos(input.amount),baseAmount:pos(input.baseAmount)},requestHash=h(normalized),prior=await this.repo.expense(input.companyId,input.id);
@@ -164,7 +172,7 @@ export class ExpenseCommissionRecognitionApplicationService {
    const request=await this.controls.getApprovalRequest(companyId,claim.approvalRequestId),decision=await this.controls.getApprovalDecision(companyId,claim.approvalRequestId);
    if(!request||request.action!=='COMMISSION_APPROVAL'||request.companyId!==companyId||request.sourceType!==claim.sourceType||request.sourceId!==claim.sourceId||request.requesterActorId!==claim.requesterActorId||request.branchId!==claim.branchId||request.amount!==carrying||decision?.outcome!=='APPROVED')throw new ContractValidationError('approval','does not authorize exact claim');
   }
-  const journal=await this.gl.post({id:'ecr-commission:'+id,companyId,number,postingDate,sourceType:'ECR_COMMISSION_APPROVAL',sourceId:id,lines:[{accountId:claim.expenseAccountId,debit:carrying},{accountId:claim.liabilityAccountId,credit:carrying,partyId:claim.agentPartyId}]});
+  const journal=await this.gl.post({id:'ecr-commission:'+id,companyId,...(claim.branchId?{branchId:claim.branchId}:{}),number,postingDate,sourceType:'ECR_COMMISSION_APPROVAL',sourceId:id,lines:[{accountId:claim.expenseAccountId,debit:carrying},{accountId:claim.liabilityAccountId,credit:carrying,partyId:claim.agentPartyId}]});
   claim={...claim,baseCarryingAmount:carrying,status:'APPROVED',recognitionJournalId:journal.id};await this.repo.saveClaim(claim);return claim;
  }
  async payCommission(input:{companyId:CompanyId;claimId:string;paymentId:string;treasuryId:string;amount:DecimalAmount;paymentCurrency:string;postingDate:string;number:string;realizedFxGainAccountId?:string;realizedFxLossAccountId?:string}){

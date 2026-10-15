@@ -1,0 +1,85 @@
+import { build } from 'esbuild';
+import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
+import { spawn } from 'node:child_process';
+import { mkdir } from 'node:fs/promises';
+import { resolve } from 'node:path';
+const require=createRequire(resolve(process.env.CORE_BROWSER_PACKAGE));
+const {chromium}=require('playwright');
+const browserBinary=require('@sparticuz/chromium').default;
+let raw='';for await(const part of process.stdin)raw+=part;
+const fixture=JSON.parse(raw),origin='http://127.0.0.1:54878';
+const proxy=spawn(process.execPath,['deploy/railway/static-proxy.mjs'],{env:{...process.env,PORT:'54878',ELHAFEZ_API_BASE_URL:process.env.CORE_API_ORIGIN},stdio:'ignore'});
+let browser;
+try{
+ let ready=false;for(let attempt=0;attempt<50;attempt++){try{if((await fetch(origin+'/healthz')).ok){ready=true;break;}}catch(error){if(attempt===49)throw error;}await new Promise(r=>setTimeout(r,100));}assert.ok(ready);
+ browser=await chromium.launch({headless:true,executablePath:await browserBinary.executablePath(),args:browserBinary.args});
+ const context=await browser.newContext({viewport:{width:1440,height:1100},locale:'ar-EG'}),page=await context.newPage();page.setDefaultTimeout(20000);
+ await page.addInitScript(value=>globalThis.sessionStorage.setItem('elhafez.tenantSession',JSON.stringify({...value,branchId:value.defaultBranchId})),fixture.tenant);
+ const errors=[];page.on('pageerror',error=>errors.push(error.message));
+ await page.goto(origin+'/hajj-umrah/bookings');
+ await page.getByRole('button',{name:'إنشاء حجز مبدئي',exact:true}).waitFor();
+ await page.getByLabel('كود الحجز').fill('BROWSER-OFFLINE');
+ await page.getByLabel('معرّف البرنامج').fill(fixture.programId);
+ await page.getByLabel('معرّف العميل').fill(fixture.customerId);
+ await page.getByLabel('العميل المسؤول ماليًا (قد لا يسافر)').fill(fixture.responsibleId);
+ await page.getByLabel('مرجع الأسرة أو المجموعة').first().fill('BROWSER-FAMILY');
+ await page.getByLabel('معرّفات المسافرين').fill(fixture.travelerIds.join(', '));
+ const panel=page.getByRole('region',{name:'سجل المكتب والجهاز المنفصل'});
+ await panel.getByLabel('عبارة حماية سجل الجهاز').fill('Offline-test-secret-12345');
+ await panel.getByRole('button',{name:'تجهيز تفويض الحجز أثناء الاتصال',exact:true}).click();
+ await panel.getByRole('status').filter({hasText:'حُفظ تفويض الجهاز'}).waitFor();
+ await context.setOffline(true);
+ await panel.getByRole('button',{name:'حفظ الحجز الجديد على الجهاز',exact:true}).click();
+ await panel.getByRole('status').filter({hasText:'حُفظ طلب حجز مبدئي مشفر'}).waitFor();
+ assert.equal(await panel.getByText('مؤقت / بانتظار الخادم',{exact:true}).count(),1);
+ const ciphertext=await page.evaluate(async()=>{const db=await new Promise((resolve,reject)=>{const q=globalThis.indexedDB.open('elhafez.core-commands.v1');q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error);});const rows=await new Promise((resolve,reject)=>{const tx=db.transaction('vaults','readonly'),q=tx.objectStore('vaults').getAll();q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error);});db.close();return JSON.stringify(rows);});
+ assert.ok(!ciphertext.includes('BROWSER-OFFLINE'));assert.ok(!ciphertext.includes(fixture.customerId));
+ const output=resolve(process.env.CORE_EVIDENCE_DIR??'/tmp/core-evidence');await mkdir(output,{recursive:true});
+ await page.screenshot({path:output+'/booking-pending-rtl.png',fullPage:true,animations:'disabled',timeout:60000});
+ await context.setOffline(false);
+ await panel.getByRole('button',{name:'مزامنة المعلّق بنفس الهويات'}).click();
+ await panel.getByText('اعتمده المالك على الخادم',{exact:true}).first().waitFor();
+ const accepted=await page.evaluate(async()=>{const s=JSON.parse(globalThis.sessionStorage.getItem('elhafez.tenantSession')),r=await fetch('/api/hajj-umrah/operations/bookings',{headers:{authorization:'Bearer '+s.token,'x-company-id':s.companyId,'x-branch-id':s.branchId}});return (await r.json()).filter(b=>b.code==='BROWSER-OFFLINE').map(b=>({id:b.id,travelerIds:b.travelerIds,financialCustomerId:b.financialCustomerId}));});
+ assert.equal(accepted.length,1);assert.equal(accepted[0].travelerIds.length,4);assert.equal(accepted[0].financialCustomerId,fixture.responsibleId);
+ // A browser reload uses the encrypted durable queue; nothing is re-entered or duplicated.
+ await panel.getByRole('button',{name:'تجهيز تفويض الحجز والقبض للمخوّل',exact:true}).click();
+ await panel.getByRole('status').filter({hasText:'حُفظ تفويض الجهاز'}).waitFor();
+ await panel.getByLabel('الحجز',{exact:true}).selectOption({label:'CORE-FINANCIAL'});
+ await panel.getByLabel('الخزينة المستلمة').fill(fixture.financialTreasuryId);
+ await panel.getByLabel('رقم السند الرسمي المطلوب عند الاعتماد').fill('BROWSER-CASH-1');
+ await panel.getByLabel('تاريخ الاستلام').fill('2026-10-15');
+ await panel.getByLabel('المبلغ بعملة الحساب والخزينة').fill('200');
+ await context.setOffline(true);await panel.getByRole('button',{name:'حفظ إثبات استلام مؤقت',exact:true}).click();
+ await panel.getByRole('status').filter({hasText:'حُفظ إثبات الاستلام'}).waitFor();
+ await context.setOffline(false);await panel.getByRole('button',{name:'مزامنة المعلّق بنفس الهويات'}).click();
+ await panel.getByRole('status').filter({hasText:'اكتملت محاولة المزامنة'}).waitFor();
+ assert.equal(await panel.getByText('اعتمده المالك على الخادم',{exact:true}).count(),2);
+ await page.reload();await panel.getByLabel('عبارة حماية سجل الجهاز').fill('Offline-test-secret-12345');
+ await panel.getByRole('button',{name:'فتح السجل المحلي',exact:true}).click();await panel.getByText('اعتمده المالك على الخادم',{exact:true}).first().waitFor();
+ const statement=page.getByRole('region',{name:'كشف الأسرة'});await statement.getByLabel('مرجع الأسرة أو المجموعة').fill('BROWSER-FAMILY');await statement.getByRole('button',{name:'عرض الكشف من الحسابات'}).click();await statement.getByRole('cell',{name:'BROWSER-OFFLINE',exact:true}).waitFor();
+ await page.screenshot({path:output+'/family-and-sync-rtl.png',fullPage:true,animations:'disabled',timeout:60000});
+ const utility=await build({entryPoints:['apps/web/src/offline-command-store.ts'],bundle:true,write:false,format:'esm',platform:'browser'});
+ await page.route('**/core-vault-test.js',route=>route.fulfill({contentType:'text/javascript',body:utility.outputFiles[0].text}));
+ const storage=await page.evaluate(async()=>{
+  const m=await import('/core-vault-test.js'),scope={companyId:'utility-company',branchId:'utility-branch',userId:'utility-user'},secret='Utility-secret-123456',now=Date.now();
+  const grant={id:crypto.randomUUID(),companyId:scope.companyId,branchId:scope.branchId,actorId:scope.userId,deviceId:crypto.randomUUID(),operations:['BOOKING_CREATE','BOOKING_DEPOSIT'],issuedAt:new Date(now-1000).toISOString(),expiresAt:new Date(now+60000).toISOString(),revokedAt:null};
+  await m.saveDeviceGrant(scope,secret,grant);
+  const first=await m.enqueueCommand(scope,secret,'BOOKING_CREATE',{code:'UTILITY'},[],now);
+  let wrongSecret=false,rollback=false,expired=false;
+  try{await m.loadCommandVault(scope,'Wrong-secret-123456');}catch{wrongSecret=true;}
+  try{await m.enqueueCommand(scope,secret,'BOOKING_CREATE',{code:'ROLLBACK'},[],now-1);}catch{rollback=true;}
+  try{await m.enqueueCommand(scope,secret,'BOOKING_CREATE',{code:'EXPIRED'},[],now+60001);}catch{expired=true;}
+  const cash=await m.enqueueCommand(scope,secret,'BOOKING_DEPOSIT',{amount:'100',receipt:'TEMPORARY'},[],now+60001);
+  const isolated=await m.loadCommandVault({...scope,branchId:'other-branch'},secret);
+  const backup=await m.exportCommandVault(scope,secret);
+  const db=await new Promise((resolve,reject)=>{const q=globalThis.indexedDB.open('elhafez.core-commands.v1');q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error);});
+  await new Promise((resolve,reject)=>{const tx=db.transaction('vaults','readwrite');tx.objectStore('vaults').delete(JSON.stringify([scope.companyId,scope.branchId,scope.userId]));tx.oncomplete=resolve;tx.onabort=()=>reject(tx.error);});db.close();
+  const restored=await m.importCommandVault(scope,secret,backup);
+  return {wrongSecret,rollback,expired,isolated:isolated.items.length,cashRetained:cash.items.length,stable:restored.items[0].id===first.items[0].id,restored:restored.items.length,allPending:restored.items.every(x=>x.state==='PENDING')};
+ });
+ assert.deepEqual(storage,{wrongSecret:true,rollback:true,expired:true,isolated:0,cashRetained:2,stable:true,restored:2,allPending:true});
+ assert.deepEqual(errors,[]);
+ await page.setViewportSize({width:390,height:844});await page.screenshot({path:output+'/booking-mobile-rtl.png',fullPage:true,animations:'disabled',timeout:60000});
+ console.log('PASS: production UI -> encrypted IndexedDB -> actual AppModule -> PostgreSQL; pending, sync, reload, family projection and RTL screenshots.');
+}finally{if(browser)await browser.close();proxy.kill('SIGTERM');await new Promise(resolve=>proxy.once('exit',resolve));}
