@@ -44,6 +44,15 @@ fi
 export FOLLOWUP_TEST_DATABASE_URL="postgresql://postgres:followup-test-only@127.0.0.1:${postgres_port}/elhafez_followup_test"
 export DATABASE_URL="$FOLLOWUP_TEST_DATABASE_URL"
 
+# Prove normalization preserves a stored UUID identity and an existing link.
+docker exec "$container_name" createdb --username postgres elhafez_file_key_test
+cat tools/experiments/followup-postgres/file-key-before.sql \
+  prisma/migrations/20260929003000_platform_file_key_text/migration.sql \
+  tools/experiments/followup-postgres/file-key-after.sql \
+  prisma/migrations/20260929003000_platform_file_key_text/migration.sql \
+  tools/experiments/followup-postgres/file-key-final.sql \
+  | docker exec --interactive "$container_name" psql --username postgres --dbname elhafez_file_key_test --set ON_ERROR_STOP=1
+
 pnpm exec prisma migrate deploy --schema prisma/schema.prisma
 pnpm exec prisma migrate status --schema prisma/schema.prisma
 TSX_TSCONFIG_PATH=modules/crm-followups/tsconfig.json \

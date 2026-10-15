@@ -1,9 +1,10 @@
 {
   "id": "flexible-section-ui",
-  "summary": "Allow independent section UI, correct web regression coverage, map 296 requirements, prove isolated offline feasibility, add encrypted local follow-up drafts, and add optional actor-scoped durable scheduling request identities in crm-followups. Production offline synchronization remains disabled pending native PostgreSQL acceptance.",
+  "summary": "Allow independent section UI, correct web regression coverage, map 296 requirements, prove isolated offline feasibility, add encrypted local follow-up drafts, and add optional actor-scoped durable scheduling request identities in crm-followups. Production offline synchronization remains disabled pending native PostgreSQL acceptance. Repair native bootstrap file-key incompatibility using a new data-preserving prerequisite migration.",
   "type": "architecture",
   "allowedModules": [
-    "crm-followups"
+    "crm-followups",
+    "platform-core"
   ],
   "allowedPaths": [
     "AGENTS.md",
@@ -28,7 +29,8 @@
     "prisma/schema.prisma",
     "prisma/migrations/20261015110000_followup_schedule_retry/migration.sql",
     ".github/workflows/ci.yml",
-    "tools/experiments/followup-postgres/**"
+    "tools/experiments/followup-postgres/**",
+    "prisma/migrations/20260929003000_platform_file_key_text/migration.sql"
   ],
   "protectedPaths": [
     "AGENTS.md",
@@ -37,9 +39,10 @@
     "tools/architecture/check-architecture.ts",
     "prisma/schema.prisma",
     "prisma/migrations/20261015110000_followup_schedule_retry/migration.sql",
-    ".github/workflows/ci.yml"
+    ".github/workflows/ci.yml",
+    "prisma/migrations/20260929003000_platform_file_key_text/migration.sql"
   ],
-  "protectedReason": "The owner explicitly requested removing premature visual-layout restrictions across ALL sections while preserving accounting, security, module ownership, shared-shell change scope and migration integrity. Replace blanket presentation bans with scoped-stylesheet checks and executable isolation tests. Add nullable request identity columns and a unique index only on crm-followups-owned rows through a new additive migration; no accepted migration changes. The owner requested resolving the local PostgreSQL execution blocker without delaying work; run the existing native acceptance and full migration chain in a bounded disposable Docker database inside the existing PR quality job. No new hosted job or permanent infrastructure.",
+  "protectedReason": "The owner explicitly requested removing premature visual-layout restrictions across ALL sections while preserving accounting, security, module ownership, shared-shell change scope and migration integrity. Replace blanket presentation bans with scoped-stylesheet checks and executable isolation tests. Add nullable request identity columns and a unique index only on crm-followups-owned rows through a new additive migration; no accepted migration changes. The owner requested resolving the local PostgreSQL execution blocker without delaying work; run the existing native acceptance and full migration chain in a bounded disposable Docker database inside the existing PR quality job. No new hosted job or permanent infrastructure. Native fresh-database execution exposed an existing UUID/TEXT FK incompatibility. Add an explicit prerequisite migration aligning the owned Platform file key to its canonical TEXT contract; retain IDs/links, preserve all historical migration files, and test both bootstrap and populated upgrade cases.",
   "allowBreakingPublicApi": false,
   "publicApiBreakingReason": "",
   "testEvidence": [
