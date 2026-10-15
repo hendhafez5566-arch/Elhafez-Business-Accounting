@@ -2321,6 +2321,9 @@ model AmAgent {
   id                 String             @id @default(uuid())
   companyId          String             @map("company_id")
   partyId            String             @map("party_id")
+  parentAgentId      String?            @map("parent_agent_id")
+  parentAgent        AmAgent?           @relation("AgentHierarchy", fields: [companyId, parentAgentId], references: [companyId, id], onDelete: Restrict, onUpdate: NoAction)
+  childAgents        AmAgent[]          @relation("AgentHierarchy")
   number             String
   status             String             @default("ACTIVE")
   notes              String?
@@ -2334,6 +2337,7 @@ model AmAgent {
   @@unique([companyId, id], name: "companyId_id")
   @@unique([companyId, partyId], name: "companyId_partyId")
   @@unique([companyId, number], name: "companyId_number")
+  @@index([companyId, parentAgentId])
   @@index([companyId, status])
   @@map("am_agents")
 }

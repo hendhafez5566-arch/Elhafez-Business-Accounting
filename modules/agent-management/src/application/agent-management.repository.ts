@@ -1,6 +1,7 @@
 import type { CompanyId } from '@elhafez/contracts';
 import type { Agent, AgentId, AgentReference } from '../domain/agent.js';
 export interface AgentManagementRepository {
+  setParent(companyId:CompanyId,id:AgentId,parent:AgentId|null,at:string):Promise<{agent:Agent;previousParentId:AgentId|null}>;
   nextNumber(companyId:CompanyId):Promise<number>;
   create(value:Agent):Promise<void>;
   update(value:Agent):Promise<void>;

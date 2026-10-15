@@ -22,9 +22,15 @@ export class AgentManagementApplicationService{
  async resolveOrCreateForIntegration(c:ExecutionContext,input:CreateAgentInput):Promise<AgentCreateResult>{
   await this.branch(c);const resolved=await this.parties.resolveOrCreateForIntegration(c,input.party);if(resolved.status==='REVIEW_REQUIRED')return resolved;
   const existing=await this.repository.findByParty(c.companyId,resolved.party.id);if(existing)return{status:'EXISTING',value:{agent:existing,party:resolved.party}};
-  const at=this.now().toISOString();const seq=await this.repository.nextNumber(c.companyId);const value:Agent={id:agentId(this.newId()),companyId:c.companyId,partyId:resolved.party.id,number:'AGT-'+String(seq).padStart(6,'0'),status:'ACTIVE',notes:input.notes?.trim()||null,commission:commissionTerms(input.commission),createdAt:at,updatedAt:at};
+  const at=this.now().toISOString();const seq=await this.repository.nextNumber(c.companyId);const value:Agent={id:agentId(this.newId()),companyId:c.companyId,partyId:resolved.party.id,parentAgentId:null,number:'AGT-'+String(seq).padStart(6,'0'),status:'ACTIVE',notes:input.notes?.trim()||null,commission:commissionTerms(input.commission),createdAt:at,updatedAt:at};
   try{await this.repository.create(value);}catch(error){const concurrent=await this.repository.findByParty(c.companyId,resolved.party.id);if(concurrent)return{status:'EXISTING',value:{agent:concurrent,party:resolved.party}};throw error;}
   await this.parties.ensureRoleForIntegration(c,resolved.party.id,'AGENT');await this.access.audit(c,'agent.created','agent',value.id,{number:value.number});return{status:'CREATED',value:{agent:value,party:resolved.party}};
+ }
+ async setParent(c:ExecutionContext,id:AgentId,parent:unknown):Promise<Agent>{
+  await this.perm(c,AGENT_PERMISSIONS.manage);
+  if(parent!==null&&(typeof parent!=='string'||!parent.trim()))throw new ContractValidationError('parentAgentId','must be an agent identity or null');
+  const result=await this.repository.setParent(c.companyId,id,parent===null?null:agentId(parent),this.now().toISOString());
+  await this.access.audit(c,'agent.parent-changed','agent',id,{previousParentId:result.previousParentId,parentAgentId:result.agent.parentAgentId??null});return result.agent;
  }
  async get(c:ExecutionContext,id:AgentId):Promise<AgentView>{await this.perm(c,AGENT_PERMISSIONS.read);const agent=await this.require(c,id,false);return{agent,party:await this.parties.getForIntegration(c,partyId(agent.partyId))};}
  async list(c:ExecutionContext,status?:AgentStatus,query?:string):Promise<AgentView[]>{await this.perm(c,AGENT_PERMISSIONS.read);const rows=await this.repository.list(c.companyId,status,query);return Promise.all(rows.map(async(agent)=>({agent,party:await this.parties.getForIntegration(c,partyId(agent.partyId))})));}

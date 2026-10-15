@@ -37,7 +37,7 @@ await test('real AppModule HTTP + company sessions + subscription + RBAC + Postg
  app.useGlobalPipes(new GlobalRequestSafetyPipe());app.useGlobalFilters(new PlatformErrorFilter());
  await app.listen(0,'127.0.0.1');
  const origin=await app.getUrl(),platform=app.get(PlatformCoreApplicationService);
- let tenant:Tenant,second:Tenant,ownerToken='',mfaSecret='',leadId='',acceptedId='',limited:Tenant,roleId='',permissionId='';
+ let tenant:Tenant,second:Tenant,ownerToken='',mfaSecret='',leadId='',acceptedId='',limited:Tenant,roleId='',permissionId='',agentParentId='',agentChildId='';
  const ownerHeaders=()=>({authorization:`Bearer ${ownerToken}`,'x-owner-totp':otp(mfaSecret)});
  const headers=(value:Tenant)=>({authorization:`Bearer ${value.token}`,'x-company-id':value.companyId,'x-branch-id':value.defaultBranchId});
  async function request<T>(path:string,{method='POST',body,headers:extra={},status=201}:{method?:string;body?:unknown;headers?:Record<string,string>;status?:number}={}):Promise<T>{
@@ -66,6 +66,16 @@ await test('real AppModule HTTP + company sessions + subscription + RBAC + Postg
    await request('/crm/followups',{headers:headers(tenant),body:{},status:403});
    for(const value of [tenant,second])await request('/saas/credentials/initial-password',{headers:headers(value),body:{newPassword}});
    const created=await request<Lead>('/crm/leads',{headers:headers(tenant),body:{partyKind:'PERSON',displayName:'Actual HTTP customer request',source:'Acceptance'}});leadId=created.id;assert.ok(leadId);
+  });
+  await t.test('real agent HTTP route persists relationships and rejects cycles, missing data and cross-company parents',async()=>{
+   const create=(value:Tenant,name:string)=>request<{value:{agent:{id:string}}}>('/crm/agents',{headers:headers(value),body:{party:{kind:'PERSON',displayName:name},commission:{kind:'PERCENT',value:'5',currency:null}}});
+   agentParentId=(await create(tenant,'HTTP principal')).value.agent.id;agentChildId=(await create(tenant,'HTTP subordinate')).value.agent.id;
+   const foreign=(await create(second,'Foreign principal')).value.agent.id;
+   const path='/crm/agents/'+agentChildId+'/parent';
+   const linked=await request<{parentAgentId:string}>(path,{headers:headers(tenant),body:{parentAgentId:agentParentId}});assert.equal(linked.parentAgentId,agentParentId);
+   await request('/crm/agents/'+agentParentId+'/parent',{headers:headers(tenant),body:{parentAgentId:agentChildId},status:400});
+   await request(path,{headers:headers(tenant),body:{},status:400});await request(path,{headers:headers(tenant),body:{parentAgentId:foreign},status:400});
+   const rows=await request<Array<{agent:{id:string;parentAgentId:string|null}}>>('/crm/agents',{method:'GET',headers:headers(tenant),status:200});assert.equal(rows.find(v=>v.agent.id===agentChildId)?.agent.parentAgentId,agentParentId);
   });
   let acceptedCommand:ReturnType<typeof command>;
   await t.test('twenty authenticated concurrent requests produce one real follow-up and one history',async()=>{
@@ -108,6 +118,10 @@ await test('real AppModule HTTP + company sessions + subscription + RBAC + Postg
    limitedCommand=command();await request('/crm/followups',{headers:headers(limited),body:limitedCommand});
    await platform.revokePermission(tenant.companyId,roleId,permissionId);await request('/crm/followups',{headers:headers(limited),body:limitedCommand,status:403});
    await platform.grantPermission(tenant.companyId,roleId,permissionId);await request('/crm/followups',{headers:headers(limited),body:limitedCommand});
+  });
+  await t.test('a follow-up-only role cannot alter agent hierarchy through the real endpoint',async()=>{
+   await request('/crm/agents/'+agentChildId+'/parent',{headers:headers(limited),body:{parentAgentId:null},status:403});
+   const rows=await request<Array<{agent:{id:string;parentAgentId:string|null}}>>('/crm/agents',{method:'GET',headers:headers(tenant),status:200});assert.equal(rows.find(v=>v.agent.id===agentChildId)?.agent.parentAgentId,agentParentId);
   });
   await t.test('revoked branch access blocks replay under an otherwise valid session',async()=>{
    await platform.revokeBranchAccess(limited.userId,limited.defaultBranchId);await request('/crm/followups',{headers:headers(limited),body:limitedCommand,status:403});

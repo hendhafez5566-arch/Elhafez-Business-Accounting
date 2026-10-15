@@ -1,10 +1,11 @@
 {
   "id": "flexible-section-ui",
-  "summary": "Allow independent section UI, correct web regression coverage, map 296 requirements, prove isolated offline feasibility, add encrypted local follow-up drafts, and add optional actor-scoped durable scheduling request identities in crm-followups. Production offline synchronization remains disabled pending native PostgreSQL acceptance. Repair native bootstrap file-key incompatibility using a new data-preserving prerequisite migration. Wire manual follow-up scheduling through an encrypted durable client request with CAS isolation, immutable retry identity and explicit acceptance before starting another request. Add real production AppModule HTTP/session/subscription/RBAC/PostgreSQL acceptance; map schedule contract validation to HTTP 400 without weakening guards. Extend local follow-up submissions to an encrypted multi-item queue with explicit selection, non-destructive new intents and atomic legacy migration. Precache the public production shell for offline cold starts without caching API, session or Owner responses. Add explicit encrypted minimal follow-up selection snapshots for offline preparation, with capture timestamps and scope isolation; no offline authorization. Add explicit encrypted follow-up queue backup and atomic additive restore preserving identities, existing receipts and selection; no automatic sending or authentication restore.",
+  "summary": "Allow independent section UI, correct web regression coverage, map 296 requirements, prove isolated offline feasibility, add encrypted local follow-up drafts, and add optional actor-scoped durable scheduling request identities in crm-followups. Production offline synchronization remains disabled pending native PostgreSQL acceptance. Repair native bootstrap file-key incompatibility using a new data-preserving prerequisite migration. Wire manual follow-up scheduling through an encrypted durable client request with CAS isolation, immutable retry identity and explicit acceptance before starting another request. Add real production AppModule HTTP/session/subscription/RBAC/PostgreSQL acceptance; map schedule contract validation to HTTP 400 without weakening guards. Extend local follow-up submissions to an encrypted multi-item queue with explicit selection, non-destructive new intents and atomic legacy migration. Precache the public production shell for offline cold starts without caching API, session or Owner responses. Add explicit encrypted minimal follow-up selection snapshots for offline preparation, with capture timestamps and scope isolation; no offline authorization. Add explicit encrypted follow-up queue backup and atomic additive restore preserving identities, existing receipts and selection; no automatic sending or authentication restore. Add operational main/subagent relationships, mutable through an authorized dedicated command, with company isolation, acyclic concurrency-safe persistence, deletion protection and independent UI.",
   "type": "architecture",
   "allowedModules": [
     "crm-followups",
-    "platform-core"
+    "platform-core",
+    "agent-management"
   ],
   "allowedPaths": [
     "AGENTS.md",
@@ -47,7 +48,11 @@
     "apps/web/src/followup-reference-controls.tsx",
     "tools/experiments/followup-references-browser/**",
     "apps/web/src/followup-queue-backup-controls.tsx",
-    "tools/experiments/followup-backup-browser/**"
+    "tools/experiments/followup-backup-browser/**",
+    "apps/web/src/agent-hierarchy.tsx",
+    "apps/web/src/crm-agent-parity-pages.tsx",
+    "prisma/migrations/20261015160000_agent_hierarchy/migration.sql",
+    "tools/experiments/agent-hierarchy-browser/**"
   ],
   "protectedPaths": [
     "AGENTS.md",
@@ -63,9 +68,10 @@
     "apps/web/scripts/serve.mjs",
     "apps/web/src/index.tsx",
     "apps/web/src/offline-shell-status.tsx",
-    "deploy/railway/static-proxy.mjs"
+    "deploy/railway/static-proxy.mjs",
+    "prisma/migrations/20261015160000_agent_hierarchy/migration.sql"
   ],
-  "protectedReason": "The owner explicitly requested removing premature visual-layout restrictions across ALL sections while preserving accounting, security, module ownership, shared-shell change scope and migration integrity. Replace blanket presentation bans with scoped-stylesheet checks and executable isolation tests. Add nullable request identity columns and a unique index only on crm-followups-owned rows through a new additive migration; no accepted migration changes. The owner requested resolving the local PostgreSQL execution blocker without delaying work; run the existing native acceptance and full migration chain in a bounded disposable Docker database inside the existing PR quality job. No new hosted job or permanent infrastructure. Native fresh-database execution exposed an existing UUID/TEXT FK incompatibility. Add an explicit prerequisite migration aligning the owned Platform file key to its canonical TEXT contract; retain IDs/links, preserve all historical migration files, and test both bootstrap and populated upgrade cases. Build and entry changes explicitly implement the requested offline shell foundation: cache only public build artifacts, preserve online authorization, avoid API/Owner caching and keep updates waiting for existing tabs.",
+  "protectedReason": "The owner explicitly requested removing premature visual-layout restrictions across ALL sections while preserving accounting, security, module ownership, shared-shell change scope and migration integrity. Replace blanket presentation bans with scoped-stylesheet checks and executable isolation tests. Add nullable request identity columns and a unique index only on crm-followups-owned rows through a new additive migration; no accepted migration changes. The owner requested resolving the local PostgreSQL execution blocker without delaying work; run the existing native acceptance and full migration chain in a bounded disposable Docker database inside the existing PR quality job. No new hosted job or permanent infrastructure. Native fresh-database execution exposed an existing UUID/TEXT FK incompatibility. Add an explicit prerequisite migration aligning the owned Platform file key to its canonical TEXT contract; retain IDs/links, preserve all historical migration files, and test both bootstrap and populated upgrade cases. Build and entry changes explicitly implement the requested offline shell foundation: cache only public build artifacts, preserve online authorization, avoid API/Owner caching and keep updates waiting for existing tabs. Implement company-local main/subagent relationships in the existing agent-management owner with a nullable additive self-FK and serialized cycle-safe relationship mutation; preserve commissions and historical migrations. Extend the existing disposable PostgreSQL acceptance runner with native agent graph acceptance.",
   "allowBreakingPublicApi": false,
   "publicApiBreakingReason": "",
   "testEvidence": [
@@ -81,6 +87,8 @@
     "tools/experiments/followup-queue-browser/browser.spec.mjs",
     "tools/experiments/offline-shell-browser/browser.spec.mjs",
     "tools/experiments/followup-references-browser/browser.spec.mjs",
-    "tools/experiments/followup-backup-browser/browser.spec.mjs"
+    "tools/experiments/followup-backup-browser/browser.spec.mjs",
+    "modules/agent-management/src/agent-hierarchy.spec.ts",
+    "tools/experiments/agent-hierarchy-browser/browser.spec.mjs"
   ]
 }
