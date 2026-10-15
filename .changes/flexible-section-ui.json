@@ -1,6 +1,6 @@
 {
   "id": "flexible-section-ui",
-  "summary": "Allow independent section UI, correct web regression coverage, map 296 requirements, prove isolated offline feasibility, add encrypted local follow-up drafts, and add optional actor-scoped durable scheduling request identities in crm-followups. Production offline synchronization remains disabled pending native PostgreSQL acceptance. Repair native bootstrap file-key incompatibility using a new data-preserving prerequisite migration. Wire manual follow-up scheduling through an encrypted durable client request with CAS isolation, immutable retry identity and explicit acceptance before starting another request.",
+  "summary": "Allow independent section UI, correct web regression coverage, map 296 requirements, prove isolated offline feasibility, add encrypted local follow-up drafts, and add optional actor-scoped durable scheduling request identities in crm-followups. Production offline synchronization remains disabled pending native PostgreSQL acceptance. Repair native bootstrap file-key incompatibility using a new data-preserving prerequisite migration. Wire manual follow-up scheduling through an encrypted durable client request with CAS isolation, immutable retry identity and explicit acceptance before starting another request. Add real production AppModule HTTP/session/subscription/RBAC/PostgreSQL acceptance; map schedule contract validation to HTTP 400 without weakening guards.",
   "type": "architecture",
   "allowedModules": [
     "crm-followups",
@@ -33,7 +33,8 @@
     "prisma/migrations/20260929003000_platform_file_key_text/migration.sql",
     "apps/web/src/followup-submission.ts",
     "apps/web/src/followup-local-context.ts",
-    "tools/experiments/followup-submission-browser/**"
+    "tools/experiments/followup-submission-browser/**",
+    "apps/api/src/followup-http.integration.ts"
   ],
   "protectedPaths": [
     "AGENTS.md",
@@ -56,6 +57,7 @@
     "tools/experiments/offline-proof/offline-proof.spec.mjs",
     "tools/experiments/followup-draft-browser/browser.spec.mjs",
     "modules/crm-followups/src/schedule-retry.spec.ts",
-    "tools/experiments/followup-submission-browser/browser.spec.mjs"
+    "tools/experiments/followup-submission-browser/browser.spec.mjs",
+    "modules/crm-followups/src/infrastructure/schedule-http.spec.ts"
   ]
 }

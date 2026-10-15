@@ -57,3 +57,4 @@ pnpm exec prisma migrate deploy --schema prisma/schema.prisma
 pnpm exec prisma migrate status --schema prisma/schema.prisma
 TSX_TSCONFIG_PATH=modules/crm-followups/tsconfig.json \
   node --import tsx modules/crm-followups/src/infrastructure/schedule-postgres.integration.ts
+node --import ./apps/api/scripts/typescript-test-runtime.mjs apps/api/src/followup-http.integration.ts

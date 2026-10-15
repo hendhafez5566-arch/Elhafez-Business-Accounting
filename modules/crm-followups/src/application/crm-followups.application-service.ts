@@ -7,6 +7,10 @@ export class CrmFollowupsApplicationService{constructor(private readonly reposit
  private async branch(c:ExecutionContext){await this.access.requireBranch(c);}private async perm(c:ExecutionContext,p:string){await this.branch(c);await this.access.requirePermission(c,p);}
  async schedule(c:ExecutionContext,input:ScheduleFollowupInput,previous:FollowupId|null=null):Promise<Followup>{
   await this.perm(c,CRM_FOLLOWUP_PERMISSIONS.manage);
+  if(!input||typeof input!=='object')throw new ContractValidationError('body','must be an object');
+  if(typeof input.leadId!=='string')throw new ContractValidationError('leadId','must be a string');
+  if(typeof input.responsibleUserId!=='string')throw new ContractValidationError('responsibleUserId','must be a string');
+  if(input.nextAction!=null&&typeof input.nextAction!=='string')throw new ContractValidationError('nextAction','must be a string');
   const lid=leadId(input.leadId),responsibleUserId=required(input.responsibleUserId,'responsibleUserId');
   const interactionType=interaction(input.interactionType),scheduledAt=when(input.scheduledAt),nextAction=input.nextAction?.trim()||null;
   const request=input.requestId===undefined?null:scheduleRequest(input.requestId,c.actorId,[lid,responsibleUserId,interactionType,scheduledAt,nextAction,previous]);
