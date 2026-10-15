@@ -42,12 +42,14 @@ await test('real AppModule HTTP + company sessions + subscription + RBAC + Postg
  const headers=(value:Tenant)=>({authorization:`Bearer ${value.token}`,'x-company-id':value.companyId,'x-branch-id':value.defaultBranchId});
  async function request<T>(path:string,{method='POST',body,headers:extra={},status=201}:{method?:string;body?:unknown;headers?:Record<string,string>;status?:number}={}):Promise<T>{
   const response=await fetch(origin+path,{method,headers:{'content-type':'application/json',...extra},...body===undefined?{}:{body:JSON.stringify(body)},signal:AbortSignal.timeout(15000)});
-  assert.equal(response.status,status,`${method} ${path} returned unexpected HTTP status`);
-  return await response.json() as T;
+  const reply:unknown=await response.json();
+  const error=reply&&typeof reply==='object'&&'message' in reply&&typeof reply.message==='string'?reply.message.slice(0,300):'';
+  assert.equal(response.status,status,`${method} ${path}: ${error}`);
+  return reply as T;
  }
  async function provision(name:string):Promise<Tenant>{
   const created=await request<{company:{id:string}}>('/saas-owner/companies',{headers:ownerHeaders(),body:{name,administratorUsername:'administrator',temporaryPassword:password,administratorDisplayName:'Acceptance admin'}});
-  const plan=await request<{id:string}>('/saas-owner/plans',{headers:ownerHeaders(),body:{code:'TEST-'+randomUUID(),name:'Acceptance plan',intervalMonths:1,priceMinor:100,currency:'EGP',entitlements:[]}});
+  const plan=await request<{id:string}>('/saas-owner/plans',{headers:ownerHeaders(),body:{code:'TEST-'+randomUUID(),name:'Acceptance plan',intervalMonths:1,priceMinor:100,currency:'EGP',entitlements:['CRM']}});
   await request('/saas-owner/companies/'+created.company.id+'/activate',{headers:ownerHeaders(),body:{planId:plan.id,months:1,paymentReference:'test-only',amountMinor:100,currency:'EGP',idempotencyKey:randomUUID()}});
   const companies=await request<Array<{company:{id:string};companyCode:string}>>('/saas-owner/companies',{method:'GET',headers:ownerHeaders(),status:200});
   const companyCode=companies.find(row=>row.company.id===created.company.id)?.companyCode;assert.ok(companyCode);
