@@ -26,7 +26,9 @@
     "tools/experiments/followup-draft-browser/**",
     "apps/web/src/crm-lead-followup-parity-pages.tsx",
     "prisma/schema.prisma",
-    "prisma/migrations/20261015110000_followup_schedule_retry/migration.sql"
+    "prisma/migrations/20261015110000_followup_schedule_retry/migration.sql",
+    ".github/workflows/ci.yml",
+    "tools/experiments/followup-postgres/**"
   ],
   "protectedPaths": [
     "AGENTS.md",
@@ -34,9 +36,10 @@
     "docs/UI-ARCHITECTURE.md",
     "tools/architecture/check-architecture.ts",
     "prisma/schema.prisma",
-    "prisma/migrations/20261015110000_followup_schedule_retry/migration.sql"
+    "prisma/migrations/20261015110000_followup_schedule_retry/migration.sql",
+    ".github/workflows/ci.yml"
   ],
-  "protectedReason": "The owner explicitly requested removing premature visual-layout restrictions across ALL sections while preserving accounting, security, module ownership, shared-shell change scope and migration integrity. Replace blanket presentation bans with scoped-stylesheet checks and executable isolation tests. Add nullable request identity columns and a unique index only on crm-followups-owned rows through a new additive migration; no accepted migration changes.",
+  "protectedReason": "The owner explicitly requested removing premature visual-layout restrictions across ALL sections while preserving accounting, security, module ownership, shared-shell change scope and migration integrity. Replace blanket presentation bans with scoped-stylesheet checks and executable isolation tests. Add nullable request identity columns and a unique index only on crm-followups-owned rows through a new additive migration; no accepted migration changes. The owner requested resolving the local PostgreSQL execution blocker without delaying work; run the existing native acceptance and full migration chain in a bounded disposable Docker database inside the existing PR quality job. No new hosted job or permanent infrastructure.",
   "allowBreakingPublicApi": false,
   "publicApiBreakingReason": "",
   "testEvidence": [
