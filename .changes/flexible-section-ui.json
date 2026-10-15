@@ -1,12 +1,37 @@
 {
   "id": "flexible-section-ui",
-  "summary": "Owner-authorized presentation policy revision for every section: permit isolated CSS Modules, custom layouts and semantic controls without relaxing financial, ownership or tenant boundaries.",
+  "summary": "Owner-authorized flexible section presentation, complete web test discovery, baseline UI state regression repairs, and traceable implementation planning.",
   "type": "architecture",
   "allowedModules": [],
-  "allowedPaths": ["AGENTS.md", "AI_CHANGE_PROTOCOL.md", "docs/UI-ARCHITECTURE.md", "tools/architecture/check-architecture.ts", "apps/web/src/ui-presentation-policy.spec.ts", "apps/web/src/css-modules.d.ts"],
-  "protectedPaths": ["AGENTS.md", "AI_CHANGE_PROTOCOL.md", "docs/UI-ARCHITECTURE.md", "tools/architecture/check-architecture.ts"],
+  "allowedPaths": [
+    "AGENTS.md",
+    "AI_CHANGE_PROTOCOL.md",
+    "docs/UI-ARCHITECTURE.md",
+    "tools/architecture/check-architecture.ts",
+    "apps/web/src/ui-presentation-policy.spec.ts",
+    "apps/web/src/css-modules.d.ts",
+    "apps/web/package.json",
+    "apps/web/src/quotation-pages.tsx",
+    "apps/web/src/quotation-delivery-actions.tsx",
+    "apps/web/src/cs03-final-crm-integration.spec.ts",
+    "apps/web/src/quotations.spec.ts",
+    "apps/web/src/frontend-coverage.spec.ts",
+    "apps/web/src/tourism-contract-inventory-workspace.tsx",
+    "docs/planning/**"
+  ],
+  "protectedPaths": [
+    "AGENTS.md",
+    "AI_CHANGE_PROTOCOL.md",
+    "docs/UI-ARCHITECTURE.md",
+    "tools/architecture/check-architecture.ts"
+  ],
   "protectedReason": "The owner explicitly requested removing premature visual-layout restrictions across ALL sections while preserving accounting, security, module ownership, shared-shell change scope and migration integrity. Replace blanket presentation bans with scoped-stylesheet checks and executable isolation tests.",
   "allowBreakingPublicApi": false,
   "publicApiBreakingReason": "",
-  "testEvidence": ["apps/web/src/ui-presentation-policy.spec.ts"]
+  "testEvidence": [
+    "apps/web/src/ui-presentation-policy.spec.ts",
+    "apps/web/src/cs03-final-crm-integration.spec.ts",
+    "apps/web/src/quotations.spec.ts",
+    "apps/web/src/frontend-coverage.spec.ts"
+  ]
 }

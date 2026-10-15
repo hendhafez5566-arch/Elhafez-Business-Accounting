@@ -6,6 +6,7 @@ import { findRoute } from './routes.js';
 import { TourismContractInventoryPage } from './tourism-contract-inventory-page.js';
 import { AssetsFinancingSection, CostBudgetSection, CurrencyFxSection, ExpenseCommissionSection, PartyAccountingSection } from './advanced-accounting-sections.js';
 import { AllowancesSection, RecognitionAccrualSection } from './advanced-accounting-corrective-sections.js';
+import { ServiceResourceFields } from './tourism-contract-inventory-workspace.js';
 import { TourismContractInventoryCorrectiveSection } from './tourism-contract-inventory-corrective-section.js';
 
 test('contracts and inventory is a visible tourism workspace', () => {
@@ -51,7 +52,16 @@ test('shared contract inventory is reachable from Hajj and Umrah without a secon
 test('corrective frontend coverage exposes owner-backed amendments, recognition, accrual and allowances', () => {
   const inventory = renderToStaticMarkup(createElement(TourismContractInventoryCorrectiveSection, { contractId: 'contract-1' }));
   assert.match(inventory, /تعديل العقد وإصداراته/);
-  assert.match(inventory, /مخزون الخدمات العامة/);
+  assert.match(inventory, /إنشاء تعديل للعقد/);
+  const services = renderToStaticMarkup(createElement(ServiceResourceFields, {
+    resource: {category:'MEAL', description:'Meals', unit:'PERSON', releaseDeadline:'2026-12-01'},
+    onChange() {},
+  }));
+  assert.match(services, /تصنيف الخدمة/);
+  assert.match(services, /value="MEAL" selected=""/);
+  assert.match(services, /value="PERSON"/);
+  assert.match(services, /value="2026-12-01"/);
+  for (const category of ['CAMP','VISIT','GUIDE','RAWDA','INSURANCE','OTHER']) assert.ok(services.includes('value="'+category+'"'));
 
   const recognition = renderToStaticMarkup(createElement(RecognitionAccrualSection, { accounts: [], invoices: [] }));
   assert.match(recognition, /الاستحقاق والاعتراف/);

@@ -7,6 +7,7 @@ import { CrmSalesDashboardPage } from './crm-dashboard-parity-page.js';
 import { Customer360Page } from './crm-360-parity-pages.js';
 import { TravelersPage } from './crm-insights-pages.js';
 import { QuotationsPage } from './quotation-pages.js';
+import { QuotationDeliveryActions } from './quotation-delivery-actions.js';
 import { findRoute, foundationRoutes } from './routes.js';
 
 test('CS-03 browser routes are registered once and reachable through the existing shell seam',()=>{
@@ -29,9 +30,26 @@ test('CS-03 CRM composition pages render Arabic-first operational surfaces witho
   assert.doesNotMatch(agent,/صرف عمولة|تسجيل قيد/);
 });
 
-test('quotation UI exposes print PDF WhatsApp and immutable communication history surfaces',()=>{
-  const markup=renderToStaticMarkup(createElement(QuotationsPage));
-  assert.match(markup,/حفظ PDF/);
-  assert.match(markup,/واتساب/);
-  assert.match(markup,/سجل الإرسال والتصدير/);
+test('quotation export waits for a selection and communication history remains visible', () => {
+  const markup = renderToStaticMarkup(createElement(QuotationsPage));
+  assert.match(markup, /اختر عرض سعر لتفعيل أدوات الإرسال والتصدير/);
+  assert.match(markup, /سجل الإرسال والتصدير/);
+  assert.doesNotMatch(markup, />حفظ PDF<|>واتساب</);
+});
+
+const deliveryHandlers = { onPrint() {}, onPdf() {}, onWhatsApp() {}, onShare() {} };
+
+test('selected unsent quotation allows print and PDF but cannot start WhatsApp or share', () => {
+  const markup = renderToStaticMarkup(createElement(QuotationDeliveryActions, { ...deliveryHandlers, selected:true, sent:false }));
+  assert.match(markup, />طباعة</);
+  assert.match(markup, />حفظ PDF</);
+  assert.match(markup, /<button[^>]*disabled=""[^>]*>واتساب<\/button>/);
+  assert.match(markup, /<button[^>]*disabled=""[^>]*>مشاركة<\/button>/);
+  assert.match(markup, /يتاحان بعد إرسال مراجعة العرض/);
+});
+
+test('selected sent quotation exposes delivery actions without claiming external delivery', () => {
+  const markup = renderToStaticMarkup(createElement(QuotationDeliveryActions, { ...deliveryHandlers, selected:true, sent:true }));
+  for (const label of ['طباعة','حفظ PDF','واتساب','مشاركة']) assert.ok(markup.includes('>'+label+'<'));
+  assert.doesNotMatch(markup, /disabled=|تم التسليم|يتاحان بعد/);
 });
