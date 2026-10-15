@@ -1,6 +1,6 @@
 {
   "id": "flexible-section-ui",
-  "summary": "Owner-authorized flexible section presentation, complete web test discovery, baseline UI state regression repairs, and traceable implementation planning.",
+  "summary": "Flexible section UI and complete web regressions, requirements mapping, and an isolated browser/SQLite offline feasibility experiment with no production business effects.",
   "type": "architecture",
   "allowedModules": [],
   "allowedPaths": [
@@ -17,7 +17,8 @@
     "apps/web/src/quotations.spec.ts",
     "apps/web/src/frontend-coverage.spec.ts",
     "apps/web/src/tourism-contract-inventory-workspace.tsx",
-    "docs/planning/**"
+    "docs/planning/**",
+    "tools/experiments/offline-proof/**"
   ],
   "protectedPaths": [
     "AGENTS.md",
@@ -32,6 +33,7 @@
     "apps/web/src/ui-presentation-policy.spec.ts",
     "apps/web/src/cs03-final-crm-integration.spec.ts",
     "apps/web/src/quotations.spec.ts",
-    "apps/web/src/frontend-coverage.spec.ts"
+    "apps/web/src/frontend-coverage.spec.ts",
+    "tools/experiments/offline-proof/offline-proof.spec.mjs"
   ]
 }
