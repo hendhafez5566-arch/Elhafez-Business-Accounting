@@ -1,3 +1,4 @@
+import type { ScheduleRequest, ScheduledRequestResult } from '../application/schedule-request.js';
 import type { BranchId, CompanyId } from '@elhafez/contracts';
 import type { CrmFollowupsRepository } from '../application/crm-followups.repository.js';
 import type { Followup, FollowupHistory, FollowupId } from '../domain/followup.js';
@@ -5,10 +6,27 @@ import type { Followup, FollowupHistory, FollowupId } from '../domain/followup.j
 export type AtomicFollowupStage='before-next-create';
 
 export class InMemoryCrmFollowupsRepository implements CrmFollowupsRepository {
+  private readonly requests=new Map<string,{id:FollowupId;fingerprint:string}>();
   private readonly rows=new Map<string,Followup>();
   private readonly histories:FollowupHistory[]=[];
   constructor(private readonly atomicHook?:(stage:AtomicFollowupStage)=>void){}
   private k(c:CompanyId,b:BranchId,i:FollowupId){return c+'|'+b+'|'+i;}
+  private requestKey(c:CompanyId,b:BranchId,r:ScheduleRequest){return JSON.stringify([c,b,r.actorId,r.id]);}
+  async findScheduleRequest(c:CompanyId,b:BranchId,r:ScheduleRequest):Promise<ScheduledRequestResult|undefined>{
+    const receipt=this.requests.get(this.requestKey(c,b,r));
+    if(!receipt)return undefined;
+    const followup=this.rows.get(this.k(c,b,receipt.id));
+    if(!followup)throw new Error('accepted follow-up missing');
+    return {followup,fingerprint:receipt.fingerprint,created:false};
+  }
+  async createScheduledRequest(v:Followup,h:FollowupHistory,r:ScheduleRequest):Promise<ScheduledRequestResult>{
+    const key=this.requestKey(v.companyId,v.branchId,r),receipt=this.requests.get(key);
+    if(receipt){const followup=this.rows.get(this.k(v.companyId,v.branchId,receipt.id));if(!followup)throw new Error('accepted follow-up missing');return {followup,fingerprint:receipt.fingerprint,created:false};}
+    const rowKey=this.k(v.companyId,v.branchId,v.id);
+    if(this.rows.has(rowKey))throw new Error('duplicate follow-up');
+    this.rows.set(rowKey,v);this.histories.push(h);this.requests.set(key,{id:v.id,fingerprint:r.fingerprint});
+    return {followup:v,fingerprint:r.fingerprint,created:true};
+  }
   async create(v:Followup,h:FollowupHistory){
     const key=this.k(v.companyId,v.branchId,v.id);
     if(this.rows.has(key))throw new Error('duplicate follow-up');

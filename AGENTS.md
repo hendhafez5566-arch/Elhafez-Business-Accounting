@@ -32,7 +32,7 @@ Before editing, create exactly one change-scope manifest under `.changes/<change
 11. Do not use floating point for accounting/financial quantities.
 12. State-changing financial/economic workflows must use durable idempotency and concurrency-safe persistence where races matter.
 13. Never erase financial/economic history to implement cancellation or correction.
-14. UI changes are local by default; do not change sidebar/shell/global CSS for a local feature.
+14. Every section may be structurally redesigned using section-owned components, isolated `.module.css`, semantic controls and element-local dynamic styles. Shared primitives are reusable options, not a mandatory page template. Global changes remain explicitly scoped; see `docs/UI-ARCHITECTURE.md`.
 15. Never weaken tests, lint, type safety, architecture checks, migrations, or the fail-closed engineering-integrity gate to make CI green. New suppression/bypass code is prohibited by machine enforcement.
 16. Run focused tests plus repository quality gates before completion.
 17. Inspect final changed filenames and remove generated/unrelated artifacts.

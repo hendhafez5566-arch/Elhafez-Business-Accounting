@@ -155,7 +155,11 @@ Do not alter:
 
 for a local field/control unless the request explicitly requires a global design-system change.
 
-Use existing shared UI components and patterns.
+Reuse shared UI components where they fit the requested design; they are not a mandatory page structure. An owner-requested redesign authorizes replacing page layout and page-owned components, not merely changing colors.
+
+Every section may colocate isolated `.module.css` files and use semantic native controls or element-local dynamic styles. Preserve labels, keyboard behavior, validation, RTL and responsiveness. Never create parallel financial/data ownership for a new view.
+
+Declare shared shell/primitives/tokens when the requested redesign requires them. Protected means explicitly scoped and reviewed, not visually immutable. The presentation policy does not relax business invariants or required quality gates.
 
 Preserve:
 - RTL;

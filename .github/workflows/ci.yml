@@ -88,6 +88,11 @@ jobs:
       - name: Architecture check
         run: pnpm architecture:check
 
+      - name: Native PostgreSQL follow-up acceptance
+        if: github.event_name == 'pull_request'
+        timeout-minutes: 5
+        run: bash tools/experiments/followup-postgres/verify.sh
+
       - name: Affected workspace tests (draft PR)
         if: github.event_name == 'pull_request' && github.event.pull_request.draft == true
         run: pnpm --filter "...[${{ github.event.pull_request.base.sha }}]" run test

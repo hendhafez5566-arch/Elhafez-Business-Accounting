@@ -1,3 +1,5 @@
+import {createHash} from 'node:crypto';
+import {offlineWorker} from './offline-worker.mjs';
 import{build}from'esbuild';import{readFile,writeFile,rm,mkdir}from'node:fs/promises';import{dirname,relative,resolve}from'node:path';import{fileURLToPath}from'node:url';
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..'),dist=resolve(root,'dist');
 await rm(dist,{recursive:true,force:true});await mkdir(dist,{recursive:true});
@@ -7,3 +9,7 @@ if(!js)throw new Error('browser JavaScript output was not generated');
 let html=await readFile(resolve(root,'index.template.html'),'utf8');const url=(value)=>'/'+relative(dist,resolve(value)).split('\\').join('/');
 html=html.replace('__SCRIPT__',url(js)).replace('__STYLE__',css?'<link rel="stylesheet" href="'+url(css)+'">':'');
 await writeFile(resolve(dist,'index.html'),html,'utf8');process.stdout.write('Production browser build: '+relative(process.cwd(),dist)+'\n');
+
+const staticAssets=outputs.filter(value=>value.endsWith('.js')||value.endsWith('.css')).map(url).sort();
+const version=createHash('sha256').update(html+staticAssets.join('\n')+offlineWorker.toString()).digest('hex').slice(0,24);
+await writeFile(resolve(dist,'offline-worker.js'),offlineWorker(version,staticAssets,html),'utf8');

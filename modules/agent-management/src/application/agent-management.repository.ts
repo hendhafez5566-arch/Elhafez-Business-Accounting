@@ -1,6 +1,10 @@
+import type { AgentCommissionAgreement, CommissionAgreementCommand } from '../domain/commission-agreement.js';
 import type { CompanyId } from '@elhafez/contracts';
 import type { Agent, AgentId, AgentReference } from '../domain/agent.js';
 export interface AgentManagementRepository {
+  listCommissionAgreements(companyId:CompanyId,id:AgentId):Promise<AgentCommissionAgreement[]>;
+  saveCommissionAgreement(input:CommissionAgreementCommand):Promise<AgentCommissionAgreement>;
+  setParent(companyId:CompanyId,id:AgentId,parent:AgentId|null,at:string):Promise<{agent:Agent;previousParentId:AgentId|null}>;
   nextNumber(companyId:CompanyId):Promise<number>;
   create(value:Agent):Promise<void>;
   update(value:Agent):Promise<void>;

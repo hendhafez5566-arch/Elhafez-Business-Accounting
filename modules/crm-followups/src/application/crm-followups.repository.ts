@@ -1,7 +1,10 @@
+import type { ScheduleRequest, ScheduledRequestResult } from './schedule-request.js';
 import type { BranchId, CompanyId } from '@elhafez/contracts';
 import type { Followup, FollowupHistory, FollowupId } from '../domain/followup.js';
 
 export interface CrmFollowupsRepository {
+  findScheduleRequest(c:CompanyId,b:BranchId,request:ScheduleRequest):Promise<ScheduledRequestResult|undefined>;
+  createScheduledRequest(v:Followup,h:FollowupHistory,request:ScheduleRequest):Promise<ScheduledRequestResult>;
   create(v:Followup,h:FollowupHistory):Promise<void>;
   update(v:Followup,h:FollowupHistory):Promise<void>;
   completeWithOptionalNext(completed:Followup,completedHistory:FollowupHistory,next:Followup|null,nextHistory:FollowupHistory|null):Promise<void>;
