@@ -1,7 +1,7 @@
 import { distributeCommission } from '@elhafez/expense-commission-recognition';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { companyId, decimalAmount, sourceReference } from '@elhafez/contracts';
+import { companyId, decimalAmount, executionContext, sourceReference } from '@elhafez/contracts';
 import { TourismFinanceOrchestrationApplicationService, type ConfirmBookingInput } from './application/tourism-finance-orchestration.application-service.js';
 import { InMemoryTourismFinanceRepository } from './infrastructure/in-memory-tourism-finance.repository.js';
 import { PrismaTourismFinanceRepository } from './infrastructure/prisma-tourism-finance.repository.js';
@@ -17,7 +17,7 @@ function fixture(repo = new FailingRepository()) {
   const once = (key: string, field: keyof typeof calls) => { if (!effects.has(key)) { effects.add(key); calls[field]++; } };
   const billing: BillingPort = { async createServiceInvoice(input) { once(input.id, 'invoice'); return { id: input.id }; }, async createBookingInvoice(input) { once(input.id, 'invoice'); return { id: input.id }; }, async cancellationEvidence() { return { hasHistoricalAllocationEvidence: historical, activeAllocationIds: paid ? ['allocation-payment'] : [], hasAvailableAdvance: false, settlementRequired: paid, cancellationSafe: !paid, outstanding: decimalAmount(paid ? '0' : '100') }; }, async cancelInvoice(_company, id) { once(`cancel:${id}`, 'cancelInvoice'); return { id }; } };
   const treasury: TreasuryPort = { async postDeposit(input) { once(input.id, 'deposit'); paid = true; historical = true; return { id: input.id }; }, async reverseDeposit(_company, id) { paid = false; return { id }; } };
-  const commission: CommissionPort = {async plan(_c,_currency,total,agreement){const snapshot={...agreement,precision:2};return{snapshot,roundingPolicy:'PRINCIPAL_DOWN_SUBORDINATE_REMAINDER_V1',shares:distributeCommission(total,snapshot)};}, async createServiceCommission(input) { once(input.id, 'commission'); return { id: input.id }; }, async create(input) { if(!claims.some(x=>x.id===input.id))claims.push({id:input.id,partyId:input.agentPartyId,amount:input.amount});once(input.id, 'commission'); return { id: input.id }; }, async evidence() { return { hasPostedPaymentHistory: commissionPaid, reversible: !commissionPaid }; }, async reverse(_company, id) { if(!reversals.includes(id))reversals.push(id);return { id }; } };
+  const commission: CommissionPort = {async validateEmployee(_context,employeeId,partyId){if(employeeId!=='staff'||partyId!=='staff-payee')throw Error('invalid employee identity');return{};},async plan(_c,_currency,total,agreement){const snapshot={...agreement,precision:2};return{snapshot,roundingPolicy:'PRINCIPAL_DOWN_SUBORDINATE_REMAINDER_V1',shares:distributeCommission(total,snapshot)};}, async createServiceCommission(input) { once(input.id, 'commission'); return { id: input.id }; }, async create(input) { if(!claims.some(x=>x.id===input.id))claims.push({id:input.id,partyId:input.agentPartyId,amount:input.amount});once(input.id, 'commission'); return { id: input.id }; }, async evidence() { return { hasPostedPaymentHistory: commissionPaid, reversible: !commissionPaid }; }, async reverse(_company, id) { if(!reversals.includes(id))reversals.push(id);return { id }; } };
   const cost: CostPort = { async ensureProgram(_company, _program, id) { return { costCenterId: id }; }, async resolveProgram() { if (!costLinked) throw new Error('missing'); return { costCenterId: 'cc-1' }; }, async actualize(input) { once(input.id, 'cost'); return { id: input.id }; } };
   const inventory: InventoryPort = { async standalonePlan() { return standalonePlan; }, async commitStandalone(_input, key) { once(key, 'allocation'); return { planId: standalonePlan?.planId ?? 'plan-1', version: 1, allocationIds: ['allocation-1'], residuals: standalonePlan?.residuals ?? [] }; }, async allocation() { return null; }, async allocate(input,key) { allocationKeys.push(key);once(`inventory:${input.allocationId}`, 'allocation'); const procurementReference = procurementFallbacks.get(input.allocationId); return procurementReference ? { procurementReference } : { allocationId: input.allocationId }; }, async blockers() { return inventoryBlocked ? [{ type: 'FINANCIAL_HISTORY' }] : []; }, async release(_company, id, _quantity, key) { once(`release:${key}`, 'release'); return { success: true, id }; } };
   const procurement: ProcurementPort = { async createServicePurchaseOrder(input) { once(input.id, 'servicePo'); return { id: input.id }; }, async cancelServicePurchaseOrder(_company, id) { return { id }; }, async blockers() { const value = procurementSequence.length > 1 ? procurementSequence.shift()! : procurementSequence[0]!; return value === 'NONE' ? [] : [{ type: value, purchaseOrderId: 'po-1', lineId: 'line-1' }]; }, async cleanupForProgramCancellation(_company, reference) { once(`cleanup:${reference.purchaseOrderId ?? reference.commitmentId}`, 'cleanup'); return { id: reference.purchaseOrderId ?? reference.commitmentId!, status: 'CANCELLED' }; } };
@@ -498,3 +498,22 @@ test('individual invoices preserve each debtor, reject ambiguous receipts and re
  f.setPaid(false);await f.service.cancelBooking({companyId:company,branchId:'branch-1',commandKey:'cancel-individual',booking,travelStarted:false,travelEvidence:'not-started',postingDate:'2026-09-20'});assert.equal(f.calls.cancelInvoice,3);
 });
 test('unbalanced and duplicate individual charge plans fail before any owner effect',async()=>{for(const customerCharges of [[{travelerId:'t1',financialCustomerId:'parent',partyId:'p',amount:decimalAmount('99')}],[{travelerId:'t1',financialCustomerId:'parent',partyId:'p',amount:decimalAmount('50')},{travelerId:'t1',financialCustomerId:'parent',partyId:'p',amount:decimalAmount('50')}]]){const f=fixture();await f.setup();await assert.rejects(()=>f.confirm({customerCharges}));assert.equal(f.calls.invoice,0);assert.equal(f.calls.allocation,0);}});
+
+
+test('employee and agent commission have independent durable effects and both retain cancellation evidence',async()=>{
+ const repo=new FailingRepository();repo.failStep='EMPLOYEE_COMMISSION';const f=fixture(repo);await f.setup();
+ const change={context:executionContext('company-a','branch-1','cashier'),employeeCommission:{employeeId:'staff',partyId:'staff-payee',amount:decimalAmount('7')},commission:{agentPartyId:'agent',amount:decimalAmount('5')}};
+ await assert.rejects(f.confirm(change),/local completion failure/);
+ const result=await f.confirm(change,f.create()) as BookingReference;
+ assert.equal(f.calls.invoice,1);assert.equal(f.calls.commission,2);
+ assert.deepEqual(f.claims.map(x=>[x.partyId,x.amount]),[['agent','5'],['staff-payee','7']]);
+ assert.equal(result.commissionClaimIds?.length,2);
+ await f.service.cancelBooking({companyId:company,branchId:'branch-1',commandKey:'cancel-staff',booking,travelStarted:false,travelEvidence:'not started',postingDate:'2026-10-16'});
+ assert.deepEqual(new Set(f.reversals),new Set(result.commissionClaimIds));
+});
+
+test('invalid employee identity fails before booking invoice or inventory effects',async()=>{
+ const f=fixture();await f.setup();
+ await assert.rejects(f.confirm({context:executionContext('company-a','branch-1','cashier'),employeeCommission:{employeeId:'invalid',partyId:'staff-payee',amount:decimalAmount('7')}}),/invalid employee/);
+ assert.equal(f.calls.invoice,0);assert.equal(f.calls.allocation,0);assert.equal(f.calls.commission,0);
+});

@@ -34,7 +34,8 @@
     "prisma/migrations/20261016030000_booking_capacity_hold/**",
     "prisma/migrations/20261016040000_offline_document_numbers/**",
     "prisma/migrations/20261016050000_booking_individual_invoices/**",
-    "prisma/migrations/20261016060000_resumable_file_uploads/**"
+    "prisma/migrations/20261016060000_resumable_file_uploads/**",
+    "prisma/migrations/20261016070000_employee_commission/**"
   ],
   "protectedPaths": [
     "docs/BUSINESS-MODULE-ROUTING.md",
@@ -53,7 +54,9 @@
     "modules/document-numbering/module.json",
     "prisma/migrations/20261016050000_booking_individual_invoices/**",
     "prisma/migrations/20261016060000_resumable_file_uploads/**",
-    "modules/platform-core/module.json"
+    "modules/platform-core/module.json",
+    "modules/expense-commission-recognition/module.json",
+    "prisma/migrations/20261016070000_employee_commission/**"
   ],
   "protectedReason": "Authorized core workflow requires additive owned persistence, coordination module registration and dependency wiring. Preserve financial owners, public APIs and historical migrations.",
   "allowBreakingPublicApi": false,
@@ -69,6 +72,7 @@
     "modules/platform-core/src/file-upload.spec.ts",
     "modules/hajj-umrah-bookings/src/domain/financial-responsibilities.spec.ts",
     "apps/web/src/offline-command-store.spec.ts",
-    "apps/web/src/offline-attachment-store.spec.ts"
+    "apps/web/src/offline-attachment-store.spec.ts",
+    "modules/expense-commission-recognition/src/expense-commission-recognition.spec.ts"
   ]
 }

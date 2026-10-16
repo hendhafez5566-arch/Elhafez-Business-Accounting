@@ -99,8 +99,11 @@ export class CommissionAdapter implements CommissionPort {
     return this.expense.planCommissionDistribution(companyId,currency,total,agreement);
   }
 
+  validateEmployee(...args:Parameters<NonNullable<CommissionPort['validateEmployee']>>) { return this.expense.describeEmployeeBeneficiary(...args); }
+
   create(input: Parameters<CommissionPort['create']>[0]) {
     return this.expense.createCommissionClaim({
+      ...(input.context?{context:input.context}:{}),...(input.beneficiary?{beneficiary:input.beneficiary}:{}),
       id: input.id,
       companyId: input.companyId,
       ...(input.branchId ? { branchId: input.branchId } : {}),

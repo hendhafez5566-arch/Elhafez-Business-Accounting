@@ -1,3 +1,4 @@
+import {PartyRegistryApplicationService} from '@elhafez/party-registry';
 import {TourismContractInventoryReadApplicationService} from '@elhafez/tourism-contract-inventory';
 import {CostBudgetAccountingApplicationService} from '@elhafez/cost-budget-accounting';
 import {CurrencyFxApplicationService} from '@elhafez/currency-fx';
@@ -11,8 +12,16 @@ import {AgentManagementApplicationService} from '@elhafez/agent-management';
 import {TravelerManagementApplicationService} from '@elhafez/traveler-management';
 @Controller('hajj-umrah/operations/booking-options')
 export class BookingOptionsController {
- static readonly runtimeDependencies=[PlatformCoreApplicationService,HajjUmrahProgramsApplicationService,CustomerManagementApplicationService,AgentManagementApplicationService,TravelerManagementApplicationService] as const;
- constructor(private readonly platform:PlatformCoreApplicationService,private readonly programs:HajjUmrahProgramsApplicationService,private readonly customers:CustomerManagementApplicationService,private readonly agents:AgentManagementApplicationService,private readonly travelers:TravelerManagementApplicationService){}
+ static readonly runtimeDependencies=[PartyRegistryApplicationService,PlatformCoreApplicationService,HajjUmrahProgramsApplicationService,CustomerManagementApplicationService,AgentManagementApplicationService,TravelerManagementApplicationService] as const;
+ constructor(private readonly parties:PartyRegistryApplicationService,private readonly platform:PlatformCoreApplicationService,private readonly programs:HajjUmrahProgramsApplicationService,private readonly customers:CustomerManagementApplicationService,private readonly agents:AgentManagementApplicationService,private readonly travelers:TravelerManagementApplicationService){}
+ @Get('employee-commissions')
+ async employees(@Headers('authorization') auth:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined){
+  if(!auth?.startsWith('Bearer ')||!companyId||!branchId)throw new UnauthorizedException('authenticated branch required');
+  const user=await this.platform.currentCompanyUser(auth.slice(7),companyId),c=executionContext(companyId,branchId,user.id);
+  await this.platform.requireBranchAccess(c.actorId,c.companyId,c.branchId);await this.platform.authorize(c.actorId,c.companyId,BOOKING_PERMISSIONS.confirm);await this.platform.authorize(c.actorId,c.companyId,'accounting.finance.operate');
+  const [employees,parties]=await Promise.all([this.platform.listCompanyUsers(c.companyId),this.parties.list(c)]);
+  return{employees:employees.filter(x=>x.status==='ACTIVE').map(x=>({id:x.id,label:x.displayName})),payees:parties.filter(x=>x.status==='ACTIVE').map(x=>({id:x.id,label:x.displayName}))};
+ }
  @Get()
  async options(@Headers('authorization') auth:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined){
   if(!auth?.startsWith('Bearer ')||!companyId||!branchId)throw new UnauthorizedException('authenticated branch required');

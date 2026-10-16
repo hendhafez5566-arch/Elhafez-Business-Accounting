@@ -20,6 +20,8 @@
     "@elhafez/general-ledger",
     "@elhafez/period-control",
     "@elhafez/currency-fx",
-    "@elhafez/financial-controls"
+    "@elhafez/financial-controls",
+    "@elhafez/platform-core",
+    "@elhafez/party-registry"
   ]
 }

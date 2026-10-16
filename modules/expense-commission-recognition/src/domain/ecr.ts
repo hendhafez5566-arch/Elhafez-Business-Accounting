@@ -14,7 +14,9 @@ export interface RecognitionSchedule {
   currency:string; sourceAmount:DecimalAmount; baseAmount:DecimalAmount; deferredAccountId:string; recognitionAccountId:string;
   requestHash:string; initialJournalId?:string; parts:SchedulePart[];
 }
+export interface EmployeeCommissionBeneficiary {readonly kind:'EMPLOYEE';readonly employeeId:string;readonly partyId:string;readonly employeeName:string;readonly payeeName:string;}
 export interface CommissionClaim {
+  readonly beneficiary?:EmployeeCommissionBeneficiary;
   id:string; companyId:CompanyId; branchId?:string; agentPartyId:string; sourceType:string; sourceId:string;
   currency:string; amount:DecimalAmount; baseCarryingAmount:DecimalAmount;
   status:'DRAFT'|'APPROVED'|'PARTIALLY_PAID'|'PAID'|'REVERSED'; requestHash:string;

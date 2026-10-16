@@ -1,13 +1,13 @@
 import { distributeCommission, type CommissionDistribution } from '../domain/commission-distribution.js';
 import { createHash } from 'node:crypto';
-import { ContractValidationError, currencyCode, decimalAmount, money, type CompanyId, type DecimalAmount } from '@elhafez/contracts';
+import { ContractValidationError, currencyCode, decimalAmount, money, type ExecutionContext, type CompanyId, type DecimalAmount } from '@elhafez/contracts';
 import type { BillingSubledgersApplicationService } from '@elhafez/billing-subledgers';
 import type { TreasurySettlementApplicationService } from '@elhafez/treasury-settlement';
 import type { GeneralLedgerApplicationService } from '@elhafez/general-ledger';
 import type { CurrencyFxApplicationService } from '@elhafez/currency-fx';
 import type { FinancialControlsApplicationService } from '@elhafez/financial-controls';
 import type { EcrRepository } from './ecr.repository.js';
-import type { Expense, ExpenseForm, RecognitionKind, RecognitionSchedule, CommissionClaim, CommissionPayment, Accrual, SupplierAdvanceSettlement } from '../domain/ecr.js';
+import type { EmployeeCommissionBeneficiary, Expense, ExpenseForm, RecognitionKind, RecognitionSchedule, CommissionClaim, CommissionPayment, Accrual, SupplierAdvanceSettlement } from '../domain/ecr.js';
 const S=10n**18n;
 function n(v:DecimalAmount|string){const x=decimalAmount(v),neg=x.startsWith('-'),u=neg?x.slice(1):x,[w,f='']=u.split('.');if(f.length>18)throw new ContractValidationError('amount','supports at most 18 fractional digits');const z=BigInt(w+f.padEnd(18,'0'));return neg?-z:z}
 function d(v:bigint){const neg=v<0n,a=neg?-v:v,w=a/S,f=a%S,t=f?w+'.'+f.toString().padStart(18,'0').replace(/0+$/,''):w.toString();return decimalAmount((neg?'-':'')+t)}
@@ -15,13 +15,14 @@ function pos(v:DecimalAmount){const x=decimalAmount(v);if(n(x)<=0n)throw new Con
 function h(v:unknown){return createHash('sha256').update(JSON.stringify(v)).digest('hex')}
 function split(total:DecimalAmount,count:number,precision:number){if(!Number.isInteger(count)||count<1)throw new ContractValidationError('parts','positive integer required');if(!Number.isInteger(precision)||precision<0||precision>18)throw new ContractValidationError('precision','must be 0..18');const quantum=10n**BigInt(18-precision),whole=(n(total)/quantum)/BigInt(count)*quantum,result=Array<DecimalAmount>(count).fill(d(whole));result[count-1]=d(whole+(n(total)-whole*BigInt(count)));return result}
 
+export interface EmployeeCommissionIdentityPort {resolve(context:ExecutionContext,employeeId:string,partyId:string):Promise<EmployeeCommissionBeneficiary>;}
 export class ExpenseCommissionRecognitionApplicationService {
  constructor(private readonly repo:EcrRepository,
   private readonly billing:Pick<BillingSubledgersApplicationService,'recordRecognitionStarted'|'getOpenPosition'|'getAdvance'|'consumeAdvance'>,
   private readonly treasury:Pick<TreasurySettlementApplicationService,'postOwnerPayment'|'postSupplierAdvanceRefundReceipt'|'getTreasurySnapshot'>,
   private readonly gl:Pick<GeneralLedgerApplicationService,'post'|'reverse'>,
   private readonly fx:Pick<CurrencyFxApplicationService,'getBaseCurrency'|'calculateSettlement'> & Partial<Pick<CurrencyFxApplicationService,'getCurrency'>>,
-  private readonly controls:Pick<FinancialControlsApplicationService,'evaluateApprovalRequirement'|'getApprovalRequest'|'getApprovalDecision'>){}
+  private readonly controls:Pick<FinancialControlsApplicationService,'evaluateApprovalRequirement'|'getApprovalRequest'|'getApprovalDecision'>,private readonly employeeIdentity?:EmployeeCommissionIdentityPort){}
 
  async planCommissionDistribution(companyId:CompanyId,currency:string,total:DecimalAmount,agreement:Omit<CommissionDistribution,'precision'>){
   if(!this.fx.getCurrency)throw new ContractValidationError('currency','currency configuration provider required');
@@ -161,7 +162,15 @@ export class ExpenseCommissionRecognitionApplicationService {
  }
 
 
- async createCommissionClaim(input:{id:string;companyId:CompanyId;branchId?:string;agentPartyId:string;sourceType:string;sourceId:string;currency:string;amount:DecimalAmount;baseCarryingAmount:DecimalAmount;expenseAccountId:string;liabilityAccountId:string;approvalRequestId?:string;requesterActorId?:string}):Promise<CommissionClaim>{const normalized={...input,currency:currencyCode(input.currency),amount:pos(input.amount),baseCarryingAmount:pos(input.baseCarryingAmount)},requestHash=h(normalized),prior=await this.repo.claim(input.companyId,input.id);if(prior){if(prior.requestHash!==requestHash)throw new ContractValidationError('source','conflicting replay');return prior}const value:CommissionClaim={...normalized,status:'DRAFT',requestHash,payments:[]};await this.repo.saveClaim(value);return value}
+ async describeEmployeeBeneficiary(context:ExecutionContext,employeeId:string,partyId:string):Promise<EmployeeCommissionBeneficiary>{if(!this.employeeIdentity)throw new ContractValidationError('employee','employee identity provider required');if(!employeeId.trim()||!partyId.trim())throw new ContractValidationError('employee','employee and payee required');return this.employeeIdentity.resolve(context,employeeId,partyId);}
+ async createCommissionClaim(input:{context?:ExecutionContext;beneficiary?:{kind:'EMPLOYEE';employeeId:string;partyId:string};id:string;companyId:CompanyId;branchId?:string;agentPartyId:string;sourceType:string;sourceId:string;currency:string;amount:DecimalAmount;baseCarryingAmount:DecimalAmount;expenseAccountId:string;liabilityAccountId:string;approvalRequestId?:string;requesterActorId?:string}):Promise<CommissionClaim>{
+  const {context,...request}=input,normalized={...request,currency:currencyCode(input.currency),amount:pos(input.amount),baseCarryingAmount:pos(input.baseCarryingAmount)},requestHash=h(normalized),prior=await this.repo.claim(input.companyId,input.id);
+  if(prior){if(prior.requestHash!==requestHash)throw new ContractValidationError('source','conflicting replay');return prior;}
+  let beneficiary:EmployeeCommissionBeneficiary|undefined;
+  if(input.beneficiary){if(input.beneficiary.kind!=='EMPLOYEE'||!context||context.companyId!==input.companyId||context.branchId!==input.branchId||input.agentPartyId!==input.beneficiary.partyId)throw new ContractValidationError('employee','scoped employee/payee identity required');beneficiary=await this.describeEmployeeBeneficiary(context,input.beneficiary.employeeId,input.beneficiary.partyId);}
+  const {beneficiary:requestedBeneficiary,...fields}=normalized;void requestedBeneficiary;const value:CommissionClaim={...fields,...(beneficiary?{beneficiary}:{}),status:'DRAFT',requestHash,payments:[]};await this.repo.saveClaim(value);return value;
+ }
+
  async approveCommission(companyId:CompanyId,id:string,postingDate:string,number:string):Promise<CommissionClaim>{
   let claim=await this.requiredClaim(companyId,id);if(claim.status!=='DRAFT')return claim;
   const base=await this.fx.getBaseCurrency(companyId),conversion=claim.currency===base.code?{converted:money(claim.amount,base.code),rate:{rateId:'SAME_CURRENCY'}}:await this.fx.calculateSettlement(companyId,money(claim.amount,currencyCode(claim.currency)),base.code,postingDate+'T23:59:59.999Z');
@@ -177,7 +186,6 @@ export class ExpenseCommissionRecognitionApplicationService {
  }
  async payCommission(input:{companyId:CompanyId;claimId:string;paymentId:string;treasuryId:string;amount:DecimalAmount;paymentCurrency:string;postingDate:string;number:string;realizedFxGainAccountId?:string;realizedFxLossAccountId?:string}){
   let claim=await this.requiredClaim(input.companyId,input.claimId);
-  if(claim.status!=='APPROVED'&&claim.status!=='PARTIALLY_PAID')throw new ContractValidationError('claim','approved outstanding claim required');
   const amount=pos(input.amount),paymentCurrency=currencyCode(input.paymentCurrency),requestHash=h({...input,amount,paymentCurrency});
   const existing=claim.payments.find(p=>p.id===input.paymentId);
   if(existing){
@@ -187,6 +195,7 @@ export class ExpenseCommissionRecognitionApplicationService {
    if(voucher.status!=='POSTED'||!voucher.journalId)throw new ContractValidationError('voucher','commission payment did not complete');
    const posted={...existing,status:'POSTED' as const,treasuryVoucherId:voucher.id};await this.repo.finalizeCommissionPayment(input.companyId,input.claimId,posted);return posted;
   }
+  if(claim.status!=='APPROVED'&&claim.status!=='PARTIALLY_PAID')throw new ContractValidationError('claim','approved outstanding claim required');
   const base=await this.fx.getBaseCurrency(input.companyId),at=input.postingDate+'T23:59:59.999Z';
   const claimAppliedConversion=paymentCurrency===claim.currency?{converted:money(amount,currencyCode(claim.currency)),rate:{rateId:'SAME_CURRENCY'}}:await this.fx.calculateSettlement(input.companyId,money(amount,paymentCurrency),currencyCode(claim.currency),at);
   const claimAmountApplied=pos(claimAppliedConversion.converted.amount);

@@ -28,6 +28,7 @@ export interface CreateBookingInput {
   readonly sourceReference?: SourceReference;
 }
 export interface ConfirmOperationalBookingInput {
+  readonly employeeCommission?:{employeeId:string;partyId:string;amount:string};
   readonly financialResponsibilities?:readonly FinancialResponsibility[];
   readonly requireStock?:boolean;
   readonly commandKey: string;
@@ -164,11 +165,13 @@ export class HajjUmrahBookingsApplicationService {
     const customerCharges=[] as Array<FinancialResponsibility & {partyId:string}>;
     if(responsibilities)for(const responsibility of responsibilities){const customer=await this.customers.requireActive(c,responsibility.financialCustomerId);customerCharges.push({...responsibility,partyId:customer.partyId});}
     if(old.confirmationCommandKey&&(old.confirmationCommandKey!==input.commandKey||old.confirmationPayloadHash!==payloadHash))throw new ContractValidationError('commandKey','conflicting pending confirmation; resume the original request');
+    if(input.employeeCommission){await this.access.requirePermission(c,'accounting.finance.operate');if(!this.finance.validateEmployeeCommission)throw new ContractValidationError('employee','identity provider required');await this.finance.validateEmployeeCommission(c,input.employeeCommission.employeeId,input.employeeCommission.partyId);}
     if(!old.confirmationCommandKey){
       try{old=await this.repo.save({...old,confirmationCommandKey:required(input.commandKey,'commandKey'),confirmationPayloadHash:payloadHash,updatedAt:this.now().toISOString()},this.history(c,id,'CONFIRMATION_REQUESTED',undefined,undefined,undefined,{commandKey:input.commandKey,payloadHash}));}
       catch(error){const current=await this.required(c,id);if(current.confirmationCommandKey!==input.commandKey||current.confirmationPayloadHash!==payloadHash)throw error;if(current.status==='CONFIRMED')return current;old=current;}
     }
     const evidence=await this.finance.confirm({
+      context:c,...(input.employeeCommission?{employeeCommission:input.employeeCommission}:{}),
       ...(responsibilities?{customerCharges}:{}),
       ...(old.capacityHold?.state==='HELD'?{capacityHoldKey:old.capacityHold.commandKey}:{}),requireStock:input.requireStock,companyId:c.companyId,branchId:c.branchId,commandKey:required(input.commandKey,'commandKey'),bookingId:old.id,programId:program.id,
       programEvidence:`HUP:${program.id}:${program.currentVersionId}:BOOKABLE:OPEN`,category:input.category,costCenterId:required(input.costCenterId,'costCenterId'),

@@ -956,12 +956,18 @@ importers:
       '@elhafez/billing-subledgers':
         specifier: workspace:*
         version: link:../billing-subledgers
+      '@elhafez/platform-core':
+        specifier: workspace:*
+        version: link:../platform-core
       '@elhafez/treasury-settlement':
         specifier: workspace:*
         version: link:../treasury-settlement
       '@elhafez/general-ledger':
         specifier: workspace:*
         version: link:../general-ledger
+      '@elhafez/party-registry':
+        specifier: workspace:*
+        version: link:../party-registry
       '@elhafez/period-control':
         specifier: workspace:*
         version: link:../period-control

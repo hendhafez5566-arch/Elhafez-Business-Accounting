@@ -210,9 +210,10 @@ export class AdvancedAccountingController {
 
   @Post('commissions')
   async createCommission(@Headers('authorization') auth: string, @Headers('x-company-id') company: string, @Headers('x-branch-id') branch: string,
-    @Body() input: { id?: string; agentPartyId: string; sourceType: string; sourceId: string; currency: string; amount: string; baseCarryingAmount: string; expenseAccountId: string; liabilityAccountId: string; approvalRequestId?: string }) {
+    @Body() input: { beneficiary?: {kind:'EMPLOYEE';employeeId:string;partyId:string}; id?: string; agentPartyId: string; sourceType: string; sourceId: string; currency: string; amount: string; baseCarryingAmount: string; expenseAccountId: string; liabilityAccountId: string; approvalRequestId?: string }) {
     const c = await this.context(auth, company, branch, true);
     return this.ecr.createCommissionClaim({
+      context: c, ...(input.beneficiary ? {beneficiary:input.beneficiary} : {}),
       id: input.id?.trim() || randomUUID(), companyId: c.companyId, branchId: c.branchId, agentPartyId: input.agentPartyId,
       sourceType: input.sourceType, sourceId: input.sourceId, currency: input.currency, amount: decimalAmount(input.amount),
       baseCarryingAmount: decimalAmount(input.baseCarryingAmount), expenseAccountId: input.expenseAccountId, liabilityAccountId: input.liabilityAccountId,

@@ -1059,6 +1059,7 @@ model EcrRecognitionPart {
  @@map("ecr_recognition_parts")
 }
 model EcrCommissionClaim {
+ beneficiary Json?
  id String @id
  companyId String @map("company_id")
  branchId String? @map("branch_id")
