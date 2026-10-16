@@ -69,10 +69,6 @@
     "modules/platform-core/src/file-upload.spec.ts",
     "modules/hajj-umrah-bookings/src/domain/financial-responsibilities.spec.ts",
     "apps/web/src/offline-command-store.spec.ts",
-    "apps/web/src/offline-attachment-store.spec.ts",
-    "apps/api/src/core-workflow-http.integration.ts",
-    "tools/experiments/core-workflow/browser.mjs",
-    "modules/tourism-contract-inventory/src/ac11.spec.ts",
-    "apps/api/src/core-restore-http.integration.ts"
+    "apps/web/src/offline-attachment-store.spec.ts"
   ]
 }
