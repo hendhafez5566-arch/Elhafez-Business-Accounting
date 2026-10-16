@@ -1,3 +1,4 @@
+import {BillingSubledgersApplicationService} from '@elhafez/billing-subledgers';
 import {DocumentNumberingApplicationService} from '@elhafez/document-numbering';
 import {PlatformCoreApplicationService} from '@elhafez/platform-core';
 import {OfflineCoordinationApplicationService} from '@elhafez/offline-coordination';
@@ -104,6 +105,23 @@ await test('core workflow actual AppModule and PostgreSQL',async t=>{
    }
 
 
+  });
+  await t.test('PostgreSQL commercial credits, revenue dimensions and refund reservations preserve original documents in an independent company',async()=>{
+   const cid=companyId(other.companyId),billing=app.get(BillingSubledgersApplicationService),fx=app.get(CurrencyFxApplicationService),gl=app.get(GeneralLedgerApplicationService),periods=app.get(PeriodControlApplicationService),cost=app.get(CostBudgetAccountingApplicationService);
+   await fx.configure({companyId:cid,code:currencyCode('EGP'),precision:2,isBase:true,status:'ACTIVE'});
+   const year=randomUUID();await periods.createFiscalYear({id:year,companyId:cid,startDate:'2026-01-01',endDate:'2026-12-31',status:'OPEN'});await periods.createPeriod({id:randomUUID(),companyId:cid,fiscalYearId:year,startDate:'2026-01-01',endDate:'2026-12-31',status:'OPEN'});
+   const accounts={ar:randomUUID(),revenue:randomUUID(),advance:randomUUID()};for(const [code,id] of Object.entries(accounts))await gl.createAccount({id,companyId:cid,code:'ADJ-'+code,name:code,classification:code==='revenue'?'REVENUE':code==='advance'?'LIABILITY':'ASSET',active:true,postable:true,...(code!=='revenue'?{controlType:'CUSTOMER' as const}:{})});
+   const centers=[costCenterId(randomUUID()),costCenterId(randomUUID())];for(const [index,id]of centers.entries())await cost.create({id:id!,companyId:cid,code:'ADJ-'+index,name:'Adjustment program '+index,status:'ACTIVE'});
+   const invoiceId=randomUUID(),partyId=randomUUID();await billing.createDraft({id:invoiceId,companyId:cid,branchId:other.defaultBranchId,type:'CUSTOMER',partyId,number:'ADJ-INV',postingDate:'2026-10-15',dueDate:'2026-12-01',currency:'EGP',sourceType:'CORE_ADJUSTMENT_ACCEPTANCE',sourceId:invoiceId,controlAccountId:accounts.ar,lines:[{id:randomUUID(),accountId:accounts.revenue,amount:decimalAmount('100'),costCenterId:centers[0]}]});await billing.postInvoice(cid,invoiceId);
+   const original=await billing.getInvoice(cid,invoiceId);
+   const transfer={id:randomUUID(),companyId:cid,invoiceId,costCenterId:centers[1]!,postingDate:'2026-10-15',number:'ADJ-TRANSFER',reason:'Reviewed same-price program transfer'};await billing.reassignBookingRevenueCostCenter(transfer);await billing.reassignBookingRevenueCostCenter(transfer);
+   await billing.applyAllocation({id:randomUUID(),companyId:cid,partyKind:'CUSTOMER',partyId,invoiceId,amount:decimalAmount('100'),sourceType:'CORE_ADJUSTMENT_COLLECTION',sourceId:invoiceId});
+   const credit={id:randomUUID(),companyId:cid,invoiceId,kind:'CREDIT_NOTE' as const,amount:decimalAmount('60'),documentAmount:decimalAmount('60'),sourceType:'CORE_PARTIAL_CANCELLATION',sourceId:invoiceId,postingDate:'2026-10-15',number:'ADJ-CREDIT',offsetAccountId:accounts.revenue,advanceAccountId:accounts.advance,enforceNonNegativeCharge:true,reason:'Reviewed traveler cancellation'};
+   const effect=await billing.createAdjustment(credit);assert.equal(effect.advanceAmount,'60');assert.equal(effect.appliedAmount,'0');await billing.createAdjustment(credit);
+   const reservation={companyId:cid,advanceId:effect.advanceId!,partyKind:'CUSTOMER' as const,partyId,amount:decimalAmount('40'),sourceId:randomUUID()};await billing.reserveAdvanceRefund(reservation);await billing.reserveAdvanceRefund(reservation);await assert.rejects(billing.reserveAdvanceRefund({...reservation,sourceId:randomUUID()}),/exceeds/);
+   const position=await billing.getCommercialPosition(cid,invoiceId);assert.equal(position.charged,'40');assert.equal(position.outstanding,'0');assert.equal(position.advances[0]?.available,'20');assert.equal((await billing.getInvoice(cid,invoiceId))?.journalId,original?.journalId);assert.equal((await billing.getInvoice(cid,invoiceId))?.lines[0]?.amount,'100');
+   assert.equal(await db.billingFinancialOperation.count({where:{companyId:cid,status:'COMPLETED'}}),2);assert.equal(await db.billingAdvanceConsumption.count({where:{companyId:cid,status:'RESERVED'}}),1);
+   const postedCredit=await gl.getJournal(cid,effect.journalId!);assert.equal(postedCredit?.lines.find(x=>x.accountId===accounts.revenue)?.costCenterId,centers[1]);
   });
   await t.test('PostgreSQL commission approval and group settlement serialize without unpaid liability leakage',async()=>{
    const c=executionContext(tenant.companyId,tenant.defaultBranchId,tenant.userId),ecr=app.get(ExpenseCommissionRecognitionApplicationService),payee=await db.ecrCommissionClaim.findFirstOrThrow({where:{companyId:tenant.companyId}}),ids=[randomUUID(),randomUUID()],units=(v:string)=>{const negative=v.startsWith('-'),[whole,fraction='']=(negative?v.slice(1):v).split('.'),value=BigInt(whole!+fraction.padEnd(18,'0'));return negative?-value:value;};

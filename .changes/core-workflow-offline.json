@@ -13,7 +13,8 @@
     "treasury-settlement",
     "tourism-contract-inventory",
     "platform-core",
-    "document-numbering"
+    "document-numbering",
+    "billing-subledgers"
   ],
   "allowedPaths": [
     "docs/planning/**",
@@ -36,7 +37,8 @@
     "prisma/migrations/20261016050000_booking_individual_invoices/**",
     "prisma/migrations/20261016060000_resumable_file_uploads/**",
     "prisma/migrations/20261016070000_employee_commission/**",
-    "prisma/migrations/20261016080000_commission_settlement/**"
+    "prisma/migrations/20261016080000_commission_settlement/**",
+    "prisma/migrations/20261016090000_booking_adjustments_and_program_transfer/**"
   ],
   "protectedPaths": [
     "docs/BUSINESS-MODULE-ROUTING.md",
@@ -59,9 +61,11 @@
     "modules/expense-commission-recognition/module.json",
     "prisma/migrations/20261016070000_employee_commission/**",
     "prisma/migrations/20261016080000_commission_settlement/**",
-    "apps/web/src/ui/primitives.tsx"
+    "apps/web/src/ui/primitives.tsx",
+    "modules/billing-subledgers/module.json",
+    "prisma/migrations/20261016090000_booking_adjustments_and_program_transfer/**"
   ],
-  "protectedReason": "Authorized core workflow requires additive owned persistence, coordination module registration and dependency wiring. Preserve financial owners, public APIs and historical migrations. The shared Dialog needs unique accessible title IDs because booking confirmation and per-booking agent dialogs coexist; no shell, typography, style or layout change.",
+  "protectedReason": "Authorized core workflow requires additive owned persistence, coordination module registration and dependency wiring. Preserve financial owners, public APIs and historical migrations. The shared Dialog needs unique accessible title IDs because booking confirmation and per-booking agent dialogs coexist; no shell, typography, style or layout change. Booking transfer and partial cancellation require Billing-owned durable adjustment/dimension operations and additive carrying metadata; preserve the original documents and ledger entries.",
   "allowBreakingPublicApi": false,
   "publicApiBreakingReason": "",
   "testEvidence": [
@@ -77,6 +81,7 @@
     "apps/web/src/offline-command-store.spec.ts",
     "apps/web/src/offline-attachment-store.spec.ts",
     "modules/expense-commission-recognition/src/expense-commission-recognition.spec.ts",
-    "apps/web/src/ui.spec.ts"
+    "apps/web/src/ui.spec.ts",
+    "modules/billing-subledgers/src/billing-subledgers.spec.ts"
   ]
 }

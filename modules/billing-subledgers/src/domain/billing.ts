@@ -5,6 +5,7 @@ export type InvoiceStatus = 'DRAFT' | 'POSTING' | 'POSTED' | 'CANCELLING' | 'CAN
 export type PartyKind = 'CUSTOMER' | 'SUPPLIER' | 'AGENT';
 
 export interface InvoiceLine {
+  costCenterId?:string;
   id: string;
   accountId: string;
   amount: DecimalAmount;
@@ -15,6 +16,8 @@ export interface InvoiceLine {
 }
 
 export interface Invoice {
+  economicOperationKey?:string;
+  financialDimensions?:InvoiceFinancialDimensions;
   id: string;
   companyId: CompanyId;
   branchId?: string;
@@ -70,6 +73,9 @@ export interface Allocation {
 }
 
 export interface Advance {
+  economicOperationKey?:string;
+  baseCurrency?:string;
+  liabilityAccountId?:string;
   id: string;
   companyId: CompanyId;
   partyKind: PartyKind;
@@ -85,6 +91,8 @@ export interface Advance {
 }
 
 export interface AdvanceConsumption {
+  status?:'RESERVED'|'POSTED';
+  evidence?:{voucherId:string;journalId:string;paymentCurrency:string;paymentAmount:DecimalAmount;fxRateId?:string};
   id: string;
   companyId: CompanyId;
   advanceId: string;
@@ -95,6 +103,7 @@ export interface AdvanceConsumption {
 }
 
 export interface Adjustment {
+  documentAmount?:DecimalAmount;documentCurrency?:string;costCenterId?:string;
   id: string;
   companyId: CompanyId;
   invoiceId: string;
@@ -109,3 +118,12 @@ export interface Adjustment {
   advanceId?: string;
   reversedAt?: string;
 }
+
+export interface InvoiceFinancialDimensions {currentCostCenterId?:string;history:readonly {operationId:string;fromCostCenterId?:string;costCenterId:string;postingDate:string;number:string;amount:DecimalAmount;journalId?:string}[];}
+export interface BillingFinancialOperation {id:string;companyId:CompanyId;invoiceId:string;kind:'ADJUSTMENT'|'ADJUSTMENT_REVERSAL'|'COST_CENTER_TRANSFER';sourceType:string;sourceId:string;requestHash:string;snapshot:BillingOperationSnapshot;plan?:unknown;result?:unknown;status:'PENDING'|'COMPLETED';}
+export interface ReserveBillingFinancialOperation {id:string;companyId:CompanyId;invoiceId:string;kind:BillingFinancialOperation['kind'];sourceType:string;sourceId:string;requestHash:string;baseCurrency:string;basePrecision:number;documentPrecision:number;adjustmentInput?:BillingAdjustmentRequest;reversalAdjustmentId?:string;}
+export interface CompleteBillingFinancialOperation {companyId:CompanyId;id:string;requestHash:string;invoice:Invoice;result:unknown;adjustment?:Adjustment;advance?:Advance;}
+
+export interface BillingOperationSnapshot {invoice:Invoice;adjustments:readonly Adjustment[];baseCurrency:string;basePrecision:number;documentPrecision:number;reversedAdjustment?:Adjustment;generatedAdvance?:Advance;}
+export interface BillingAdjustmentRequest {id:string;companyId:CompanyId;invoiceId:string;kind:'CREDIT_NOTE'|'DEBIT_NOTE'|'WRITE_OFF';amount:DecimalAmount;sourceType:string;sourceId:string;postingDate:string;number:string;offsetAccountId:string;advanceAccountId?:string;enforceNonNegativeCharge?:boolean;documentAmount?:DecimalAmount;reason?:string;}
+export interface InvoiceAdjustmentPlan {amount:DecimalAmount;appliedAmount:DecimalAmount;advanceAmount:DecimalAmount;outstanding:DecimalAmount;costCenterId?:string;documentAmount?:DecimalAmount;documentCurrency?:string;}

@@ -40,10 +40,10 @@ export class FamilyStatementController {
    const financial=await this.finance.bookingCustomerView(context.companyId,context.branchId,sourceReference('HAJJ_UMRAH_BOOKING',booking.id));
    const charges=financial?.customerInvoices??[{invoiceId:financial?.invoiceId??null,travelerId:null,financialCustomerId:booking.financialCustomerId??booking.customerId,partyId:financial?.debtorPartyId}];
    for(const charge of charges){
-    const invoice=charge.invoiceId?await this.billing.getOpenPosition(context.companyId,charge.invoiceId):null;
+    const invoice=charge.invoiceId?await this.billing.getCommercialPosition(context.companyId,charge.invoiceId):null;
     if(invoice&&(invoice.branchId!==context.branchId||invoice.partyId!==charge.partyId))throw new ContractValidationError('invoice','owner scope does not match family booking');
     const active=invoice?.status==='POSTED';
-    rows.push({invoiceState:invoice?.status??null,bookingId:booking.id,code:booking.code,status:booking.status,travelerIds:charge.travelerId?[charge.travelerId]:booking.travelerIds,financialCustomerId:charge.financialCustomerId,invoiceId:invoice?.invoiceId??null,currency:invoice?.currency??null,charged:active?invoice.documentTotal:'0',paid:active?amount(units(invoice.documentTotal)-units(invoice.outstanding)):'0',outstanding:active?invoice.outstanding:'0',allocationBasis:charge.travelerId||booking.travelerIds.length===1?'INDIVIDUAL':'SHARED_NOT_DISTRIBUTED'});
+    rows.push({invoiceState:invoice?.status??null,bookingId:booking.id,code:booking.code,status:booking.status,travelerIds:charge.travelerId?[charge.travelerId]:booking.travelerIds,financialCustomerId:charge.financialCustomerId,invoiceId:invoice?.invoiceId??null,currency:invoice?.currency??null,charged:active?invoice.charged:'0',paid:active?invoice.settled:'0',outstanding:active?invoice.outstanding:'0',allocationBasis:charge.travelerId||booking.travelerIds.length===1?'INDIVIDUAL':'SHARED_NOT_DISTRIBUTED'});
    }
   }
   const selected=travelerId?rows.filter(row=>row.allocationBasis==='INDIVIDUAL'&&row.travelerIds.includes(travelerId)):rows;

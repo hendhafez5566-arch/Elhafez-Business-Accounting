@@ -12,7 +12,8 @@
     "billing_advance_consumptions",
     "billing_adjustments",
     "billing_settlement_groups",
-    "bill_historical_imports"
+    "bill_historical_imports",
+    "billing_financial_operations"
   ],
   "allowedDependencies": [
     "@elhafez/contracts",

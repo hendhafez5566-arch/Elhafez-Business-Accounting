@@ -1,8 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { PrismaClient } from '@prisma/client';
+import {Prisma,type PrismaClient,type BillingFinancialOperation as StoredFinancialOperation} from '@prisma/client';
+import {isDeepStrictEqual} from 'node:util';
+import {billingUnits,planInvoiceAdjustment} from '../domain/invoice-adjustment-plan.js';
 import { ContractValidationError, type CompanyId, type DecimalAmount } from '@elhafez/contracts';
 import type { BillingRepository } from '../application/billing.repository.js';
 import type {
+  BillingFinancialOperation,ReserveBillingFinancialOperation,CompleteBillingFinancialOperation,
   Advance,
   AdvanceConsumption,
   Adjustment,
@@ -14,6 +17,50 @@ import type {
 export class PrismaBillingRepository implements BillingRepository {
   constructor(private readonly db: PrismaClient) {}
 
+  private financialJson(value:unknown):Prisma.InputJsonValue{return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;}
+  private mapFinancialOperation(row:StoredFinancialOperation):BillingFinancialOperation{return{id:row.id,companyId:row.companyId as CompanyId,invoiceId:row.invoiceId,kind:row.kind as BillingFinancialOperation['kind'],sourceType:row.sourceType,sourceId:row.sourceId,requestHash:row.requestHash,snapshot:row.snapshot as unknown as BillingFinancialOperation['snapshot'],...(row.plan!==null?{plan:row.plan}:{}),...(row.result!==null?{result:row.result}:{}),status:row.status as BillingFinancialOperation['status']};}
+  async financialOperation(companyId:CompanyId,id:string){const row=await this.db.billingFinancialOperation.findFirst({where:{companyId,id}});return row?this.mapFinancialOperation(row):undefined;}
+  async reserveFinancialOperation(input:ReserveBillingFinancialOperation){return this.db.$transaction(async tx=>{
+    await tx.$queryRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${JSON.stringify([input.companyId,input.sourceType,input.sourceId])},0))::text`);
+    const prior=await tx.billingFinancialOperation.findFirst({where:{OR:[{id:input.id},{companyId:input.companyId,sourceType:input.sourceType,sourceId:input.sourceId}]}});
+    if(prior){if(prior.companyId!==input.companyId||prior.id!==input.id||prior.requestHash!==input.requestHash)throw new ContractValidationError('operation','conflicting financial operation identity');return this.mapFinancialOperation(prior);}
+    await tx.$queryRaw(Prisma.sql`SELECT id FROM billing_invoices WHERE company_id=${input.companyId} AND id=${input.invoiceId} FOR UPDATE`);
+    const row=await tx.billingInvoice.findFirst({where:{companyId:input.companyId,id:input.invoiceId},include:{lines:true}});
+    if(!row||row.status!=='POSTED'||row.recognitionReference||row.economicOperationKey)throw new ContractValidationError('invoice','posted invoice without pending operation or recognition required');
+    const adjustments=await tx.billingAdjustment.findMany({where:{companyId:input.companyId,invoiceId:input.invoiceId}}),snapshot={invoice:this.inv(row),adjustments:adjustments.map(value=>this.adjustmentValue(value)),baseCurrency:input.baseCurrency,basePrecision:input.basePrecision,documentPrecision:input.documentPrecision};
+    if(input.kind==='ADJUSTMENT'&&(!input.adjustmentInput||input.adjustmentInput.companyId!==input.companyId||input.adjustmentInput.invoiceId!==input.invoiceId))throw new ContractValidationError('adjustment','scope mismatch');
+    const plan=input.kind==='ADJUSTMENT'?planInvoiceAdjustment(snapshot,input.adjustmentInput!):undefined;
+    if(input.kind==='ADJUSTMENT_REVERSAL'){
+      const adjustment=adjustments.find(x=>x.id===input.reversalAdjustmentId);if(!adjustment||adjustment.reversedAt)throw new ContractValidationError('adjustment','active adjustment required');
+      if(adjustment.kind==='DEBIT_NOTE'&&billingUnits(snapshot.invoice.outstanding)<billingUnits(adjustment.appliedAmount.toString()))throw new ContractValidationError('adjustment','BLOCKED: reversal would make outstanding negative');
+      if(await tx.billingAllocation.count({where:{companyId:input.companyId,invoiceId:input.invoiceId,reversedAt:null,appliedAmount:{gt:0}}}))throw new ContractValidationError('adjustment','BLOCKED: active downstream invoice allocations');
+      const currentCenter=snapshot.invoice.financialDimensions?.currentCostCenterId??snapshot.invoice.lines[0]?.costCenterId;if((adjustment.costCenterId??undefined)!==(currentCenter??undefined))throw new ContractValidationError('dimension','review a current-center adjustment instead of reversing a transferred revenue allocation');
+      let advance:Advance|undefined;if(adjustment.advanceId){await tx.$queryRaw(Prisma.sql`SELECT id FROM billing_advances WHERE company_id=${input.companyId} AND id=${adjustment.advanceId} FOR UPDATE`);const value=await tx.billingAdvance.findFirst({where:{companyId:input.companyId,id:adjustment.advanceId}});if(value)advance=this.advanceValue(value);}
+      if(advance&&(advance.economicOperationKey||advance.reversedAt||advance.available!==advance.amount))throw new ContractValidationError('adjustment','BLOCKED: generated advance was consumed or reserved');
+      Object.assign(snapshot,{reversedAdjustment:this.adjustmentValue(adjustment),...(advance?{generatedAdvance:advance}:{})});
+      if(advance)await tx.billingAdvance.update({where:{id:advance.id},data:{economicOperationKey:input.id}});
+    }
+
+    const operation=await tx.billingFinancialOperation.create({data:{id:input.id,companyId:input.companyId,invoiceId:input.invoiceId,kind:input.kind,sourceType:input.sourceType,sourceId:input.sourceId,requestHash:input.requestHash,snapshot:this.financialJson(snapshot),...(plan?{plan:this.financialJson(plan)}:{}),status:'PENDING'}});
+    await tx.billingInvoice.update({where:{id:input.invoiceId},data:{economicOperationKey:operation.id}});return this.mapFinancialOperation(operation);
+  });}
+  async setFinancialOperationPlan(companyId:CompanyId,id:string,requestHash:string,plan:unknown){return this.db.$transaction(async tx=>{
+    await tx.$queryRaw(Prisma.sql`SELECT id FROM billing_financial_operations WHERE company_id=${companyId} AND id=${id} FOR UPDATE`);const row=await tx.billingFinancialOperation.findFirst({where:{companyId,id}});
+    if(!row||row.requestHash!==requestHash)throw new ContractValidationError('operation','reservation missing');const normalized=this.financialJson(plan);
+    if(row.plan!==null){if(!isDeepStrictEqual(row.plan,normalized))throw new ContractValidationError('operation','plan changed');return this.mapFinancialOperation(row);}return this.mapFinancialOperation(await tx.billingFinancialOperation.update({where:{id},data:{plan:normalized}}));
+  });}
+  async completeFinancialOperation(input:CompleteBillingFinancialOperation){return this.db.$transaction(async tx=>{
+    await tx.$queryRaw(Prisma.sql`SELECT id FROM billing_financial_operations WHERE company_id=${input.companyId} AND id=${input.id} FOR UPDATE`);const row=await tx.billingFinancialOperation.findFirst({where:{companyId:input.companyId,id:input.id}});
+    if(!row||row.requestHash!==input.requestHash)throw new ContractValidationError('operation','reservation missing');const operation=this.mapFinancialOperation(row);if(operation.status==='COMPLETED')return operation;
+    await tx.$queryRaw(Prisma.sql`SELECT id FROM billing_invoices WHERE company_id=${input.companyId} AND id=${operation.invoiceId} FOR UPDATE`);const current=await tx.billingInvoice.findFirst({where:{companyId:input.companyId,id:operation.invoiceId}});
+    if(!current||current.economicOperationKey!==operation.id||input.invoice.id!==operation.invoiceId||input.invoice.companyId!==input.companyId||current.outstanding.toString()!==operation.snapshot.invoice.outstanding)throw new ContractValidationError('operation','invoice reservation changed');
+    const originalAdvance=operation.snapshot.generatedAdvance;if(originalAdvance){const advance=await tx.billingAdvance.findFirst({where:{companyId:input.companyId,id:originalAdvance.id}});if(!advance||advance.economicOperationKey!==operation.id||advance.available.toString()!==originalAdvance.available)throw new ContractValidationError('advance','advance reservation changed');}
+    if(input.adjustment&&(input.adjustment.companyId!==input.companyId||input.adjustment.invoiceId!==current.id))throw new ContractValidationError('adjustment','scope mismatch');
+    if(input.advance&&(input.advance.companyId!==input.companyId||input.advance.partyId!==current.partyId))throw new ContractValidationError('advance','scope mismatch');
+    if(input.adjustment)await this.upsertAdjustment(tx,input.adjustment);if(input.advance)await this.upsertAdvance(tx,input.advance);
+    await tx.billingInvoice.update({where:{id:current.id},data:{economicOperationKey:null,outstanding:input.invoice.outstanding,financialDimensions:input.invoice.financialDimensions?this.financialJson(input.invoice.financialDimensions):Prisma.JsonNull}});
+    return this.mapFinancialOperation(await tx.billingFinancialOperation.update({where:{id:operation.id},data:{status:'COMPLETED',result:this.financialJson(input.result)}}));
+  });}
   private inv(value: any): Invoice {
     return {
       ...value,
@@ -59,6 +106,7 @@ export class PrismaBillingRepository implements BillingRepository {
       amount: value.amount.toString(),
       appliedAmount: value.appliedAmount.toString(),
       advanceAmount: value.advanceAmount.toString(),
+      ...(value.documentAmount!==null&&value.documentAmount!==undefined?{documentAmount:value.documentAmount.toString()}:{}),
       reversedAt: value.reversedAt?.toISOString(),
     };
   }
@@ -105,6 +153,7 @@ export class PrismaBillingRepository implements BillingRepository {
         reversedAt: value.reversedAt ? new Date(value.reversedAt) : null,
       },
       update: {
+        economicOperationKey:value.economicOperationKey??null,
         available: value.available,
         reversedAt: value.reversedAt ? new Date(value.reversedAt) : null,
       },
@@ -166,6 +215,7 @@ export class PrismaBillingRepository implements BillingRepository {
           postingDate: new Date(value.postingDate),
           dueDate: value.dueDate ? new Date(value.dueDate) : null,
           lines: undefined,
+          financialDimensions:value.financialDimensions?this.financialJson(value.financialDimensions):Prisma.JsonNull,
         },
         update: {
           status: value.status,
@@ -194,13 +244,14 @@ export class PrismaBillingRepository implements BillingRepository {
   async startRecognition(companyId: CompanyId, id: string, reference: string) {
     const current = await this.invoice(companyId, id);
     if (!current) throw new ContractValidationError('invoice', 'not found');
+    if(current.economicOperationKey)throw new ContractValidationError('invoice','resume pending financial operation first');
     if (!current.deferred || current.status !== 'POSTED') throw new ContractValidationError('invoice', 'posted deferred invoice required');
     if (current.recognitionReference) {
       if (current.recognitionReference === reference) return current;
       throw new ContractValidationError('recognitionReference', 'already recorded');
     }
     const updated = await this.db.billingInvoice.updateMany({
-      where: { companyId, id, status: 'POSTED', recognitionReference: null },
+      where: { companyId, id, status: 'POSTED', recognitionReference: null, economicOperationKey:null },
       data: { recognitionReference: reference },
     });
     if (updated.count !== 1) {
@@ -237,6 +288,7 @@ export class PrismaBillingRepository implements BillingRepository {
         });
         if (!raw) throw new ContractValidationError('invoice', 'not found');
         const current = this.inv(raw);
+        if(current.economicOperationKey)throw new ContractValidationError('invoice','resume pending financial operation first');
         if (current.status === 'CANCELLING') return current;
         if (current.status !== 'POSTED') {
           throw new ContractValidationError('status', 'only posted invoice may cancel');
@@ -258,7 +310,7 @@ export class PrismaBillingRepository implements BillingRepository {
           throw new ContractValidationError('invoice', 'BLOCKED: active downstream billing effects');
         }
         const updated = await tx.billingInvoice.updateMany({
-          where: { companyId, id, status: 'POSTED' },
+          where: { companyId, id, status: 'POSTED', economicOperationKey:null },
           data: { status: 'CANCELLING' },
         });
         if (updated.count !== 1) {
@@ -342,6 +394,7 @@ export class PrismaBillingRepository implements BillingRepository {
               id: invoiceBefore.id,
               status: invoiceBefore.status,
               outstanding: invoiceBefore.outstanding,
+              economicOperationKey:null,
               recognitionReference: invoiceBefore.recognitionReference ?? null,
             },
             data: { outstanding: invoiceAfter.outstanding },
@@ -389,6 +442,20 @@ export class PrismaBillingRepository implements BillingRepository {
     return value ? this.consumptionValue(value) : undefined;
   }
 
+  async completeAdvanceConsumption(companyId: CompanyId, sourceType: string, sourceId: string, evidence: NonNullable<AdvanceConsumption['evidence']>) {
+    return this.db.$transaction(async tx => {
+      await tx.$queryRaw`SELECT id FROM billing_advance_consumptions WHERE company_id=${companyId} AND source_type=${sourceType} AND source_id=${sourceId} FOR UPDATE`;
+      const current = await tx.billingAdvanceConsumption.findUnique({where:{companyId_sourceType_sourceId:{companyId, sourceType, sourceId}}});
+      if (!current || current.reversedAt) throw new ContractValidationError('consumption', 'active refund reservation required');
+      if (current.status === 'POSTED') {
+        if (!isDeepStrictEqual(current.evidence, this.financialJson(evidence))) throw new ContractValidationError('evidence', 'conflicting refund completion replay');
+        return this.consumptionValue(current);
+      }
+      if (current.status !== 'RESERVED') throw new ContractValidationError('consumption', 'refund reservation required');
+      return this.consumptionValue(await tx.billingAdvanceConsumption.update({where:{companyId_id:{companyId,id:current.id}},data:{status:'POSTED',evidence:this.financialJson(evidence)}}));
+    });
+  }
+
   async saveAdvanceConsumptionEffect(
     consumption: AdvanceConsumption,
     advanceBefore: Advance,
@@ -401,6 +468,7 @@ export class PrismaBillingRepository implements BillingRepository {
             companyId: advanceBefore.companyId,
             id: advanceBefore.id,
             available: advanceBefore.available,
+            economicOperationKey:null,
             reversedAt: advanceBefore.reversedAt ? new Date(advanceBefore.reversedAt) : null,
           },
           data: {
@@ -414,6 +482,7 @@ export class PrismaBillingRepository implements BillingRepository {
         await tx.billingAdvanceConsumption.create({
           data: {
             ...consumption,
+            evidence: consumption.evidence ? this.financialJson(consumption.evidence) : undefined,
             reversedAt: consumption.reversedAt ? new Date(consumption.reversedAt) : null,
           },
         });

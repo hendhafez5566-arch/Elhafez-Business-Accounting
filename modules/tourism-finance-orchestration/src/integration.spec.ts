@@ -142,6 +142,10 @@ function billingFixture() {
   const creditLimits = new Map<string, DecimalAmount>();
 
   const repo: BillingRepo = {
+    async financialOperation(){return undefined;},
+    async reserveFinancialOperation(){throw Error('financial operations are covered by the Billing owner fixture');},
+    async setFinancialOperationPlan(){throw Error('financial operations are covered by the Billing owner fixture');},
+    async completeFinancialOperation(){throw Error('financial operations are covered by the Billing owner fixture');},
     async invoice(companyId, id) {
       return invoices.get(key(companyId, id));
     },
@@ -248,6 +252,7 @@ function billingFixture() {
           value.sourceId === sourceId,
       );
     },
+    async completeAdvanceConsumption() { throw new Error('refund completion covered by Billing owner fixture'); },
     async saveAdvanceConsumptionEffect(consumption, _advanceBefore, advanceAfter) {
       consumptions.set(key(consumption.companyId, consumption.id), consumption);
       advances.set(key(advanceAfter.companyId, advanceAfter.id), advanceAfter);

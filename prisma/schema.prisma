@@ -612,6 +612,8 @@ model TaxSnapshot {
 }
 
 model BillingInvoice {
+ economicOperationKey String? @map("economic_operation_key")
+ financialDimensions Json? @map("financial_dimensions")
   id                    String               @id
   companyId             String               @map("company_id")
   branchId              String?              @map("branch_id")
@@ -645,6 +647,7 @@ model BillingInvoice {
 }
 
 model BillingInvoiceLine {
+ costCenterId String? @map("cost_center_id")
   id            String         @id
   companyId     String         @map("company_id")
   invoiceId     String         @map("invoice_id")
@@ -704,6 +707,9 @@ model BillingAllocation {
 }
 
 model BillingAdvance {
+ economicOperationKey String? @map("economic_operation_key")
+ baseCurrency String? @map("base_currency")
+ liabilityAccountId String? @map("liability_account_id")
   id                      String    @id
   companyId               String    @map("company_id")
   partyKind               String    @map("party_kind")
@@ -723,6 +729,8 @@ model BillingAdvance {
 }
 
 model BillingAdvanceConsumption {
+ status String @default("POSTED")
+ evidence Json?
   id         String    @id
   companyId  String    @map("company_id")
   advanceId  String    @map("advance_id")
@@ -737,6 +745,9 @@ model BillingAdvanceConsumption {
 }
 
 model BillingAdjustment {
+ documentAmount Decimal? @map("document_amount") @db.Decimal(38,18)
+ documentCurrency String? @map("document_currency")
+ costCenterId String? @map("cost_center_id")
   id            String    @id
   companyId     String    @map("company_id")
   invoiceId     String    @map("invoice_id")
@@ -4319,4 +4330,22 @@ model EcrCommissionSettlement {
  createdAt DateTime @default(now()) @map("created_at")
  @@unique([companyId,id])
  @@map("ecr_commission_settlements")
+}
+
+model BillingFinancialOperation {
+ id String @id
+ companyId String @map("company_id")
+ invoiceId String @map("invoice_id")
+ kind String
+ sourceType String @map("source_type")
+ sourceId String @map("source_id")
+ requestHash String @map("request_hash")
+ snapshot Json
+ plan Json?
+ result Json?
+ status String
+ createdAt DateTime @default(now()) @map("created_at")
+ @@unique([companyId,id])
+ @@unique([companyId,sourceType,sourceId])
+ @@map("billing_financial_operations")
 }
