@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Prisma, type PrismaClient } from '@prisma/client';
 import {
+  ContractValidationError,
   decimalAmount,
   type CompanyId,
   type DecimalAmount,
@@ -274,7 +275,10 @@ export class PrismaTourismInventoryRepository implements TourismInventoryReposit
     hash: string,
     work: (tx: Tx) => Promise<T>,
   ): Promise<T> {
-    return this.db.$transaction(
+    // P2034 guarantees the entire owner transaction rolled back. Re-read capacity
+    // in a fresh serializable transaction; never retry an unknown owner outcome.
+    for(let attempt=0;;attempt++){
+      try{return await this.db.$transaction(
       async (tx) => {
         if (key) {
           const old = await tx.tciIdempotencyKey.findUnique({
@@ -303,7 +307,9 @@ export class PrismaTourismInventoryRepository implements TourismInventoryReposit
         return result;
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
-    );
+    );}catch(error){
+      if(!(error instanceof Prisma.PrismaClientKnownRequestError)||error.code!=='P2034'||attempt>=3)throw error;
+    }}
   }
 
   async createContract(
@@ -945,7 +951,7 @@ export class PrismaTourismInventoryRepository implements TourismInventoryReposit
     }
 
     if (count !== 1) {
-      throw new Error(`insufficient ${input.resourceType} capacity or resource mismatch`);
+      throw new ContractValidationError('capacity',`insufficient ${input.resourceType} capacity or resource mismatch`);
     }
   }
 

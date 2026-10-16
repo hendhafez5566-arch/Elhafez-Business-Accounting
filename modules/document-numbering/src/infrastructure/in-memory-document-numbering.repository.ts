@@ -1,7 +1,10 @@
 import{ContractValidationError}from'@elhafez/contracts';
-import type{CreateNumberingPolicyRecord,DocumentNumberingRepository,UpdateNumberingPolicyRecord}from'../application/document-numbering.repository.js';
+import type{CreateNumberingPolicyRecord,DocumentNumberingRepository,UpdateNumberingPolicyRecord,NumberAllocationRequest,StoredNumberAllocation}from'../application/document-numbering.repository.js';
 import type{NumberingPolicy}from'../domain/document-numbering.js';
 export class InMemoryDocumentNumberingRepository implements DocumentNumberingRepository{
+ private allocations=new Map<string,StoredNumberAllocation>();
+ async findAllocation(companyId:string,requestId:string){const row=this.allocations.get(JSON.stringify([companyId,requestId]));return row?structuredClone(row):undefined;}
+ async allocateOnce(input:NumberAllocationRequest){return this.atomic(()=>{const identity=JSON.stringify([input.companyId,input.requestId]),prior=this.allocations.get(identity);if(prior){if(prior.requestHash!==input.requestHash)throw new ContractValidationError('requestId','conflicting numbering replay');return structuredClone(prior);}const key=[input.companyId,input.policy.id,input.periodKey].join(':'),sequence=(this.counters.get(key)??0)+1;this.counters.set(key,sequence);const result={requestHash:input.requestHash,number:{policyId:input.policy.id,documentType:input.policy.documentType,branchId:input.policy.branchId,periodKey:input.periodKey,sequence,value:input.policy.prefixTemplate.replaceAll('{YYYY}',input.year)+String(sequence).padStart(input.policy.padding,'0')}};this.allocations.set(identity,result);return structuredClone(result);});}
  private policies=new Map<string,NumberingPolicy>();private counters=new Map<string,number>();private tail:Promise<void>=Promise.resolve();
  private async atomic<T>(fn:()=>T|Promise<T>):Promise<T>{const prior=this.tail;let release!:()=>void;this.tail=new Promise<void>(resolve=>{release=resolve;});await prior;try{return await fn();}finally{release();}}
  private map(input:CreateNumberingPolicyRecord):NumberingPolicy{return{id:input.id,companyId:input.companyId,documentType:input.documentType,branchId:input.branchScope==='*'?null:input.branchScope,prefixTemplate:input.prefixTemplate,padding:input.padding,resetPeriod:input.resetPeriod,active:input.active,createdAt:input.createdAt,updatedAt:input.updatedAt};}

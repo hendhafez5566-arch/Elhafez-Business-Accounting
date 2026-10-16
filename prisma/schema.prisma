@@ -1879,6 +1879,7 @@ model TfoWorkflowStep {
  @@map("tfo_workflow_steps")
 }
 model TfoBookingReference {
+ customerInvoices Json? @map("customer_invoices")
  commissionClaimIds Json? @map("commission_claim_ids")
  id String @id
  companyId String @map("company_id")
@@ -3009,6 +3010,7 @@ model HupProgramHistory {
 
 // HU-02 — Hajj & Umrah operational booking truth.
 model HubBooking {
+ capacityHold Json? @map("capacity_hold")
  revision Int @default(0)
  createRequestId String? @map("create_request_id")
  createRequestHash String? @map("create_request_hash")
@@ -4219,6 +4221,7 @@ model OcDeviceGrant {
  @@map("oc_device_grants")
 }
 model OcCommand {
+ reviewHistory Json @default("[]") @map("review_history")
  id String
  companyId String @map("company_id")
  branchId String @map("branch_id")
@@ -4246,4 +4249,48 @@ model OcWriteAuthority {
  enrolledBy String @map("enrolled_by")
  enrolledAt DateTime @map("enrolled_at")
  @@map("oc_write_authorities")
+}
+
+model DnNumberAllocation {
+ companyId String @map("company_id")
+ requestId String @map("request_id")
+ requestHash String @map("request_hash")
+ allocation Json
+ createdAt DateTime @default(now()) @map("created_at")
+ @@id([companyId,requestId])
+ @@map("dn_number_allocations")
+}
+
+model PcFileUploadSession {
+ id String @id
+ companyId String @map("company_id")
+ branchId String @map("branch_id")
+ actorId String @map("actor_id")
+ requestId String @map("request_id")
+ payloadHash String @map("payload_hash")
+ entityType String @map("entity_type")
+ entityId String @map("entity_id")
+ label String?
+ contentType String @map("content_type")
+ size Int
+ checksum String
+ chunkCount Int @map("chunk_count")
+ state String
+ fileId String? @map("file_id")
+ createdAt DateTime @default(now()) @map("created_at")
+ chunks PcFileUploadChunk[]
+ @@unique([companyId,id])
+ @@unique([companyId,branchId,actorId,requestId])
+ @@index([companyId,branchId,actorId,state])
+ @@map("pc_file_uploads")
+}
+model PcFileUploadChunk {
+ companyId String @map("company_id")
+ uploadId String @map("upload_id")
+ index Int @map("chunk_index")
+ checksum String
+ content Bytes
+ upload PcFileUploadSession @relation(fields:[companyId,uploadId],references:[companyId,id],onDelete:Restrict)
+ @@id([companyId,uploadId,index])
+ @@map("pc_file_upload_chunks")
 }

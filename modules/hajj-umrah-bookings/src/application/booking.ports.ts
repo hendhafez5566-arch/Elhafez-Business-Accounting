@@ -27,7 +27,11 @@ export interface BookingFinanceInventoryRequest {
   readonly visaBatchReference?: SourceReference;
 }
 export interface BookingFinancePort {
+  hold?(input:{companyId:CompanyId;branchId:string;commandKey:string;bookingId:string;programId:string;expiresAt:string;inventory:BookingFinanceInventoryRequest}):Promise<unknown>;
+  releaseHold?(input:{companyId:CompanyId;branchId:string;bookingId:string;capacityHoldKey:string}):Promise<unknown>;
   confirm(input: {
+    customerCharges?:readonly {travelerId:string;financialCustomerId:string;partyId:string;amount:string}[];
+    capacityHoldKey?:string;requireStock?:boolean;
     companyId: CompanyId; branchId: string; commandKey: string; bookingId: string; programId: string;
     programEvidence: string; category: 'HOTEL'|'FLIGHT'|'TRANSPORT'|'VISA'|'OTHER';
     costCenterId: string; customerPartyId: string; currency: string; grossAmount: string; discountAmount: string;

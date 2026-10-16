@@ -2,6 +2,7 @@ import type { CompanyId, CurrencyCode } from '@elhafez/contracts';
 import type { CurrencyConfiguration, FxRate } from '../domain/fx.js';
 
 export interface CurrencyFxRepository {
+  listCurrencies(companyId:CompanyId):Promise<CurrencyConfiguration[]>;
   saveCurrency(value: CurrencyConfiguration): Promise<void>;
   findCurrency(companyId: CompanyId, code: CurrencyCode): Promise<CurrencyConfiguration | undefined>;
   findBaseCurrency(companyId: CompanyId): Promise<CurrencyConfiguration | undefined>;

@@ -1,3 +1,4 @@
+import {normalizeFinancialResponsibilities,type FinancialResponsibility} from '../domain/financial-responsibilities.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { ContractValidationError, type ExecutionContext, type SourceReference } from '@elhafez/contracts';
 import type { Booking, BookingHistory, BookingStatus } from '../domain/booking.js';
@@ -27,6 +28,8 @@ export interface CreateBookingInput {
   readonly sourceReference?: SourceReference;
 }
 export interface ConfirmOperationalBookingInput {
+  readonly financialResponsibilities?:readonly FinancialResponsibility[];
+  readonly requireStock?:boolean;
   readonly commandKey: string;
   readonly category: 'HOTEL'|'FLIGHT'|'TRANSPORT'|'VISA'|'OTHER';
   readonly costCenterId: string;
@@ -47,6 +50,7 @@ export interface CancelOperationalBookingInput {
 }
 
 const required=(value:string,field:string)=>{const v=value.trim();if(!v)throw new ContractValidationError(field,'is required');return v;};
+function ordered(value:unknown):unknown{if(Array.isArray(value))return value.map(ordered);if(value&&typeof value==='object')return Object.fromEntries(Object.entries(value).sort(([a],[b])=>a.localeCompare(b)).map(([key,item])=>[key,ordered(item)]));return value;}
 const unique=(values:readonly string[])=>[...new Set(values.map(v=>required(v,'travelerId')))];
 
 export class HajjUmrahBookingsApplicationService {
@@ -112,19 +116,61 @@ export class HajjUmrahBookingsApplicationService {
     return b;
   }
 
+  async placeHold(c:ExecutionContext,id:string,input:{requestId:string;expiresAt:string;inventory:BookingFinanceInventoryRequest}){
+    await this.permission(c,BOOKING_PERMISSIONS.manage);let old=await this.required(c,id);
+    if(old.status!=='PRELIMINARY'||old.confirmationCommandKey)throw new ContractValidationError('status','temporary hold requires preliminary booking');
+    if(!/^[A-Za-z0-9_-]{16,128}$/.test(input.requestId))throw new ContractValidationError('requestId','stable hold identity required');
+    const program=await this.programs.require(c,old.programId);if(program.status!=='BOOKABLE'||!program.bookingOpen)throw new ContractValidationError('program','open booking program required');
+    const commandKey='booking-hold:'+input.requestId,hash=createHash('sha256').update(JSON.stringify(ordered({expiresAt:input.expiresAt,inventory:input.inventory}))).digest('hex');
+    if(old.capacityHold&&old.capacityHold.state!=='RELEASED'){
+      if(old.capacityHold.commandKey!==commandKey||old.capacityHold.hash!==hash)throw new ContractValidationError('hold','resume or explicitly release the existing hold');
+      if(old.capacityHold.state==='HELD')return old;
+    }else{
+      const expiry=Date.parse(input.expiresAt);if(!Number.isFinite(expiry)||expiry<=this.now().getTime()||expiry>this.now().getTime()+7*86400000)throw new ContractValidationError('expiresAt','deadline within seven days required');
+      old=await this.repo.save({...old,capacityHold:{commandKey,hash,expiresAt:input.expiresAt,inventory:input.inventory,state:'REQUESTED'},updatedAt:this.now().toISOString()},this.history(c,id,'HOLD_REQUESTED','PRELIMINARY','PRELIMINARY',undefined,{commandKey,expiresAt:input.expiresAt}));
+    }
+    if(!this.finance.hold)throw new ContractValidationError('hold','capacity coordination is unavailable');
+    const evidence=await this.finance.hold({companyId:c.companyId,branchId:c.branchId,commandKey,bookingId:id,programId:old.programId,expiresAt:input.expiresAt,inventory:input.inventory});
+    const next={...old,capacityHold:{...old.capacityHold!,state:'HELD' as const,evidence},updatedAt:this.now().toISOString()};
+    return this.repo.save(next,this.history(c,id,'CAPACITY_HELD','PRELIMINARY','PRELIMINARY',undefined,evidence));
+  }
+  async extendHold(c:ExecutionContext,id:string,expiresAt:string,reason:string){
+    await this.permission(c,BOOKING_PERMISSIONS.manage);const old=await this.required(c,id),expiry=Date.parse(expiresAt);required(reason,'reason');
+    if(old.status!=='PRELIMINARY'||old.confirmationCommandKey||old.capacityHold?.state!=='HELD')throw new ContractValidationError('hold','held preliminary booking required');
+    if(!Number.isFinite(expiry)||expiry<=this.now().getTime()||expiry>this.now().getTime()+7*86400000||expiry<=Date.parse(old.capacityHold.expiresAt))throw new ContractValidationError('expiresAt','a later deadline within seven days is required');
+    return this.repo.save({...old,capacityHold:{...old.capacityHold,expiresAt},updatedAt:this.now().toISOString()},this.history(c,id,'CAPACITY_HOLD_EXTENDED','PRELIMINARY','PRELIMINARY',reason,{previousDeadline:old.capacityHold.expiresAt,expiresAt}));
+  }
+  async releaseHold(c:ExecutionContext,id:string,reason:string){
+    await this.permission(c,BOOKING_PERMISSIONS.manage);const old=await this.required(c,id);required(reason,'reason');
+    if(old.status!=='PRELIMINARY'||old.confirmationCommandKey||!old.capacityHold)throw new ContractValidationError('hold','preliminary held booking required');if(old.capacityHold.state==='RELEASED')return old;
+    if(!this.finance.releaseHold)throw new ContractValidationError('hold','capacity coordination is unavailable');
+    const evidence=await this.finance.releaseHold({companyId:c.companyId,branchId:c.branchId,bookingId:id,capacityHoldKey:old.capacityHold.commandKey});
+    return this.repo.save({...old,capacityHold:{...old.capacityHold,state:'RELEASED'},updatedAt:this.now().toISOString()},this.history(c,id,'CAPACITY_HOLD_RELEASED','PRELIMINARY','PRELIMINARY',reason,evidence));
+  }
   async confirm(c:ExecutionContext,id:string,input:ConfirmOperationalBookingInput){
     await this.permission(c,BOOKING_PERMISSIONS.confirm);
-    const old=await this.required(c,id);
-    const payloadHash=this.confirmationHash(input);
+    let old=await this.required(c,id);
+    const responsibilities=input.financialResponsibilities?normalizeFinancialResponsibilities(input.financialResponsibilities,old.travelerIds,input.grossAmount,input.discountAmount):undefined;
+    const normalized=responsibilities?{...input,financialResponsibilities:responsibilities}:input;
+    const payloadHash=this.confirmationHash(normalized);
     if(old.status!=='PRELIMINARY'){
       if(old.confirmationCommandKey===input.commandKey&&old.confirmationPayloadHash===payloadHash)return old;
       throw new ContractValidationError('commandKey','conflicting booking confirmation replay');
     }
+    if(old.capacityHold&&old.capacityHold.state==='REQUESTED')throw new ContractValidationError('hold','resume the original hold before confirmation');
     const program=await this.programs.require(c,old.programId);
     if(program.status!=='BOOKABLE'||!program.bookingOpen)throw new ContractValidationError('programId','program is not open for booking');
     for(const travelerId of old.travelerIds)await this.travelers.requireActive(c,travelerId);
+    const customerCharges=[] as Array<FinancialResponsibility & {partyId:string}>;
+    if(responsibilities)for(const responsibility of responsibilities){const customer=await this.customers.requireActive(c,responsibility.financialCustomerId);customerCharges.push({...responsibility,partyId:customer.partyId});}
+    if(old.confirmationCommandKey&&(old.confirmationCommandKey!==input.commandKey||old.confirmationPayloadHash!==payloadHash))throw new ContractValidationError('commandKey','conflicting pending confirmation; resume the original request');
+    if(!old.confirmationCommandKey){
+      try{old=await this.repo.save({...old,confirmationCommandKey:required(input.commandKey,'commandKey'),confirmationPayloadHash:payloadHash,updatedAt:this.now().toISOString()},this.history(c,id,'CONFIRMATION_REQUESTED',undefined,undefined,undefined,{commandKey:input.commandKey,payloadHash}));}
+      catch(error){const current=await this.required(c,id);if(current.confirmationCommandKey!==input.commandKey||current.confirmationPayloadHash!==payloadHash)throw error;if(current.status==='CONFIRMED')return current;old=current;}
+    }
     const evidence=await this.finance.confirm({
-      companyId:c.companyId,branchId:c.branchId,commandKey:required(input.commandKey,'commandKey'),bookingId:old.id,programId:program.id,
+      ...(responsibilities?{customerCharges}:{}),
+      ...(old.capacityHold?.state==='HELD'?{capacityHoldKey:old.capacityHold.commandKey}:{}),requireStock:input.requireStock,companyId:c.companyId,branchId:c.branchId,commandKey:required(input.commandKey,'commandKey'),bookingId:old.id,programId:program.id,
       programEvidence:`HUP:${program.id}:${program.currentVersionId}:BOOKABLE:OPEN`,category:input.category,costCenterId:required(input.costCenterId,'costCenterId'),
       customerPartyId:old.financialPartyId??old.customerPartyId,currency:required(input.currency,'currency'),grossAmount:input.grossAmount,discountAmount:input.discountAmount,
       ...(input.approvalRequestId?{approvalRequestId:input.approvalRequestId}:{}),postingDate:required(input.postingDate,'postingDate'),dueDate:required(input.dueDate,'dueDate'),
@@ -132,7 +178,7 @@ export class HajjUmrahBookingsApplicationService {
       ...(old.agentPartyId&&input.commissionAmount?{commission:{agentPartyId:old.agentPartyId,amount:input.commissionAmount,...(old.commissionAgreement?{agreement:old.commissionAgreement}:{})}}:{}),
     });
     const allocationIds=this.extractAllocationIds(evidence);
-    const next:Booking={...old,status:'CONFIRMED',financialState:'CONFIRMED',allocationIds,confirmationCommandKey:input.commandKey,confirmationPayloadHash:payloadHash,financialEvidence:evidence,updatedAt:this.now().toISOString()};
+    const next:Booking={...old,...(old.capacityHold?.state==='HELD'?{capacityHold:{...old.capacityHold,state:'ADOPTED' as const}}:{}),status:'CONFIRMED',financialState:'CONFIRMED',allocationIds,confirmationCommandKey:input.commandKey,confirmationPayloadHash:payloadHash,financialEvidence:evidence,updatedAt:this.now().toISOString()};
     let saved:Booking;
     try{saved=await this.repo.save(next,this.history(c,id,'CONFIRMED','PRELIMINARY','CONFIRMED',undefined,evidence));}
     catch(error){const current=await this.repo.get(c.companyId,c.branchId,id);if(current?.status==='CONFIRMED'&&current.confirmationCommandKey===input.commandKey&&current.confirmationPayloadHash===payloadHash)return current;throw error;}
@@ -140,12 +186,14 @@ export class HajjUmrahBookingsApplicationService {
     return saved;
   }
 
-  async cancel(c:ExecutionContext,id:string,input:CancelOperationalBookingInput){
+  async cancel(c:ExecutionContext,id:string,input:CancelOperationalBookingInput):Promise<Booking>{
     await this.permission(c,BOOKING_PERMISSIONS.cancel);
     const old=await this.required(c,id);
     if(old.status==='CANCELLED')return old;
     const reason=required(input.reason,'reason');
     if(old.status==='PRELIMINARY'){
+      if(old.confirmationCommandKey)throw new ContractValidationError('booking','confirmation has started; resume it before cancellation');
+      if(old.capacityHold&&old.capacityHold.state!=='RELEASED'){await this.releaseHold(c,id,reason);return this.cancel(c,id,input);}
       const next:Booking={...old,status:'CANCELLED',financialState:'CANCELLED',cancellationEvidence:{financialWorkflow:'NOT_CREATED'},updatedAt:this.now().toISOString()};
       return this.repo.save(next,this.history(c,id,'CANCELLED','PRELIMINARY','CANCELLED',reason,next.cancellationEvidence));
     }

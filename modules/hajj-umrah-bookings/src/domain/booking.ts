@@ -16,7 +16,9 @@ export type BookingFinancialState =
 
 export interface BookingCommissionAgreement { readonly agreementId:string; readonly agreementVersion:number; readonly principalPartyId:string; readonly subordinatePartyId:string; readonly principalPercent:string; }
 
+export interface BookingCapacityHold {readonly commandKey:string;readonly hash:string;readonly expiresAt:string;readonly state:'REQUESTED'|'HELD'|'ADOPTED'|'RELEASED';readonly inventory:{readonly allocationId:string;readonly contractId:string;readonly resourceType:string;readonly resourceId:string;readonly serviceDate:string;readonly quantity:string;readonly periodEnd?:string;readonly flightSegmentReference?:SourceReference;readonly visaBatchReference?:SourceReference};readonly evidence?:unknown;}
 export interface Booking {
+  readonly capacityHold?:BookingCapacityHold;
   readonly revision?:number;
   readonly createRequestHash?:string;
   readonly createRequestId?:string;

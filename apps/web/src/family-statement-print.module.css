@@ -1,0 +1,13 @@
+.document {
+ max-width: 180mm;
+ font-family: Arial, sans-serif;
+ color: #111;
+ background: white;
+}
+.document table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.document th, .document td { overflow-wrap: anywhere; }
+.document thead { display: table-header-group; }
+.document tr { break-inside: avoid; }
+.document h1 { font-size: 20pt; }
+.document p, .document table { font-size: 11pt; }
+@media print { .document { margin: 0; } }

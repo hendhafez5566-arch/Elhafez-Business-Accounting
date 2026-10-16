@@ -18,3 +18,11 @@ export async function decryptRecord(record:StoredDraft,secret:string):Promise<un
   return JSON.parse(new TextDecoder().decode(plaintext)) as unknown;
  }catch{throw new Error('تعذر فتح المسودة. راجع عبارة الحماية؛ وقد تكون البيانات المحلية تالفة.');}
 }
+/** Binary attachment chunks keep their bytes outside JSON and authenticate their exact scope/index. */
+export async function encryptBinaryRecord(id:string,secret:string,content:Uint8Array<ArrayBuffer>):Promise<EncryptedLocalRecord>{
+ const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12)),key=await deriveKey(secret,salt);
+ return{id,salt,iv,ciphertext:await crypto.subtle.encrypt({name:'AES-GCM',iv,additionalData:new TextEncoder().encode(id)},key,content)};
+}
+export async function decryptBinaryRecord(record:EncryptedLocalRecord,secret:string):Promise<Uint8Array<ArrayBuffer>>{
+ const key=await deriveKey(secret,record.salt);try{return new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv:record.iv,additionalData:new TextEncoder().encode(record.id)},key,record.ciphertext));}catch{throw Error('تعذر فتح جزء المرفق؛ راجع عبارة الحماية وسلامة النسخة.');}
+}

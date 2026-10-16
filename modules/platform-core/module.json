@@ -22,7 +22,9 @@
     "pc_migration_checkpoints",
     "pc_migration_issues",
     "pc_migration_equivalence",
-    "pc_password_recovery"
+    "pc_password_recovery",
+    "pc_file_uploads",
+    "pc_file_upload_chunks"
   ],
   "allowedDependencies": [
     "@elhafez/contracts",

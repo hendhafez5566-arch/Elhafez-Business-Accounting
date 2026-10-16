@@ -7,6 +7,8 @@ import type { DeviceGrant, OfflineCommand, OfflineOperation } from './domain/coo
 class Repository implements CoordinationRepository {
  grants=new Map<string,DeviceGrant>();commands=new Map<string,OfflineCommand>();failFinish=false;
  key(c:{companyId:string;branchId:string},id:string){return JSON.stringify([c.companyId,c.branchId,id]);}
+ async listReview(c:ExecutionContext){return [...this.commands.values()].filter(x=>x.companyId===c.companyId&&x.branchId===c.branchId&&x.state==='REVIEW').map(x=>structuredClone(x));}
+ async claimReview(c:ExecutionContext,id:string,reason:string,at:string,until:string){const old=this.commands.get(this.key(c,id));if(!old||old.state!=='REVIEW')return;const next={...old,state:'PROCESSING' as const,attempt:old.attempt+1,leaseUntil:until,reviewHistory:[...(old.reviewHistory??[]),{reviewerId:c.actorId,previousReason:old.reason,reason,at,attempt:old.attempt+1}]};this.commands.set(this.key(c,id),next);return structuredClone(next);}
  async saveGrant(v:DeviceGrant){this.grants.set(v.id,structuredClone(v));}
  async grant(c:ExecutionContext,id:string){const v=this.grants.get(id);return v&&v.companyId===c.companyId&&v.branchId===c.branchId&&v.actorId===c.actorId?structuredClone(v):undefined;}
  async revoke(c:ExecutionContext,id:string,at:string){const v=await this.grant(c,id);if(v)this.grants.set(id,{...v,revokedAt:at});}
@@ -18,7 +20,7 @@ class Repository implements CoordinationRepository {
 }
 const c=executionContext('company-a','branch-a','actor-a');
 function fixture(){const repo=new Repository();let date=new Date('2026-10-15T10:00:00Z'),denied=false;const effects=new Map<string,unknown>();
- const access:CoordinationAccess={async requireContext(){},async authorize(){if(denied)throw new ContractValidationError('permission','permission revoked');}};
+ const access:CoordinationAccess={async authorizeReview(){if(denied)throw new ContractValidationError('permission','review denied');},async requireContext(){},async authorize(){if(denied)throw new ContractValidationError('permission','permission revoked');}};
  const owner:CoordinationOwner={async execute(_c,cmd){if(!effects.has(cmd.id))effects.set(cmd.id,{ownerReference:'owner-'+cmd.id});return effects.get(cmd.id);}};
  const make=()=>new OfflineCoordinationApplicationService(repo,access,owner,()=>date);
  const service=make();const deviceId='device-0000000000000001';
@@ -33,3 +35,15 @@ test('permission is rechecked at sync and retained cash is not posted',async()=>
 test('dependency order prevents child owner execution until prerequisite accepted',async()=>{const f=fixture(),g=await f.grant();const first=f.input(g),second={...f.input(g,'request-000000000000002'),dependencies:[first.id]};assert.equal((await f.service.submit(c,second)).state,'PENDING');assert.equal(f.effects.size,0);await f.service.submit(c,first);assert.equal((await f.service.submit(c,second)).state,'ACCEPTED');assert.equal(f.effects.size,2);});
 test('clock rollback, future capture and delegated operation mismatch require review',async()=>{for(const change of [{capturedAt:'2026-10-15T09:59:59Z'},{capturedAt:'2026-10-15T12:00:00Z'},{operation:'BOOKING_CONFIRM' as const}]){const f=fixture(),g=await f.grant();assert.equal((await f.service.submit(c,{...f.input(g),...change})).state,'REVIEW');assert.equal(f.effects.size,0);}});
 test('unbounded or duplicate delegations are rejected',async()=>{const f=fixture();await assert.rejects(()=>f.service.delegate(c,{deviceId:'device-0000000000000001',operations:['BOOKING_CREATE'],durationMinutes:481}),/480/);});
+
+test('authorized review preserves original request and records reviewer before owner execution',async()=>{
+ const f=fixture(),g=await f.grant(['BOOKING_DEPOSIT']),input={...f.input(g),operation:'BOOKING_DEPOSIT' as const};
+ await f.service.revoke(c,g.id);const retained=await f.service.submit(c,input);assert.equal(retained.state,'REVIEW');
+ const reviewer=executionContext(c.companyId,c.branchId,'supervisor');
+ await assert.rejects(()=>f.service.resolveReview(reviewer,input.id,'short'),/reason/);
+ const results=await Promise.allSettled([f.service.resolveReview(reviewer,input.id,'Verified physical cash and receipt'),f.service.resolveReview(reviewer,input.id,'Verified physical cash and receipt')]);
+ assert.equal(results.filter(x=>x.status==='fulfilled').length,1);assert.equal(f.effects.size,1);
+ const final=await f.repo.get(c,input.id);assert.equal(final?.state,'ACCEPTED');assert.equal(final?.actorId,c.actorId);assert.equal(final?.payloadHash,retained.payloadHash);assert.equal(final?.reviewHistory?.[0]?.reviewerId,'supervisor');
+ await assert.rejects(()=>f.service.resolveReview(reviewer,input.id,'Verified physical cash and receipt'),/not awaiting/);
+});
+test('review permission denial and cross branch attempts preserve observed cash',async()=>{const f=fixture(),g=await f.grant();await f.service.revoke(c,g.id);const input=f.input(g);await f.service.submit(c,input);await assert.rejects(()=>f.service.resolveReview(executionContext(c.companyId,'other','supervisor'),input.id,'Verified physical cash receipt'),/not awaiting/);f.deny();await assert.rejects(()=>f.service.resolveReview(c,input.id,'Verified physical cash receipt'),/denied/);assert.equal((await f.repo.get(c,input.id))?.state,'REVIEW');assert.equal(f.effects.size,0);});

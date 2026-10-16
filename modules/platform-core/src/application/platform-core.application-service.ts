@@ -8,11 +8,12 @@ import type { PlatformCoreRepository } from './platform-core.repository.js';
 const scrypt = async (password:string,salt:string):Promise<Buffer> => (await promisify(nodeScrypt)(password,salt,64)) as Buffer;
 const id = () => randomUUID();
 const digest = (value:string) => createHash('sha256').update(value).digest('base64url');
+const auditId=(scope:string)=>{const hex=createHash('sha256').update(scope).digest('hex');return hex.slice(0,8)+'-'+hex.slice(8,12)+'-8'+hex.slice(13,16)+'-a'+hex.slice(17,20)+'-'+hex.slice(20,32);};
 const GENERIC_CONFIGURATION_KEYS = new Set(['locale','timezone','dateFormat','theme','companyName','companyLogo','address','phone','email','notificationPrefs','retention.days']);
 export { COMPANY_ADMINISTRATOR_ROLE } from '../domain/platform.constants.js';
 export const PLATFORM_CORE_PERMISSIONS = Object.freeze({managementControlRead:'management.control.read',accountingFinanceRead:'accounting.finance.read',accountingFinanceOperate:'accounting.finance.operate'} as const);
 export interface RecoveryDeliveryPort { deliver(input:{recipient:string;token:string;expiresAt:Date}):Promise<void> }
-export interface FileStoragePort { put(input:{content:Uint8Array;contentType:string}):Promise<{key:string;size:number;checksum:string}>; get(key:string):Promise<Uint8Array>; delete(key:string):Promise<void> }
+export interface FileStoragePort { putOnce?(key:string,input:{content:Uint8Array;contentType:string}):Promise<{key:string;size:number;checksum:string}>; put(input:{content:Uint8Array;contentType:string}):Promise<{key:string;size:number;checksum:string}>; get(key:string):Promise<Uint8Array>; delete(key:string):Promise<void> }
 export class NoopEventPublisher implements EventPublisher { async publish():Promise<void>{} }
 
 function compareNotifications(a:Notification,b:Notification){const time=b.createdAt.getTime()-a.createdAt.getTime();if(time!==0)return time;if(a.companyId===null&&b.companyId!==null)return-1;if(a.companyId!==null&&b.companyId===null)return 1;return a.id.localeCompare(b.id);}
@@ -81,10 +82,21 @@ export class PlatformCoreApplicationService {
   async grantBranchAccess(userId:Id,branchId:Id){await this.user(userId);if(!await this.repository.findBranch(branchId))fail('NOT_FOUND','branch was not found');await this.repository.grantBranchAccess(userId,branchId)} async revokeBranchAccess(userId:Id,branchId:Id){await this.repository.revokeBranchAccess(userId,branchId)}
   async requireBranchAccess(userId:Id,companyId:Id,branchId:Id){const [branch,company]=await Promise.all([this.repository.findBranch(branchId),this.repository.findCompany(companyId)]);if(!company?.active||!branch||branch.companyId!==companyId||!branch.active||!await this.repository.hasBranchAccess(userId,branchId))fail('FORBIDDEN','branch access denied')}
 
-  async recordAudit(entry:Omit<AuditEntry,'id'|'occurredAt'>){await this.audit(entry)} async recordAuditOnce(key:string,entry:Omit<AuditEntry,'id'|'occurredAt'>){const scope=JSON.stringify([this.required(key,'idempotencyKey'),entry.companyId,entry.branchId,entry.action,entry.resource,entry.entityId]);await this.repository.recordAuditOnce({...entry,id:`audit:${digest(scope)}`,occurredAt:this.now()})}
+  async recordAudit(entry:Omit<AuditEntry,'id'|'occurredAt'>){await this.audit(entry)} async recordAuditOnce(key:string,entry:Omit<AuditEntry,'id'|'occurredAt'>){const scope=JSON.stringify([this.required(key,'idempotencyKey'),entry.companyId,entry.branchId,entry.action,entry.resource,entry.entityId]);await this.repository.recordAuditOnce({...entry,id:auditId(scope),occurredAt:this.now()})}
   async listAudit(companyId?:Id){return this.repository.listAudit(companyId)} async requireUserCompanyAccess(userId:Id,companyId:Id){if(!await this.repository.userHasCompanyAccess(userId,companyId))fail('FORBIDDEN','target user is outside company scope')}
   async registerFile(input:Omit<StoredFile,'id'|'createdAt'|'checksum'>&{checksum?:string|null}){if(input.size<0||!input.key||!input.contentType||input.checksum!==undefined&&input.checksum!==null&&!/^[0-9a-f]{64}$/.test(input.checksum))fail('VALIDATION_ERROR','invalid file metadata');return this.repository.registerFile({...input,checksum:input.checksum??null,id:id(),createdAt:this.now()})}
   async uploadFile(input:{companyId:Id;createdBy:Id;contentType:string;content:Uint8Array}){const storage=this.fileStorage??fail('STORAGE_UNAVAILABLE','file storage is unavailable');const stored=await storage.put({content:input.content,contentType:input.contentType});return this.registerFile({companyId:input.companyId,createdBy:input.createdBy,contentType:input.contentType,key:stored.key,size:stored.size,checksum:stored.checksum})}
+  async uploadFileOnce(input:{companyId:Id;createdBy:Id;requestId:string;contentType:string;content:Uint8Array}):Promise<StoredFile>{
+    if(!/^[A-Za-z0-9_-]{16,128}$/.test(input.requestId)||!input.contentType.trim()||!input.content.byteLength)fail('VALIDATION_ERROR','valid stable file request and nonempty content required');
+    const hex=createHash('sha256').update(JSON.stringify([input.companyId,input.requestId])).digest('hex'),fileId=hex.slice(0,8)+'-'+hex.slice(8,12)+'-8'+hex.slice(13,16)+'-a'+hex.slice(17,20)+'-'+hex.slice(20,32),checksum=createHash('sha256').update(input.content).digest('hex');
+    const verify=(file:StoredFile)=>{if(file.key!==fileId||file.createdBy!==input.createdBy||file.contentType!==input.contentType||file.size!==input.content.byteLength||file.checksum!==checksum)fail('CONFLICT','stable file identity contains different immutable data');return file;};
+    const prior=await this.repository.findFile(input.companyId,fileId);if(prior){verify(prior);await this.getFile(input.companyId,fileId,true);return prior;}
+    const storage=this.fileStorage??fail('STORAGE_UNAVAILABLE','file storage is unavailable');const putOnce=storage.putOnce?.bind(storage)??fail('STORAGE_UNAVAILABLE','idempotent binary storage is unavailable');
+    const stored=await putOnce(fileId,{content:input.content,contentType:input.contentType});if(stored.key!==fileId||stored.size!==input.content.byteLength||stored.checksum!==checksum)fail('FILE_INTEGRITY_ERROR','binary storage evidence does not match content');
+    const value:StoredFile={id:fileId,companyId:input.companyId,createdBy:input.createdBy,contentType:input.contentType,key:fileId,size:stored.size,checksum,createdAt:this.now()};
+    try{return await this.repository.registerFile(value);}catch(error){const current=await this.repository.findFile(input.companyId,fileId);if(current)return verify(current);throw error;}
+  }
+
   async listFiles(companyId:Id){return this.repository.listFiles(companyId)}
   async getFile(companyId:Id,fileId:Id,includeContent:true):Promise<StoredFileContent>;
   async getFile(companyId:Id,fileId:Id,includeContent?:false):Promise<StoredFile>;

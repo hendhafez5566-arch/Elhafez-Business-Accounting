@@ -10,7 +10,10 @@
     "offline-coordination",
     "currency-fx",
     "customer-management",
-    "treasury-settlement"
+    "treasury-settlement",
+    "tourism-contract-inventory",
+    "platform-core",
+    "document-numbering"
   ],
   "allowedPaths": [
     "docs/planning/**",
@@ -25,7 +28,13 @@
     "tools/experiments/core-workflow/**",
     "pnpm-lock.yaml",
     "apps/web/package.json",
-    "apps/web/scripts/test-runtime.mjs"
+    "apps/web/scripts/test-runtime.mjs",
+    "prisma/migrations/20261016020000_offline_review/**",
+    "deploy/railway/static-proxy.mjs",
+    "prisma/migrations/20261016030000_booking_capacity_hold/**",
+    "prisma/migrations/20261016040000_offline_document_numbers/**",
+    "prisma/migrations/20261016050000_booking_individual_invoices/**",
+    "prisma/migrations/20261016060000_resumable_file_uploads/**"
   ],
   "protectedPaths": [
     "docs/BUSINESS-MODULE-ROUTING.md",
@@ -35,7 +44,16 @@
     "modules/offline-coordination/module.json",
     "apps/api/package.json",
     "pnpm-lock.yaml",
-    "apps/web/package.json"
+    "apps/web/package.json",
+    "prisma/migrations/20261016020000_offline_review/**",
+    "apps/web/src/tenant-app.tsx",
+    "deploy/railway/static-proxy.mjs",
+    "prisma/migrations/20261016030000_booking_capacity_hold/**",
+    "prisma/migrations/20261016040000_offline_document_numbers/**",
+    "modules/document-numbering/module.json",
+    "prisma/migrations/20261016050000_booking_individual_invoices/**",
+    "prisma/migrations/20261016060000_resumable_file_uploads/**",
+    "modules/platform-core/module.json"
   ],
   "protectedReason": "Authorized core workflow requires additive owned persistence, coordination module registration and dependency wiring. Preserve financial owners, public APIs and historical migrations.",
   "allowBreakingPublicApi": false,
@@ -46,6 +64,15 @@
     "modules/expense-commission-recognition/src/domain/commission-distribution.spec.ts",
     "modules/offline-coordination/src/offline-coordination.spec.ts",
     "apps/api/src/write-authority.guard.spec.ts",
-    "apps/web/src/family-statement-print.spec.ts"
+    "apps/web/src/family-statement-print.spec.ts",
+    "modules/document-numbering/src/document-numbering.spec.ts",
+    "modules/platform-core/src/file-upload.spec.ts",
+    "modules/hajj-umrah-bookings/src/domain/financial-responsibilities.spec.ts",
+    "apps/web/src/offline-command-store.spec.ts",
+    "apps/web/src/offline-attachment-store.spec.ts",
+    "apps/api/src/core-workflow-http.integration.ts",
+    "tools/experiments/core-workflow/browser.mjs",
+    "modules/tourism-contract-inventory/src/ac11.spec.ts",
+    "apps/api/src/core-restore-http.integration.ts"
   ]
 }

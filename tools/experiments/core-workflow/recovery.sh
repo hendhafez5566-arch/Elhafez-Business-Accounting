@@ -14,18 +14,31 @@ query="SELECT 'billing',count(*)::text,coalesce(sum(outstanding),0)::text FROM b
 docker exec elhafez-core-test psql -U postgres -d elhafez_core_test -At -c "$query" > /tmp/elhafez-core-before.txt
 docker exec elhafez-core-test psql -U postgres -d elhafez_core_restore -At -c "$query" > /tmp/elhafez-core-after.txt
 cmp /tmp/elhafez-core-before.txt /tmp/elhafez-core-after.txt
+# Compare every row in every application table, not just selected aggregates.
+for recovery_database in elhafez_core_test elhafez_core_restore; do
+ docker exec -i elhafez-core-test psql -U postgres -d "$recovery_database" -At -v ON_ERROR_STOP=1 > "/tmp/${recovery_database}-all-tables.txt" <<'SQL'
+SELECT format('SELECT %L, count(*)::text, md5(coalesce(string_agg(row_to_json(t)::text, chr(10) ORDER BY row_to_json(t)::text), %L)) FROM %I.%I t;',table_name,'',table_schema,table_name)
+FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE' ORDER BY table_name;
+\gexec
+SQL
+done
+cmp /tmp/elhafez_core_test-all-tables.txt /tmp/elhafez_core_restore-all-tables.txt
 node --input-type=module <<'JS'
-import { readFile, mkdir, copyFile } from 'node:fs/promises';
+import { readFile, mkdir, copyFile,rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 const manifest=JSON.parse(await readFile('/tmp/core-recovery-manifest.json','utf8'));
-const target='/tmp/elhafez-core-restored-files';await mkdir(target,{recursive:true});
+const target='/tmp/elhafez-core-restored-files';if(manifest.filesRoot===target)throw Error('Recovery must never target the source file directory');await rm(target,{recursive:true,force:true});await mkdir(target,{recursive:true,mode:0o700});
 for(const file of manifest.files){
  if(!/^[0-9a-f-]{36}$/.test(file.storageKey))throw Error('Invalid server file key');
  const source=join(manifest.filesRoot,file.storageKey),destination=join(target,file.storageKey);
  const original=await readFile(source);if(createHash('sha256').update(original).digest('hex')!==file.checksum)throw Error('Source attachment checksum mismatch');
  await copyFile(source,destination);
  if(createHash('sha256').update(await readFile(destination)).digest('hex')!==file.checksum)throw Error('Restored attachment checksum mismatch');
+}
+for(const [key,name] of [['clientVaultBackup','commands-encrypted-backup.json'],['clientAttachmentBackup','attachment-encrypted-backup.json']])if(manifest[key]){
+ const item=manifest[key],bytes=await readFile(item.path);if(createHash('sha256').update(bytes).digest('hex')!==item.checksum)throw Error('Device archive checksum mismatch');
+ const backup=join(target,name);await copyFile(item.path,backup);if(createHash('sha256').update(await readFile(backup)).digest('hex')!==item.checksum)throw Error('Restored device archive checksum mismatch');
 }
 console.log('PASS: clean PostgreSQL restore, exact invoice/commission totals, pending/accepted/review commands, write authority, attachment links and SHA-256 bytes. No owner operation replayed.');
 JS

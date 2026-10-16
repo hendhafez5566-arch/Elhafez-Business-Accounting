@@ -6,6 +6,7 @@ import { PlatformCoreApplicationService, PlatformError } from '@elhafez/platform
 import {
   BOOKING_PERMISSIONS,
   HajjUmrahBookingsApplicationService,
+  type BookingFinanceInventoryRequest,
   type CancelOperationalBookingInput,
   type ConfirmOperationalBookingInput,
   type CreateBookingInput,
@@ -91,6 +92,12 @@ export class HajjUmrahOperationsController {
   async bookingHistory(@Headers('authorization') authorization:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined,@Param('id') id:string){
     return this.bookings.historyFor(await this.context({authorization,companyId,branchId}),id);
   }
+  @Post('bookings/:id/hold')
+  async holdBooking(@Headers('authorization') authorization:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined,@Param('id') id:string,@Body() input:{requestId:string;expiresAt:string;inventory:BookingFinanceInventoryRequest}){return this.bookings.placeHold(await this.context({authorization,companyId,branchId}),id,input);}
+  @Post('bookings/:id/hold/extend')
+  async extendBookingHold(@Headers('authorization') authorization:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined,@Param('id') id:string,@Body() input:{expiresAt:string;reason:string}){return this.bookings.extendHold(await this.context({authorization,companyId,branchId}),id,input.expiresAt,input.reason);}
+  @Post('bookings/:id/hold/release')
+  async releaseBookingHold(@Headers('authorization') authorization:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined,@Param('id') id:string,@Body() input:{reason:string}){return this.bookings.releaseHold(await this.context({authorization,companyId,branchId}),id,input.reason);}
   @Post('bookings/:id/confirm')
   async confirmBooking(@Headers('authorization') authorization:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined,@Param('id') id:string,@Body() input:ConfirmOperationalBookingInput){
     return this.bookings.confirm(await this.context({authorization,companyId,branchId}),id,input);

@@ -4,10 +4,20 @@ import type { CoordinationRepository } from '../application/coordination.ports.j
 import type { DeviceGrant, OfflineCommand } from '../domain/coordination.js';
 const json=(value:unknown)=>value===null?Prisma.JsonNull:value as Prisma.InputJsonValue;
 const scope=(c:ExecutionContext)=>({companyId:c.companyId,branchId:c.branchId,actorId:c.actorId});
-function command(row:OcCommand):OfflineCommand{return {...row,operation:row.operation as OfflineCommand['operation'],state:row.state as OfflineCommand['state'],dependencies:row.dependencies as string[],receivedAt:row.receivedAt.toISOString(),leaseUntil:row.leaseUntil?.toISOString()??null};}
+function command(row:OcCommand):OfflineCommand{return {...row,reviewHistory:row.reviewHistory as unknown as NonNullable<OfflineCommand['reviewHistory']>,operation:row.operation as OfflineCommand['operation'],state:row.state as OfflineCommand['state'],dependencies:row.dependencies as string[],receivedAt:row.receivedAt.toISOString(),leaseUntil:row.leaseUntil?.toISOString()??null};}
 function grant(row:OcDeviceGrant):DeviceGrant{return {...row,operations:row.operations as DeviceGrant['operations'],issuedAt:row.issuedAt.toISOString(),expiresAt:row.expiresAt.toISOString(),revokedAt:row.revokedAt?.toISOString()??null};}
 export class PrismaCoordinationRepository implements CoordinationRepository {
  constructor(private readonly db:PrismaClient){}
+ async listReview(c:ExecutionContext){return(await this.db.ocCommand.findMany({where:{companyId:c.companyId,branchId:c.branchId,OR:[{state:'REVIEW'},{state:'PROCESSING',leaseUntil:{lte:new Date()},NOT:{reviewHistory:{equals:[]}}}]},orderBy:{receivedAt:'asc'},take:200})).map(command);}
+ async claimReview(c:ExecutionContext,id:string,reason:string,at:string,until:string){
+  return this.db.$transaction(async tx=>{
+   await tx.$queryRaw`SELECT id FROM oc_commands WHERE company_id=${c.companyId} AND branch_id=${c.branchId} AND id=${id} FOR UPDATE`;
+   const row=await tx.ocCommand.findUnique({where:{companyId_branchId_id:{companyId:c.companyId,branchId:c.branchId,id}}});
+   if(!row||!(row.state==='REVIEW'||row.state==='PROCESSING'&&row.leaseUntil&&row.leaseUntil<=new Date(at)&&command(row).reviewHistory?.length))return undefined;
+   const history=command(row).reviewHistory??[];
+   return command(await tx.ocCommand.update({where:{companyId_branchId_id:{companyId:c.companyId,branchId:c.branchId,id}},data:{state:'PROCESSING',attempt:{increment:1},leaseUntil:new Date(until),reviewHistory:json([...history,{reviewerId:c.actorId,previousReason:row.reason,reason,at,attempt:row.attempt+1}])}}));
+  });
+ }
  async saveGrant(v:DeviceGrant){await this.db.ocDeviceGrant.create({data:{id:v.id,companyId:v.companyId,branchId:v.branchId,actorId:v.actorId,deviceId:v.deviceId,operations:json(v.operations),issuedAt:new Date(v.issuedAt),expiresAt:new Date(v.expiresAt),revokedAt:null}});}
  async grant(c:ExecutionContext,id:string){const row=await this.db.ocDeviceGrant.findFirst({where:{...scope(c),id}});return row?grant(row):undefined;}
  async revoke(c:ExecutionContext,id:string,at:string){await this.db.ocDeviceGrant.updateMany({where:{...scope(c),id,revokedAt:null},data:{revokedAt:new Date(at)}});}

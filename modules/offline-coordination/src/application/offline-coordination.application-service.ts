@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { ContractValidationError, type ExecutionContext } from '@elhafez/contracts';
+import { ContractValidationError, executionContext, type ExecutionContext } from '@elhafez/contracts';
 import { assertGrant, OFFLINE_OPERATIONS, type DeviceGrant, type OfflineCommand, type OfflineOperation } from '../domain/coordination.js';
 import type { CoordinationAccess, CoordinationOwner, CoordinationRepository } from './coordination.ports.js';
 export interface SubmitOfflineCommand {
@@ -24,8 +24,27 @@ export class OfflineCoordinationApplicationService {
  }
  async revoke(c:ExecutionContext,id:string){await this.access.requireContext(c);await this.repo.revoke(c,id,this.now().toISOString());}
  async list(c:ExecutionContext){await this.access.requireContext(c);return this.repo.list(c);}
- async submit(c:ExecutionContext,input:SubmitOfflineCommand):Promise<OfflineCommand>{
-  await this.access.requireContext(c);
+ async reviewQueue(c:ExecutionContext){await this.access.requireContext(c);await this.access.authorizeReview(c);return this.repo.listReview(c);}
+ async resolveReview(c:ExecutionContext,id:string,reason:string):Promise<OfflineCommand>{
+  await this.access.requireContext(c);await this.access.authorizeReview(c);identity(id,'id');
+  if(typeof reason!=='string'||reason.trim().length<10||reason.trim().length>2000)throw new ContractValidationError('reason','review reason of 10..2000 characters required');
+  const pending=(await this.repo.listReview(c)).find(x=>x.id===id);
+  if(!pending)throw new ContractValidationError('review','request is not awaiting review');
+  await this.access.authorize(c,pending.operation);
+  const at=this.now(),command=await this.repo.claimReview(c,id,reason.trim(),at.toISOString(),new Date(at.getTime()+60000).toISOString());
+  if(!command)throw new ContractValidationError('review','another reviewer has already claimed this request');
+  try{
+   const originalContext=executionContext(c.companyId,c.branchId,command.actorId);
+   for(const dependency of command.dependencies){const prior=await this.repo.get(originalContext,dependency);if(prior?.state!=='ACCEPTED')throw new ContractValidationError('dependency','resolve prerequisite first');}
+   // Explicit authorized review replaces the expired device delegation, never the owner's controls.
+   const result=await this.owner.execute(c,command);
+   return await this.repo.finish(command,'ACCEPTED',result,null);
+  }catch(error){
+   await this.repo.finish(command,'REVIEW',null,error instanceof Error?error.message:'OWNER_OUTCOME_UNCONFIRMED');
+   throw error;
+  }
+ }
+ private async reserve(c:ExecutionContext,input:SubmitOfflineCommand){
   identity(input.id,'id');identity(input.deviceId,'deviceId');identity(input.grantId,'grantId');
   if(!OFFLINE_OPERATIONS.includes(input.operation))throw new ContractValidationError('operation','unsupported operation');
   if(!Array.isArray(input.dependencies)||input.dependencies.length>32||new Set(input.dependencies).size!==input.dependencies.length)throw new ContractValidationError('dependencies','at most 32 distinct identities required');
@@ -37,6 +56,22 @@ export class OfflineCoordinationApplicationService {
   // without claiming a Treasury posting or settlement occurred.
   const value=await this.repo.reserve({id:input.id,companyId:c.companyId,branchId:c.branchId,actorId:c.actorId,deviceId:input.deviceId,grantId:input.grantId,operation:input.operation,payload:JSON.parse(payloadText),payloadHash,dependencies:[...input.dependencies],capturedAt:input.capturedAt,receivedAt:this.now().toISOString(),state:'PENDING',attempt:0,leaseUntil:null,result:null,reason:null});
   if(value.payloadHash!==payloadHash)throw new ContractValidationError('id','conflicting replay; original request retained');
+  return value;
+ }
+ async intakeCash(c:ExecutionContext,originalActorId:string,input:SubmitOfflineCommand){
+  await this.access.requireContext(c);await this.access.authorizeReview(c);
+  if(input.operation!=='BOOKING_DEPOSIT')throw new ContractValidationError('operation','supervised intake accepts observed cash only');
+  const original=executionContext(c.companyId,c.branchId,originalActorId),grant=await this.repo.grant(original,input.grantId);
+  if(!grant||grant.deviceId!==input.deviceId||!grant.operations.includes('BOOKING_DEPOSIT'))throw new ContractValidationError('grant','original scoped cash delegation required');
+  const value=await this.reserve(original,input);
+  if(value.state==='ACCEPTED'||value.state==='REVIEW')return value;
+  const at=this.now(),claimed=await this.repo.claim(original,value.id,at.toISOString(),new Date(at.getTime()+60000).toISOString());
+  if(!claimed)return value;
+  return this.repo.finish(claimed,'REVIEW',null,'SUPERVISED_CASH_INTAKE: original employee and immutable receipt retained; explicit resolution required');
+ }
+ async submit(c:ExecutionContext,input:SubmitOfflineCommand):Promise<OfflineCommand>{
+  await this.access.requireContext(c);
+  const value=await this.reserve(c,input);
   if(value.state==='ACCEPTED'){await this.access.authorize(c,value.operation);return value;}
   if(value.state==='REVIEW')return value;
   const at=this.now();const command=await this.repo.claim(c,value.id,at.toISOString(),new Date(at.getTime()+60000).toISOString());

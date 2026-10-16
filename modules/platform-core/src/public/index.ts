@@ -38,3 +38,5 @@ export type {
   MigrationRunStatus,
 } from '../domain/migration-control.types.js';
 export { MIGRATION_ISSUE_CODES, MigrationControlError } from '../domain/migration-control.types.js';
+
+export {FileUploadApplicationService,type BeginFileUpload,type FileUploadStatus} from '../application/file-upload.application-service.js';

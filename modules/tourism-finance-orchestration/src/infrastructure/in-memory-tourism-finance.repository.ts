@@ -4,7 +4,8 @@ import type { BookingReference, FinancialSetup, ProgramHistory, ServiceFinancial
 const key = (reference: SourceReference) => `${reference.sourceType}:${reference.sourceId}`;
 export class InMemoryTourismFinanceRepository implements TourismFinanceRepository {
   private readonly standaloneServices = new Map<string, StandaloneFinancialReference>();
-  async reserveStandalone(value: StandaloneFinancialReference) { const id=`${value.companyId}:${key(value.service)}`; const prior=this.standaloneServices.get(id); if(prior)return structuredClone(prior); this.standaloneServices.set(id,structuredClone(value)); return value; }
+  async transitionHold(companyId:CompanyId,id:string,from:Workflow['status'],to:Workflow['status'],result?:unknown){const value=[...this.workflows.values()].find(x=>x.companyId===companyId&&x.id===id);if(!value||value.kind!=='BOOKING_HOLD'||value.status!==from)return false;this.workflows.set(`${companyId}:${value.commandKey}`,{...value,status:to,...(result!==undefined?{result}:{})});return true;}
+ async reserveStandalone(value: StandaloneFinancialReference) { const id=`${value.companyId}:${key(value.service)}`; const prior=this.standaloneServices.get(id); if(prior)return structuredClone(prior); this.standaloneServices.set(id,structuredClone(value)); return value; }
   async standalone(companyId:CompanyId,service:SourceReference) { const value=this.standaloneServices.get(`${companyId}:${key(service)}`); return value?structuredClone(value):undefined; }
   async saveStandalone(value:StandaloneFinancialReference) { this.standaloneServices.set(`${value.companyId}:${key(value.service)}`,structuredClone(value)); }
   workflows = new Map<string, Workflow>(); steps = new Map<string, WorkflowStep>(); setups = new Map<string, FinancialSetup>(); bookings = new Map<string, BookingReference>(); snapshots: ServiceFinancialSnapshot[] = []; history: ProgramHistory[] = [];

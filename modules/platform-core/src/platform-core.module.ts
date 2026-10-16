@@ -1,3 +1,6 @@
+import {FileUploadApplicationService} from './application/file-upload.application-service.js';
+import {FILE_UPLOAD_REPOSITORY} from './application/file-upload.repository.js';
+import {PrismaFileUploadRepository} from './infrastructure/prisma-file-upload.repository.js';
 import { Module } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { PlatformCoreApplicationService } from './application/platform-core.application-service.js';
@@ -16,6 +19,8 @@ import { PrismaMigrationControlRepository } from './infrastructure/prisma-migrat
 @Module({
   providers: [
     PrismaClient,
+    {provide:FILE_UPLOAD_REPOSITORY,useFactory:(db:PrismaClient)=>new PrismaFileUploadRepository(db),inject:[PrismaClient]},
+    {provide:FileUploadApplicationService,useFactory:(repo:PrismaFileUploadRepository,platform:PlatformCoreApplicationService)=>new FileUploadApplicationService(repo,platform),inject:[FILE_UPLOAD_REPOSITORY,PlatformCoreApplicationService]},
     { provide: PLATFORM_CORE_REPOSITORY, useFactory: (prisma: PrismaClient) => new PrismaPlatformRepository(prisma), inject: [PrismaClient] },
     { provide: ENTITY_FILE_LINKS_REPOSITORY, useFactory: (prisma:PrismaClient)=>new PrismaEntityFileLinksRepository(prisma), inject:[PrismaClient] },
     { provide: PlatformCoreApplicationService, useFactory: (repository: PrismaPlatformRepository) => new PlatformCoreApplicationService(repository,undefined,undefined,recoveryDeliveryFromEnvironment(),new LocalFileStorage()), inject: [PLATFORM_CORE_REPOSITORY] },
@@ -25,6 +30,6 @@ import { PrismaMigrationControlRepository } from './infrastructure/prisma-migrat
   ],
   // Internal repository tokens stay private. Consumers outside this module
   // depend only on the exported application services.
-  exports: [PlatformCoreApplicationService, EntityFileLinksApplicationService, PLATFORM_CORE_REPOSITORY, MigrationControlApplicationService],
+  exports: [FileUploadApplicationService,PlatformCoreApplicationService, EntityFileLinksApplicationService, PLATFORM_CORE_REPOSITORY, MigrationControlApplicationService],
 })
 export class PlatformCoreModule {}

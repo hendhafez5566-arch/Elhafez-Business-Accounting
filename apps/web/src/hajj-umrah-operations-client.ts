@@ -2,10 +2,10 @@ import { crmRequest } from './crm-core-client.js';
 
 export type BookingStatus='PRELIMINARY'|'CONFIRMED'|'READY'|'TRAVELING'|'COMPLETED'|'CANCELLED';
 export type BookingFinancialState='UNCONFIRMED'|'CONFIRMED'|'CANCELLATION_BLOCKED'|'CANCELLED';
-export interface Booking{readonly id:string;readonly code:string;readonly programId:string;readonly customerId:string;readonly financialCustomerId?:string;readonly financialPartyId?:string;readonly familyReference?:string;readonly agentId?:string;readonly travelerIds:readonly string[];readonly status:BookingStatus;readonly financialState:BookingFinancialState;readonly allocationIds:readonly string[];readonly createdAt:string;readonly updatedAt:string;}
+export interface Booking{readonly financialEvidence?:{invoiceId?:string;customerInvoices?:readonly {invoiceId:string;travelerId:string;financialCustomerId:string;amount:string}[]};readonly capacityHold?:{commandKey:string;expiresAt:string;state:'REQUESTED'|'HELD'|'ADOPTED'|'RELEASED';inventory:BookingInventoryRequest};readonly id:string;readonly code:string;readonly programId:string;readonly customerId:string;readonly financialCustomerId?:string;readonly financialPartyId?:string;readonly familyReference?:string;readonly agentId?:string;readonly travelerIds:readonly string[];readonly status:BookingStatus;readonly financialState:BookingFinancialState;readonly allocationIds:readonly string[];readonly createdAt:string;readonly updatedAt:string;}
 export interface CreateBookingInput{readonly code:string;readonly programId:string;readonly customerId:string;readonly financialCustomerId?:string;readonly financialPartyId?:string;readonly familyReference?:string;readonly agentId?:string;readonly travelerIds:readonly string[];}
 export interface BookingInventoryRequest{readonly allocationId:string;readonly contractId:string;readonly resourceType:string;readonly resourceId:string;readonly serviceDate:string;readonly periodEnd?:string;readonly quantity:string;readonly flightSegmentReference?:{sourceType:string;sourceId:string};readonly visaBatchReference?:{sourceType:string;sourceId:string};}
-export interface ConfirmBookingInput{readonly commandKey:string;readonly category:'HOTEL'|'FLIGHT'|'TRANSPORT'|'VISA'|'OTHER';readonly costCenterId:string;readonly currency:string;readonly grossAmount:string;readonly discountAmount:string;readonly approvalRequestId?:string;readonly postingDate:string;readonly dueDate:string;readonly invoiceNumber:string;readonly inventories:readonly BookingInventoryRequest[];readonly commissionAmount?:string;}
+export interface ConfirmBookingInput{readonly financialResponsibilities?:readonly {travelerId:string;financialCustomerId:string;amount:string}[];readonly commandKey:string;readonly category:'HOTEL'|'FLIGHT'|'TRANSPORT'|'VISA'|'OTHER';readonly costCenterId:string;readonly currency:string;readonly grossAmount:string;readonly discountAmount:string;readonly approvalRequestId?:string;readonly postingDate:string;readonly dueDate:string;readonly invoiceNumber:string;readonly inventories:readonly BookingInventoryRequest[];readonly commissionAmount?:string;}
 export interface CancelBookingInput{readonly commandKey:string;readonly postingDate:string;readonly reason:string;}
 
 export interface RoomAssignment{readonly id:string;readonly programId:string;readonly bookingId:string;readonly travelerId:string;readonly allocationId:string;readonly roomKey:string;readonly roomLabel?:string;readonly startDate:string;readonly endDate:string;readonly status:'ASSIGNED'|'UNASSIGNED';}
@@ -47,7 +47,11 @@ export interface OperationsCapabilities{
 export interface IssueVisaInput{readonly commandKey:string;readonly visaNumber:string;readonly amount:string;readonly postingDate:string;}
 export type ReassignRoomInput=Omit<AssignRoomInput,'bookingId'|'travelerId'>;
 
+export interface BookingConfirmationOptions {readonly resources:readonly {id:string;contractId:string;resourceType:string;label:string;serviceDate:string;periodEnd?:string}[];readonly costCenters:readonly {id:string;label:string}[];readonly currencies:readonly string[];}
+export interface BookingOptions {readonly programs:readonly {id:string;label:string}[];readonly customers:readonly {id:string;label:string}[];readonly agents:readonly {id:string;label:string}[];readonly travelers:readonly {id:string;label:string}[];}
 export interface HajjUmrahOperationsApi{
+ readonly confirmationOptions?:()=>Promise<BookingConfirmationOptions>;
+ readonly bookingOptions?:()=>Promise<BookingOptions>;
  readonly capabilities:()=>Promise<OperationsCapabilities>;
  readonly listBookings:()=>Promise<Booking[]>;
  readonly createBooking:(input:CreateBookingInput)=>Promise<Booking>;
@@ -104,6 +108,7 @@ export function createHajjUmrahOperationsApi(request:OperationsRequest=crmReques
  const patch=<T>(path:string,body:unknown)=>request<T>(`${base}${path}`,{method:'PATCH',body:JSON.stringify(body)});
  const query=(programId?:string)=>programId?`?programId=${enc(programId)}`:'';
  return{
+ bookingOptions:()=>get<BookingOptions>('/booking-options'),confirmationOptions:()=>get<BookingConfirmationOptions>('/booking-confirmation-options'),
   capabilities:()=>get('/capabilities'),
   listBookings:()=>get('/bookings'),createBooking:(i)=>post('/bookings',i),confirmBooking:(id,i)=>post(`/bookings/${enc(id)}/confirm`,i),cancelBooking:(id,i)=>post(`/bookings/${enc(id)}/cancel`,i),markReady:(id)=>post(`/bookings/${enc(id)}/ready`),startTravel:(id)=>post(`/bookings/${enc(id)}/travel`),completeBooking:(id)=>post(`/bookings/${enc(id)}/complete`),
   listRooming:(p)=>get(`/rooming${query(p)}`),assignRoom:(i)=>post('/rooming',i),reassignRoom:(id,i)=>patch(`/rooming/${enc(id)}`,i),unassignRoom:(id)=>post(`/rooming/${enc(id)}/unassign`),swapRooms:(leftId,rightId)=>post('/rooming/swap',{leftId,rightId}),

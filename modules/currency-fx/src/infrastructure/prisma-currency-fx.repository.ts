@@ -1,5 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
-import { ContractValidationError, type CompanyId, type CurrencyCode } from '@elhafez/contracts';
+import { ContractValidationError, currencyCode, type CompanyId, type CurrencyCode } from '@elhafez/contracts';
 import type { CurrencyFxRepository } from '../application/currency-fx.repository.js';
 import type { CurrencyConfiguration, FxRate } from '../domain/fx.js';
 
@@ -10,6 +10,7 @@ function isUniqueConstraint(error: unknown): boolean {
 export class PrismaCurrencyFxRepository implements CurrencyFxRepository {
   constructor(private readonly db: PrismaClient) {}
 
+  async listCurrencies(companyId:CompanyId):Promise<CurrencyConfiguration[]>{const rows=await this.db.fxCurrency.findMany({where:{companyId},orderBy:{code:'asc'}});return rows.map(row=>{if(row.status!=='ACTIVE'&&row.status!=='INACTIVE')throw new ContractValidationError('currency','invalid configured status');return{companyId,code:currencyCode(row.code),precision:row.precision,isBase:row.isBase,status:row.status};});}
   async saveCurrency(value: CurrencyConfiguration): Promise<void> {
     const existing = await this.db.fxCurrency.findUnique({
       where: { companyId_code: { companyId: value.companyId, code: value.code } },

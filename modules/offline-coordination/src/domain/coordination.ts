@@ -5,7 +5,9 @@ export interface DeviceGrant {
  readonly id:string;readonly companyId:string;readonly branchId:string;readonly actorId:string;readonly deviceId:string;
  readonly operations:readonly OfflineOperation[];readonly issuedAt:string;readonly expiresAt:string;readonly revokedAt:string|null;
 }
+export interface ReviewDecision {readonly reviewerId:string;readonly previousReason?:string|null;readonly reason:string;readonly at:string;readonly attempt:number;}
 export interface OfflineCommand {
+ readonly reviewHistory?:readonly ReviewDecision[];
  readonly id:string;readonly companyId:string;readonly branchId:string;readonly actorId:string;readonly deviceId:string;
  readonly grantId:string;readonly operation:OfflineOperation;readonly payload:unknown;readonly payloadHash:string;
  readonly dependencies:readonly string[];readonly capturedAt:string;readonly receivedAt:string;
