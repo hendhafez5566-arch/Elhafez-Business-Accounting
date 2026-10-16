@@ -1,4 +1,4 @@
-export interface CommissionClaimOption {id:string;label:string;amount:string;currency:string;status:string;recognitionJournalId?:string;payments:readonly {id:string;status:string;claimAmountApplied:string;paymentCurrency:string;amount:string}[];}
+export interface CommissionClaimOption {id:string;label:string;amount:string;currency:string;status:string;settlement?:{id:string;reason:string;postingDate:string;number:string;releasedAmount:string;currency:string};approvalIntent?:{postingDate:string;number:string};recognitionJournalId?:string;payments:readonly {id:string;status:string;claimAmountApplied:string;paymentCurrency:string;amount:string}[];}
 import { crmGet, crmPost } from './crm-core-client.js';
 
 const base='/accounting/advanced';

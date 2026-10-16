@@ -3,7 +3,7 @@ import test from 'node:test';
 import { executionContext, sourceReference, type CompanyId, type ExecutionContext } from '@elhafez/contracts';
 import { HajjUmrahBookingsApplicationService } from './application/hajj-umrah-bookings.application-service.js';
 import type { BookingRepository } from './application/booking.repository.js';
-import type { BookingAccess, BookingFinancePort } from './application/booking.ports.js';
+import type { BookingAccess, BookingAgentPort, BookingFinancePort } from './application/booking.ports.js';
 import type { Booking, BookingHistory } from './domain/booking.js';
 
 class Repo implements BookingRepository {
@@ -20,8 +20,9 @@ const program={id:'p1',companyId:'c1' as CompanyId,branchId:'b1',code:'P',type:'
 function fixture(){
   const repo=new Repo();let n=0;let confirmCalls=0,cancelCalls=0;let open=true;let debtorParty:string|undefined;let cancelResult:unknown={cancelled:true};
   const finance:BookingFinancePort={async confirm(i){debtorParty=i.customerPartyId;confirmCalls++;return{workflowId:'w1',allocations:i.inventories.map((_,x)=>({id:`alloc-${x+1}`,quantity:'1'}))};},async cancel(){cancelCalls++;return cancelResult;}};
-  const service=new HajjUmrahBookingsApplicationService(repo,new Access(),{async require(){return{...program,bookingOpen:open};}},{async requireActive(_c,id){if(id==='bad')throw Error('traveler not found');return{id:id as never,companyId:'c1' as CompanyId,fullName:id,dateOfBirth:null,gender:null,nationality:null,partyId:null,customerId:'cust',status:'ACTIVE',createdAt:'',updatedAt:''};}},{async requireActive(_c,id){if(id==='foreign')throw Error('customer not found');return{id:id as never,companyId:'c1' as CompanyId,partyId:id==='cust'?'party-c':'party-responsible',number:'C',status:'ACTIVE',assignedAgentId:null,commercialNotes:null,createdAt:'',updatedAt:''};},async register(){}},{async requireActive(){return{id:'agent' as never,companyId:'c1' as CompanyId,partyId:'party-a',number:'A',status:'ACTIVE',notes:null,commission:{kind:'PERCENT' as const,value:'0',currency:null},createdAt:'',updatedAt:''};},async register(){}},finance,()=>new Date('2026-09-22T00:00:00Z'),()=>`id-${++n}`);
-  return{finance,repo,service,debtorParty:()=>debtorParty,setOpen:(v:boolean)=>open=v,setCancel:(v:unknown)=>cancelResult=v,calls:()=>({confirmCalls,cancelCalls})};
+  const agents:BookingAgentPort={async requireActive(_c,id){return{id:id as never,companyId:'c1' as CompanyId,partyId:id==='agent'?'party-a':'party-'+id,number:'A',status:'ACTIVE',notes:null,commission:{kind:'PERCENT' as const,value:'0',currency:null},createdAt:'',updatedAt:''};},async register(){}};const access:BookingAccess=new Access();
+  const service=new HajjUmrahBookingsApplicationService(repo,access,{async require(){return{...program,bookingOpen:open};}},{async requireActive(_c,id){if(id==='bad')throw Error('traveler not found');return{id:id as never,companyId:'c1' as CompanyId,fullName:id,dateOfBirth:null,gender:null,nationality:null,partyId:null,customerId:'cust',status:'ACTIVE',createdAt:'',updatedAt:''};}},{async requireActive(_c,id){if(id==='foreign')throw Error('customer not found');return{id:id as never,companyId:'c1' as CompanyId,partyId:id==='cust'?'party-c':'party-responsible',number:'C',status:'ACTIVE',assignedAgentId:null,commercialNotes:null,createdAt:'',updatedAt:''};},async register(){}},agents,finance,()=>new Date('2026-09-22T00:00:00Z'),()=>`id-${++n}`);
+  return{agents,access,finance,repo,service,debtorParty:()=>debtorParty,setOpen:(v:boolean)=>open=v,setCancel:(v:unknown)=>cancelResult=v,calls:()=>({confirmCalls,cancelCalls})};
 }
 const c=executionContext('c1','b1','u1');
 const create={code:'B1',programId:'p1',customerId:'cust',travelerIds:['t1','t2']};
@@ -50,3 +51,37 @@ test('confirmation claims the booking before owner effects so preliminary cancel
  f.finance.confirm=async input=>{entered();await gate;return original(input);};const pending=f.service.confirm(c,b.id,confirm);await ready;await assert.rejects(()=>f.service.cancel(c,b.id,{commandKey:'cancel-racing',postingDate:'2026-09-22',reason:'Cancellation during confirmation'}),/confirmation has started/);await assert.rejects(()=>f.service.confirm(c,b.id,{...confirm,commandKey:'different-confirmation'}),/conflicting pending/);resume();const result=await pending;assert.equal(result.status,'CONFIRMED');assert.equal(f.calls().confirmCalls,1);assert.equal(f.calls().cancelCalls,0);assert.ok((await f.service.historyFor(c,b.id)).some(x=>x.action==='CONFIRMATION_REQUESTED'));
 });
 test('individual financial responsibilities resolve each debtor through the customer owner before confirmation',async()=>{const f=fixture(),b=await f.service.create(c,create);let charges:unknown;f.finance.confirm=async input=>{charges=input.customerCharges;return{allocations:[]};};await f.service.confirm(c,b.id,{...confirm,financialResponsibilities:[{travelerId:'t1',financialCustomerId:'cust',amount:'400'},{travelerId:'t2',financialCustomerId:'responsible',amount:'600'}]});assert.deepEqual(charges,[{travelerId:'t1',financialCustomerId:'cust',amount:'400',partyId:'party-c'},{travelerId:'t2',financialCustomerId:'responsible',amount:'600',partyId:'party-responsible'}]);});
+
+
+const agentChange={commandKey:'agent-change',newAgentId:'new-agent',currency:'SAR',reviewed:true,expectedAgreement:null,expectedRemaining:[],reason:'Customer requested another appointed agent',postingDate:'2026-09-22',number:'AGENT-CHANGE'};
+
+test('agent change pins its snapshot and resumes after lost owner reply even when the new agent becomes inactive',async()=>{
+ const f=fixture(),b=await f.service.create(c,create);await f.service.confirm(c,b.id,confirm);let calls=0,registrations=0;
+ f.agents.register=async()=>{registrations++;};f.finance.changeAgent=async input=>{calls++;assert.equal(input.newAgentPartyId,'party-new-agent');if(calls===1)throw Error('lost owner reply');return{workflowId:'change',newClaimIds:['new-claim']};};
+ await assert.rejects(f.service.changeAgent(c,b.id,agentChange),/lost owner reply/);const pending=await f.service.get(c,b.id);assert.equal(pending.financialMutation?.state,'PENDING');
+ f.agents.requireActive=async()=>{throw Error('agent now inactive');};
+ const changed=await f.service.changeAgent(executionContext('c1','b1','supervisor'),b.id,agentChange);assert.equal(changed.agentId,'new-agent');assert.equal(changed.financialMutation?.state,'COMPLETED');assert.equal(registrations,1);
+ await f.service.changeAgent(c,b.id,agentChange);assert.equal(calls,2);assert.equal(f.repo.logs.filter(x=>x.action==='AGENT_CHANGED').length,1);
+ const history=f.repo.logs.find(x=>x.action==='AGENT_CHANGED')!;assert.equal((history.evidence as {requestedBy:string}).requestedBy,'u1');assert.equal(history.actorId,'supervisor');
+ await assert.rejects(f.service.changeAgent(c,b.id,{...agentChange,reason:'Different immutable request reason'}),/conflicting agent change/);
+});
+
+test('pending agent change excludes cancellation and lifecycle transitions before other owner effects',async()=>{
+ const f=fixture(),b=await f.service.create(c,create);await f.service.confirm(c,b.id,confirm);let started!:()=>void,release!:()=>void;const entered=new Promise<void>(resolve=>{started=resolve;}),gate=new Promise<void>(resolve=>{release=resolve;});
+ f.finance.changeAgent=async()=>{started();await gate;return{workflowId:'change'};};const changing=f.service.changeAgent(c,b.id,agentChange);await entered;
+ await assert.rejects(f.service.cancel(c,b.id,{commandKey:'cancel',postingDate:'2026-09-22',reason:'Conflicting cancellation'}),/pending financial/);await assert.rejects(f.service.markReady(c,b.id),/pending financial/);assert.equal(f.calls().cancelCalls,0);release();await changing;
+});
+
+test('pending cancellation excludes agent reassignment before settling commission',async()=>{
+ const f=fixture(),b=await f.service.create(c,create);await f.service.confirm(c,b.id,confirm);let started!:()=>void,release!:()=>void;const entered=new Promise<void>(resolve=>{started=resolve;}),gate=new Promise<void>(resolve=>{release=resolve;});let changes=0;
+ f.finance.cancel=async()=>{started();await gate;return{cancelled:true};};f.finance.changeAgent=async()=>{changes++;return{};};const cancelling=f.service.cancel(c,b.id,{commandKey:'cancel',postingDate:'2026-09-22',reason:'Confirmed cancellation'});await entered;
+ await assert.rejects(f.service.changeAgent(c,b.id,agentChange),/pending financial/);assert.equal(changes,0);release();assert.equal((await cancelling).status,'CANCELLED');
+});
+
+test('agent change checks financial permission and reviewed agreement before reserving a booking',async()=>{
+ const f=fixture(),b=await f.service.create(c,create);await f.service.confirm(c,b.id,confirm);let changes=0;f.finance.changeAgent=async()=>{changes++;return{};};
+ f.agents.snapshot=async()=>({agreementId:'agreement',agreementVersion:2,principalPartyId:'parent',subordinatePartyId:'party-new-agent',principalPercent:'50'});
+ await assert.rejects(f.service.changeAgent(c,b.id,agentChange),/agreement changed/);assert.equal((await f.service.get(c,b.id)).financialMutation,undefined);
+ f.access.requirePermission=async(_context,permission)=>{if(permission==='accounting.finance.operate')throw Error('financial operation denied');};
+ await assert.rejects(f.service.changeAgent(c,b.id,agentChange),/financial operation denied/);assert.equal(changes,0);
+});

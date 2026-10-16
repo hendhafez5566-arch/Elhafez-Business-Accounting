@@ -214,7 +214,10 @@ export class AdvancedAccountingController {
   @Get('commissions')
   async commissions(@Headers('authorization') auth:string,@Headers('x-company-id') company:string,@Headers('x-branch-id') branch:string){
     const c=await this.context(auth,company,branch),claims=(await this.commissionRead.listClaims(c.companyId)).filter(x=>x.branchId===c.branchId);
-    return Promise.all(claims.map(async claim=>({id:claim.id,label:(claim.beneficiary?'موظف: '+claim.beneficiary.employeeName+' — '+claim.beneficiary.payeeName:(await this.partyRegistry.getForIntegration(c,partyId(claim.agentPartyId))).displayName),amount:claim.amount,currency:claim.currency,status:claim.status,payments:claim.payments.map(p=>({id:p.id,status:p.status,claimAmountApplied:p.claimAmountApplied,paymentCurrency:p.paymentCurrency,amount:p.amount})),...(claim.recognitionJournalId?{recognitionJournalId:claim.recognitionJournalId}:{})})));
+    return Promise.all(claims.map(async claim=>{
+      const group=claim.settlementId?await this.ecr.getCommissionSettlement(c.companyId,claim.settlementId):undefined,release=group?.claims.find(x=>x.claimId===claim.id);
+      return{id:claim.id,label:(claim.beneficiary?'موظف: '+claim.beneficiary.employeeName+' — '+claim.beneficiary.payeeName:(await this.partyRegistry.getForIntegration(c,partyId(claim.agentPartyId))).displayName),amount:claim.amount,currency:claim.currency,status:claim.status,...(claim.approvalIntent?{approvalIntent:{postingDate:claim.approvalIntent.postingDate,number:claim.approvalIntent.number}}:{}),...(group&&release?{settlement:{id:group.id,reason:group.reason,postingDate:group.postingDate,number:group.number,releasedAmount:release.amount,currency:group.currency}}:{}),payments:claim.payments.map(p=>({id:p.id,status:p.status,claimAmountApplied:p.claimAmountApplied,paymentCurrency:p.paymentCurrency,amount:p.amount})),...(claim.recognitionJournalId?{recognitionJournalId:claim.recognitionJournalId}:{})};
+    }));
   }
 
   @Post('commissions')

@@ -99,6 +99,9 @@ export class CommissionAdapter implements CommissionPort {
     return this.expense.planCommissionDistribution(companyId,currency,total,agreement);
   }
 
+  findSettlement(companyId:Parameters<NonNullable<CommissionPort['findSettlement']>>[0],id:string){return this.expense.findCommissionSettlement(companyId,id);}
+  describe(companyId:Parameters<NonNullable<CommissionPort['describe']>>[0],id:string){return this.expense.getCommissionClaim(companyId,id);}
+  settleAgent(input:Parameters<NonNullable<CommissionPort['settleAgent']>>[0]){return this.expense.settleAgentCommissions(input);}
   validateEmployee(...args:Parameters<NonNullable<CommissionPort['validateEmployee']>>) { return this.expense.describeEmployeeBeneficiary(...args); }
 
   create(input: Parameters<CommissionPort['create']>[0]) {

@@ -35,7 +35,8 @@
     "prisma/migrations/20261016040000_offline_document_numbers/**",
     "prisma/migrations/20261016050000_booking_individual_invoices/**",
     "prisma/migrations/20261016060000_resumable_file_uploads/**",
-    "prisma/migrations/20261016070000_employee_commission/**"
+    "prisma/migrations/20261016070000_employee_commission/**",
+    "prisma/migrations/20261016080000_commission_settlement/**"
   ],
   "protectedPaths": [
     "docs/BUSINESS-MODULE-ROUTING.md",
@@ -56,9 +57,11 @@
     "prisma/migrations/20261016060000_resumable_file_uploads/**",
     "modules/platform-core/module.json",
     "modules/expense-commission-recognition/module.json",
-    "prisma/migrations/20261016070000_employee_commission/**"
+    "prisma/migrations/20261016070000_employee_commission/**",
+    "prisma/migrations/20261016080000_commission_settlement/**",
+    "apps/web/src/ui/primitives.tsx"
   ],
-  "protectedReason": "Authorized core workflow requires additive owned persistence, coordination module registration and dependency wiring. Preserve financial owners, public APIs and historical migrations.",
+  "protectedReason": "Authorized core workflow requires additive owned persistence, coordination module registration and dependency wiring. Preserve financial owners, public APIs and historical migrations. The shared Dialog needs unique accessible title IDs because booking confirmation and per-booking agent dialogs coexist; no shell, typography, style or layout change.",
   "allowBreakingPublicApi": false,
   "publicApiBreakingReason": "",
   "testEvidence": [
@@ -73,6 +76,7 @@
     "modules/hajj-umrah-bookings/src/domain/financial-responsibilities.spec.ts",
     "apps/web/src/offline-command-store.spec.ts",
     "apps/web/src/offline-attachment-store.spec.ts",
-    "modules/expense-commission-recognition/src/expense-commission-recognition.spec.ts"
+    "modules/expense-commission-recognition/src/expense-commission-recognition.spec.ts",
+    "apps/web/src/ui.spec.ts"
   ]
 }

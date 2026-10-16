@@ -6,6 +6,8 @@ import { PlatformCoreApplicationService, PlatformError } from '@elhafez/platform
 import {
   BOOKING_PERMISSIONS,
   HajjUmrahBookingsApplicationService,
+  type BookingAgentChangeInput,
+  type BookingAgentChangeProposal,
   type BookingFinanceInventoryRequest,
   type CancelOperationalBookingInput,
   type ConfirmOperationalBookingInput,
@@ -102,6 +104,10 @@ export class HajjUmrahOperationsController {
   async confirmBooking(@Headers('authorization') authorization:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined,@Param('id') id:string,@Body() input:ConfirmOperationalBookingInput){
     return this.bookings.confirm(await this.context({authorization,companyId,branchId}),id,input);
   }
+  @Get('bookings/:id/agent-change-proposal')
+  async agentChangeProposal(@Headers('authorization') authorization:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined,@Param('id') id:string,@Query('newAgentId') newAgentId?:string):Promise<BookingAgentChangeProposal>{return this.bookings.prepareAgentChange(await this.context({authorization,companyId,branchId}),id,newAgentId);}
+  @Post('bookings/:id/change-agent')
+  async changeBookingAgent(@Headers('authorization') authorization:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined,@Param('id') id:string,@Body() input:BookingAgentChangeInput){return this.bookings.changeAgent(await this.context({authorization,companyId,branchId}),id,input);}
   @Post('bookings/:id/cancel')
   async cancelBooking(@Headers('authorization') authorization:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined,@Param('id') id:string,@Body() input:CancelOperationalBookingInput){
     return this.bookings.cancel(await this.context({authorization,companyId,branchId}),id,input);

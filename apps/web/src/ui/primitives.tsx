@@ -3,6 +3,7 @@ import {
   type InputHTMLAttributes,
   type ReactNode,
   useEffect,
+  useId,
   useRef,
   useState,
 } from 'react';
@@ -355,6 +356,7 @@ export function Dialog({
   readonly onClose: () => void;
   readonly children: ReactNode;
 }) {
+  const titleId = useId();
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const dialog = ref.current;
@@ -364,9 +366,9 @@ export function Dialog({
   }, [open]);
 
   return (
-    <dialog ref={ref} aria-labelledby="dialog-title" onClose={onClose}>
+    <dialog ref={ref} aria-labelledby={titleId} onClose={onClose}>
       <header className="ui-dialog__header">
-        <h2 id="dialog-title">{title}</h2>
+        <h2 id={titleId}>{title}</h2>
         <Button variant="ghost" onClick={onClose} aria-label="إغلاق">×</Button>
       </header>
       {children}

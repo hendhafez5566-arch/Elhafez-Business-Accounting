@@ -170,22 +170,43 @@ export class ExpenseCommissionRecognitionApplicationService {
   if(prior){if(prior.requestHash!==requestHash)throw new ContractValidationError('source','conflicting replay');return prior;}
   let beneficiary:EmployeeCommissionBeneficiary|undefined;
   if(input.beneficiary)beneficiary=await this.describeEmployeeBeneficiary(context!,input.beneficiary.employeeId,input.beneficiary.partyId);
-  const {beneficiary:requestedBeneficiary,...fields}=normalized;void requestedBeneficiary;const value:CommissionClaim={...fields,...(beneficiary?{beneficiary}:{}),status:'DRAFT',requestHash,payments:[]};await this.repo.saveClaim(value);return value;
+  const {beneficiary:requestedBeneficiary,...fields}=normalized;void requestedBeneficiary;const value:CommissionClaim={...fields,...(beneficiary?{beneficiary}:{}),status:'DRAFT',requestHash,payments:[]};return this.repo.reserveCommissionClaim(value);
  }
 
- async approveCommission(companyId:CompanyId,id:string,postingDate:string,number:string):Promise<CommissionClaim>{
-  let claim=await this.requiredClaim(companyId,id);if(claim.status!=='DRAFT')return claim;
-  const base=await this.fx.getBaseCurrency(companyId),conversion=claim.currency===base.code?{converted:money(claim.amount,base.code),rate:{rateId:'SAME_CURRENCY'}}:await this.fx.calculateSettlement(companyId,money(claim.amount,currencyCode(claim.currency)),base.code,postingDate+'T23:59:59.999Z');
-  const carrying=pos(conversion.converted.amount);
-  const requirement=await this.controls.evaluateApprovalRequirement({companyId,action:'COMMISSION_APPROVAL',amount:carrying});
-  if(requirement.decision==='APPROVAL_REQUIRED'){
-   if(!claim.approvalRequestId||!claim.requesterActorId)throw new ContractValidationError('approval','required');
-   const request=await this.controls.getApprovalRequest(companyId,claim.approvalRequestId),decision=await this.controls.getApprovalDecision(companyId,claim.approvalRequestId);
-   if(!request||request.action!=='COMMISSION_APPROVAL'||request.companyId!==companyId||request.sourceType!==claim.sourceType||request.sourceId!==claim.sourceId||request.requesterActorId!==claim.requesterActorId||request.branchId!==claim.branchId||request.amount!==carrying||decision?.outcome!=='APPROVED')throw new ContractValidationError('approval','does not authorize exact claim');
-  }
-  const journal=await this.gl.post({id:'ecr-commission:'+id,companyId,...(claim.branchId?{branchId:claim.branchId}:{}),number,postingDate,sourceType:'ECR_COMMISSION_APPROVAL',sourceId:id,lines:[{accountId:claim.expenseAccountId,debit:carrying},{accountId:claim.liabilityAccountId,credit:carrying,partyId:claim.agentPartyId}]});
-  claim={...claim,baseCarryingAmount:carrying,status:'APPROVED',recognitionJournalId:journal.id};await this.repo.saveClaim(claim);return claim;
+ private async requireCommissionApproval(claim:CommissionClaim,carrying:DecimalAmount){
+  const companyId=claim.companyId,requirement=await this.controls.evaluateApprovalRequirement({companyId,action:'COMMISSION_APPROVAL',amount:carrying});
+  if(requirement.decision!=='APPROVAL_REQUIRED')return;
+  if(!claim.approvalRequestId||!claim.requesterActorId)throw new ContractValidationError('approval','required');
+  const request=await this.controls.getApprovalRequest(companyId,claim.approvalRequestId),decision=await this.controls.getApprovalDecision(companyId,claim.approvalRequestId);
+  if(!request||request.action!=='COMMISSION_APPROVAL'||request.companyId!==companyId||request.sourceType!==claim.sourceType||request.sourceId!==claim.sourceId||request.requesterActorId!==claim.requesterActorId||request.branchId!==claim.branchId||request.amount!==carrying||decision?.outcome!=='APPROVED')throw new ContractValidationError('approval','does not authorize exact claim');
  }
+ private requireCommissionDate(postingDate:string,number:string){if(typeof postingDate!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(postingDate)||!Number.isFinite(Date.parse(postingDate+'T00:00:00.000Z'))||new Date(postingDate+'T00:00:00.000Z').toISOString().slice(0,10)!==postingDate)throw new ContractValidationError('postingDate','valid ISO date required');if(typeof number!=='string'||!number.trim())throw new ContractValidationError('number','required');}
+ async approveCommission(companyId:CompanyId,id:string,postingDate:string,number:string):Promise<CommissionClaim>{
+  let claim=await this.requiredClaim(companyId,id);if(['APPROVED','PARTIALLY_PAID','PAID'].includes(claim.status))return claim;
+  if(claim.status!=='DRAFT'&&claim.status!=='APPROVING')throw new ContractValidationError('claim','claim has another pending or completed financial operation');
+  this.requireCommissionDate(postingDate,number);const requestHash=h({postingDate,number});
+  if(claim.status==='DRAFT'){
+   const base=await this.fx.getBaseCurrency(companyId),conversion=claim.currency===base.code?{converted:money(claim.amount,base.code),rate:{rateId:'SAME_CURRENCY'}}:await this.fx.calculateSettlement(companyId,money(claim.amount,currencyCode(claim.currency)),base.code,postingDate+'T23:59:59.999Z'),carrying=pos(conversion.converted.amount);
+   await this.requireCommissionApproval(claim,carrying);
+   claim=await this.repo.beginCommissionApproval(companyId,id,{requestHash,postingDate,number,carryingBaseAmount:carrying,fxRateId:conversion.rate.rateId});
+   if(['APPROVED','PARTIALLY_PAID','PAID'].includes(claim.status))return claim;
+  }
+  const intent=claim.approvalIntent;if(!intent||intent.requestHash!==requestHash)throw new ContractValidationError('approval','conflicting pending approval');
+  await this.requireCommissionApproval(claim,intent.carryingBaseAmount);
+  const journal=await this.gl.post({id:'ecr-commission:'+id,companyId,...(claim.branchId?{branchId:claim.branchId}:{}),number:intent.number,postingDate:intent.postingDate,sourceType:'ECR_COMMISSION_APPROVAL',sourceId:id,lines:[{accountId:claim.expenseAccountId,debit:intent.carryingBaseAmount},{accountId:claim.liabilityAccountId,credit:intent.carryingBaseAmount,partyId:claim.agentPartyId}]});
+  return this.repo.completeCommissionApproval(companyId,id,intent.requestHash,intent.carryingBaseAmount,journal.id);
+ }
+ async settleAgentCommissions(input:{context:ExecutionContext;id:string;claimIds:readonly string[];expectedRemaining:readonly {claimId:string;amount:DecimalAmount}[];currency:string;reason:string;postingDate:string;number:string}){
+  this.requireCommissionDate(input.postingDate,input.number);
+  if(typeof input.id!=='string'||!input.id.trim()||typeof input.reason!=='string'||input.reason.trim().length<10||input.claimIds.length>500)throw new ContractValidationError('settlement','identity, reviewed claim set and documented reason required');
+  const claimIds=[...input.claimIds].sort(),expectedRemaining=input.expectedRemaining.map(x=>({claimId:x.claimId,amount:decimalAmount(x.amount)})).sort((a,b)=>a.claimId.localeCompare(b.claimId)),currency=currencyCode(input.currency),payload={branchId:input.context.branchId,claimIds,expectedRemaining,currency,reason:input.reason.trim(),postingDate:input.postingDate,number:input.number};
+  const group=await this.repo.reserveCommissionSettlement({id:input.id,companyId:input.context.companyId,...payload,requestHash:h(payload),actorId:input.context.actorId});
+  if(group.status==='COMPLETED')return group;
+  for(const entry of group.claims){if(!entry.recognized||entry.amount==='0')continue;await this.gl.post({id:'ecr-settlement:'+group.id+':'+entry.claimId,companyId:group.companyId,branchId:group.branchId,number:group.number+':'+entry.claimId,postingDate:group.postingDate,sourceType:'ECR_COMMISSION_SETTLEMENT',sourceId:group.id+':'+entry.claimId,lines:[{accountId:entry.liabilityAccountId,debit:entry.baseAmount,partyId:entry.partyId},{accountId:entry.expenseAccountId,credit:entry.baseAmount}]});}
+  return this.repo.completeCommissionSettlement(group.companyId,group.id);
+ }
+ async findCommissionSettlement(companyId:CompanyId,id:string){return this.repo.commissionSettlement(companyId,id);}
+ async getCommissionSettlement(companyId:CompanyId,id:string){const group=await this.repo.commissionSettlement(companyId,id);if(!group)throw new ContractValidationError('settlement','not found');return group;}
  async payCommission(input:{companyId:CompanyId;claimId:string;paymentId:string;treasuryId:string;amount:DecimalAmount;paymentCurrency:string;postingDate:string;number:string;realizedFxGainAccountId?:string;realizedFxLossAccountId?:string}){
   let claim=await this.requiredClaim(input.companyId,input.claimId);
   const amount=pos(input.amount),paymentCurrency=currencyCode(input.paymentCurrency),requestHash=h({...input,amount,paymentCurrency});
@@ -218,12 +239,14 @@ export class ExpenseCommissionRecognitionApplicationService {
 
  async getCommissionCancellationEvidence(companyId:CompanyId,claimId:string){
   const claim=await this.requiredClaim(companyId,claimId),posted=claim.payments.filter(payment=>payment.status==='POSTED');
-  return Object.freeze({claimId:claim.id,status:claim.status,hasPostedPaymentHistory:posted.length>0,postedPaymentIds:posted.map(payment=>payment.id),reversible:posted.length===0&&claim.status!=='REVERSED'});
+  return Object.freeze({claimId:claim.id,status:claim.status,hasPostedPaymentHistory:posted.length>0,postedPaymentIds:posted.map(payment=>payment.id),reversible:claim.payments.length===0&&['DRAFT','APPROVED','REVERSING','SETTLED'].includes(claim.status)});
  }
  async reverseUnpaidCommission(companyId:CompanyId,claimId:string,postingDate:string,number:string){
   let claim=await this.requiredClaim(companyId,claimId);const evidence=await this.getCommissionCancellationEvidence(companyId,claimId);
   if(evidence.hasPostedPaymentHistory)throw new ContractValidationError('commission','paid commission history blocks reversal');
-  if(claim.status==='REVERSED')return claim;
+  if(claim.status==='REVERSED'||claim.status==='SETTLED')return claim;
+  claim=await this.repo.beginCommissionReversal(companyId,claimId);
+  if(claim.status==='REVERSED'||claim.status==='SETTLED')return claim;
   if(claim.recognitionJournalId){const reversal=await this.gl.reverse(companyId,claim.recognitionJournalId,postingDate,number);claim={...claim,reversalJournalId:reversal.id};}
   claim={...claim,status:'REVERSED'};await this.repo.saveClaim(claim);return claim;
  }

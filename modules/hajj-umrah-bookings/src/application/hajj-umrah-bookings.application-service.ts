@@ -1,10 +1,10 @@
 import {normalizeFinancialResponsibilities,type FinancialResponsibility} from '../domain/financial-responsibilities.js';
 import { createHash, randomUUID } from 'node:crypto';
-import { ContractValidationError, type ExecutionContext, type SourceReference } from '@elhafez/contracts';
-import type { Booking, BookingHistory, BookingStatus } from '../domain/booking.js';
+import { ContractValidationError, decimalAmount, type ExecutionContext, type SourceReference } from '@elhafez/contracts';
+import type {BookingAgentChangeInput, Booking, BookingHistory, BookingStatus } from '../domain/booking.js';
 import type { BookingRepository } from './booking.repository.js';
 import type {
-  BookingAccess, BookingAgentPort, BookingCustomerPort, BookingFinanceInventoryRequest,
+  BookingAgentChangeProposal, BookingAccess, BookingAgentPort, BookingCustomerPort, BookingFinanceInventoryRequest,
   BookingFinancePort, BookingProgramPort, BookingTravelerPort,
 } from './booking.ports.js';
 
@@ -189,24 +189,69 @@ export class HajjUmrahBookingsApplicationService {
     return saved;
   }
 
+  async prepareAgentChange(c:ExecutionContext,id:string,newAgentId?:string):Promise<BookingAgentChangeProposal>{
+    await this.permission(c,BOOKING_PERMISSIONS.manage);await this.access.requirePermission(c,'accounting.finance.read');const old=await this.required(c,id);
+    if(!['CONFIRMED','READY'].includes(old.status)||old.financialMutation?.state==='PENDING')throw new ContractValidationError('booking','confirmed pre-travel booking without a pending mutation required');
+    if(!this.finance.prepareAgentChange)throw new ContractValidationError('commission','proposal provider required');const proposal=await this.finance.prepareAgentChange({companyId:c.companyId,branchId:c.branchId,bookingId:id});if(newAgentId){const agent=await this.agents.requireActive(c,newAgentId),agreement=this.agents.snapshot?await this.agents.snapshot(c,agent.id):null;return{...proposal,newAgentAgreement:agreement};}return{...proposal,newAgentAgreement:undefined};
+  }
+  async changeAgent(c:ExecutionContext,id:string,input:BookingAgentChangeInput):Promise<Booking>{
+    await this.permission(c,BOOKING_PERMISSIONS.manage);await this.access.requirePermission(c,'accounting.finance.operate');if(!this.finance.changeAgent)throw new ContractValidationError('commission','settlement provider required');
+    if(input.reviewed!==true)throw new ContractValidationError('reviewed','explicit review of unpaid balances and selected agreement required');
+    const normalized={...input,commandKey:required(input.commandKey,'commandKey'),newAgentId:required(input.newAgentId,'newAgentId'),reason:required(input.reason,'reason'),expectedRemaining:input.expectedRemaining.map(x=>({claimId:required(x.claimId,'claimId'),amount:decimalAmount(x.amount)})).sort((a,b)=>a.claimId.localeCompare(b.claimId))};
+    if(normalized.reason.length<10)throw new ContractValidationError('reason','at least ten characters required');const payloadHash=createHash('sha256').update(JSON.stringify(ordered(normalized))).digest('hex');let old=await this.required(c,id);
+    const completed=(await this.repo.history(c.companyId,c.branchId,id)).find(x=>['AGENT_CHANGED','AGENT_CHANGE_REJECTED'].includes(x.action)&&(x.evidence as {commandKey?:string}|undefined)?.commandKey===normalized.commandKey);
+    if(completed){if((completed.evidence as {payloadHash?:string}).payloadHash!==payloadHash)throw new ContractValidationError('commandKey','conflicting agent change replay');return old;}
+    if(!['CONFIRMED','READY'].includes(old.status))throw new ContractValidationError('status','agent changes require a confirmed pre-travel booking');
+    if(old.financialMutation?.state==='PENDING'&&(old.financialMutation.kind!=='AGENT_CHANGE'||old.financialMutation.commandKey!==normalized.commandKey||old.financialMutation.payloadHash!==payloadHash))throw new ContractValidationError('booking','resume the pending financial operation first');
+    if(old.financialMutation?.state!=='PENDING'){
+      const agent=await this.agents.requireActive(c,normalized.newAgentId);if(agent.id===old.agentId)throw new ContractValidationError('newAgentId','select a different agent');const agreement=this.agents.snapshot?await this.agents.snapshot(c,agent.id):null;
+      if((normalized.expectedAgreement?.agreementId??null)!==(agreement?.agreementId??null)||(normalized.expectedAgreement?.agreementVersion??null)!==(agreement?.agreementVersion??null))throw new ContractValidationError('agreement','agreement changed; review it again before settlement');
+      const mutation={kind:'AGENT_CHANGE' as const,input:normalized,agentSnapshot:{id:agent.id,partyId:agent.partyId,...(agreement?{agreement}:{})},commandKey:normalized.commandKey,payloadHash,actorId:c.actorId,state:'PENDING' as const};
+      try{old=await this.repo.save({...old,financialMutation:mutation,updatedAt:this.now().toISOString()},this.history(c,id,'AGENT_CHANGE_REQUESTED',old.status,old.status,normalized.reason,{commandKey:normalized.commandKey,payloadHash,previousAgentId:old.agentId??null,newAgentId:agent.id}));}
+      catch(error){const current=await this.required(c,id);if(current.financialMutation?.kind!=='AGENT_CHANGE'||current.financialMutation.commandKey!==normalized.commandKey||current.financialMutation.payloadHash!==payloadHash)throw error;old=current;}
+    }
+    let mutation=old.financialMutation;if(mutation?.kind!=='AGENT_CHANGE')throw new ContractValidationError('booking','agent change reservation missing');
+    if(!mutation.referenceRegistered){
+      await this.agents.register(c,mutation.agentSnapshot.id,id);
+      try{old=await this.repo.save({...old,financialMutation:{...mutation,referenceRegistered:true},updatedAt:this.now().toISOString()},this.history(c,id,'AGENT_CHANGE_REFERENCE_LINKED',old.status,old.status,normalized.reason,{commandKey:normalized.commandKey}));}
+      catch(error){const current=await this.required(c,id);if(current.financialMutation?.kind!=='AGENT_CHANGE'||current.financialMutation.commandKey!==normalized.commandKey||!current.financialMutation.referenceRegistered)throw error;old=current;}
+      mutation=old.financialMutation;if(mutation?.kind!=='AGENT_CHANGE')throw new ContractValidationError('booking','agent change reservation missing');
+    }
+    const evidence=await this.finance.changeAgent({context:c,bookingId:id,commandKey:normalized.commandKey,newAgentPartyId:mutation.agentSnapshot.partyId,...(mutation.agentSnapshot.agreement?{agreement:mutation.agentSnapshot.agreement}:{}),expectedRemaining:normalized.expectedRemaining,currency:normalized.currency,reason:normalized.reason,postingDate:normalized.postingDate,number:normalized.number});
+    const changed=(evidence as {changed?:boolean}|null)?.changed!==false,{commissionAgreement:previousAgreement,...rest}=old;void previousAgreement;
+    const next:Booking={...rest,...(changed?{agentId:mutation.agentSnapshot.id,agentPartyId:mutation.agentSnapshot.partyId,...(mutation.agentSnapshot.agreement?{commissionAgreement:mutation.agentSnapshot.agreement}:{})}:old.commissionAgreement?{commissionAgreement:old.commissionAgreement}:{}),financialMutation:{...mutation,state:'COMPLETED',evidence},updatedAt:this.now().toISOString()};
+    try{return await this.repo.save(next,this.history(c,id,changed?'AGENT_CHANGED':'AGENT_CHANGE_REJECTED',old.status,old.status,normalized.reason,{commandKey:normalized.commandKey,payloadHash,requestedBy:mutation.actorId,previousAgentId:old.agentId??null,newAgentId:mutation.agentSnapshot.id,evidence}));}
+    catch(error){const current=await this.required(c,id),history=await this.repo.history(c.companyId,c.branchId,id);if(history.some(x=>['AGENT_CHANGED','AGENT_CHANGE_REJECTED'].includes(x.action)&&(x.evidence as {commandKey?:string}|undefined)?.commandKey===normalized.commandKey))return current;throw error;}
+  }
+
   async cancel(c:ExecutionContext,id:string,input:CancelOperationalBookingInput):Promise<Booking>{
     await this.permission(c,BOOKING_PERMISSIONS.cancel);
-    const old=await this.required(c,id);
+    let old=await this.required(c,id);
     if(old.status==='CANCELLED')return old;
     const reason=required(input.reason,'reason');
     if(old.status==='PRELIMINARY'){
+      if(old.financialMutation?.state==='PENDING')throw new ContractValidationError('booking','resume the pending financial operation first');
       if(old.confirmationCommandKey)throw new ContractValidationError('booking','confirmation has started; resume it before cancellation');
       if(old.capacityHold&&old.capacityHold.state!=='RELEASED'){await this.releaseHold(c,id,reason);return this.cancel(c,id,input);}
       const next:Booking={...old,status:'CANCELLED',financialState:'CANCELLED',cancellationEvidence:{financialWorkflow:'NOT_CREATED'},updatedAt:this.now().toISOString()};
       return this.repo.save(next,this.history(c,id,'CANCELLED','PRELIMINARY','CANCELLED',reason,next.cancellationEvidence));
     }
+    const commandKey=required(input.commandKey,'commandKey'),postingDate=required(input.postingDate,'postingDate'),payloadHash=createHash('sha256').update(JSON.stringify(ordered({commandKey,postingDate,reason}))).digest('hex');
+    if(old.financialMutation?.state==='PENDING'&&(old.financialMutation.kind!=='CANCELLATION'||old.financialMutation.commandKey!==commandKey||old.financialMutation.payloadHash!==payloadHash))throw new ContractValidationError('booking','resume the pending financial operation first');
+    if(old.financialMutation?.kind==='CANCELLATION'&&old.financialMutation.commandKey===commandKey&&old.financialMutation.payloadHash!==payloadHash)throw new ContractValidationError('commandKey','conflicting cancellation replay');
+    if(old.financialMutation?.state!=='PENDING'){
+      const mutation={kind:'CANCELLATION' as const,input:{commandKey,postingDate,reason},commandKey,payloadHash,actorId:c.actorId,state:'PENDING' as const};
+      try{old=await this.repo.save({...old,financialMutation:mutation,updatedAt:this.now().toISOString()},this.history(c,id,'CANCELLATION_REQUESTED',old.status,old.status,reason,{commandKey,payloadHash}));}
+      catch(error){const current=await this.required(c,id);if(current.status==='CANCELLED')return current;if(current.financialMutation?.kind!=='CANCELLATION'||current.financialMutation.commandKey!==commandKey||current.financialMutation.payloadHash!==payloadHash)throw error;old=current;}
+    }
+    const mutation=old.financialMutation;if(mutation?.kind!=='CANCELLATION')throw new ContractValidationError('booking','cancellation reservation missing');
     const evidence=await this.finance.cancel({companyId:c.companyId,branchId:c.branchId,commandKey:required(input.commandKey,'commandKey'),bookingId:id,travelStarted:old.status==='TRAVELING'||old.status==='COMPLETED',travelEvidence:`BOOKING_STATUS:${old.status}`,postingDate:required(input.postingDate,'postingDate')});
     const cancelled=Boolean((evidence as {cancelled?:boolean}|null)?.cancelled);
     if(!cancelled){
-      const next:Booking={...old,financialState:'CANCELLATION_BLOCKED',cancellationEvidence:evidence,updatedAt:this.now().toISOString()};
+      const next:Booking={...old,financialMutation:{...mutation,state:'COMPLETED',evidence},financialState:'CANCELLATION_BLOCKED',cancellationEvidence:evidence,updatedAt:this.now().toISOString()};
       return this.repo.save(next,this.history(c,id,'CANCELLATION_BLOCKED',old.status,old.status,reason,evidence));
     }
-    const next:Booking={...old,status:'CANCELLED',financialState:'CANCELLED',cancellationEvidence:evidence,updatedAt:this.now().toISOString()};
+    const next:Booking={...old,financialMutation:{...mutation,state:'COMPLETED',evidence},status:'CANCELLED',financialState:'CANCELLED',cancellationEvidence:evidence,updatedAt:this.now().toISOString()};
     const saved=await this.repo.save(next,this.history(c,id,'CANCELLED',old.status,'CANCELLED',reason,evidence));
     await this.access.audit(c,'hajj-umrah.booking.cancelled',id,{reason});
     return saved;
@@ -219,6 +264,7 @@ export class HajjUmrahBookingsApplicationService {
   private async transition(c:ExecutionContext,id:string,from:BookingStatus,to:BookingStatus,action:string){
     await this.permission(c,BOOKING_PERMISSIONS.lifecycle);const old=await this.required(c,id);
     if(old.status!==from)throw new ContractValidationError('status',`expected ${from}`);
+    if(old.financialMutation?.state==='PENDING')throw new ContractValidationError('booking','resume the pending financial operation first');
     const next={...old,status:to,updatedAt:this.now().toISOString()};
     const saved=await this.repo.save(next,this.history(c,id,action,from,to));
     await this.access.audit(c,`hajj-umrah.booking.${action.toLowerCase()}`,id,{});

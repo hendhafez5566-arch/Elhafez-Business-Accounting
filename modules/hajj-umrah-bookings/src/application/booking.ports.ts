@@ -26,7 +26,10 @@ export interface BookingFinanceInventoryRequest {
   readonly flightSegmentReference?: SourceReference;
   readonly visaBatchReference?: SourceReference;
 }
+export interface BookingAgentChangeProposal {readonly totals:readonly {currency:string;amount:string}[];readonly claims:readonly {claimId:string;partyId:string;currency:string;originalAmount:string;paidAmount:string;amount:string;status:string}[];readonly currencies:readonly string[];readonly expectedRemaining:readonly {claimId:string;amount:string}[];readonly newAgentAgreement?:BookingCommissionAgreement|null;}
 export interface BookingFinancePort {
+  prepareAgentChange?(input:{companyId:CompanyId;branchId:string;bookingId:string}):Promise<BookingAgentChangeProposal>;
+  changeAgent?(input:{context:ExecutionContext;bookingId:string;commandKey:string;newAgentPartyId:string;agreement?:BookingCommissionAgreement;expectedRemaining:readonly {claimId:string;amount:string}[];currency:string;reason:string;postingDate:string;number:string}):Promise<unknown>;
   validateEmployeeCommission?(context:ExecutionContext,employeeId:string,partyId:string):Promise<unknown>;
   hold?(input:{companyId:CompanyId;branchId:string;commandKey:string;bookingId:string;programId:string;expiresAt:string;inventory:BookingFinanceInventoryRequest}):Promise<unknown>;
   releaseHold?(input:{companyId:CompanyId;branchId:string;bookingId:string;capacityHoldKey:string}):Promise<unknown>;

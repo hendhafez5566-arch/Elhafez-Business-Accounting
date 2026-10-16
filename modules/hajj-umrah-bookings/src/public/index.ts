@@ -4,3 +4,8 @@ export type { Booking, BookingHistory, BookingStatus, BookingFinancialState } fr
 export type { BookingFinanceInventoryRequest } from '../application/booking.ports.js';
 
 export type {FinancialResponsibility} from '../domain/financial-responsibilities.js';
+
+export type {BookingAgentChangeInput,BookingFinancialMutation} from '../domain/booking.js';
+
+export type {BookingAgentChangeProposal} from '../application/booking.ports.js';
+export type {BookingCommissionAgreement} from '../domain/booking.js';

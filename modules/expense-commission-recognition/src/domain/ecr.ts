@@ -19,7 +19,8 @@ export interface CommissionClaim {
   readonly beneficiary?:EmployeeCommissionBeneficiary;
   id:string; companyId:CompanyId; branchId?:string; agentPartyId:string; sourceType:string; sourceId:string;
   currency:string; amount:DecimalAmount; baseCarryingAmount:DecimalAmount;
-  status:'DRAFT'|'APPROVED'|'PARTIALLY_PAID'|'PAID'|'REVERSED'; requestHash:string;
+  status:'DRAFT'|'APPROVING'|'APPROVED'|'PARTIALLY_PAID'|'PAID'|'REVERSING'|'REVERSED'|'SETTLING'|'SETTLED'; requestHash:string;
+  approvalIntent?:CommissionApprovalIntent;settlementId?:string;
   approvalRequestId?:string; requesterActorId?:string; recognitionJournalId?:string; reversalJournalId?:string;
   expenseAccountId:string; liabilityAccountId:string; payments:CommissionPayment[];
 }
@@ -40,3 +41,8 @@ export interface Accrual {
   status:'POSTED'|'CLEARED'; journalId:string; requestHash:string; accruedRevenueAccountId:string; revenueAccountId:string;
   billingInvoiceId?:string; clearingJournalId?:string;
 }
+
+export interface CommissionApprovalIntent {fxRateId?:string;requestHash:string;postingDate:string;number:string;carryingBaseAmount:DecimalAmount;}
+export interface CommissionSettlementClaim {claimId:string;partyId:string;amount:DecimalAmount;baseAmount:DecimalAmount;recognized:boolean;expenseAccountId:string;liabilityAccountId:string;}
+export interface CommissionSettlement {id:string;companyId:CompanyId;branchId:string;requestHash:string;actorId:string;reason:string;postingDate:string;number:string;currency:string;claims:readonly CommissionSettlementClaim[];total:DecimalAmount;baseTotal:DecimalAmount;status:'RELEASING'|'COMPLETED';}
+export interface CommissionSettlementRequest {id:string;companyId:CompanyId;branchId:string;requestHash:string;actorId:string;reason:string;postingDate:string;number:string;currency:string;claimIds:readonly string[];expectedRemaining:readonly {claimId:string;amount:DecimalAmount}[];}

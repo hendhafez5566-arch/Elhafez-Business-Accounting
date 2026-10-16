@@ -1059,6 +1059,8 @@ model EcrRecognitionPart {
  @@map("ecr_recognition_parts")
 }
 model EcrCommissionClaim {
+ approvalIntent Json? @map("approval_intent")
+ settlementId String? @map("settlement_id")
  beneficiary Json?
  id String @id
  companyId String @map("company_id")
@@ -1880,6 +1882,9 @@ model TfoWorkflowStep {
  @@map("tfo_workflow_steps")
 }
 model TfoBookingReference {
+ completedMutationKeys Json? @map("completed_mutation_keys")
+ mutationKey String? @map("mutation_key")
+ agentCommissionState Json? @map("agent_commission_state")
  customerInvoices Json? @map("customer_invoices")
  commissionClaimIds Json? @map("commission_claim_ids")
  id String @id
@@ -3011,6 +3016,7 @@ model HupProgramHistory {
 
 // HU-02 — Hajj & Umrah operational booking truth.
 model HubBooking {
+ financialMutation Json? @map("financial_mutation")
  capacityHold Json? @map("capacity_hold")
  revision Int @default(0)
  createRequestId String? @map("create_request_id")
@@ -4294,4 +4300,23 @@ model PcFileUploadChunk {
  upload PcFileUploadSession @relation(fields:[companyId,uploadId],references:[companyId,id],onDelete:Restrict)
  @@id([companyId,uploadId,index])
  @@map("pc_file_upload_chunks")
+}
+
+model EcrCommissionSettlement {
+ id String @id
+ companyId String @map("company_id")
+ branchId String @map("branch_id")
+ requestHash String @map("request_hash")
+ actorId String @map("actor_id")
+ reason String
+ postingDate String @map("posting_date")
+ number String
+ currency String
+ claims Json
+ total Decimal @db.Decimal(38,18)
+ baseTotal Decimal @map("base_total") @db.Decimal(38,18)
+ status String
+ createdAt DateTime @default(now()) @map("created_at")
+ @@unique([companyId,id])
+ @@map("ecr_commission_settlements")
 }
