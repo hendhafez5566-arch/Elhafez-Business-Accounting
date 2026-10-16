@@ -162,12 +162,14 @@ export class ExpenseCommissionRecognitionApplicationService {
  }
 
 
- async describeEmployeeBeneficiary(context:ExecutionContext,employeeId:string,partyId:string):Promise<EmployeeCommissionBeneficiary>{if(!this.employeeIdentity)throw new ContractValidationError('employee','employee identity provider required');if(!employeeId.trim()||!partyId.trim())throw new ContractValidationError('employee','employee and payee required');return this.employeeIdentity.resolve(context,employeeId,partyId);}
+ async getCommissionClaim(companyId:CompanyId,id:string):Promise<CommissionClaim>{return this.requiredClaim(companyId,id);}
+ async describeEmployeeBeneficiary(context:ExecutionContext,employeeId:string,partyId:string):Promise<EmployeeCommissionBeneficiary>{if(!this.employeeIdentity)throw new ContractValidationError('employee','employee identity provider required');if(typeof employeeId!=='string'||typeof partyId!=='string'||!employeeId.trim()||!partyId.trim())throw new ContractValidationError('employee','employee and payee required');return this.employeeIdentity.resolve(context,employeeId,partyId);}
  async createCommissionClaim(input:{context?:ExecutionContext;beneficiary?:{kind:'EMPLOYEE';employeeId:string;partyId:string};id:string;companyId:CompanyId;branchId?:string;agentPartyId:string;sourceType:string;sourceId:string;currency:string;amount:DecimalAmount;baseCarryingAmount:DecimalAmount;expenseAccountId:string;liabilityAccountId:string;approvalRequestId?:string;requesterActorId?:string}):Promise<CommissionClaim>{
   const {context,...request}=input,normalized={...request,currency:currencyCode(input.currency),amount:pos(input.amount),baseCarryingAmount:pos(input.baseCarryingAmount)},requestHash=h(normalized),prior=await this.repo.claim(input.companyId,input.id);
+  if(input.beneficiary&&(input.beneficiary.kind!=='EMPLOYEE'||!context||context.companyId!==input.companyId||context.branchId!==input.branchId||input.agentPartyId!==input.beneficiary.partyId))throw new ContractValidationError('employee','scoped employee/payee identity required');
   if(prior){if(prior.requestHash!==requestHash)throw new ContractValidationError('source','conflicting replay');return prior;}
   let beneficiary:EmployeeCommissionBeneficiary|undefined;
-  if(input.beneficiary){if(input.beneficiary.kind!=='EMPLOYEE'||!context||context.companyId!==input.companyId||context.branchId!==input.branchId||input.agentPartyId!==input.beneficiary.partyId)throw new ContractValidationError('employee','scoped employee/payee identity required');beneficiary=await this.describeEmployeeBeneficiary(context,input.beneficiary.employeeId,input.beneficiary.partyId);}
+  if(input.beneficiary)beneficiary=await this.describeEmployeeBeneficiary(context!,input.beneficiary.employeeId,input.beneficiary.partyId);
   const {beneficiary:requestedBeneficiary,...fields}=normalized;void requestedBeneficiary;const value:CommissionClaim={...fields,...(beneficiary?{beneficiary}:{}),status:'DRAFT',requestHash,payments:[]};await this.repo.saveClaim(value);return value;
  }
 

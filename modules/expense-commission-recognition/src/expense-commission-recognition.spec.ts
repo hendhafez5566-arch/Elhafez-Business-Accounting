@@ -135,6 +135,7 @@ test('employee commission snapshots identity independently and preserves it afte
  assert.equal(lookups,1);
  await assert.rejects(service.createCommissionClaim({...input,beneficiary:{...input.beneficiary,employeeId:'another'}}),/conflicting replay/);
  await assert.rejects(service.createCommissionClaim({...input,id:'wrong-scope',context:executionContext('other','b','cashier')}),/scoped employee/);
+ await assert.rejects(service.createCommissionClaim({...input,context:executionContext('other','b','cashier')}),/scoped employee/);
  await assert.rejects(service.createCommissionClaim({...input,id:'wrong-payee',agentPartyId:'other-payee'}),/scoped employee/);
  await assert.rejects(fixture().service.createCommissionClaim({...input,id:'missing-provider'}),/identity provider/);
 });
