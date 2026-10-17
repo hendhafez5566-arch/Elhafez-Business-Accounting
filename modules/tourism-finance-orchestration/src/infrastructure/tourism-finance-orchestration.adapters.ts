@@ -73,11 +73,12 @@ export class BillingAdapter implements BillingPort {
 }
 
 export class TreasuryAdapter implements TreasuryPort {
-  constructor(private readonly treasury:TreasurySettlementApplicationService,private readonly fx:CurrencyFxApplicationService) {}
+  constructor(private readonly treasury:TreasurySettlementApplicationService,private readonly fx?:CurrencyFxApplicationService) {}
   async quoteCustomerRefund(input:Parameters<TreasuryPort['quoteCustomerRefund']>[0]){
     const treasury=await this.treasury.getTreasurySnapshot(input.companyId,input.treasuryId);
     if(!treasury.active||treasury.currency!==currencyCode(input.paymentCurrency))
       throw new Error('active treasury in selected refund currency required');
+    if(!this.fx)throw new Error('currency FX provider required for refunds');
     const base=await this.fx.getBaseCurrency(input.companyId);
     if(treasury.currency===base.code)return{baseAmount:decimalAmount(input.paymentAmount)};
     const converted=await this.fx.calculateSettlement(input.companyId,
