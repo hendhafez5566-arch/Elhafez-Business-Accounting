@@ -845,9 +845,6 @@ importers:
       '@elhafez/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
-      '@elhafez/currency-fx':
-        specifier: workspace:*
-        version: link:../currency-fx
       '@elhafez/billing-subledgers':
         specifier: workspace:*
         version: link:../billing-subledgers
