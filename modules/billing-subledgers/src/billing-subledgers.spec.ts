@@ -661,3 +661,23 @@ test('cancellation blockers include refund credit notes only for their own invoi
  assert.equal((await f.service.getCancellationEvidence(company,'i1')).hasAvailableAdvance,false);
  assert.equal((await f.service.getCancellationEvidence(company,'i1')).settlementRequired,true);
 });
+
+test('booking credit refund may spend only its own customer invoice credit',async()=>{
+  const f=fixture();
+  await f.service.createDraft(invoice());
+  await f.service.postInvoice(company,'i1');
+  await f.service.createDraft(invoice({id:'i2',number:'INV-2',sourceId:'o2'}));
+  await f.service.postInvoice(company,'i2');
+  await f.service.applyAllocation({id:'cash-100',companyId:company,partyKind:'CUSTOMER',
+    partyId:'party',invoiceId:'i1',amount:amount('100'),sourceType:'RECEIPT',sourceId:'cash-100'});
+  const credit=await f.service.createAdjustment(coreCredit({amount:amount('100'),documentAmount:amount('100')}));
+  const command={companyId:company,invoiceId:'i1',advanceId:credit.advanceId!,
+    partyId:'party',amount:amount('60'),sourceId:'credit-installment-1'};
+  await assert.rejects(()=>f.service.reserveBookingCreditRefund({...command,invoiceId:'i2'}),/credit-note liability/);
+  await assert.rejects(()=>f.service.reserveBookingCreditRefund({...command,partyId:'other'}),/posted invoice/);
+  const reservation=await f.service.reserveBookingCreditRefund(command);
+  assert.equal(reservation.liabilityAccountId,'customer-advance');
+  assert.equal((await f.service.reserveBookingCreditRefund(command)).id,reservation.id);
+  assert.equal((await f.repository.advance(company,credit.advanceId!))?.available,'40');
+  await assert.rejects(()=>f.service.reserveBookingCreditRefund({...command,sourceId:'other-installment',amount:amount('60')}),/exceeds/);
+});
