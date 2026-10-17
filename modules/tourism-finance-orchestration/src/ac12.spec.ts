@@ -600,3 +600,21 @@ test('customer credit refund links exact invoice and survives lost treasury comp
   await assert.rejects(()=>f.service.refundBookingCredit({...refund,paymentAmount:decimalAmount('41')}),/conflicting replay/);
   await assert.rejects(()=>f.service.refundBookingCredit({...refund,invoiceId:'someone-else'}),/invoice does not belong/);
 });
+
+test('approval supplied after a paused refund resumes one reserved credit, not a second payout',async()=>{
+ const f=fixture();await f.setup();const confirmed=await f.confirm() as BookingReference;
+ const refund={companyId:company,branchId:'branch-1',commandKey:'approval-later-refund',
+  booking,invoiceId:confirmed.invoiceId!,advanceId:'credit:booking-1',treasuryId:'cash',
+  paymentCurrency:'EGP',paymentAmount:decimalAmount('25'),postingDate:'2026-09-23',
+  number:'REF-APPROVAL',reviewed:true,reason:'Reviewed refund awaiting cash approval'};
+ const original=f.treasury.postCustomerRefund;
+ f.treasury.postCustomerRefund=async input=>{
+  if(!input.approvalRequestId)throw new Error('exact cash approval required');
+  return original(input);
+ };
+ await assert.rejects(()=>f.service.refundBookingCredit(refund),/approval required/);
+ assert.equal(f.calls.refundReserve,1);assert.equal(f.calls.refundCash,0);
+ await f.create().refundBookingCredit({...refund,approvalRequestId:'approved-payment-1'});
+ assert.equal(f.calls.refundReserve,1);assert.equal(f.calls.refundCash,1);
+ assert.equal(f.calls.refundFinalize,1);
+});
