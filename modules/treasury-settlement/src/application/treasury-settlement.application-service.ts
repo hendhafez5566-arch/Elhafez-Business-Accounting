@@ -3,6 +3,7 @@ import {
   ContractValidationError,
   currencyCode,
   decimalAmount,
+  money,
   type DecimalAmount,
   type CompanyId,
 } from "@elhafez/contracts";
@@ -12,6 +13,7 @@ import type {
   PostingLine,
 } from "@elhafez/general-ledger";
 import type { FinancialControlsApplicationService } from "@elhafez/financial-controls";
+import type { CurrencyFxApplicationService } from '@elhafez/currency-fx';
 import type { TreasuryRepository } from "./treasury.repository.js";
 import type {
   BankLine,
@@ -100,6 +102,7 @@ export class TreasurySettlementApplicationService {
       FinancialControlsApplicationService,
       "evaluateApprovalRequirement" | "getApprovalRequest" | "getApprovalDecision"
     >,
+    private readonly fx?: Pick<CurrencyFxApplicationService,'getBaseCurrency'|'calculateSettlement'>,
   ) {}
   /** Narrow owner-public port for accounting cash movements with no Billing allocation. */
   async postAccountingMovement(input:PostAccountingMovementInput):Promise<Voucher>{
@@ -386,6 +389,22 @@ export class TreasurySettlementApplicationService {
     const value=await this.required(companyId,id);
     return Object.freeze({...value});
   }
+  /** FX quote is Treasury-owned: TFO must not acquire an independent FX dependency. */
+  async quoteCustomerRefund(input:{
+    companyId:CompanyId;treasuryId:string;paymentCurrency:string;
+    paymentAmount:DecimalAmount;postingDate:string;
+  }):Promise<{baseAmount:DecimalAmount;fxRateId?:string}> {
+    const amount=pos(input.paymentAmount),treasury=await this.required(input.companyId,input.treasuryId);
+    if(!treasury.active||treasury.currency!==currencyCode(input.paymentCurrency))
+      throw new ContractValidationError('treasury','active treasury matching payment currency required');
+    if(!this.fx)throw new ContractValidationError('currency','Treasury FX owner unavailable');
+    const base=await this.fx.getBaseCurrency(input.companyId);
+    if(treasury.currency===base.code)return{baseAmount:amount};
+    const quote=await this.fx.calculateSettlement(input.companyId,
+      money(amount,currencyCode(input.paymentCurrency)),base.code,input.postingDate+'T23:59:59.999Z');
+    return{baseAmount:pos(quote.converted.amount),fxRateId:quote.rate.rateId};
+  }
+
   /** AC-08 narrow payment port for liabilities owned outside Billing. */
   async postOwnerPayment(input: {
     id:string; companyId:CompanyId; branchId?:string; treasuryId:string; ownerType:'EXPENSE'|'COMMISSION'|'CUSTOMER_REFUND';
