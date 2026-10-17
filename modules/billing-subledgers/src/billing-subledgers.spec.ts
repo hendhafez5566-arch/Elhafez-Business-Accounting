@@ -645,3 +645,19 @@ test('legacy advances without verified carrying currency cannot fund a new cash 
  await assert.rejects(f.service.reserveAdvanceRefund({companyId:company,advanceId:'legacy',partyKind:'CUSTOMER',partyId:'party',amount:amount('10'),sourceId:'unsafe-currency-guess'}),/historical currency/);
  assert.equal((await f.repository.advance(company,'legacy'))?.available,'50');assert.equal(f.repository.consumptionValues.length,0);
 });
+
+test('cancellation blockers include refund credit notes only for their own invoice', async () => {
+ const f=fixture();
+ await f.service.createDraft(invoice());
+ await f.service.postInvoice(company,'i1');
+ await f.service.createDraft(invoice({id:'i2',sourceId:'o2',number:'INV-2'}));
+ await f.service.postInvoice(company,'i2');
+ await f.service.applyAllocation({id:'credit-cash',companyId:company,partyKind:'CUSTOMER',partyId:'party',invoiceId:'i1',amount:amount('100'),sourceType:'RECEIPT',sourceId:'credit-cash'});
+ const credit=await f.service.createAdjustment(coreCredit({amount:amount('100'),documentAmount:amount('100')}));
+ assert.equal((await f.service.getCancellationEvidence(company,'i1')).hasAvailableAdvance,true);
+ assert.equal((await f.service.getCancellationEvidence(company,'i1')).settlementRequired,true);
+ assert.equal((await f.service.getCancellationEvidence(company,'i2')).hasAvailableAdvance,false);
+ await f.service.reserveAdvanceRefund({companyId:company,advanceId:credit.advanceId!,partyKind:'CUSTOMER',partyId:'party',amount:amount('100'),sourceId:'credit-refund'});
+ assert.equal((await f.service.getCancellationEvidence(company,'i1')).hasAvailableAdvance,false);
+ assert.equal((await f.service.getCancellationEvidence(company,'i1')).settlementRequired,true);
+});
