@@ -279,6 +279,55 @@ export class TourismFinanceOrchestrationApplicationService {
       };
   }
 
+  /** A replay-safe installment: quote FX, reserve the credit, post the exact
+   * payment, and finalize Billing against the original cash journal. */
+  async refundBookingCredit(input:{
+    companyId:CompanyId;branchId:string;commandKey:string;booking:SourceReference;
+    invoiceId:string;advanceId:string;treasuryId:string;paymentCurrency:string;
+    paymentAmount:DecimalAmount;postingDate:string;number:string;
+    reviewed:boolean;reason:string;
+  }) {
+    if(input.reviewed!==true||!input.reason?.trim()||input.reason.trim().length<10)
+      throw new ContractValidationError('review','explicit review and documented refund reason required');
+    const amount=positive(input.paymentAmount,'paymentAmount');
+    const booking=await this.repo.booking(input.companyId,input.booking);
+    if(!booking||booking.status!=='ACTIVE')throw new ContractValidationError('booking','active confirmed financial booking required');
+    this.assertBranch(booking,input.branchId);
+    if(booking.mutationKey)throw new ContractValidationError('booking','resume pending booking mutation first');
+    const selected=bookingInvoices(booking).find(row=>row.invoiceId===input.invoiceId);
+    if(!selected)throw new ContractValidationError('invoiceId','invoice does not belong to this booking');
+    const workflow=await this.workflow('BOOKING_REFUND',input,input.booking,{...input,paymentAmount:amount});
+    if(workflow.status==='COMPLETED')return workflow.result;
+    const quote=await this.effect(workflow,'REFUND_QUOTE',()=>this.treasury.quoteCustomerRefund({
+      companyId:input.companyId,treasuryId:input.treasuryId,paymentCurrency:input.paymentCurrency,
+      paymentAmount:amount,postingDate:input.postingDate,
+    }),()=>undefined);
+    const reserve=await this.effect(workflow,'REFUND_RESERVATION',key=>this.billing.reserveBookingRefund({
+      companyId:input.companyId,invoiceId:input.invoiceId,advanceId:input.advanceId,
+      partyId:selected.partyId,amount:positive(quote.baseAmount,'baseAmount'),sourceId:key,
+    }),value=>value.id);
+    const voucher=await this.effect(workflow,'REFUND_CASH_PAYMENT',key=>this.treasury.postCustomerRefund({
+      id:key,companyId:input.companyId,branchId:input.branchId,treasuryId:input.treasuryId,
+      advanceId:input.advanceId,partyId:selected.partyId,number:input.number,
+      postingDate:input.postingDate,paymentCurrency:input.paymentCurrency,
+      paymentAmount:amount,carryingBaseAmount:quote.baseAmount,
+      liabilityAccountId:reserve.liabilityAccountId,
+      ...(quote.fxRateId?{fxRateId:quote.fxRateId}:{}),
+    }),value=>value.id);
+    if(!voucher.journalId)throw new ContractValidationError('voucher','posted cash journal evidence required');
+    await this.effect(workflow,'REFUND_FINALIZED',()=>this.billing.completeBookingRefund({
+      companyId:input.companyId,sourceId:`TFO:${workflow.id}:REFUND_RESERVATION`,
+      evidence:{voucherId:voucher.id,journalId:voucher.journalId,
+        paymentCurrency:input.paymentCurrency,paymentAmount:amount,
+        ...(quote.fxRateId?{fxRateId:quote.fxRateId}:{})},
+    }),value=>value.id);
+    return (await this.complete(workflow,{
+      workflowId:workflow.id,invoiceId:input.invoiceId,advanceId:input.advanceId,
+      voucherId:voucher.id,baseAmount:quote.baseAmount,
+      paymentCurrency:input.paymentCurrency,paymentAmount:amount,
+    })).result;
+  }
+
   async settleBookingCancellation(input: { companyId: CompanyId; branchId?: string; commandKey: string; booking: SourceReference; postingDate: string; number: string }) { const booking = await this.repo.booking(input.companyId, input.booking); if (!booking) throw new ContractValidationError('booking', 'financial reference not found'); this.assertBranch(booking, input.branchId); const workflow = await this.workflow('BOOKING_SETTLEMENT', input, input.booking, input); if (workflow.status === 'COMPLETED') return workflow.result; for (const voucherId of booking.depositVoucherIds) await this.effect(workflow, `REVERSE_DEPOSIT:${voucherId}`, () => this.treasury.reverseDeposit(input.companyId, voucherId, input.postingDate, `${input.number}-${voucherId}`), (value) => value.id); return (await this.complete(workflow, { workflowId: workflow.id, settled: true, retainedVoucherIds: booking.depositVoucherIds })).result; }
   async getBookingCancellationBlockers(input: { companyId: CompanyId; branchId?: string; booking: SourceReference; travelStarted: boolean; travelEvidence: string; procurement?: ProcurementReference }) {
     const booking = await this.repo.booking(input.companyId, input.booking);
