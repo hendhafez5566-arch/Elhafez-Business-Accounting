@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
+import {CurrencyFxApplicationService,CurrencyFxModule} from '@elhafez/currency-fx';
 import {
   BillingSubledgersApplicationService,
   BillingSubledgersModule,
@@ -59,6 +60,7 @@ import {
     TreasurySettlementModule,
     ExpenseCommissionRecognitionModule,
     FinancialControlsModule,
+    CurrencyFxModule,
   ],
   providers: [
     {
@@ -89,6 +91,7 @@ import {
         repository: TourismFinanceRepository,
         billing: BillingSubledgersApplicationService,
         treasury: TreasurySettlementApplicationService,
+        fx: CurrencyFxApplicationService,
         expense: ExpenseCommissionRecognitionApplicationService,
         cost: CostBudgetAccountingApplicationService,
         inventory: TourismContractInventoryApplicationService,
@@ -98,7 +101,7 @@ import {
         new TourismFinanceOrchestrationApplicationService(
           repository,
           new BillingAdapter(billing),
-          new TreasuryAdapter(treasury),
+          new TreasuryAdapter(treasury,fx),
           new CommissionAdapter(expense),
           new CostAdapter(cost),
           new InventoryAdapter(inventory),
@@ -109,6 +112,7 @@ import {
         TOURISM_FINANCE_REPOSITORY,
         BillingSubledgersApplicationService,
         TreasurySettlementApplicationService,
+        CurrencyFxApplicationService,
         ExpenseCommissionRecognitionApplicationService,
         CostBudgetAccountingApplicationService,
         TOURISM_CONTRACT_INVENTORY_SERVICE,
