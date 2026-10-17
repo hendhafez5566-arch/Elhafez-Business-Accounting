@@ -192,6 +192,12 @@ export class BillingSubledgersApplicationService {
       }
     }
     const advances = await this.repo.advances(companyId, expectedPartyKind(invoice.type), invoice.partyId);
+    // A CREDIT_NOTE can create a customer refund liability even when the originating
+    // receipt allocation has since been reversed. Include only advances generated
+    // by adjustments on this invoice; never pick up another invoice's credit.
+    for (const adjustment of await this.repo.adjustments(companyId, invoiceId)) {
+      if (!adjustment.reversedAt && adjustment.advanceId) relatedAdvanceIds.add(adjustment.advanceId);
+    }
     const relatedAdvances = advances.filter((adv) => relatedAdvanceIds.has(adv.id));
     const hasAvailableAdvance = relatedAdvances.some((value) => !value.reversedAt && scaled18(value.available) > 0n);
     const settlementRequired = activeAllocations.length > 0 || hasAvailableAdvance;
