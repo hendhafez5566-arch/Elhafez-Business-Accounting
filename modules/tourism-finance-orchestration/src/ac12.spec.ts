@@ -13,10 +13,25 @@ const company = companyId('company-a'); const other = companyId('company-b'); co
 class FailingRepository extends InMemoryTourismFinanceRepository { failStep?: string; failed = false; override async completeStep(companyId: typeof company, id: string, ownerReference: string | undefined, result: unknown) { const step = [...this.steps.values()].find((item) => item.id === id); if (!this.failed && step?.name === this.failStep) { this.failed = true; throw new Error('local completion failure'); } return super.completeStep(companyId, id, ownerReference, result); } }
 function fixture(repo = new FailingRepository()) {
   const allocationKeys:string[]=[];const claims:Array<{id:string;partyId:string;amount:string;beneficiary?:{kind:'EMPLOYEE';employeeId:string;partyId:string}}>=[],reversals:string[]=[];
-  const calls = { invoice: 0, deposit: 0, commission: 0, release: 0, allocation: 0, cost: 0, cleanup: 0, cancelInvoice: 0, servicePo: 0 }; let paid = false; let historical = false; let commissionPaid = false; let inventoryBlocked = false; let approval = true; let costLinked = true; let procurementSequence: Array<'NONE' | 'SUPPLIER_EXECUTION' | 'SUPPLIER_INVOICE'> = ['NONE']; const procurementFallbacks = new Map<string, string>(); let standalonePlan: StandaloneSupplyPlan | null = null; const effects = new Set<string>();
+  const calls = { invoice: 0, deposit: 0, commission: 0, release: 0, allocation: 0, cost: 0, cleanup: 0, cancelInvoice: 0, servicePo: 0, refundReserve: 0, refundCash: 0, refundFinalize: 0 }; let paid = false; let historical = false; let commissionPaid = false; let inventoryBlocked = false; let approval = true; let costLinked = true; let procurementSequence: Array<'NONE' | 'SUPPLIER_EXECUTION' | 'SUPPLIER_INVOICE'> = ['NONE']; const procurementFallbacks = new Map<string, string>(); let standalonePlan: StandaloneSupplyPlan | null = null; const effects = new Set<string>();
   const once = (key: string, field: keyof typeof calls) => { if (!effects.has(key)) { effects.add(key); calls[field]++; } };
-  const billing: BillingPort = { async createServiceInvoice(input) { once(input.id, 'invoice'); return { id: input.id }; }, async createBookingInvoice(input) { once(input.id, 'invoice'); return { id: input.id }; }, async cancellationEvidence() { return { hasHistoricalAllocationEvidence: historical, activeAllocationIds: paid ? ['allocation-payment'] : [], hasAvailableAdvance: false, settlementRequired: paid, cancellationSafe: !paid, outstanding: decimalAmount(paid ? '0' : '100') }; }, async cancelInvoice(_company, id) { once(`cancel:${id}`, 'cancelInvoice'); return { id }; } };
-  const treasury: TreasuryPort = { async postDeposit(input) { once(input.id, 'deposit'); paid = true; historical = true; return { id: input.id }; }, async reverseDeposit(_company, id) { paid = false; return { id }; } };
+  const billing: BillingPort = {
+    async reserveBookingRefund(input) {
+      once(input.sourceId,'refundReserve');
+      return{id:'reservation:'+input.sourceId,liabilityAccountId:'customer-advance',status:'RESERVED'};
+    },
+    async completeBookingRefund(input) {
+      once(input.sourceId,'refundFinalize');
+      return{id:'reservation:'+input.sourceId,status:'POSTED'};
+    },
+    async createServiceInvoice(input) { once(input.id, 'invoice'); return { id: input.id }; }, async createBookingInvoice(input) { once(input.id, 'invoice'); return { id: input.id }; }, async cancellationEvidence() { return { hasHistoricalAllocationEvidence: historical, activeAllocationIds: paid ? ['allocation-payment'] : [], hasAvailableAdvance: false, settlementRequired: paid, cancellationSafe: !paid, outstanding: decimalAmount(paid ? '0' : '100') }; }, async cancelInvoice(_company, id) { once(`cancel:${id}`, 'cancelInvoice'); return { id }; } };
+  const treasury: TreasuryPort = {
+    async quoteCustomerRefund(input){return{baseAmount:input.paymentAmount};},
+    async postCustomerRefund(input){
+      once(input.id,'refundCash');
+      return{id:input.id,journalId:'refund-journal:'+input.id,currency:input.paymentCurrency,amount:input.paymentAmount};
+    },
+    async postDeposit(input) { once(input.id, 'deposit'); paid = true; historical = true; return { id: input.id }; }, async reverseDeposit(_company, id) { paid = false; return { id }; } };
   const commission: CommissionPort = {async validateEmployee(_context,employeeId,partyId){if(employeeId!=='staff'||partyId!=='staff-payee')throw Error('invalid employee identity');return{};},async plan(_c,_currency,total,agreement){const snapshot={...agreement,precision:2};return{snapshot,roundingPolicy:'PRINCIPAL_DOWN_SUBORDINATE_REMAINDER_V1',shares:distributeCommission(total,snapshot)};}, async createServiceCommission(input) { once(input.id, 'commission'); return { id: input.id }; }, async create(input) { if(!claims.some(x=>x.id===input.id))claims.push({id:input.id,partyId:input.agentPartyId,amount:input.amount,...(input.beneficiary?{beneficiary:input.beneficiary}:{})});once(input.id, 'commission'); return { id: input.id }; }, async evidence() { return { hasPostedPaymentHistory: commissionPaid, reversible: !commissionPaid }; }, async reverse(_company, id) { if(!reversals.includes(id))reversals.push(id);return { id }; } };
   const cost: CostPort = { async ensureProgram(_company, _program, id) { return { costCenterId: id }; }, async resolveProgram() { if (!costLinked) throw new Error('missing'); return { costCenterId: 'cc-1' }; }, async actualize(input) { once(input.id, 'cost'); return { id: input.id }; } };
   const inventory: InventoryPort = { async standalonePlan() { return standalonePlan; }, async commitStandalone(_input, key) { once(key, 'allocation'); return { planId: standalonePlan?.planId ?? 'plan-1', version: 1, allocationIds: ['allocation-1'], residuals: standalonePlan?.residuals ?? [] }; }, async allocation() { return null; }, async allocate(input,key) { allocationKeys.push(key);once(`inventory:${input.allocationId}`, 'allocation'); const procurementReference = procurementFallbacks.get(input.allocationId); return procurementReference ? { procurementReference } : { allocationId: input.allocationId }; }, async blockers() { return inventoryBlocked ? [{ type: 'FINANCIAL_HISTORY' }] : []; }, async release(_company, id, _quantity, key) { once(`release:${key}`, 'release'); return { success: true, id }; } };
@@ -567,4 +582,21 @@ test('changed reviewed balances return a documented rejection and unlock booking
  const{f,owner,input,original}=await agentChangeFixture();const result=await f.service.reassignBookingAgentCommissions({...input,expectedRemaining:input.expectedRemaining.map(x=>({...x,amount:decimalAmount('99')}))}) as {changed:boolean;reason:string};
  assert.equal(result.changed,false);assert.match(result.reason,/balance changed/);const after=(await f.repo.booking(company,booking))!;assert.equal(after.mutationKey,undefined);assert.deepEqual(after.agentCommissionState,original.agentCommissionState);assert.equal(owner.groups.size,0);assert.equal(f.calls.commission,3);
  await assert.rejects(f.service.reassignBookingAgentCommissions({...input,context:executionContext('company-a','other-branch','manager')}),/branch/);assert.equal((await f.repo.booking(company,booking))?.mutationKey,undefined);
+});
+
+test('customer credit refund links exact invoice and survives lost treasury completion acknowledgement',async()=>{
+  const repo=new FailingRepository();repo.failStep='REFUND_CASH_PAYMENT';
+  const f=fixture(repo);await f.setup();const confirmed=await f.confirm() as BookingReference;
+  const refund={companyId:company,branchId:'branch-1',commandKey:'refund-case-1',booking,
+    invoiceId:confirmed.invoiceId!,advanceId:'credit:booking-1',treasuryId:'cash',
+    paymentCurrency:'EGP',paymentAmount:decimalAmount('40'),postingDate:'2026-09-23',
+    number:'REF-1',reviewed:true,reason:'Reviewed partial refund for traveler'};
+  await assert.rejects(()=>f.service.refundBookingCredit(refund),/local completion failure/);
+  const result=await f.create().refundBookingCredit(refund) as {voucherId:string;baseAmount:string};
+  assert.ok(result.voucherId);assert.equal(result.baseAmount,'40');
+  assert.equal(f.calls.refundReserve,1);assert.equal(f.calls.refundCash,1);
+  assert.equal(f.calls.refundFinalize,1);
+  assert.deepEqual(await f.service.refundBookingCredit(refund),result);
+  await assert.rejects(()=>f.service.refundBookingCredit({...refund,paymentAmount:decimalAmount('41')}),/conflicting replay/);
+  await assert.rejects(()=>f.service.refundBookingCredit({...refund,invoiceId:'someone-else'}),/invoice does not belong/);
 });
