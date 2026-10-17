@@ -9,7 +9,7 @@ export function FamilyBookingRefund({bookingId,invoiceId,code,credits}:Props) {
  const [creditId,setCreditId]=useState(credits[0]?.id??'');
  const [treasuries,setTreasuries]=useState<readonly {id:string;label:string}[]>([]);
  const [form,setForm]=useState({treasuryId:'',paymentCurrency:credits[0]?.baseCurrency??'EGP',
-  paymentAmount:'',postingDate:'',number:'',reason:''});
+  paymentAmount:'',postingDate:'',number:'',reason:'',approvalRequestId:''});
  const [reviewed,setReviewed]=useState(false);
  const [busy,setBusy]=useState(false);
  const [posted,setPosted]=useState(false);
@@ -44,6 +44,7 @@ export function FamilyBookingRefund({bookingId,invoiceId,code,credits}:Props) {
      commandKey,paymentCurrency:form.paymentCurrency.trim().toUpperCase(),
      paymentAmount:form.paymentAmount,postingDate:form.postingDate,
      number:form.number,reason:form.reason,reviewed,
+     ...(form.approvalRequestId.trim()?{approvalRequestId:form.approvalRequestId.trim()}:{}),
     }),
     signal:AbortSignal.timeout(45000),
    });
@@ -80,6 +81,9 @@ export function FamilyBookingRefund({bookingId,invoiceId,code,credits}:Props) {
    </label>
    <label>رقم سند الصرف
     <input required value={form.number} onChange={e=>change({number:e.target.value})} disabled={busy||posted}/>
+   </label>
+   <label>رقم موافقة الصرف (إذا كانت مطلوبة حسب السياسة)
+    <input value={form.approvalRequestId} onChange={e=>change({approvalRequestId:e.target.value})} disabled={busy||posted}/>
    </label>
    <label>سبب الصرف
     <textarea required minLength={10} value={form.reason} onChange={e=>change({reason:e.target.value})} disabled={busy||posted}/>
