@@ -394,6 +394,7 @@ export class TreasurySettlementApplicationService {
     carryingBaseAmount:DecimalAmount; settlementBaseAmount:DecimalAmount; liabilityAccountId:string;
     debitPartyId?:string;
     realizedFxGainAccountId?:string; realizedFxLossAccountId?:string; fxRateId?:string;
+    approvalRequestId?:string;
   }):Promise<Voucher>{
     const amount=pos(input.amount),carrying=pos(input.carryingBaseAmount),settlement=pos(input.settlementBaseAmount);
     if(input.ownerType==='CUSTOMER_REFUND'&&(!input.debitPartyId||input.debitPartyId!==input.partyId))
@@ -409,7 +410,22 @@ export class TreasurySettlementApplicationService {
       if(voucher.status==='POSTED')return voucher;
       if(voucher.status!=='PROCESSING')throw new ContractValidationError('voucher','reversed/reversing owner payment identity cannot be reposted');
     }else{
-      voucher={id:input.id,companyId:input.companyId,...(input.branchId?{branchId:input.branchId}:{}),treasuryId:input.treasuryId,kind:'PAYMENT',partyKind:input.ownerType==='CUSTOMER_REFUND'?'CUSTOMER':'OWNER',partyId:input.partyId,number:input.number,postingDate:input.postingDate,currency:treasury.currency,amount,sourceType:'OWNER_PAYMENT',sourceId:ownerSourceId,requestHash,status:'PROCESSING',allocationIds:[]};
+      voucher={id:input.id,companyId:input.companyId,...(input.branchId?{branchId:input.branchId}:{}),treasuryId:input.treasuryId,kind:'PAYMENT',partyKind:input.ownerType==='CUSTOMER_REFUND'?'CUSTOMER':'OWNER',partyId:input.partyId,number:input.number,postingDate:input.postingDate,currency:treasury.currency,amount,sourceType:'OWNER_PAYMENT',sourceId:ownerSourceId,requestHash,status:'PROCESSING',allocationIds:[],...(input.approvalRequestId?{approvalRequestId:input.approvalRequestId}:{})};
+    }
+    if(input.ownerType==='CUSTOMER_REFUND'){
+      const requirement=await this.controls.evaluateApprovalRequirement({
+        companyId:input.companyId,action:'PAYMENT',amount:settlement,
+      });
+      if(requirement.decision==='APPROVAL_REQUIRED'){
+        if(!input.approvalRequestId)
+          throw new ContractValidationError('approvalRequestId','PAYMENT approval required for refund voucher '+input.id);
+        const request=await this.controls.getApprovalRequest(input.companyId,input.approvalRequestId);
+        const decision=await this.controls.getApprovalDecision(input.companyId,input.approvalRequestId);
+        if(!request||request.action!=='PAYMENT'||request.sourceType!=='BILLING_REFUND'||
+           request.sourceId!==input.id||request.amount!==settlement||
+           request.branchId!==input.branchId||decision?.outcome!=='APPROVED')
+          throw new ContractValidationError('approvalRequestId','approval does not authorize this exact refund');
+      }
     }
     voucher=await this.repo.reserveVoucher(voucher,(await this.repo.policy(input.companyId))?.allowNegative===true);
     const difference=n(settlement)-n(carrying);
