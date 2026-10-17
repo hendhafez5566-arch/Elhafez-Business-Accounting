@@ -285,7 +285,7 @@ export class TourismFinanceOrchestrationApplicationService {
     companyId:CompanyId;branchId:string;commandKey:string;booking:SourceReference;
     invoiceId:string;advanceId:string;treasuryId:string;paymentCurrency:string;
     paymentAmount:DecimalAmount;postingDate:string;number:string;
-    reviewed:boolean;reason:string;
+    reviewed:boolean;reason:string;approvalRequestId?:string;
   }) {
     if(input.reviewed!==true||!input.reason?.trim()||input.reason.trim().length<10)
       throw new ContractValidationError('review','explicit review and documented refund reason required');
@@ -313,6 +313,7 @@ export class TourismFinanceOrchestrationApplicationService {
       paymentAmount:amount,carryingBaseAmount:quote.baseAmount,
       liabilityAccountId:reserve.liabilityAccountId,
       ...(quote.fxRateId?{fxRateId:quote.fxRateId}:{}),
+      ...(input.approvalRequestId?{approvalRequestId:input.approvalRequestId}:{}),
     }),value=>value.id);
     if(!voucher.journalId)throw new ContractValidationError('voucher','posted cash journal evidence required');
     await this.effect(workflow,'REFUND_FINALIZED',()=>this.billing.completeBookingRefund({
