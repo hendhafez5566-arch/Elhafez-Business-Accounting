@@ -1,4 +1,6 @@
 import type { BillingSubledgersApplicationService } from '@elhafez/billing-subledgers';
+import {currencyCode,decimalAmount,money} from '@elhafez/contracts';
+import type {CurrencyFxApplicationService} from '@elhafez/currency-fx';
 import type { TreasurySettlementApplicationService } from '@elhafez/treasury-settlement';
 import type { ExpenseCommissionRecognitionApplicationService } from '@elhafez/expense-commission-recognition';
 import type { ProcurementFinanceApplicationService } from '@elhafez/procurement-finance';
@@ -23,6 +25,12 @@ import type {
 
 export class BillingAdapter implements BillingPort {
   constructor(private readonly billing: BillingSubledgersApplicationService) {}
+  reserveBookingRefund(input:Parameters<BillingPort['reserveBookingRefund']>[0]){
+    return this.billing.reserveBookingCreditRefund(input);
+  }
+  completeBookingRefund(input:Parameters<BillingPort['completeBookingRefund']>[0]){
+    return this.billing.completeAdvanceRefund(input);
+  }
 
   async createBookingInvoice(input: Parameters<BillingPort['createBookingInvoice']>[0]) {
     const draft = await this.billing.createDraft({
@@ -65,7 +73,29 @@ export class BillingAdapter implements BillingPort {
 }
 
 export class TreasuryAdapter implements TreasuryPort {
-  constructor(private readonly treasury: TreasurySettlementApplicationService) {}
+  constructor(private readonly treasury:TreasurySettlementApplicationService,private readonly fx:CurrencyFxApplicationService) {}
+  async quoteCustomerRefund(input:Parameters<TreasuryPort['quoteCustomerRefund']>[0]){
+    const treasury=await this.treasury.getTreasurySnapshot(input.companyId,input.treasuryId);
+    if(!treasury.active||treasury.currency!==currencyCode(input.paymentCurrency))
+      throw new Error('active treasury in selected refund currency required');
+    const base=await this.fx.getBaseCurrency(input.companyId);
+    if(treasury.currency===base.code)return{baseAmount:decimalAmount(input.paymentAmount)};
+    const converted=await this.fx.calculateSettlement(input.companyId,
+      money(input.paymentAmount,currencyCode(input.paymentCurrency)),base.code,
+      input.postingDate+'T23:59:59.999Z');
+    return{baseAmount:decimalAmount(converted.converted.amount),fxRateId:converted.rate.rateId};
+  }
+  postCustomerRefund(input:Parameters<TreasuryPort['postCustomerRefund']>[0]){
+    return this.treasury.postOwnerPayment({
+      id:input.id,companyId:input.companyId,...(input.branchId?{branchId:input.branchId}:{}),
+      treasuryId:input.treasuryId,ownerType:'CUSTOMER_REFUND',ownerId:input.advanceId,
+      partyId:input.partyId,debitPartyId:input.partyId,number:input.number,
+      postingDate:input.postingDate,amount:input.paymentAmount,paymentCurrency:input.paymentCurrency,
+      carryingBaseAmount:input.carryingBaseAmount,settlementBaseAmount:input.carryingBaseAmount,
+      liabilityAccountId:input.liabilityAccountId,
+      ...(input.fxRateId?{fxRateId:input.fxRateId}:{}),
+    });
+  }
 
   postDeposit(input: Parameters<TreasuryPort['postDeposit']>[0]) {
     return this.treasury.postVoucher({
