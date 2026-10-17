@@ -320,10 +320,11 @@ export class TourismFinanceOrchestrationApplicationService {
       ...(quote.fxRateId?{fxRateId:quote.fxRateId}:{}),
       ...(input.approvalRequestId?{approvalRequestId:input.approvalRequestId}:{}),
     }),value=>value.id);
-    if(!voucher.journalId)throw new ContractValidationError('voucher','posted cash journal evidence required');
+    const journalId=voucher.journalId;
+    if(!journalId)throw new ContractValidationError('voucher','posted cash journal evidence required');
     await this.effect(workflow,'REFUND_FINALIZED',()=>this.billing.completeBookingRefund({
       companyId:input.companyId,sourceId:`TFO:${workflow.id}:REFUND_RESERVATION`,
-      evidence:{voucherId:voucher.id,journalId:voucher.journalId,
+      evidence:{voucherId:voucher.id,journalId,
         paymentCurrency:input.paymentCurrency,paymentAmount:amount,
         ...(quote.fxRateId?{fxRateId:quote.fxRateId}:{})},
     }),value=>value.id);
