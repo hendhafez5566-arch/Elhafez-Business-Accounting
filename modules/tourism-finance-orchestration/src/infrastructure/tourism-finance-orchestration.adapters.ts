@@ -95,6 +95,7 @@ export class TreasuryAdapter implements TreasuryPort {
       carryingBaseAmount:input.carryingBaseAmount,settlementBaseAmount:input.carryingBaseAmount,
       liabilityAccountId:input.liabilityAccountId,
       ...(input.fxRateId?{fxRateId:input.fxRateId}:{}),
+      ...(input.approvalRequestId?{approvalRequestId:input.approvalRequestId}:{}),
     });
   }
 
