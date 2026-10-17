@@ -296,7 +296,12 @@ export class TourismFinanceOrchestrationApplicationService {
     if(booking.mutationKey)throw new ContractValidationError('booking','resume pending booking mutation first');
     const selected=bookingInvoices(booking).find(row=>row.invoiceId===input.invoiceId);
     if(!selected)throw new ContractValidationError('invoiceId','invoice does not belong to this booking');
-    const workflow=await this.workflow('BOOKING_REFUND',input,input.booking,{...input,paymentAmount:amount});
+    // Approval evidence can arrive after a paused payment, but it must not
+    // change the immutable economic command or re-reserve the same credit.
+    const {approvalRequestId:approvalEvidence,...economicInput}=input;
+    void approvalEvidence;
+    const workflow=await this.workflow('BOOKING_REFUND',economicInput,input.booking,
+      {...economicInput,paymentAmount:amount});
     if(workflow.status==='COMPLETED')return workflow.result;
     const quote=await this.effect(workflow,'REFUND_QUOTE',()=>this.treasury.quoteCustomerRefund({
       companyId:input.companyId,treasuryId:input.treasuryId,paymentCurrency:input.paymentCurrency,
