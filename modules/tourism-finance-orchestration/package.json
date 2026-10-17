@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@elhafez/contracts": "workspace:*",
+    "@elhafez/currency-fx": "workspace:*",
     "@elhafez/billing-subledgers": "workspace:*",
     "@elhafez/treasury-settlement": "workspace:*",
     "@elhafez/expense-commission-recognition": "workspace:*",
