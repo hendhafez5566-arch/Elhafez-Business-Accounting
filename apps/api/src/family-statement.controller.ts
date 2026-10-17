@@ -33,7 +33,7 @@ export class FamilyStatementController {
   @Headers('x-branch-id') branchId:string|undefined,
   @Body() input:{bookingId:string;invoiceId:string;advanceId:string;treasuryId:string;
     commandKey:string;paymentCurrency:string;paymentAmount:string;postingDate:string;
-    number:string;reviewed:boolean;reason:string}) {
+    number:string;reviewed:boolean;reason:string;approvalRequestId?:string}) {
   const c=await this.writeContext(auth,companyId,branchId);
   if(!input?.bookingId?.trim()||!input?.invoiceId?.trim()||!input?.advanceId?.trim())
     throw new ContractValidationError('refund','booking, invoice and refund credit required');
@@ -44,6 +44,7 @@ export class FamilyStatementController {
     treasuryId:input.treasuryId,commandKey:input.commandKey,
     paymentCurrency:input.paymentCurrency,paymentAmount:decimalAmount(input.paymentAmount),
     postingDate:input.postingDate,number:input.number,reviewed:input.reviewed,reason:input.reason,
+    ...(input.approvalRequestId?{approvalRequestId:input.approvalRequestId}:{}),
   });
  }
  @Get()
