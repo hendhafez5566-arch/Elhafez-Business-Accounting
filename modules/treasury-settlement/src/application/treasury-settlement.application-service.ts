@@ -409,7 +409,7 @@ export class TreasurySettlementApplicationService {
       if(voucher.status==='POSTED')return voucher;
       if(voucher.status!=='PROCESSING')throw new ContractValidationError('voucher','reversed/reversing owner payment identity cannot be reposted');
     }else{
-      voucher={id:input.id,companyId:input.companyId,...(input.branchId?{branchId:input.branchId}:{}),treasuryId:input.treasuryId,kind:'PAYMENT',partyKind:'OWNER',partyId:input.partyId,number:input.number,postingDate:input.postingDate,currency:treasury.currency,amount,sourceType:'OWNER_PAYMENT',sourceId:ownerSourceId,requestHash,status:'PROCESSING',allocationIds:[]};
+      voucher={id:input.id,companyId:input.companyId,...(input.branchId?{branchId:input.branchId}:{}),treasuryId:input.treasuryId,kind:'PAYMENT',partyKind:input.ownerType==='CUSTOMER_REFUND'?'CUSTOMER':'OWNER',partyId:input.partyId,number:input.number,postingDate:input.postingDate,currency:treasury.currency,amount,sourceType:'OWNER_PAYMENT',sourceId:ownerSourceId,requestHash,status:'PROCESSING',allocationIds:[]};
     }
     voucher=await this.repo.reserveVoucher(voucher,(await this.repo.policy(input.companyId))?.allowNegative===true);
     const difference=n(settlement)-n(carrying);
