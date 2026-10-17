@@ -864,6 +864,28 @@ export class BillingSubledgersApplicationService {
     return value;
   }
 
+  /** Only a credit note from this posted invoice can fund a booking refund. */
+  async reserveBookingCreditRefund(input:{
+    companyId:CompanyId;invoiceId:string;advanceId:string;partyId:string;
+    amount:DecimalAmount;sourceId:string;
+  }) {
+    const invoice=await this.requiredInvoice(input.companyId,input.invoiceId);
+    if(invoice.type!=='CUSTOMER'||invoice.partyId!==input.partyId||invoice.status!=='POSTED')
+      throw new ContractValidationError('invoiceId','posted invoice for this customer required');
+    const adjustments=await this.repo.adjustments(input.companyId,invoice.id);
+    const credit=adjustments.find(v=>v.kind==='CREDIT_NOTE'&&!v.reversedAt&&v.advanceId===input.advanceId);
+    if(!credit)throw new ContractValidationError('advanceId','active credit-note liability from selected invoice required');
+    const advance=await this.getAdvance(input.companyId,input.advanceId);
+    if(advance.generatedByAdjustmentId!==credit.id||advance.partyId!==input.partyId||
+       advance.partyKind!=='CUSTOMER'||!advance.liabilityAccountId)
+      throw new ContractValidationError('advanceId','credit liability ownership and account required');
+    const reserved=await this.reserveAdvanceRefund({
+      companyId:input.companyId,advanceId:input.advanceId,
+      partyKind:'CUSTOMER',partyId:input.partyId,amount:input.amount,sourceId:input.sourceId,
+    });
+    return {...reserved,liabilityAccountId:advance.liabilityAccountId};
+  }
+
   async reserveAdvanceRefund(input: {
     companyId: CompanyId; advanceId: string; partyKind: PartyKind; partyId: string;
     amount: DecimalAmount; sourceId: string;
