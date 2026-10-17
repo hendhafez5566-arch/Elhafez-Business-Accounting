@@ -1,3 +1,4 @@
+import { ContractValidationError } from '@elhafez/contracts';
 import { Catch, HttpStatus } from '@nestjs/common';
 import type { ArgumentsHost, ExceptionFilter } from '@nestjs/common';
 import { PlatformError } from '@elhafez/platform-core';
@@ -11,10 +12,11 @@ const statusFor=(code:string)=>code==='VALIDATION_ERROR'?HttpStatus.BAD_REQUEST
  :code==='CONFLICT'?HttpStatus.CONFLICT
  :HttpStatus.INTERNAL_SERVER_ERROR;
 
-@Catch(PlatformError)
-export class PlatformErrorFilter implements ExceptionFilter<PlatformError>{
- catch(error:PlatformError,host:ArgumentsHost){
+@Catch(PlatformError,ContractValidationError)
+export class PlatformErrorFilter implements ExceptionFilter<PlatformError|ContractValidationError>{
+ catch(error:PlatformError|ContractValidationError,host:ArgumentsHost){
   const response=host.switchToHttp().getResponse<HttpResponse>();
+  if(error instanceof ContractValidationError){response.status(HttpStatus.BAD_REQUEST).json({code:'VALIDATION_ERROR',message:error.message,field:error.field});return;}
   response.status(statusFor(error.code)).json({code:error.code,message:error.message,details:error.details});
  }
 }

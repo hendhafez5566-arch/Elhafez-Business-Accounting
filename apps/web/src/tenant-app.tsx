@@ -1,3 +1,4 @@
+import { DetachedDevicePanel } from './detached-device-panel.js';
 import{type FormEvent,useEffect,useMemo,useState}from'react';
 import{AppShell}from'./app-shell.js';
 import{browserPathname}from'./app-entry-path.js';
@@ -29,7 +30,7 @@ function TenantLogin({client,busy,setBusy,error,setError,onSuccess}:{client:Tena
   {error?<Toast tone="error">{error}</Toast>:null}
   <Button type="submit" disabled={busy||!normalized}>{busy?'جارٍ التحقق…':'دخول'}</Button>
   <p className="tenant-entry-note">اسم المستخدم خاص بالشركة ويمكن تغييره لاحقًا من إعدادات الحساب.</p>
- </form></main>;
+ </form><DetachedDevicePanel/></main>;
 }
 
 function InitialPasswordChange({client,session,onChanged,onLogout}:{client:TenantAuthClient;session:TenantSession;onChanged:(value:TenantSession)=>void;onLogout:()=>void}){

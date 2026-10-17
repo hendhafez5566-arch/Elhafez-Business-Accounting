@@ -1,3 +1,9 @@
+import {CrmCustomerFileUploadsController} from './crm-customer-file-uploads.controller.js';
+import {BookingOptionsController,BookingConfirmationOptionsController} from './booking-options.controller.js';
+import { WriteAuthorityGuard } from './write-authority.guard.js';
+import { OfflineCoordinationModule, WriteAuthorityApplicationService } from '@elhafez/offline-coordination';
+import { FamilyStatementController } from './family-statement.controller.js';
+import { OfflineWorkflowModule } from './offline-workflow.module.js';
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { DataExchangeModule } from '@elhafez/data-exchange/nest';
@@ -107,13 +113,16 @@ import { AdvancedAccountingController, TourismContractInventoryController } from
 /** Composition root only. Business modules are registered here through public module APIs. */
 @Module({
   imports: [
+    OfflineWorkflowModule,OfflineCoordinationModule,
     PlatformCoreModule, DataExchangeModule, PlatformOperationsModule, CustomFieldsModule, DocumentNumberingModule, AutomationWorkflowModule, OperationalReportingModule, PartyRegistryModule, AgentManagementModule, CustomerManagementModule, CrmLeadsModule, CrmFollowupsModule, QuotationsModule, SupplierManagementModule, SupplierEvaluationModule, SupplierDisputesModule, ProcurementFulfillmentModule, ProcurementSourcingModule, TravelerManagementModule,
     CurrencyFxModule, PeriodControlModule, GeneralLedgerModule, FinancialControlsModule, TaxModule, BillingSubledgersModule, TreasurySettlementModule, PartyAccountingModule,
     ExpenseCommissionRecognitionModule, CostBudgetAccountingModule, AssetsFinancingModule, ProcurementFinanceModule, TourismContractInventoryModule,
     TourismFinanceOrchestrationModule, TourismProgramsModule, TourismItinerariesModule, TourismBookingsModule, StandaloneServicesModule, ServiceFulfillmentModule, ServiceVouchersModule, HajjUmrahSeasonsModule, HajjUmrahProgramsModule, HajjUmrahBookingsModule, HajjUmrahRoomingModule, HajjUmrahVisaOperationsModule, HajjUmrahTicketingModule, HajjUmrahTransportOperationsModule, HajjUmrahTripOperationsModule, HajjUmrahReadinessModule, FinancialReportingModule, SaasControlPlaneModule, Ac14MigrationModule,
   ],
-  controllers: [HealthController, UserNotificationsController, AdvancedAccountingController, TourismContractInventoryController, TourismContractInventoryReadController, TourismContractFilesController, TourismAccountingReferencesController, SaasOwnerController, PlatformOwnerOperationsController, SaasTenantController, AccountingWorkspaceController, FinancialReportingController, FinancialControlHistoryController, ReportDeliveryController, SystemAdministrationController, CrmAgentFilesController, CrmCustomerFilesController, SupplierFilesController, CrmFinancialOperationsController, CrmSalesReadModelController, SupplierIntelligenceReadModelController, HajjUmrahController, HajjUmrahOperationsController, HajjUmrahReadinessController, ManagementControlController, TourismServicesController, TourismServiceFinancialReadController, TourismServiceFilesController, TourismOperationsController],
+  controllers: [CrmCustomerFileUploadsController,
+    BookingOptionsController,BookingConfirmationOptionsController,FamilyStatementController,HealthController, UserNotificationsController, AdvancedAccountingController, TourismContractInventoryController, TourismContractInventoryReadController, TourismContractFilesController, TourismAccountingReferencesController, SaasOwnerController, PlatformOwnerOperationsController, SaasTenantController, AccountingWorkspaceController, FinancialReportingController, FinancialControlHistoryController, ReportDeliveryController, SystemAdministrationController, CrmAgentFilesController, CrmCustomerFilesController, SupplierFilesController, CrmFinancialOperationsController, CrmSalesReadModelController, SupplierIntelligenceReadModelController, HajjUmrahController, HajjUmrahOperationsController, HajjUmrahReadinessController, ManagementControlController, TourismServicesController, TourismServiceFinancialReadController, TourismServiceFilesController, TourismOperationsController],
   providers: [
+    {provide:APP_GUARD,useFactory:(authority:WriteAuthorityApplicationService)=>new WriteAuthorityGuard(authority),inject:[WriteAuthorityApplicationService]},
     FinancialReportingEvidenceAdapter,
     ReportDeliveryWorker,
     { provide: APP_GUARD, useFactory: (saas:SaasControlPlaneApplicationService,platform:PlatformCoreApplicationService,operations:PlatformOperationsApplicationService) => new SaasSubscriptionGuard(saas,platform,operations), inject: [SaasControlPlaneApplicationService,PlatformCoreApplicationService,PlatformOperationsApplicationService] },

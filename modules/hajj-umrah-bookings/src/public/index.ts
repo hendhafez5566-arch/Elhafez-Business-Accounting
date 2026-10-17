@@ -2,3 +2,10 @@ export { HajjUmrahBookingsApplicationService, BOOKING_PERMISSIONS } from '../app
 export type { CreateBookingInput, ConfirmOperationalBookingInput, CancelOperationalBookingInput } from '../application/hajj-umrah-bookings.application-service.js';
 export type { Booking, BookingHistory, BookingStatus, BookingFinancialState } from '../domain/booking.js';
 export type { BookingFinanceInventoryRequest } from '../application/booking.ports.js';
+
+export type {FinancialResponsibility} from '../domain/financial-responsibilities.js';
+
+export type {BookingAgentChangeInput,BookingFinancialMutation} from '../domain/booking.js';
+
+export type {BookingAgentChangeProposal} from '../application/booking.ports.js';
+export type {BookingCommissionAgreement} from '../domain/booking.js';

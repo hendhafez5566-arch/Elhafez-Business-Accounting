@@ -1,0 +1,6 @@
+.statement { border-block-start: 1px solid #b7bdc8; margin-block: 1rem; padding-block: 1rem; overflow-x: auto; }
+.statement table { width: 100%; border-collapse: collapse; }
+.statement td, .statement th { padding: .5rem; text-align: start; border-bottom: 1px solid #b7bdc8; }
+.statement label { display: grid; gap: .25rem; }
+.statement input, .statement button { font: inherit; padding: .5rem; }
+@media print { .statement form, .statement button { display: none; } .statement { overflow: visible; } }

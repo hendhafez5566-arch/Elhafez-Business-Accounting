@@ -107,3 +107,21 @@ test('AC-08 owner payment rejects a currency different from the selected Treasur
     carryingBaseAmount:amount('10'),settlementBaseAmount:amount('10'),liabilityAccountId:'expense'
   }), /must match selected Treasury currency/);
 });
+
+test('customer credit refund posts one debtor-linked Treasury payment and refuses conflicting replay',async()=>{
+ const f=await setup();await f.service.postVoucher(receipt('refund-funding'));
+ const input={id:'refund-payment-1',companyId:company,treasuryId:'cash',
+   ownerType:'CUSTOMER_REFUND' as const,ownerId:'credit-note-advance-1',
+   partyId:'p',debitPartyId:'p',number:'REF-1',postingDate:'2026-09-18',
+   amount:amount('20'),paymentCurrency:'EGP',carryingBaseAmount:amount('20'),
+   settlementBaseAmount:amount('20'),liabilityAccountId:'customer-advance'};
+ const posted=await f.service.postOwnerPayment(input);
+ assert.equal(posted.status,'POSTED');assert.equal(posted.partyKind,'CUSTOMER');
+ assert.equal(posted.journalId,'treasury-owner:CUSTOMER_REFUND:credit-note-advance-1:refund-payment-1');
+ assert.equal(await f.service.balance(company,'cash'),'80');
+ assert.deepEqual(await f.service.postOwnerPayment(input),posted);
+ assert.equal(await f.service.balance(company,'cash'),'80');
+ await assert.rejects(()=>f.service.postOwnerPayment({...input,amount:amount('21')}),/conflicting replay/);
+ await assert.rejects(()=>f.service.postOwnerPayment({...input,id:'wrong-debtor',debitPartyId:'other'}),/original debtor/);
+ await assert.rejects(()=>f.service.postOwnerPayment({...input,id:'wrong-currency',paymentCurrency:'USD'}),/currency/);
+});

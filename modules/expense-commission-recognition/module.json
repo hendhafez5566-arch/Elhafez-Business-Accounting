@@ -11,7 +11,8 @@
     "ecr_recognition_parts",
     "ecr_accruals",
     "ecr_supplier_advance_settlements",
-    "ecr_historical_imports"
+    "ecr_historical_imports",
+    "ecr_commission_settlements"
   ],
   "allowedDependencies": [
     "@elhafez/contracts",
@@ -20,6 +21,8 @@
     "@elhafez/general-ledger",
     "@elhafez/period-control",
     "@elhafez/currency-fx",
-    "@elhafez/financial-controls"
+    "@elhafez/financial-controls",
+    "@elhafez/platform-core",
+    "@elhafez/party-registry"
   ]
 }

@@ -1,5 +1,6 @@
 import type { CompanyId, DecimalAmount } from '@elhafez/contracts';
 import type {
+  BillingFinancialOperation,ReserveBillingFinancialOperation,CompleteBillingFinancialOperation,
   Advance,
   AdvanceConsumption,
   Adjustment,
@@ -11,6 +12,11 @@ import type {
 export const BILLING_REPOSITORY = Symbol('BILLING_REPOSITORY');
 
 export interface BillingRepository {
+  financialOperation(companyId:CompanyId,id:string):Promise<BillingFinancialOperation|undefined>;
+  reserveFinancialOperation(input:ReserveBillingFinancialOperation):Promise<BillingFinancialOperation>;
+  setFinancialOperationPlan(companyId:CompanyId,id:string,requestHash:string,plan:unknown):Promise<BillingFinancialOperation>;
+  completeFinancialOperation(input:CompleteBillingFinancialOperation):Promise<BillingFinancialOperation>;
+
   invoice(companyId: CompanyId, id: string): Promise<Invoice | undefined>;
   invoiceBySource(companyId: CompanyId, sourceType: string, sourceId: string): Promise<Invoice | undefined>;
   supplierExternal(companyId: CompanyId, partyId: string, externalNumber: string): Promise<Invoice | undefined>;
@@ -39,6 +45,7 @@ export interface BillingRepository {
   saveAdvance(value: Advance): Promise<void>;
 
   consumptionBySource(companyId: CompanyId, sourceType: string, sourceId: string): Promise<AdvanceConsumption | undefined>;
+  completeAdvanceConsumption(companyId: CompanyId, sourceType: string, sourceId: string, evidence: NonNullable<AdvanceConsumption['evidence']>): Promise<AdvanceConsumption>;
   saveAdvanceConsumptionEffect(
     consumption: AdvanceConsumption,
     advanceBefore: Advance,

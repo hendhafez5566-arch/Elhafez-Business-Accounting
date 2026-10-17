@@ -612,6 +612,8 @@ model TaxSnapshot {
 }
 
 model BillingInvoice {
+ economicOperationKey String? @map("economic_operation_key")
+ financialDimensions Json? @map("financial_dimensions")
   id                    String               @id
   companyId             String               @map("company_id")
   branchId              String?              @map("branch_id")
@@ -645,6 +647,7 @@ model BillingInvoice {
 }
 
 model BillingInvoiceLine {
+ costCenterId String? @map("cost_center_id")
   id            String         @id
   companyId     String         @map("company_id")
   invoiceId     String         @map("invoice_id")
@@ -704,6 +707,9 @@ model BillingAllocation {
 }
 
 model BillingAdvance {
+ economicOperationKey String? @map("economic_operation_key")
+ baseCurrency String? @map("base_currency")
+ liabilityAccountId String? @map("liability_account_id")
   id                      String    @id
   companyId               String    @map("company_id")
   partyKind               String    @map("party_kind")
@@ -723,6 +729,8 @@ model BillingAdvance {
 }
 
 model BillingAdvanceConsumption {
+ status String @default("POSTED")
+ evidence Json?
   id         String    @id
   companyId  String    @map("company_id")
   advanceId  String    @map("advance_id")
@@ -737,6 +745,9 @@ model BillingAdvanceConsumption {
 }
 
 model BillingAdjustment {
+ documentAmount Decimal? @map("document_amount") @db.Decimal(38,18)
+ documentCurrency String? @map("document_currency")
+ costCenterId String? @map("cost_center_id")
   id            String    @id
   companyId     String    @map("company_id")
   invoiceId     String    @map("invoice_id")
@@ -1059,6 +1070,9 @@ model EcrRecognitionPart {
  @@map("ecr_recognition_parts")
 }
 model EcrCommissionClaim {
+ approvalIntent Json? @map("approval_intent")
+ settlementId String? @map("settlement_id")
+ beneficiary Json?
  id String @id
  companyId String @map("company_id")
  branchId String? @map("branch_id")
@@ -1879,6 +1893,11 @@ model TfoWorkflowStep {
  @@map("tfo_workflow_steps")
 }
 model TfoBookingReference {
+ completedMutationKeys Json? @map("completed_mutation_keys")
+ mutationKey String? @map("mutation_key")
+ agentCommissionState Json? @map("agent_commission_state")
+ customerInvoices Json? @map("customer_invoices")
+ commissionClaimIds Json? @map("commission_claim_ids")
  id String @id
  companyId String @map("company_id")
  branchId String? @map("branch_id")
@@ -3008,6 +3027,15 @@ model HupProgramHistory {
 
 // HU-02 — Hajj & Umrah operational booking truth.
 model HubBooking {
+ financialMutation Json? @map("financial_mutation")
+ capacityHold Json? @map("capacity_hold")
+ revision Int @default(0)
+ createRequestId String? @map("create_request_id")
+ createRequestHash String? @map("create_request_hash")
+ commissionAgreement Json? @map("commission_agreement")
+ financialCustomerId String? @map("financial_customer_id")
+ financialPartyId String? @map("financial_party_id")
+ familyReference String? @map("family_reference")
  id String @id
  companyId String @map("company_id")
  branchId String @map("branch_id")
@@ -3033,6 +3061,8 @@ model HubBooking {
  @@unique([companyId, confirmationCommandKey])
  @@index([companyId, branchId, programId, status])
  @@index([companyId, branchId, customerId])
+ @@index([companyId, branchId, familyReference],map:"hub_bookings_family_idx")
+ @@unique([companyId, branchId, createRequestId],map:"hub_bookings_create_request_idx")
  @@map("hub_bookings")
 }
 
@@ -4192,4 +4222,130 @@ model AmCommissionAgreement {
  @@unique([companyId, agentId, version])
  @@index([companyId, parentAgentId])
  @@map("am_commission_agreements")
+}
+
+// offline-coordination owns metadata only. Owner APIs determine every economic result.
+model OcDeviceGrant {
+ id String @id
+ companyId String @map("company_id")
+ branchId String @map("branch_id")
+ actorId String @map("actor_id")
+ deviceId String @map("device_id")
+ operations Json
+ issuedAt DateTime @map("issued_at")
+ expiresAt DateTime @map("expires_at")
+ revokedAt DateTime? @map("revoked_at")
+ @@index([companyId,branchId,actorId,deviceId])
+ @@map("oc_device_grants")
+}
+model OcCommand {
+ reviewHistory Json @default("[]") @map("review_history")
+ id String
+ companyId String @map("company_id")
+ branchId String @map("branch_id")
+ actorId String @map("actor_id")
+ deviceId String @map("device_id")
+ grantId String @map("grant_id")
+ operation String
+ payload Json
+ payloadHash String @map("payload_hash")
+ dependencies Json
+ capturedAt String @map("captured_at")
+ receivedAt DateTime @map("received_at")
+ state String
+ attempt Int @default(0)
+ leaseUntil DateTime? @map("lease_until")
+ result Json
+ reason String?
+ @@id([companyId,branchId,id])
+ @@index([companyId,branchId,actorId,receivedAt])
+ @@map("oc_commands")
+}
+model OcWriteAuthority {
+ companyId String @id @map("company_id")
+ authorityId String @map("authority_id")
+ enrolledBy String @map("enrolled_by")
+ enrolledAt DateTime @map("enrolled_at")
+ @@map("oc_write_authorities")
+}
+
+model DnNumberAllocation {
+ companyId String @map("company_id")
+ requestId String @map("request_id")
+ requestHash String @map("request_hash")
+ allocation Json
+ createdAt DateTime @default(now()) @map("created_at")
+ @@id([companyId,requestId])
+ @@map("dn_number_allocations")
+}
+
+model PcFileUploadSession {
+ id String @id
+ companyId String @map("company_id")
+ branchId String @map("branch_id")
+ actorId String @map("actor_id")
+ requestId String @map("request_id")
+ payloadHash String @map("payload_hash")
+ entityType String @map("entity_type")
+ entityId String @map("entity_id")
+ label String?
+ contentType String @map("content_type")
+ size Int
+ checksum String
+ chunkCount Int @map("chunk_count")
+ state String
+ fileId String? @map("file_id")
+ createdAt DateTime @default(now()) @map("created_at")
+ chunks PcFileUploadChunk[]
+ @@unique([companyId,id])
+ @@unique([companyId,branchId,actorId,requestId])
+ @@index([companyId,branchId,actorId,state])
+ @@map("pc_file_uploads")
+}
+model PcFileUploadChunk {
+ companyId String @map("company_id")
+ uploadId String @map("upload_id")
+ index Int @map("chunk_index")
+ checksum String
+ content Bytes
+ upload PcFileUploadSession @relation(fields:[companyId,uploadId],references:[companyId,id],onDelete:Restrict)
+ @@id([companyId,uploadId,index])
+ @@map("pc_file_upload_chunks")
+}
+
+model EcrCommissionSettlement {
+ id String @id
+ companyId String @map("company_id")
+ branchId String @map("branch_id")
+ requestHash String @map("request_hash")
+ actorId String @map("actor_id")
+ reason String
+ postingDate String @map("posting_date")
+ number String
+ currency String
+ claims Json
+ total Decimal @db.Decimal(38,18)
+ baseTotal Decimal @map("base_total") @db.Decimal(38,18)
+ status String
+ createdAt DateTime @default(now()) @map("created_at")
+ @@unique([companyId,id])
+ @@map("ecr_commission_settlements")
+}
+
+model BillingFinancialOperation {
+ id String @id
+ companyId String @map("company_id")
+ invoiceId String @map("invoice_id")
+ kind String
+ sourceType String @map("source_type")
+ sourceId String @map("source_id")
+ requestHash String @map("request_hash")
+ snapshot Json
+ plan Json?
+ result Json?
+ status String
+ createdAt DateTime @default(now()) @map("created_at")
+ @@unique([companyId,id])
+ @@unique([companyId,sourceType,sourceId])
+ @@map("billing_financial_operations")
 }

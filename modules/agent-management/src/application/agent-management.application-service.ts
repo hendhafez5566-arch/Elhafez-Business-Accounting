@@ -27,6 +27,14 @@ export class AgentManagementApplicationService{
   try{await this.repository.create(value);}catch(error){const concurrent=await this.repository.findByParty(c.companyId,resolved.party.id);if(concurrent)return{status:'EXISTING',value:{agent:concurrent,party:resolved.party}};throw error;}
   await this.parties.ensureRoleForIntegration(c,resolved.party.id,'AGENT');await this.access.audit(c,'agent.created','agent',value.id,{number:value.number});return{status:'CREATED',value:{agent:value,party:resolved.party}};
  }
+ async commissionSnapshotForIntegration(c:ExecutionContext,id:AgentId){
+  await this.branch(c);const agent=await this.require(c,id,true);
+  if(!agent.parentAgentId)return null;
+  const parent=await this.require(c,agent.parentAgentId,true);
+  const agreement=(await this.repository.listCommissionAgreements(c.companyId,id)).filter(x=>x.parentAgentId===parent.id).sort((a,b)=>b.version-a.version)[0];
+  if(!agreement)throw new ContractValidationError('commissionAgreement','agree the current principal/subordinate split before creating a booking');
+  return {agreementId:agreement.id,agreementVersion:agreement.version,principalPartyId:parent.partyId,subordinatePartyId:agent.partyId,principalPercent:agreement.principalPercent};
+ }
  async commissionAgreements(c:ExecutionContext,id:AgentId){await this.perm(c,AGENT_PERMISSIONS.read);const agent=await this.require(c,id,false);return{parentAgentId:agent.parentAgentId??null,agreements:await this.repository.listCommissionAgreements(c.companyId,id)};}
  async agreeCommission(c:ExecutionContext,id:AgentId,input:{requestId?:unknown;parentAgentId?:unknown;expectedVersion?:unknown;principalPercent?:unknown;reason?:unknown}){
   await this.perm(c,AGENT_PERMISSIONS.manage);

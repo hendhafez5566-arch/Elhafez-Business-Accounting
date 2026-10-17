@@ -26,7 +26,7 @@ export class PrismaCustomerManagementRepository implements CustomerManagementRep
     return rows.map(map);
   }
   async delete(c:CompanyId,i:CustomerId){await this.db.cmCustomer.delete({where:{companyId_id:{companyId:c,id:i}}});}
-  async addReference(v:CustomerReference){await this.db.cmCustomerReference.upsert({where:{companyId_customerId_sourceType_sourceId:{companyId:v.companyId,customerId:v.customerId,sourceType:v.sourceType,sourceId:v.sourceId}},create:{companyId:v.companyId,customerId:v.customerId,sourceType:v.sourceType,sourceId:v.sourceId,createdAt:new Date(v.createdAt)},update:{}});}
+  async addReference(v:CustomerReference){await this.db.cmCustomerReference.createMany({data:{companyId:v.companyId,customerId:v.customerId,sourceType:v.sourceType,sourceId:v.sourceId,createdAt:new Date(v.createdAt)},skipDuplicates:true});}
   async removeReference(c:CompanyId,i:CustomerId,t:string,s:string){await this.db.cmCustomerReference.deleteMany({where:{companyId:c,customerId:i,sourceType:t,sourceId:s}});}
   async referenceCount(c:CompanyId,i:CustomerId){return this.db.cmCustomerReference.count({where:{companyId:c,customerId:i}});}
 }

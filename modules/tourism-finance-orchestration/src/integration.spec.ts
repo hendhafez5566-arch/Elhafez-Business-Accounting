@@ -142,6 +142,10 @@ function billingFixture() {
   const creditLimits = new Map<string, DecimalAmount>();
 
   const repo: BillingRepo = {
+    async financialOperation(){return undefined;},
+    async reserveFinancialOperation(){throw Error('financial operations are covered by the Billing owner fixture');},
+    async setFinancialOperationPlan(){throw Error('financial operations are covered by the Billing owner fixture');},
+    async completeFinancialOperation(){throw Error('financial operations are covered by the Billing owner fixture');},
     async invoice(companyId, id) {
       return invoices.get(key(companyId, id));
     },
@@ -248,6 +252,7 @@ function billingFixture() {
           value.sourceId === sourceId,
       );
     },
+    async completeAdvanceConsumption() { throw new Error('refund completion covered by Billing owner fixture'); },
     async saveAdvanceConsumptionEffect(consumption, _advanceBefore, advanceAfter) {
       consumptions.set(key(consumption.companyId, consumption.id), consumption);
       advances.set(key(advanceAfter.companyId, advanceAfter.id), advanceAfter);
@@ -544,6 +549,13 @@ function ecrFixture() {
       schedules.set(key(companyId, scheduleId), { ...value, parts });
       return next;
     },
+    async reserveCommissionClaim(value){const prior=claims.get(key(value.companyId,value.id));if(prior){if(prior.requestHash!==value.requestHash)throw Error('conflicting commission identity');return prior;}claims.set(key(value.companyId,value.id),value);return value;},
+    async completeCommissionApproval(companyId,id,intentHash,carryingBaseAmount,journalId){const claim=claims.get(key(companyId,id));if(!claim||claim.approvalIntent?.requestHash!==intentHash)throw Error('approval reservation missing');if(claim.status!=='APPROVING'){if(claim.recognitionJournalId===journalId)return claim;throw Error('approval reservation changed');}const next:CommissionClaim={...claim,status:'APPROVED',baseCarryingAmount:carryingBaseAmount,recognitionJournalId:journalId};claims.set(key(companyId,id),next);return next;},
+    async beginCommissionApproval(companyId,id,intent){const claim=claims.get(key(companyId,id));if(!claim)throw Error('claim missing');if(claim.status==='APPROVING'&&claim.approvalIntent?.requestHash===intent.requestHash)return claim;if(claim.status!=='DRAFT')throw Error('draft claim required');const next:CommissionClaim={...claim,status:'APPROVING',approvalIntent:intent};claims.set(key(companyId,id),next);return next;},
+    async beginCommissionReversal(companyId,id){const claim=claims.get(key(companyId,id));if(!claim)throw Error('claim missing');if(['REVERSING','REVERSED','SETTLED'].includes(claim.status))return claim;if(!['DRAFT','APPROVED'].includes(claim.status)||claim.payments.length)throw Error('unpaid claim required');const next:CommissionClaim={...claim,status:'REVERSING'};claims.set(key(companyId,id),next);return next;},
+    async commissionSettlement(){return undefined;},
+    async reserveCommissionSettlement(){throw Error('settlement uses the dedicated ECR owner fixture');},
+    async completeCommissionSettlement(){throw Error('settlement uses the dedicated ECR owner fixture');},
     async claim(companyId, id) {
       return claims.get(key(companyId, id));
     },

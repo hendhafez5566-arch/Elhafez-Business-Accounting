@@ -6,6 +6,7 @@ export class InMemoryCurrencyFxRepository implements CurrencyFxRepository {
   private currencies = new Map<string, CurrencyConfiguration>();
   private rates: FxRate[] = [];
 
+  async listCurrencies(companyId:CompanyId){return [...this.currencies.values()].filter(x=>x.companyId===companyId).sort((a,b)=>a.code.localeCompare(b.code)).map(x=>({...x}));}
   async saveCurrency(value: CurrencyConfiguration): Promise<void> {
     const key = value.companyId + ':' + value.code;
     const old = this.currencies.get(key);

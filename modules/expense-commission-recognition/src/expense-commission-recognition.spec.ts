@@ -1,6 +1,6 @@
-import test from'node:test';import assert from'node:assert/strict';import{decimalAmount,companyId,currencyCode,money}from'@elhafez/contracts';import{splitExactSchedule,ExpenseCommissionRecognitionApplicationService}from'./application/ecr.application-service.js';import{InMemoryEcrRepository}from'./infrastructure/in-memory-ecr.repository.js';
+import test from'node:test';import assert from'node:assert/strict';import{decimalAmount,companyId,currencyCode,money,executionContext}from'@elhafez/contracts';import{splitExactSchedule,ExpenseCommissionRecognitionApplicationService}from'./application/ecr.application-service.js';import type {EmployeeCommissionIdentityPort} from './application/ecr.application-service.js';import{InMemoryEcrRepository}from'./infrastructure/in-memory-ecr.repository.js';
 test('GS-014/BR-033 exact deterministic residual',()=>assert.deepEqual(splitExactSchedule(decimalAmount('100'),3,2),['33.33','33.33','33.34']));
-function fixture(){const repo=new InMemoryEcrRepository(),posts:string[]=[],payments:string[]=[],ownerPaymentInputs:unknown[]=[];const service=new ExpenseCommissionRecognitionApplicationService(repo,{recordRecognitionStarted:async()=>({} as never),getOpenPosition:async(_c,id)=>({partyKind:id==='supplier-i'?'SUPPLIER':'CUSTOMER',status:'POSTED',deferred:true,currency:'EGP',documentTotal:decimalAmount(id==='supplier-i'?'100':'100'),baseTotal:decimalAmount('100')} as never),getAdvance:async()=>{throw Error('unused')},consumeAdvance:async()=>{throw Error('unused')}},{postOwnerPayment:async x=>{payments.push(x.id);ownerPaymentInputs.push(x);return{id:x.id,companyId:x.companyId,treasuryId:x.treasuryId,kind:'PAYMENT',partyKind:'OWNER',partyId:x.partyId,number:x.number,postingDate:x.postingDate,currency:'EGP',amount:x.amount,sourceType:'OWNER_PAYMENT',sourceId:x.ownerId,requestHash:'h',status:'POSTED',journalId:'j:'+x.id,allocationIds:[]}},postSupplierAdvanceRefundReceipt:async()=>{throw Error('unused')},getTreasurySnapshot:async(c,id)=>({id,companyId:c,code:id,name:id,type:'CASH' as const,currency:'EGP',glAccountId:'cash',active:true})},{post:async x=>{posts.push(x.id);return{id:x.id,companyId:x.companyId,number:x.number,postingDate:x.postingDate,sourceType:x.sourceType,sourceId:x.sourceId,requestHash:'h',status:'POSTED',kind:'STANDARD',lines:[],createdAt:'now'}},reverse:async(c,id,date,number)=>({id:id+':r',companyId:c,number,postingDate:date,sourceType:'REVERSAL',sourceId:id,requestHash:'h',status:'POSTED',kind:'REVERSAL',lines:[],createdAt:'now'})},{getBaseCurrency:async c=>({companyId:c,code:currencyCode('EGP'),precision:2,isBase:true,status:'ACTIVE'}),calculateSettlement:async(c,amount,to)=>{const key=amount.currency+'-'+to;if(key==='USD-EGP')return{converted:money(decimalAmount(String(Number(amount.amount)*50)),to),rate:{rateId:'USD-EGP'}} as never;if(key==='EGP-USD')return{converted:money(decimalAmount(String(Number(amount.amount)/50)),to),rate:{rateId:'EGP-USD'}} as never;throw Error('unsupported test FX '+key)}},{evaluateApprovalRequirement:async()=>({decision:'APPROVAL_NOT_REQUIRED' as const}),getApprovalRequest:async()=>undefined,getApprovalDecision:async()=>undefined});return{service,repo,posts,payments,ownerPaymentInputs}}
+function fixture(employeeIdentity?:EmployeeCommissionIdentityPort){const repo=new InMemoryEcrRepository(),posts:string[]=[],journalInputs:unknown[]=[],payments:string[]=[],ownerPaymentInputs:unknown[]=[];const service=new ExpenseCommissionRecognitionApplicationService(repo,{recordRecognitionStarted:async()=>({} as never),getOpenPosition:async(_c,id)=>({partyKind:id==='supplier-i'?'SUPPLIER':'CUSTOMER',status:'POSTED',deferred:true,currency:'EGP',documentTotal:decimalAmount(id==='supplier-i'?'100':'100'),baseTotal:decimalAmount('100')} as never),getAdvance:async()=>{throw Error('unused')},consumeAdvance:async()=>{throw Error('unused')}},{postOwnerPayment:async x=>{payments.push(x.id);ownerPaymentInputs.push(x);return{id:x.id,companyId:x.companyId,treasuryId:x.treasuryId,kind:'PAYMENT',partyKind:'OWNER',partyId:x.partyId,number:x.number,postingDate:x.postingDate,currency:'EGP',amount:x.amount,sourceType:'OWNER_PAYMENT',sourceId:x.ownerId,requestHash:'h',status:'POSTED',journalId:'j:'+x.id,allocationIds:[]}},postSupplierAdvanceRefundReceipt:async()=>{throw Error('unused')},getTreasurySnapshot:async(c,id)=>({id,companyId:c,code:id,name:id,type:'CASH' as const,currency:'EGP',glAccountId:'cash',active:true})},{post:async x=>{if(!posts.includes(x.id)){posts.push(x.id);journalInputs.push(x);}return{id:x.id,companyId:x.companyId,number:x.number,postingDate:x.postingDate,sourceType:x.sourceType,sourceId:x.sourceId,requestHash:'h',status:'POSTED',kind:'STANDARD',lines:[],createdAt:'now'}},reverse:async(c,id,date,number)=>({id:id+':r',companyId:c,number,postingDate:date,sourceType:'REVERSAL',sourceId:id,requestHash:'h',status:'POSTED',kind:'REVERSAL',lines:[],createdAt:'now'})},{getBaseCurrency:async c=>({companyId:c,code:currencyCode('EGP'),precision:2,isBase:true,status:'ACTIVE'}),calculateSettlement:async(c,amount,to)=>{const key=amount.currency+'-'+to;if(key==='USD-EGP')return{converted:money(decimalAmount(String(Number(amount.amount)*50)),to),rate:{rateId:'USD-EGP'}} as never;if(key==='EGP-USD')return{converted:money(decimalAmount(String(Number(amount.amount)/50)),to),rate:{rateId:'EGP-USD'}} as never;throw Error('unsupported test FX '+key)}},{evaluateApprovalRequirement:async()=>({decision:'APPROVAL_NOT_REQUIRED' as const}),getApprovalRequest:async()=>undefined,getApprovalDecision:async()=>undefined},employeeIdentity);return{service,repo,posts,journalInputs,payments,ownerPaymentInputs}}
 test('BR-019/GS-012 service-date schedule posts once, reverses to pending and can be recognized again',async()=>{const{service,posts}=fixture();const s=await service.createRecognitionSchedule({id:'s',companyId:companyId('c'),kind:'DEFERRED_REVENUE',sourceType:'INVOICE',sourceId:'i',sourceInvoiceId:'i',currency:'EGP',sourceAmount:decimalAmount('100'),baseAmount:decimalAmount('100'),deferredAccountId:'deferred',recognitionAccountId:'revenue',serviceDates:['2026-10-01','2026-11-01','2026-12-01'],postingDate:'2026-09-18',number:'D1'});assert.deepEqual(s.parts.map(x=>x.amount),['33.33','33.33','33.34']);await service.postRecognitionPart(companyId('c'),'s','s:1','2026-10-01','R1');await service.postRecognitionPart(companyId('c'),'s','s:1','2026-10-01','R1');assert.equal(posts.length,2);const pending=await service.reverseRecognitionPart(companyId('c'),'s','s:1','2026-10-02','RR1');assert.equal(pending.status,'PENDING');assert.equal(pending.cycle,1);await service.postRecognitionPart(companyId('c'),'s','s:1','2026-10-03','R2');assert.equal(posts.length,3);assert.equal(posts.at(-1),'ecr-recognition:s:1:1')});
 test('BR-034/BR-035 commission recognizes on approval and remains partial',async()=>{const{service,posts,payments}=fixture();await service.createCommissionClaim({id:'c1',companyId:companyId('c'),agentPartyId:'agent',sourceType:'SALE',sourceId:'sale',currency:'EGP',amount:decimalAmount('1000'),baseCarryingAmount:decimalAmount('1000'),expenseAccountId:'expense',liabilityAccountId:'liability'});await service.approveCommission(companyId('c'),'c1','2026-09-18','C1');await service.approveCommission(companyId('c'),'c1','2026-09-18','C1');assert.equal(posts.length,1);await service.payCommission({companyId:companyId('c'),claimId:'c1',paymentId:'p1',treasuryId:'t',amount:decimalAmount('400'),paymentCurrency:'EGP',postingDate:'2026-09-18',number:'P1'});assert.equal((await service.payCommission({companyId:companyId('c'),claimId:'c1',paymentId:'p1',treasuryId:'t',amount:decimalAmount('400'),paymentCurrency:'EGP',postingDate:'2026-09-18',number:'P1'})).amount,'400');assert.equal(payments.length,1);assert.equal((await service.createCommissionClaim({id:'c1',companyId:companyId('c'),agentPartyId:'agent',sourceType:'SALE',sourceId:'sale',currency:'EGP',amount:decimalAmount('1000'),baseCarryingAmount:decimalAmount('1000'),expenseAccountId:'expense',liabilityAccountId:'liability'})).status,'PARTIALLY_PAID')});
 
@@ -101,4 +101,119 @@ test('AC-12 commission cancellation evidence reverses unpaid and blocks partial/
  await assert.rejects(service.reverseUnpaidCommission(c,'partial','2026-09-19','REV'),/paid commission history/);
  await service.payCommission({companyId:c,claimId:'partial',paymentId:'p2',treasuryId:'t',amount:decimalAmount('50'),paymentCurrency:'EGP',postingDate:'2026-09-19',number:'P2'});
  assert.equal((await service.getCommissionCancellationEvidence(c,'partial')).status,'PAID');
+});
+
+
+test('fully paid commission replay returns the original payment and rejects changed intent',async()=>{
+ const {service,repo,payments}=fixture(),c=companyId('c');
+ await service.createCommissionClaim({id:'paid-replay',companyId:c,agentPartyId:'agent',sourceType:'SALE',sourceId:'sale-replay',currency:'EGP',amount:decimalAmount('100'),baseCarryingAmount:decimalAmount('100'),expenseAccountId:'expense',liabilityAccountId:'liability'});
+ await service.approveCommission(c,'paid-replay','2026-10-16','APPROVE');
+ const input={companyId:c,claimId:'paid-replay',paymentId:'paid-once',treasuryId:'t',amount:decimalAmount('100'),paymentCurrency:'EGP',postingDate:'2026-10-16',number:'PAY'};
+ const posted=await service.payCommission(input);
+ assert.equal((await repo.claim(c,'paid-replay'))?.status,'PAID');
+ assert.deepEqual(await service.payCommission(input),posted);
+ assert.equal(payments.length,1);
+ await assert.rejects(service.payCommission({...input,amount:decimalAmount('99')}),/conflicting replay/);
+ await assert.rejects(service.payCommission({...input,paymentId:'another-payment'}),/approved outstanding/);
+ assert.equal(payments.length,1);
+});
+
+
+test('employee commission snapshots identity independently and preserves it after account changes',async()=>{
+ let name='Original employee',lookups=0;
+ const identity:EmployeeCommissionIdentityPort={async resolve(context,employeeId,partyId){lookups++;assert.equal(context.companyId,'c');return{kind:'EMPLOYEE',employeeId,partyId,employeeName:name,payeeName:'Employee payee'};}};
+ const {service,repo}=fixture(identity),context=executionContext('c','b','cashier');
+ const input={context,id:'staff',companyId:context.companyId,branchId:context.branchId,agentPartyId:'staff-payee',beneficiary:{kind:'EMPLOYEE' as const,employeeId:'employee',partyId:'staff-payee'},sourceType:'TOURISM_BOOKING',sourceId:'booking',currency:'EGP',amount:decimalAmount('25'),baseCarryingAmount:decimalAmount('25'),expenseAccountId:'expense',liabilityAccountId:'liability'};
+ const created=await service.createCommissionClaim(input);
+ assert.equal(created.beneficiary?.employeeName,'Original employee');
+ name='Renamed or disabled employee';
+ assert.deepEqual(await service.createCommissionClaim({...input,context:executionContext('c','b','supervisor')}),created);
+ assert.equal(lookups,1);
+ await service.approveCommission(context.companyId,'staff','2026-10-16','STAFF');
+ await service.payCommission({companyId:context.companyId,claimId:'staff',paymentId:'staff-payment',treasuryId:'cash',amount:decimalAmount('25'),paymentCurrency:'EGP',postingDate:'2026-10-16',number:'STAFF-PAY'});
+ assert.equal((await repo.claim(context.companyId,'staff'))?.beneficiary?.employeeName,'Original employee');
+ assert.equal(lookups,1);
+ await assert.rejects(service.createCommissionClaim({...input,beneficiary:{...input.beneficiary,employeeId:'another'}}),/conflicting replay/);
+ await assert.rejects(service.createCommissionClaim({...input,id:'wrong-scope',context:executionContext('other','b','cashier')}),/scoped employee/);
+ await assert.rejects(service.createCommissionClaim({...input,context:executionContext('other','b','cashier')}),/scoped employee/);
+ await assert.rejects(service.createCommissionClaim({...input,id:'wrong-payee',agentPartyId:'other-payee'}),/scoped employee/);
+ await assert.rejects(fixture().service.createCommissionClaim({...input,id:'missing-provider'}),/identity provider/);
+});
+
+
+async function commissionPair(f:ReturnType<typeof fixture>){const c=companyId('c');for(const [id,amount] of [['principal','13.33'],['subordinate','26.67']] as const){await f.service.createCommissionClaim({id,companyId:c,branchId:'b',agentPartyId:id+'-party',sourceType:'BOOKING',sourceId:'booking-'+id,currency:'EGP',amount:decimalAmount(amount),baseCarryingAmount:decimalAmount(amount),expenseAccountId:'expense',liabilityAccountId:'liability'});await f.service.approveCommission(c,id,'2026-10-16','APPROVE-'+id);}return c;}
+const settlementInput=()=>({context:executionContext('c','b','manager'),id:'agent-settlement',claimIds:['principal','subordinate'],expectedRemaining:[{claimId:'principal',amount:decimalAmount('3.33')},{claimId:'subordinate',amount:decimalAmount('26.67')}],currency:'EGP',reason:'Customer reviewed a change of agent',postingDate:'2026-10-16',number:'SETTLE'});
+
+test('agent settlement releases only unpaid shares and preserves original principal payment and history',async()=>{
+ const f=fixture(),c=await commissionPair(f);
+ await f.service.payCommission({companyId:c,claimId:'principal',paymentId:'paid-principal',treasuryId:'t',amount:decimalAmount('10'),paymentCurrency:'EGP',postingDate:'2026-10-16',number:'P10'});
+ const group=await f.service.settleAgentCommissions(settlementInput());assert.equal(group.total,'30');assert.equal(group.baseTotal,'30');assert.equal(group.status,'COMPLETED');
+ const principal=(await f.repo.claim(c,'principal'))!;assert.equal(principal.amount,'13.33');assert.equal(principal.status,'SETTLED');assert.equal(principal.payments[0]?.claimAmountApplied,'10');assert.equal(principal.settlementId,group.id);
+ const originalPayment=principal.payments[0]!;assert.equal((await f.repo.finalizeCommissionPayment(c,'principal',originalPayment)).status,'SETTLED');assert.equal((await f.repo.reserveCommissionPayment(c,'principal',originalPayment)).claim.status,'SETTLED');
+ const journals=f.journalInputs as {sourceType:string;lines:{debit?:string;credit?:string;partyId?:string}[]}[];
+ assert.deepEqual(journals.filter(x=>x.sourceType==='ECR_COMMISSION_SETTLEMENT').map(x=>x.lines),[[{accountId:'liability',debit:'3.33',partyId:'principal-party'},{accountId:'expense',credit:'3.33'}],[{accountId:'liability',debit:'26.67',partyId:'subordinate-party'},{accountId:'expense',credit:'26.67'}]]);
+ const count=f.posts.length;assert.deepEqual(await f.service.settleAgentCommissions({...settlementInput(),context:executionContext('c','b','another-manager')}),group);assert.equal(f.posts.length,count);assert.equal(group.actorId,'manager');
+ await assert.rejects(f.service.settleAgentCommissions({...settlementInput(),reason:'Changed immutable reason'}),/conflicting replay/);
+ await assert.rejects(f.service.payCommission({companyId:c,claimId:'principal',paymentId:'extra',treasuryId:'t',amount:decimalAmount('1'),paymentCurrency:'EGP',postingDate:'2026-10-16',number:'EXTRA'}),/approved outstanding/);
+ assert.equal(f.payments.length,1);
+});
+
+test('settlement resumes after successful owner journals and failed local completion without extra release',async()=>{
+ const f=fixture(),c=await commissionPair(f);await f.service.payCommission({companyId:c,claimId:'principal',paymentId:'paid-principal',treasuryId:'t',amount:decimalAmount('10'),paymentCurrency:'EGP',postingDate:'2026-10-16',number:'P10'});
+ const complete=f.repo.completeCommissionSettlement.bind(f.repo);let fail=true;f.repo.completeCommissionSettlement=async(...args)=>{if(fail){fail=false;throw Error('lost local completion');}return complete(...args);};
+ await assert.rejects(f.service.settleAgentCommissions(settlementInput()),/lost local completion/);assert.equal((await f.repo.claim(c,'principal'))?.status,'SETTLING');
+ await assert.rejects(f.service.reverseUnpaidCommission(c,'subordinate','2026-10-16','REVERSE'),/pending financial/);
+ await assert.rejects(f.service.approveCommission(c,'subordinate','2026-10-16','APPROVE'),/pending or completed/);
+ await assert.rejects(f.service.settleAgentCommissions({...settlementInput(),id:'competing-group'}),/pending approval/);
+ const before=f.posts.length;await f.service.settleAgentCommissions(settlementInput());assert.equal(f.posts.length,before);assert.equal((await f.repo.claim(c,'subordinate'))?.status,'SETTLED');
+});
+
+test('changed reviewed remaining balance rejects the entire settlement before reserving another share',async()=>{
+ const f=fixture(),c=await commissionPair(f),before=f.posts.length;
+ await assert.rejects(f.service.settleAgentCommissions(settlementInput()),/balance changed/);
+ assert.equal((await f.repo.claim(c,'principal'))?.status,'APPROVED');assert.equal((await f.repo.claim(c,'subordinate'))?.status,'APPROVED');assert.equal(await f.repo.commissionSettlement(c,'agent-settlement'),undefined);assert.equal(f.posts.length,before);
+});
+
+test('approval intent survives a lost local save and blocks settlement and reversal until resumed',async()=>{
+ const f=fixture(),c=companyId('c');await f.service.createCommissionClaim({id:'pending-approval',companyId:c,branchId:'b',agentPartyId:'agent',sourceType:'BOOKING',sourceId:'pending-booking',currency:'EGP',amount:decimalAmount('20'),baseCarryingAmount:decimalAmount('20'),expenseAccountId:'expense',liabilityAccountId:'liability'});
+ const complete=f.repo.completeCommissionApproval.bind(f.repo);let fail=true;f.repo.completeCommissionApproval=async(...args)=>{if(fail){fail=false;throw Error('lost approval save');}return complete(...args);};
+ await assert.rejects(f.service.approveCommission(c,'pending-approval','2026-10-16','APPROVE'),/lost approval save/);assert.equal((await f.repo.claim(c,'pending-approval'))?.status,'APPROVING');
+ await assert.rejects(f.service.reverseUnpaidCommission(c,'pending-approval','2026-10-16','REVERSE'),/pending financial/);
+ await assert.rejects(f.service.settleAgentCommissions({...settlementInput(),claimIds:['pending-approval'],expectedRemaining:[{claimId:'pending-approval',amount:decimalAmount('20')}]}),/pending approval/);
+ await assert.rejects(f.service.approveCommission(c,'pending-approval','2026-10-15','APPROVE'),/conflicting pending/);
+ assert.equal((await f.service.approveCommission(c,'pending-approval','2026-10-16','APPROVE')).status,'APPROVED');assert.equal(f.posts.length,1);
+});
+
+test('foreign-currency agent settlement retains historical base carrying after cross-currency partial payment',async()=>{
+ const f=fixture(),c=companyId('c');await f.service.createCommissionClaim({id:'foreign-agent',companyId:c,branchId:'b',agentPartyId:'agent',sourceType:'BOOKING',sourceId:'foreign-booking',currency:'USD',amount:decimalAmount('100'),baseCarryingAmount:decimalAmount('1'),expenseAccountId:'expense',liabilityAccountId:'liability'});await f.service.approveCommission(c,'foreign-agent','2026-10-16','FX-APPROVE');
+ await f.service.payCommission({companyId:c,claimId:'foreign-agent',paymentId:'fx-paid',treasuryId:'t',amount:decimalAmount('2500'),paymentCurrency:'EGP',postingDate:'2026-10-16',number:'FX-PAY'});
+ const result=await f.service.settleAgentCommissions({...settlementInput(),claimIds:['foreign-agent'],expectedRemaining:[{claimId:'foreign-agent',amount:decimalAmount('50')}],currency:'USD'});
+ assert.equal(result.total,'50');assert.equal(result.baseTotal,'2500');assert.equal((await f.repo.claim(c,'foreign-agent'))?.payments[0]?.carryingBaseAmount,'2500');
+});
+
+
+test('settlement excludes employee claims and rejects forged branch before changing any liability',async()=>{
+ const f=fixture({async resolve(_context,employeeId,partyId){return{kind:'EMPLOYEE',employeeId,partyId,employeeName:'Employee',payeeName:'Payee'};}}),context=executionContext('c','b','manager');
+ await f.service.createCommissionClaim({context,id:'employee-excluded',companyId:context.companyId,branchId:'b',agentPartyId:'employee-payee',beneficiary:{kind:'EMPLOYEE',employeeId:'employee',partyId:'employee-payee'},sourceType:'BOOKING',sourceId:'staff-only',currency:'EGP',amount:decimalAmount('20'),baseCarryingAmount:decimalAmount('20'),expenseAccountId:'expense',liabilityAccountId:'liability'});
+ const input={...settlementInput(),claimIds:['employee-excluded'],expectedRemaining:[{claimId:'employee-excluded',amount:decimalAmount('20')}]};
+ await assert.rejects(f.service.settleAgentCommissions(input),/agent claims/);assert.equal((await f.repo.claim(context.companyId,'employee-excluded'))?.status,'DRAFT');assert.equal(f.posts.length,0);
+ const ordinary=fixture();await commissionPair(ordinary);await assert.rejects(ordinary.service.settleAgentCommissions({...settlementInput(),context:executionContext('c','other-branch','manager')}),/exact company and branch/);assert.equal((await ordinary.repo.claim(context.companyId,'principal'))?.status,'APPROVED');
+});
+
+test('reserved commission cash blocks group settlement until the original payment finishes',async()=>{
+ const f=fixture(),c=await commissionPair(f),reserve=f.repo.reserveCommissionPayment.bind(f.repo);let started!:()=>void,release!:()=>void;const entered=new Promise<void>(resolve=>{started=resolve;}),gate=new Promise<void>(resolve=>{release=resolve;});
+ f.repo.reserveCommissionPayment=async(...args)=>{const result=await reserve(...args);started();await gate;return result;};
+ const paying=f.service.payCommission({companyId:c,claimId:'principal',paymentId:'pending-payment',treasuryId:'t',amount:decimalAmount('10'),paymentCurrency:'EGP',postingDate:'2026-10-16',number:'PENDING-PAYMENT'});await entered;
+ await assert.rejects(f.service.settleAgentCommissions(settlementInput()),/pending approval/);assert.equal((await f.repo.claim(c,'subordinate'))?.status,'APPROVED');assert.equal(await f.repo.commissionSettlement(c,'agent-settlement'),undefined);release();await paying;
+ await f.service.settleAgentCommissions(settlementInput());assert.equal((await f.repo.claim(c,'principal'))?.payments[0]?.status,'POSTED');assert.equal(f.payments.length,1);
+});
+
+
+test('late duplicate approval and creation never reset a fully paid claim',async()=>{
+ const f=fixture(),c=companyId('c'),draft=await f.service.createCommissionClaim({id:'late-approval',companyId:c,branchId:'b',agentPartyId:'agent',sourceType:'SALE',sourceId:'late-sale',currency:'EGP',amount:decimalAmount('20'),baseCarryingAmount:decimalAmount('20'),expenseAccountId:'expense',liabilityAccountId:'liability'}),complete=f.repo.completeCommissionApproval.bind(f.repo);let calls=0,entered!:()=>void,release!:()=>void;const started=new Promise<void>(resolve=>{entered=resolve;}),gate=new Promise<void>(resolve=>{release=resolve;});
+ f.repo.completeCommissionApproval=async(...args)=>{calls++;if(calls===2){entered();await gate;}return complete(...args);};
+ const first=f.service.approveCommission(c,'late-approval','2026-10-16','APPROVE'),second=f.service.approveCommission(c,'late-approval','2026-10-16','APPROVE');await started;await first;
+ await f.service.payCommission({companyId:c,claimId:'late-approval',paymentId:'paid-during-duplicate',treasuryId:'t',amount:decimalAmount('20'),paymentCurrency:'EGP',postingDate:'2026-10-16',number:'PAY'});release();await second;
+ assert.equal((await f.repo.claim(c,'late-approval'))?.status,'PAID');assert.equal((await f.repo.reserveCommissionClaim(draft)).status,'PAID');assert.equal((await f.repo.claim(c,'late-approval'))?.payments.length,1);const paidClaim=(await f.repo.claim(c,'late-approval'))!;assert.equal((await f.repo.reserveCommissionPayment(c,'late-approval',paidClaim.payments[0]!)).claim.status,'PAID');assert.equal(f.posts.length,1);assert.equal(f.payments.length,1);
+ await assert.rejects(f.repo.reserveCommissionClaim({...draft,requestHash:'changed intent'}),/conflicting commission/);
 });

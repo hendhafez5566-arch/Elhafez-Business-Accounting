@@ -282,3 +282,11 @@ This projection/configuration owner stores saved-report definitions and report d
 ### `procurement-sourcing` — ERP PRODUCT COMPLETION CANDIDATE
 
 This owner is the single pre-PO procurement source of truth for purchase requisitions, RFQs, supplier invitations, supplier bid snapshots, comparison/award evidence, and the immutable reference that links an award to the resulting Purchase Order. It must never own Purchase Order economics, receipt quantities, supplier invoices, payables, or payments. Award conversion calls `procurement-finance` through its public application API; receipt/execution remains `procurement-fulfillment`, supplier invoice/payable truth remains Billing, and settlement remains Treasury.
+
+## Offline coordination owner — implementation candidate
+
+`offline-coordination` is implemented as a candidate for the authorized core-workflow/offline package, originating from `modules/_template`. It owns `oc_device_grants`, `oc_commands` and company-wide `oc_write_authorities`. Device grants and command receipts are branch-scoped. Company authority metadata is company-wide so switching branches cannot create a second writer. Current public operations coordinate provisional booking creation, booking confirmation and booking deposits only; this is not full offline ERP or general cloud replication.
+
+It does not own customers, bookings, inventory, invoices, cash, balances, journals, users, roles or subscription authority. Amounts in an immutable intent are input, never canonical accounting truth. Dependencies may use core/contracts/platform-core public boundaries; application composition invokes business owners through their public APIs. Business owners must not depend back on the coordinator. Platform-core retains identity/RBAC, and the SaaS control plane retains entitlement authority. Offline grants cannot silently extend expiry or mint roles/licenses.
+
+Office/cloud write authority, fencing, detached-device limitations and financial acceptance must be proved under the package work order before production-readiness claims. This implementation does not certify multi-master synchronization.

@@ -1,3 +1,5 @@
+import {planInvoiceAdjustment,billingUnits,billingDecimal,billingRatio} from '../domain/invoice-adjustment-plan.js';
+import type {BillingAdjustmentRequest,InvoiceAdjustmentPlan} from '../domain/billing.js';
 import { createHash } from 'node:crypto';
 import {
   ContractValidationError,
@@ -108,7 +110,7 @@ export interface CreateInvoiceInput {
   sourceType: string;
   sourceId: string;
   controlAccountId: string;
-  lines: { id: string; accountId: string; amount: DecimalAmount; taxCode?: string }[];
+  lines: { id: string; accountId: string; amount: DecimalAmount; taxCode?: string;costCenterId?:string }[];
   deferred?: boolean;
 }
 
@@ -116,8 +118,8 @@ export class BillingSubledgersApplicationService {
   constructor(
     private readonly repo: BillingRepository,
     private readonly tax: Pick<TaxApplicationService, 'snapshotInvoiceLine'>,
-    private readonly fx: Pick<CurrencyFxApplicationService, 'getBaseCurrency' | 'calculateSettlement'>,
-    private readonly gl: Pick<GeneralLedgerApplicationService, 'post' | 'reverse'>,
+    private readonly fx: Pick<CurrencyFxApplicationService, 'getBaseCurrency' | 'calculateSettlement'> & Partial<Pick<CurrencyFxApplicationService,'getCurrency'>>,
+    private readonly gl: Pick<GeneralLedgerApplicationService, 'post' | 'reverse'> & Partial<Pick<GeneralLedgerApplicationService,'getJournal'>>,
   ) {}
 
   /** Narrow AC-08 read contract. The returned value is a snapshot, not a repository entity. */
@@ -147,6 +149,36 @@ export class BillingSubledgersApplicationService {
       status: invoice.status, postingDate: invoice.postingDate, deferred: invoice.deferred === true };
   }
 
+  async getCommercialPosition(companyId:CompanyId,invoiceId:string){
+    const invoice=await this.requiredInvoice(companyId,invoiceId),currency=await this.operationCurrency(invoice),adjustments=(await this.repo.adjustments(companyId,invoiceId)).filter(x=>!x.reversedAt),originalDocument=invoice.lines.reduce((sum,line)=>sum+billingUnits(line.amount)+billingUnits(line.taxAmount??'0'),0n),originalBase=billingUnits(invoice.baseTotal);
+    const chargedBase=adjustments.reduce((sum,x)=>sum+(x.kind==='DEBIT_NOTE'?billingUnits(x.amount):x.kind==='CREDIT_NOTE'?-billingUnits(x.amount):0n),originalBase),chargedDocument=adjustments.reduce((sum,x)=>sum+(x.kind==='DEBIT_NOTE'?1n:x.kind==='CREDIT_NOTE'?-1n:0n)*(x.documentAmount!==undefined?billingUnits(x.documentAmount):billingRatio(billingUnits(x.amount),originalDocument,originalBase,currency.documentPrecision)),originalDocument),outstandingDocument=originalBase?billingRatio(billingUnits(invoice.outstanding),originalDocument,originalBase,currency.documentPrecision):0n;
+    const advances=[] as Advance[];for(const adjustment of adjustments)if(adjustment.advanceId){const advance=await this.repo.advance(companyId,adjustment.advanceId);if(advance&&!advance.reversedAt)advances.push(advance);}
+    return{invoiceId:invoice.id,companyId:invoice.companyId,...(invoice.branchId?{branchId:invoice.branchId}:{}),partyId:invoice.partyId,partyKind:expectedPartyKind(invoice.type),currency:invoice.currency,baseCurrency:currency.baseCurrency,originalDocumentTotal:billingDecimal(originalDocument),charged:billingDecimal(chargedDocument),chargedBase:billingDecimal(chargedBase),outstanding:billingDecimal(outstandingDocument),outstandingBase:invoice.outstanding,settled:billingDecimal(chargedDocument-outstandingDocument),status:invoice.status,pendingFinancialOperation:!!invoice.economicOperationKey,advances:advances.map(x=>({id:x.id,available:x.available,amount:x.amount,baseCurrency:x.baseCurrency??null,...(x.liabilityAccountId?{liabilityAccountId:x.liabilityAccountId}:{})})),activeWriteOffs:adjustments.filter(x=>x.kind==='WRITE_OFF').map(x=>({id:x.id,amount:x.amount}))};
+  }
+  async quoteDocumentCredit(companyId:CompanyId,invoiceId:string,documentAmount:DecimalAmount){
+    const invoice=await this.requiredInvoice(companyId,invoiceId),currency=await this.operationCurrency(invoice),snapshot={invoice,adjustments:await this.repo.adjustments(companyId,invoiceId),...currency},requested=positive(documentAmount),original=invoice.lines.reduce((sum,line)=>sum+billingUnits(line.amount)+billingUnits(line.taxAmount??'0'),0n),position=await this.getCommercialPosition(companyId,invoiceId);
+    if(invoice.status!=='POSTED'||invoice.economicOperationKey||invoice.recognitionReference||position.activeWriteOffs.length)throw new ContractValidationError('invoice','posted charge without pending operation, recognition or unresolved write-off required');
+    if(billingUnits(requested)>billingUnits(position.charged))throw new ContractValidationError('documentAmount','exceeds remaining commercial charge');
+    const baseAmount=requested===position.charged?position.chargedBase:billingDecimal(billingRatio(billingUnits(requested),billingUnits(invoice.baseTotal),original,currency.basePrecision));
+    const planInput:BillingAdjustmentRequest={id:'preview',companyId,invoiceId,kind:'CREDIT_NOTE',amount:baseAmount,documentAmount:requested,offsetAccountId:invoice.lines[0]?.accountId??'',advanceAccountId:'preview-advance',enforceNonNegativeCharge:true,sourceType:'PREVIEW',sourceId:'PREVIEW',postingDate:invoice.postingDate,number:'PREVIEW'};
+    const plan=planInvoiceAdjustment(snapshot,planInput);
+    return{documentAmount:requested,currency:invoice.currency,baseAmount,baseCurrency:currency.baseCurrency,appliedBaseAmount:plan.appliedAmount,refundBaseAmount:plan.advanceAmount,creditableDocumentAmount:position.charged};
+  }
+  async reassignBookingRevenueCostCenter(input:{id:string;companyId:CompanyId;invoiceId:string;costCenterId:string;postingDate:string;number:string;reason:string}){
+    this.validOperationDate(input.postingDate,input.number);if(!input.costCenterId.trim()||input.reason.trim().length<10)throw new ContractValidationError('dimension','cost center and documented reason required');
+    const requestHash=fingerprint(input);let operation=await this.repo.financialOperation(input.companyId,'dimension:'+input.id);
+    if(operation&&operation.requestHash!==requestHash)throw new ContractValidationError('source','conflicting dimension transfer replay');
+    if(!operation){const invoice=await this.requiredInvoice(input.companyId,input.invoiceId);if(invoice.type!=='CUSTOMER'||invoice.deferred||invoice.lines.length!==1||invoice.lines.some(x=>x.taxAmount&&x.taxAmount!=='0'))throw new ContractValidationError('invoice','plain posted customer booking charge required for revenue attribution');const currency=await this.operationCurrency(invoice);operation=await this.repo.reserveFinancialOperation({id:'dimension:'+input.id,companyId:input.companyId,invoiceId:input.invoiceId,kind:'COST_CENTER_TRANSFER',sourceType:'BILLING_REVENUE_DIMENSION',sourceId:input.id,requestHash,...currency});}
+    if(operation.status==='COMPLETED')return operation.result as {invoiceId:string;costCenterId:string;journalId?:string;amount:DecimalAmount};
+    const invoice=operation.snapshot.invoice,accountId=invoice.lines[0]!.accountId;
+    type DimensionPlan={amount:DecimalAmount;fromCostCenterId?:string};let plan=operation.plan as DimensionPlan|undefined;
+    if(!plan){if(!this.gl.getJournal||!invoice.journalId)throw new ContractValidationError('journal','posted journal read provider required');const ids=[invoice.journalId,...operation.snapshot.adjustments.filter(x=>!x.reversedAt).map(x=>x.journalId)];let net=0n;for(const id of ids){const journal=await this.gl.getJournal(input.companyId,id);if(!journal)throw new ContractValidationError('journal','posted owned source journal required');for(const line of journal.lines)if(line.accountId===accountId)net+=billingUnits(line.credit??'0')-billingUnits(line.debit??'0');}const from=invoice.financialDimensions?.currentCostCenterId??invoice.lines[0]?.costCenterId;operation=await this.repo.setFinancialOperationPlan(input.companyId,operation.id,requestHash,{amount:billingDecimal(net),...(from?{fromCostCenterId:from}:{})});plan=operation.plan as DimensionPlan;}
+    let journalId:string|undefined;const value=billingUnits(plan.amount),absolute=billingDecimal(value<0n?-value:value);
+    if(value!==0n&&plan.fromCostCenterId!==input.costCenterId){const source={accountId,...(plan.fromCostCenterId?{costCenterId:plan.fromCostCenterId}:{})},target={accountId,costCenterId:input.costCenterId},journal=await this.gl.post({id:'billing-dimension:'+input.id,companyId:input.companyId,...(invoice.branchId?{branchId:invoice.branchId}:{}),number:input.number,postingDate:input.postingDate,sourceType:'BILLING_REVENUE_DIMENSION',sourceId:input.id,lines:value>0n?[{...source,debit:absolute},{...target,credit:absolute}]:[{...source,credit:absolute},{...target,debit:absolute}]});journalId=journal.id;}
+    const dimensions={currentCostCenterId:input.costCenterId,history:[...(invoice.financialDimensions?.history??[]),{operationId:operation.id,...(plan.fromCostCenterId?{fromCostCenterId:plan.fromCostCenterId}:{}),costCenterId:input.costCenterId,postingDate:input.postingDate,number:input.number,amount:plan.amount,...(journalId?{journalId}:{})}]},result={invoiceId:invoice.id,costCenterId:input.costCenterId,amount:plan.amount,...(journalId?{journalId}:{})};
+    return(await this.repo.completeFinancialOperation({companyId:input.companyId,id:operation.id,requestHash,invoice:{...invoice,financialDimensions:dimensions},result})).result as typeof result;
+  }
+
   /** Billing-owned cancellation evidence; consumers must not infer history from outstanding alone. */
   async getCancellationEvidence(companyId: CompanyId, invoiceId: string) {
     const invoice = await this.requiredInvoice(companyId, invoiceId);
@@ -160,6 +192,12 @@ export class BillingSubledgersApplicationService {
       }
     }
     const advances = await this.repo.advances(companyId, expectedPartyKind(invoice.type), invoice.partyId);
+    // A CREDIT_NOTE can create a customer refund liability even when the originating
+    // receipt allocation has since been reversed. Include only advances generated
+    // by adjustments on this invoice; never pick up another invoice's credit.
+    for (const adjustment of await this.repo.adjustments(companyId, invoiceId)) {
+      if (!adjustment.reversedAt && adjustment.advanceId) relatedAdvanceIds.add(adjustment.advanceId);
+    }
     const relatedAdvances = advances.filter((adv) => relatedAdvanceIds.has(adv.id));
     const hasAvailableAdvance = relatedAdvances.some((value) => !value.reversedAt && scaled18(value.available) > 0n);
     const settlementRequired = activeAllocations.length > 0 || hasAvailableAdvance;
@@ -369,6 +407,7 @@ export class BillingSubledgersApplicationService {
       for (const item of prepared) {
         postings.push({
           accountId: item.line.accountId,
+          ...(item.line.costCenterId?{costCenterId:item.line.costCenterId}:{}),
           debit: item.baseLine,
           ...foreignFields(isForeign, item.line.amount, invoice.currency),
         });
@@ -396,6 +435,7 @@ export class BillingSubledgersApplicationService {
       for (const item of prepared) {
         postings.push({
           accountId: item.line.accountId,
+          ...(item.line.costCenterId?{costCenterId:item.line.costCenterId}:{}),
           credit: item.baseLine,
           ...foreignFields(isForeign, item.line.amount, invoice.currency),
         });
@@ -766,156 +806,33 @@ export class BillingSubledgersApplicationService {
     return reversed;
   }
 
-  async createAdjustment(input: {
-    id: string;
-    companyId: CompanyId;
-    invoiceId: string;
-    kind: 'CREDIT_NOTE' | 'DEBIT_NOTE' | 'WRITE_OFF';
-    amount: DecimalAmount;
-    sourceType: string;
-    sourceId: string;
-    postingDate: string;
-    number: string;
-    offsetAccountId: string;
-  }): Promise<Adjustment> {
-    const amount = positive(input.amount);
-    const normalized = { ...input, amount };
-    const requestHash = fingerprint(normalized);
-    const prior = await this.repo.adjustmentBySource(input.companyId, input.sourceType, input.sourceId);
-    if (prior) {
-      if (prior.requestHash !== requestHash) throw new ContractValidationError('source', 'conflicting replay');
-      return prior;
-    }
-
-    const invoice = await this.requiredInvoice(input.companyId, input.invoiceId);
-    if (invoice.status !== 'POSTED') throw new ContractValidationError('invoice', 'must be posted');
-    if (invoice.recognitionReference) {
-      throw new ContractValidationError('recognition', 'adjustment blocked after recognition started');
-    }
-    if (input.kind === 'WRITE_OFF' && invoice.type !== 'CUSTOMER') {
-      throw new ContractValidationError('writeOff', 'customer receivable required');
-    }
-    if (input.kind === 'WRITE_OFF' && scaled18(amount) > scaled18(invoice.outstanding)) {
-      throw new ContractValidationError('writeOff', 'cannot exceed open receivable');
-    }
-
-    const reducesOutstanding = input.kind !== 'DEBIT_NOTE';
-    const appliedAmount = reducesOutstanding ? minimum(amount, invoice.outstanding) : amount;
-    const advanceAmount = reducesOutstanding ? subtract(amount, appliedAmount) : zero;
-
-    const postings: PostingLine[] =
-      input.kind === 'DEBIT_NOTE'
-        ? [
-            { accountId: invoice.controlAccountId, debit: amount, partyId: invoice.partyId },
-            { accountId: input.offsetAccountId, credit: amount },
-          ]
-        : [
-            { accountId: input.offsetAccountId, debit: amount },
-            { accountId: invoice.controlAccountId, credit: amount, partyId: invoice.partyId },
-          ];
-
-    const journal = await this.gl.post({
-      id: 'billing-adjustment:' + input.id,
-      companyId: input.companyId,
-      ...(invoice.branchId?{branchId:invoice.branchId}:{}),
-      number: input.number,
-      postingDate: input.postingDate,
-      sourceType: 'BILLING_ADJUSTMENT',
-      sourceId: input.id,
-      lines: postings,
-    });
-
-    let advance: Advance | undefined;
-    const adjustment: Adjustment = {
-      ...normalized,
-      appliedAmount,
-      advanceAmount,
-      requestHash,
-      journalId: journal.id,
-    };
-
-    if (scaled18(advanceAmount) > 0n) {
-      advance = {
-        id: 'advance:adjustment:' + input.id,
-        companyId: input.companyId,
-        partyKind: expectedPartyKind(invoice.type),
-        partyId: invoice.partyId,
-        amount: advanceAmount,
-        available: advanceAmount,
-        sourceType: input.sourceType,
-        sourceId: input.sourceId,
-        generatedByAdjustmentId: input.id,
-      };
-      adjustment.advanceId = advance.id;
-    }
-
-    const nextInvoice = {
-      ...invoice,
-      outstanding: reducesOutstanding
-        ? subtract(invoice.outstanding, appliedAmount)
-        : add(invoice.outstanding, appliedAmount),
-    };
-    await this.repo.saveAdjustmentEffect(adjustment, invoice, nextInvoice, advance);
-    return adjustment;
+  private validOperationDate(postingDate:string,number:string){if(typeof postingDate!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(postingDate)||!Number.isFinite(Date.parse(postingDate+'T00:00:00.000Z'))||new Date(postingDate+'T00:00:00.000Z').toISOString().slice(0,10)!==postingDate)throw new ContractValidationError('postingDate','valid ISO date required');if(typeof number!=='string'||!number.trim())throw new ContractValidationError('number','required');}
+  private async operationCurrency(invoice:Invoice){const base=await this.fx.getBaseCurrency(invoice.companyId);if(invoice.currency===base.code)return{baseCurrency:String(base.code),basePrecision:base.precision,documentPrecision:base.precision};if(!this.fx.getCurrency)throw new ContractValidationError('currency','document currency precision provider required');const document=await this.fx.getCurrency(invoice.companyId,currencyCode(invoice.currency));return{baseCurrency:String(base.code),basePrecision:base.precision,documentPrecision:document.precision};}
+  async createAdjustment(input:BillingAdjustmentRequest):Promise<Adjustment>{
+    const amount=positive(input.amount),normalized={...input,amount},requestHash=fingerprint(normalized);this.validOperationDate(input.postingDate,input.number);
+    const prior=await this.repo.adjustmentBySource(input.companyId,input.sourceType,input.sourceId);if(prior){if(prior.requestHash!==requestHash)throw new ContractValidationError('source','conflicting replay');return prior;}
+    let operation=await this.repo.financialOperation(input.companyId,'adjustment:'+input.id);
+    if(operation&&operation.requestHash!==requestHash)throw new ContractValidationError('source','conflicting financial operation replay');
+    if(!operation){const invoice=await this.requiredInvoice(input.companyId,input.invoiceId),currency=await this.operationCurrency(invoice);operation=await this.repo.reserveFinancialOperation({id:'adjustment:'+input.id,companyId:input.companyId,invoiceId:input.invoiceId,kind:'ADJUSTMENT',sourceType:input.sourceType,sourceId:input.sourceId,requestHash,...currency,adjustmentInput:normalized});}
+    if(operation.status==='COMPLETED')return operation.result as Adjustment;
+    const invoice=operation.snapshot.invoice,plan=operation.plan as InvoiceAdjustmentPlan;if(!plan)throw new ContractValidationError('operation','adjustment plan missing');
+    const offset={accountId:input.offsetAccountId,...(plan.costCenterId?{costCenterId:plan.costCenterId}:{})},postings:PostingLine[]=input.kind==='DEBIT_NOTE'?[{accountId:invoice.controlAccountId,debit:plan.amount,partyId:invoice.partyId},{...offset,credit:plan.amount}]:[{...offset,debit:plan.amount},...(plan.appliedAmount!=='0'?[{accountId:invoice.controlAccountId,credit:input.advanceAccountId?plan.appliedAmount:plan.amount,partyId:invoice.partyId}]:!input.advanceAccountId?[{accountId:invoice.controlAccountId,credit:plan.amount,partyId:invoice.partyId}]:[]),...(input.advanceAccountId&&plan.advanceAmount!=='0'?[{accountId:input.advanceAccountId,credit:plan.advanceAmount,partyId:invoice.partyId}]:[])];
+    const journal=await this.gl.post({id:'billing-adjustment:'+input.id,companyId:input.companyId,...(invoice.branchId?{branchId:invoice.branchId}:{}),number:input.number,postingDate:input.postingDate,sourceType:'BILLING_ADJUSTMENT',sourceId:input.id,lines:postings});
+    const advance:Advance|undefined=plan.advanceAmount!=='0'?{id:'advance:adjustment:'+input.id,companyId:input.companyId,partyKind:expectedPartyKind(invoice.type),partyId:invoice.partyId,amount:plan.advanceAmount,available:plan.advanceAmount,sourceType:input.sourceType,sourceId:input.sourceId,generatedByAdjustmentId:input.id,baseCurrency:operation.snapshot.baseCurrency,liabilityAccountId:input.advanceAccountId??invoice.controlAccountId}:undefined;
+    const adjustment:Adjustment={id:input.id,companyId:input.companyId,invoiceId:input.invoiceId,kind:input.kind,amount:plan.amount,appliedAmount:plan.appliedAmount,advanceAmount:plan.advanceAmount,sourceType:input.sourceType,sourceId:input.sourceId,requestHash,journalId:journal.id,...(advance?{advanceId:advance.id}:{}),...(plan.documentAmount?{documentAmount:plan.documentAmount,documentCurrency:plan.documentCurrency}:{}),...(plan.costCenterId?{costCenterId:plan.costCenterId}:{})};
+    const completed=await this.repo.completeFinancialOperation({companyId:input.companyId,id:operation.id,requestHash,invoice:{...invoice,outstanding:plan.outstanding},adjustment,...(advance?{advance}:{}),result:adjustment});return completed.result as Adjustment;
   }
 
-  async reverseAdjustment(
-    companyId: CompanyId,
-    id: string,
-    postingDate: string,
-    number: string,
-  ): Promise<Adjustment> {
-    const adjustment = await this.repo.adjustment(companyId, id);
-    if (!adjustment) throw new ContractValidationError('adjustment', 'not found');
-    if (adjustment.reversedAt) return adjustment;
-
-    const activeAllocations = (await this.repo.allocations(companyId, adjustment.invoiceId)).filter(
-      (value) => !value.reversedAt && scaled18(value.appliedAmount) > 0n,
-    );
-    if (activeAllocations.length > 0) {
-      throw new ContractValidationError('adjustment', 'BLOCKED: active downstream invoice allocations');
-    }
-
-    const generatedAdvance = adjustment.advanceId
-      ? await this.repo.advance(companyId, adjustment.advanceId)
-      : undefined;
-    if (
-      generatedAdvance &&
-      !generatedAdvance.reversedAt &&
-      generatedAdvance.available !== generatedAdvance.amount
-    ) {
-      throw new ContractValidationError('adjustment', 'BLOCKED: generated advance was consumed');
-    }
-
-    await this.gl.reverse(companyId, adjustment.journalId, postingDate, number);
-    const invoice = await this.requiredInvoice(companyId, adjustment.invoiceId);
-    if (invoice.status !== 'POSTED') {
-      throw new ContractValidationError('invoice', 'adjustment reversal requires posted invoice');
-    }
-
-    const nextInvoice = {
-      ...invoice,
-      outstanding:
-        adjustment.kind === 'DEBIT_NOTE'
-          ? subtract(invoice.outstanding, adjustment.appliedAmount)
-          : add(invoice.outstanding, adjustment.appliedAmount),
-    };
-    if (scaled18(nextInvoice.outstanding) < 0n) {
-      throw new ContractValidationError('adjustment', 'BLOCKED: reversal would make outstanding negative');
-    }
-
-    const reversedAt = new Date().toISOString();
-    const reversedAdjustment = { ...adjustment, reversedAt };
-    const reversedAdvance = generatedAdvance
-      ? { ...generatedAdvance, available: zero, reversedAt }
-      : undefined;
-    await this.repo.saveAdjustmentEffect(
-      reversedAdjustment,
-      invoice,
-      nextInvoice,
-      reversedAdvance,
-    );
-    return reversedAdjustment;
+  async reverseAdjustment(companyId:CompanyId,id:string,postingDate:string,number:string):Promise<Adjustment>{
+    this.validOperationDate(postingDate,number);const adjustment=await this.repo.adjustment(companyId,id);if(!adjustment)throw new ContractValidationError('adjustment','not found');if(adjustment.reversedAt)return adjustment;
+    const requestHash=fingerprint({companyId,id,postingDate,number});let operation=await this.repo.financialOperation(companyId,'adjustment-reversal:'+id);
+    if(operation&&operation.requestHash!==requestHash)throw new ContractValidationError('source','conflicting adjustment reversal replay');
+    if(!operation){const invoice=await this.requiredInvoice(companyId,adjustment.invoiceId),currency=await this.operationCurrency(invoice);operation=await this.repo.reserveFinancialOperation({id:'adjustment-reversal:'+id,companyId,invoiceId:invoice.id,kind:'ADJUSTMENT_REVERSAL',sourceType:'BILLING_ADJUSTMENT_REVERSAL',sourceId:id,requestHash,...currency,reversalAdjustmentId:id});}
+    if(operation.status==='COMPLETED')return operation.result as Adjustment;
+    const invoice=operation.snapshot.invoice,original=operation.snapshot.reversedAdjustment;if(!original)throw new ContractValidationError('operation','original adjustment snapshot missing');
+    const nextOutstanding=original.kind==='DEBIT_NOTE'?subtract(invoice.outstanding,original.appliedAmount):add(invoice.outstanding,original.appliedAmount);if(scaled18(nextOutstanding)<0n)throw new ContractValidationError('adjustment','BLOCKED: reversal would make outstanding negative');
+    await this.gl.reverse(companyId,original.journalId,postingDate,number);const reversedAt=new Date().toISOString(),reversed={...original,reversedAt},advance=operation.snapshot.generatedAdvance;
+    const completed=await this.repo.completeFinancialOperation({companyId,id:operation.id,requestHash,invoice:{...invoice,outstanding:nextOutstanding},adjustment:reversed,...(advance?{advance:{...advance,available:zero,reversedAt}}:{}),result:reversed});return completed.result as Adjustment;
   }
 
   async recordRecognitionStarted(companyId: CompanyId, invoiceId: string, reference: string) {
@@ -945,6 +862,76 @@ export class BillingSubledgersApplicationService {
     };
     await this.repo.saveInvoice(value);
     return value;
+  }
+
+  /** Only a credit note from this posted invoice can fund a booking refund. */
+  async reserveBookingCreditRefund(input:{
+    companyId:CompanyId;invoiceId:string;advanceId:string;partyId:string;
+    amount:DecimalAmount;sourceId:string;
+  }) {
+    const invoice=await this.requiredInvoice(input.companyId,input.invoiceId);
+    if(invoice.type!=='CUSTOMER'||invoice.partyId!==input.partyId||invoice.status!=='POSTED')
+      throw new ContractValidationError('invoiceId','posted invoice for this customer required');
+    const adjustments=await this.repo.adjustments(input.companyId,invoice.id);
+    const credit=adjustments.find(v=>v.kind==='CREDIT_NOTE'&&!v.reversedAt&&v.advanceId===input.advanceId);
+    if(!credit)throw new ContractValidationError('advanceId','active credit-note liability from selected invoice required');
+    const advance=await this.getAdvance(input.companyId,input.advanceId);
+    if(advance.generatedByAdjustmentId!==credit.id||advance.partyId!==input.partyId||
+       advance.partyKind!=='CUSTOMER'||!advance.liabilityAccountId)
+      throw new ContractValidationError('advanceId','credit liability ownership and account required');
+    const reserved=await this.reserveAdvanceRefund({
+      companyId:input.companyId,advanceId:input.advanceId,
+      partyKind:'CUSTOMER',partyId:input.partyId,amount:input.amount,sourceId:input.sourceId,
+    });
+    return {...reserved,liabilityAccountId:advance.liabilityAccountId};
+  }
+
+  async reserveAdvanceRefund(input: {
+    companyId: CompanyId; advanceId: string; partyKind: PartyKind; partyId: string;
+    amount: DecimalAmount; sourceId: string;
+  }): Promise<AdvanceConsumption> {
+    const amount = positive(input.amount);
+    if (!input.sourceId.trim()) throw new ContractValidationError('sourceId', 'refund identity required');
+    const sourceType = 'RESERVED_ADVANCE_REFUND';
+    const advance = await this.repo.advance(input.companyId, input.advanceId);
+    if (!advance || advance.partyKind !== input.partyKind || advance.partyId !== input.partyId) {
+      throw new ContractValidationError('advance', 'refund party does not own this advance');
+    }
+    const prior = await this.repo.consumptionBySource(input.companyId, sourceType, input.sourceId);
+    if (prior) {
+      if (prior.advanceId !== input.advanceId || prior.amount !== amount || prior.reversedAt) {
+        throw new ContractValidationError('source', 'conflicting refund reservation replay');
+      }
+      return prior;
+    }
+    if (advance.reversedAt || advance.economicOperationKey || advance.restrictionSourceId) {
+      throw new ContractValidationError('advance', 'advance unavailable for cash refund');
+    }
+    if (!advance.baseCurrency || !advance.liabilityAccountId) {
+      throw new ContractValidationError('advance', 'review historical currency and liability account before cash refund');
+    }
+    if (scaled18(amount) > scaled18(advance.available)) throw new ContractValidationError('amount', 'exceeds available advance');
+    const reservation: AdvanceConsumption = {id: sourceType + ':' + input.sourceId, companyId: input.companyId,
+      advanceId: advance.id, amount, sourceType, sourceId: input.sourceId, status: 'RESERVED'};
+    try {
+      await this.repo.saveAdvanceConsumptionEffect(reservation, advance, {...advance, available: subtract(advance.available, amount)});
+      return reservation;
+    } catch (error) {
+      const concurrent = await this.repo.consumptionBySource(input.companyId, sourceType, input.sourceId);
+      if (concurrent && concurrent.advanceId === advance.id && concurrent.amount === amount && !concurrent.reversedAt) return concurrent;
+      throw error;
+    }
+  }
+
+  async completeAdvanceRefund(input: {
+    companyId: CompanyId; sourceId: string; evidence: NonNullable<AdvanceConsumption['evidence']>;
+  }): Promise<AdvanceConsumption> {
+    const evidence = input.evidence;
+    if (!evidence.voucherId.trim() || !evidence.journalId.trim() || !/^[A-Z]{3}$/.test(evidence.paymentCurrency)) {
+      throw new ContractValidationError('evidence', 'posted cash voucher, journal and currency required');
+    }
+    return this.repo.completeAdvanceConsumption(input.companyId, 'RESERVED_ADVANCE_REFUND', input.sourceId,
+      {...evidence, paymentAmount: positive(evidence.paymentAmount)});
   }
 
   async consumeAdvance(input: {

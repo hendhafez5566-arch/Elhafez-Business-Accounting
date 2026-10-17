@@ -1,3 +1,4 @@
+export interface CommissionClaimOption {id:string;label:string;amount:string;currency:string;status:string;settlement?:{id:string;reason:string;postingDate:string;number:string;releasedAmount:string;currency:string};approvalIntent?:{postingDate:string;number:string};recognitionJournalId?:string;payments:readonly {id:string;status:string;claimAmountApplied:string;paymentCurrency:string;amount:string}[];}
 import { crmGet, crmPost } from './crm-core-client.js';
 
 const base='/accounting/advanced';
@@ -27,9 +28,10 @@ export const advancedAccountingApi={
  reverseNetting:(id:string,input:{postingDate:string;number:string})=>crmPost<AdvancedResult>(base+'/nettings/'+enc(id)+'/reverse',input),
  createExpense:(input:{form:'DIRECT_PAID'|'PREPAID'|'SUPPLIER_PAYABLE'|'CANCELLATION_PENALTY';sourceType:string;sourceId:string;currency:string;amount:string;baseAmount:string;expenseAccountId?:string;prepaidAccountId?:string;billingInvoiceId?:string;approvalRequestId?:string})=>crmPost<AdvancedResult>(base+'/expenses',input),
  payExpense:(id:string,input:{treasuryId:string;paymentCurrency:string;postingDate:string;number:string})=>crmPost<AdvancedResult>(base+'/expenses/'+enc(id)+'/pay',input),
+ commissionClaims:()=>crmGet<CommissionClaimOption[]>(base+'/commissions'),
  createCommission:(input:{agentPartyId:string;sourceType:string;sourceId:string;currency:string;amount:string;baseCarryingAmount:string;expenseAccountId:string;liabilityAccountId:string;approvalRequestId?:string})=>crmPost<AdvancedResult>(base+'/commissions',input),
  approveCommission:(id:string,input:{postingDate:string;number:string})=>crmPost<AdvancedResult>(base+'/commissions/'+enc(id)+'/approve',input),
- payCommission:(id:string,input:{treasuryId:string;amount:string;paymentCurrency:string;postingDate:string;number:string})=>crmPost<AdvancedResult>(base+'/commissions/'+enc(id)+'/pay',input),
+ payCommission:(id:string,input:{paymentId?:string;treasuryId:string;amount:string;paymentCurrency:string;postingDate:string;number:string})=>crmPost<AdvancedResult>(base+'/commissions/'+enc(id)+'/pay',input),
  registerAsset:(input:Record<string,unknown>)=>crmPost<AdvancedResult>(base+'/assets',input),
  depreciateAsset:(id:string,input:{period:number;postingDate:string;number:string})=>crmPost<AdvancedResult>(base+'/assets/'+enc(id)+'/depreciation',input),
  disposeAsset:(input:AssetDisposalInput)=>crmPost<AdvancedResult>(base+'/assets/dispose',input),

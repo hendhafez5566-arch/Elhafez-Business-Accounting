@@ -23,6 +23,12 @@ import type {
 
 export class BillingAdapter implements BillingPort {
   constructor(private readonly billing: BillingSubledgersApplicationService) {}
+  reserveBookingRefund(input:Parameters<BillingPort['reserveBookingRefund']>[0]){
+    return this.billing.reserveBookingCreditRefund(input);
+  }
+  completeBookingRefund(input:Parameters<BillingPort['completeBookingRefund']>[0]){
+    return this.billing.completeAdvanceRefund(input);
+  }
 
   async createBookingInvoice(input: Parameters<BillingPort['createBookingInvoice']>[0]) {
     const draft = await this.billing.createDraft({
@@ -65,7 +71,22 @@ export class BillingAdapter implements BillingPort {
 }
 
 export class TreasuryAdapter implements TreasuryPort {
-  constructor(private readonly treasury: TreasurySettlementApplicationService) {}
+  constructor(private readonly treasury:TreasurySettlementApplicationService) {}
+  quoteCustomerRefund(input:Parameters<TreasuryPort['quoteCustomerRefund']>[0]){
+    return this.treasury.quoteCustomerRefund(input);
+  }
+  postCustomerRefund(input:Parameters<TreasuryPort['postCustomerRefund']>[0]){
+    return this.treasury.postOwnerPayment({
+      id:input.id,companyId:input.companyId,...(input.branchId?{branchId:input.branchId}:{}),
+      treasuryId:input.treasuryId,ownerType:'CUSTOMER_REFUND',ownerId:input.advanceId,
+      partyId:input.partyId,debitPartyId:input.partyId,number:input.number,
+      postingDate:input.postingDate,amount:input.paymentAmount,paymentCurrency:input.paymentCurrency,
+      carryingBaseAmount:input.carryingBaseAmount,settlementBaseAmount:input.carryingBaseAmount,
+      liabilityAccountId:input.liabilityAccountId,
+      ...(input.fxRateId?{fxRateId:input.fxRateId}:{}),
+      ...(input.approvalRequestId?{approvalRequestId:input.approvalRequestId}:{}),
+    });
+  }
 
   postDeposit(input: Parameters<TreasuryPort['postDeposit']>[0]) {
     return this.treasury.postVoucher({
@@ -95,8 +116,18 @@ export class TreasuryAdapter implements TreasuryPort {
 export class CommissionAdapter implements CommissionPort {
   constructor(private readonly expense: ExpenseCommissionRecognitionApplicationService) {}
 
+  plan(companyId:Parameters<NonNullable<CommissionPort['plan']>>[0],currency:string,total:Parameters<NonNullable<CommissionPort['plan']>>[2],agreement:Parameters<NonNullable<CommissionPort['plan']>>[3]) {
+    return this.expense.planCommissionDistribution(companyId,currency,total,agreement);
+  }
+
+  findSettlement(companyId:Parameters<NonNullable<CommissionPort['findSettlement']>>[0],id:string){return this.expense.findCommissionSettlement(companyId,id);}
+  describe(companyId:Parameters<NonNullable<CommissionPort['describe']>>[0],id:string){return this.expense.getCommissionClaim(companyId,id);}
+  settleAgent(input:Parameters<NonNullable<CommissionPort['settleAgent']>>[0]){return this.expense.settleAgentCommissions(input);}
+  validateEmployee(...args:Parameters<NonNullable<CommissionPort['validateEmployee']>>) { return this.expense.describeEmployeeBeneficiary(...args); }
+
   create(input: Parameters<CommissionPort['create']>[0]) {
     return this.expense.createCommissionClaim({
+      ...(input.context?{context:input.context}:{}),...(input.beneficiary?{beneficiary:input.beneficiary}:{}),
       id: input.id,
       companyId: input.companyId,
       ...(input.branchId ? { branchId: input.branchId } : {}),

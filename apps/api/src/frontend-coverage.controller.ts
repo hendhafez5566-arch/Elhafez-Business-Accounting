@@ -1,11 +1,12 @@
+import { PartyRegistryApplicationService,partyId } from '@elhafez/party-registry';
 import { randomUUID } from 'node:crypto';
-import { Body, Controller, Get, Headers, Inject, Param, Post, Query, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Headers, Inject, Param, Post, Query, UnauthorizedException } from '@nestjs/common';
 import { currencyCode, decimalAmount, executionContext, type ExecutionContext } from '@elhafez/contracts';
 import { PLATFORM_CORE_PERMISSIONS, PlatformCoreApplicationService } from '@elhafez/platform-core';
 import { CurrencyFxApplicationService } from '@elhafez/currency-fx';
 import { CostBudgetAccountingApplicationService, costCenterId } from '@elhafez/cost-budget-accounting';
 import { PartyAccountingApplicationService, type PartyRole } from '@elhafez/party-accounting';
-import { ExpenseCommissionRecognitionApplicationService, type ExpenseForm, type RecognitionKind } from '@elhafez/expense-commission-recognition';
+import { CommissionReadApplicationService, ExpenseCommissionRecognitionApplicationService, type ExpenseForm, type RecognitionKind } from '@elhafez/expense-commission-recognition';
 import { AssetsFinancingApplicationService, type RegisterAssetInput } from '@elhafez/assets-financing';
 import type {
   AllocateCapacityInput,
@@ -43,6 +44,8 @@ export class AdvancedAccountingController {
     @Inject(PartyAccountingApplicationService) private readonly parties: PartyAccountingApplicationService,
     @Inject(ExpenseCommissionRecognitionApplicationService) private readonly ecr: ExpenseCommissionRecognitionApplicationService,
     @Inject(AssetsFinancingApplicationService) private readonly assets: AssetsFinancingApplicationService,
+    @Inject(CommissionReadApplicationService) private readonly commissionRead:CommissionReadApplicationService,
+    @Inject(PartyRegistryApplicationService) private readonly partyRegistry:PartyRegistryApplicationService,
   ) {}
 
   private async context(auth?: string, company?: string, branch?: string, operate = false) {
@@ -208,11 +211,21 @@ export class AdvancedAccountingController {
     });
   }
 
+  @Get('commissions')
+  async commissions(@Headers('authorization') auth:string,@Headers('x-company-id') company:string,@Headers('x-branch-id') branch:string){
+    const c=await this.context(auth,company,branch),claims=(await this.commissionRead.listClaims(c.companyId)).filter(x=>x.branchId===c.branchId);
+    return Promise.all(claims.map(async claim=>{
+      const group=claim.settlementId?await this.ecr.getCommissionSettlement(c.companyId,claim.settlementId):undefined,release=group?.claims.find(x=>x.claimId===claim.id);
+      return{id:claim.id,label:(claim.beneficiary?'موظف: '+claim.beneficiary.employeeName+' — '+claim.beneficiary.payeeName:(await this.partyRegistry.getForIntegration(c,partyId(claim.agentPartyId))).displayName),amount:claim.amount,currency:claim.currency,status:claim.status,...(claim.approvalIntent?{approvalIntent:{postingDate:claim.approvalIntent.postingDate,number:claim.approvalIntent.number}}:{}),...(group&&release?{settlement:{id:group.id,reason:group.reason,postingDate:group.postingDate,number:group.number,releasedAmount:release.amount,currency:group.currency}}:{}),payments:claim.payments.map(p=>({id:p.id,status:p.status,claimAmountApplied:p.claimAmountApplied,paymentCurrency:p.paymentCurrency,amount:p.amount})),...(claim.recognitionJournalId?{recognitionJournalId:claim.recognitionJournalId}:{})};
+    }));
+  }
+
   @Post('commissions')
   async createCommission(@Headers('authorization') auth: string, @Headers('x-company-id') company: string, @Headers('x-branch-id') branch: string,
-    @Body() input: { id?: string; agentPartyId: string; sourceType: string; sourceId: string; currency: string; amount: string; baseCarryingAmount: string; expenseAccountId: string; liabilityAccountId: string; approvalRequestId?: string }) {
+    @Body() input: { beneficiary?: {kind:'EMPLOYEE';employeeId:string;partyId:string}; id?: string; agentPartyId: string; sourceType: string; sourceId: string; currency: string; amount: string; baseCarryingAmount: string; expenseAccountId: string; liabilityAccountId: string; approvalRequestId?: string }) {
     const c = await this.context(auth, company, branch, true);
     return this.ecr.createCommissionClaim({
+      context: c, ...(input.beneficiary ? {beneficiary:input.beneficiary} : {}),
       id: input.id?.trim() || randomUUID(), companyId: c.companyId, branchId: c.branchId, agentPartyId: input.agentPartyId,
       sourceType: input.sourceType, sourceId: input.sourceId, currency: input.currency, amount: decimalAmount(input.amount),
       baseCarryingAmount: decimalAmount(input.baseCarryingAmount), expenseAccountId: input.expenseAccountId, liabilityAccountId: input.liabilityAccountId,
@@ -225,6 +238,7 @@ export class AdvancedAccountingController {
   async approveCommission(@Headers('authorization') auth: string, @Headers('x-company-id') company: string, @Headers('x-branch-id') branch: string, @Param('id') id: string,
     @Body() input: { postingDate: string; number: string }) {
     const c = await this.context(auth, company, branch, true);
+    if((await this.ecr.getCommissionClaim(c.companyId,id)).branchId!==c.branchId)throw new ForbiddenException('claim in current branch required');
     return this.ecr.approveCommission(c.companyId, id, input.postingDate, input.number);
   }
 
@@ -232,6 +246,7 @@ export class AdvancedAccountingController {
   async payCommission(@Headers('authorization') auth: string, @Headers('x-company-id') company: string, @Headers('x-branch-id') branch: string, @Param('id') id: string,
     @Body() input: { paymentId?: string; treasuryId: string; amount: string; paymentCurrency: string; postingDate: string; number: string }) {
     const c = await this.context(auth, company, branch, true);
+    if((await this.ecr.getCommissionClaim(c.companyId,id)).branchId!==c.branchId)throw new ForbiddenException('claim in current branch required');
     return this.ecr.payCommission({
       companyId: c.companyId, claimId: id, paymentId: input.paymentId?.trim() || randomUUID(), treasuryId: input.treasuryId,
       amount: decimalAmount(input.amount), paymentCurrency: input.paymentCurrency, postingDate: input.postingDate, number: input.number,

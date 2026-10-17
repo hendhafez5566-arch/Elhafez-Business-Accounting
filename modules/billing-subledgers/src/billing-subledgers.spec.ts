@@ -37,6 +37,7 @@ function fixture() {
       isBase: true,
       status: 'ACTIVE' as const,
     }),
+    getCurrency:async(_companyId:unknown,code:string)=>({companyId:company,code:currencyCode(code),precision:2,isBase:code==='EGP',status:'ACTIVE' as const}),
     calculateSettlement: async (_companyId: unknown, source: any, to: any, at: string) => ({
       converted: money(
         source.currency === 'USD'
@@ -57,10 +58,12 @@ function fixture() {
   };
   const gl = {
     post: async (input: any) => {
+      const prior=journals.find(value=>value.id===input.id);if(prior){assert.deepEqual(prior,input);return prior;}
       journals.push(input);
       return { ...input, lines: input.lines };
     },
     reverse: async (_companyId: unknown, id: string) => ({ id: 'reverse:' + id }),
+    getJournal:async(_companyId:unknown,id:string)=>journals.find(value=>value.id===id),
   };
   return {
     repository,
@@ -564,4 +567,117 @@ test('explicit posted invoice settlement never redirects to an older party invoi
  assert.deepEqual(result.allocations.map(x=>x.invoiceId),['selected']);
  assert.equal(await f.service.invoiceOutstanding(company,'older'),'100');
  assert.equal(await f.service.invoiceOutstanding(company,'selected'),'50');
+});
+
+
+const coreCredit=(overrides:Partial<Parameters<BillingSubledgersApplicationService['createAdjustment']>[0]>={})=>({id:'core-credit',companyId:company,invoiceId:'i1',kind:'CREDIT_NOTE' as const,amount:amount('400'),documentAmount:amount('400'),sourceType:'BOOKING_PARTIAL_CANCELLATION',sourceId:'cancel-one-traveler',postingDate:'2026-09-22',number:'CREDIT',offsetAccountId:'revenue',advanceAccountId:'customer-advance',enforceNonNegativeCharge:true,reason:'Reviewed cancellation of one traveler',...overrides});
+
+test('individual cancellation credit splits receivable and refundable advance while preserving invoice and receipt history',async()=>{
+ const f=fixture();await f.service.createDraft(invoice({lines:[{id:'l1',accountId:'revenue',amount:amount('400'),costCenterId:'old-program'}]}));await f.service.postInvoice(company,'i1');await f.service.applyAllocation({id:'received-250',companyId:company,partyKind:'CUSTOMER',partyId:'party',invoiceId:'i1',amount:amount('250'),sourceType:'RECEIPT',sourceId:'cash-250'});
+ const original=(await f.service.getInvoice(company,'i1'))!,credit=await f.service.createAdjustment(coreCredit());assert.equal(credit.appliedAmount,'150');assert.equal(credit.advanceAmount,'250');
+ assert.deepEqual(f.journals.at(-1).lines,[{accountId:'revenue',costCenterId:'old-program',debit:'400'},{accountId:'ar',credit:'150',partyId:'party'},{accountId:'customer-advance',credit:'250',partyId:'party'}]);
+ const position=await f.service.getCommercialPosition(company,'i1');assert.equal(position.charged,'0');assert.equal(position.outstanding,'0');assert.equal(position.advances[0]?.available,'250');assert.equal(position.advances[0]?.baseCurrency,'EGP');assert.equal(position.advances[0]?.liabilityAccountId,'customer-advance');assert.equal((await f.service.getInvoice(company,'i1'))?.journalId,original.journalId);assert.equal((await f.service.getInvoice(company,'i1'))?.lines[0]?.amount,'400');assert.equal((await f.repository.allocations(company,'i1')).length,1);
+ await f.service.consumeAdvance({companyId:company,advanceId:credit.advanceId!,amount:amount('100'),sourceType:'CUSTOMER_CANCELLATION_FEE',sourceId:'reviewed-fee'});await f.service.createAdjustment(coreCredit());assert.equal((await f.repository.advance(company,credit.advanceId!))?.available,'150');assert.equal(f.journals.length,2);
+});
+
+test('pending credit retains its planned carrying split and blocks concurrent receipts until owner completion resumes',async()=>{
+ const f=fixture();await f.service.createDraft(invoice());await f.service.postInvoice(company,'i1');const complete=f.repository.completeFinancialOperation.bind(f.repository);let fail=true;f.repository.completeFinancialOperation=async input=>{if(fail){fail=false;throw Error('lost local completion');}return complete(input);};
+ const input=coreCredit({amount:amount('60'),documentAmount:amount('60')});await assert.rejects(f.service.createAdjustment(input),/lost local completion/);assert.ok((await f.service.getInvoice(company,'i1'))?.economicOperationKey);assert.equal((await f.service.getInvoice(company,'i1'))?.outstanding,'100');
+ await assert.rejects(f.service.applyAllocation({id:'late-cash',companyId:company,partyKind:'CUSTOMER',partyId:'party',invoiceId:'i1',amount:amount('1'),sourceType:'RECEIPT',sourceId:'late-cash'}),/concurrency|pending|changed/);assert.equal((await f.repository.allocations(company,'i1')).length,0);
+ await f.service.createAdjustment(input);assert.equal(f.journals.length,2);assert.equal((await f.service.getInvoice(company,'i1'))?.outstanding,'40');assert.equal((await f.service.getInvoice(company,'i1'))?.economicOperationKey,undefined);
+});
+
+test('lost credit completion reply does not recreate a consumed refund advance',async()=>{
+ const f=fixture();await f.service.createDraft(invoice());await f.service.postInvoice(company,'i1');await f.service.applyAllocation({id:'full-cash',companyId:company,partyKind:'CUSTOMER',partyId:'party',invoiceId:'i1',amount:amount('100'),sourceType:'RECEIPT',sourceId:'full-cash'});
+ const complete=f.repository.completeFinancialOperation.bind(f.repository);let fail=true;f.repository.completeFinancialOperation=async input=>{const result=await complete(input);if(fail){fail=false;throw Error('lost completion acknowledgement');}return result;};const input=coreCredit({amount:amount('100'),documentAmount:amount('100')});await assert.rejects(f.service.createAdjustment(input),/lost completion acknowledgement/);
+ const advance=(await f.repository.advances(company,'CUSTOMER','party'))[0]!;await f.service.consumeAdvance({companyId:company,advanceId:advance.id,amount:amount('25'),sourceType:'CUSTOMER_CANCELLATION_FEE',sourceId:'fee-after-credit'});await f.service.createAdjustment(input);assert.equal((await f.repository.advance(company,advance.id))?.available,'75');assert.equal(f.journals.length,2);
+});
+
+test('program revenue transfer moves only net recognized revenue and later credit follows the current program',async()=>{
+ const f=fixture();await f.service.createDraft(invoice({lines:[{id:'l1',accountId:'revenue',amount:amount('100'),costCenterId:'old-program'}]}));await f.service.postInvoice(company,'i1');
+ const transfer={id:'transfer-one',companyId:company,invoiceId:'i1',costCenterId:'new-program',postingDate:'2026-09-22',number:'MOVE',reason:'Customer requested another program'};await f.service.reassignBookingRevenueCostCenter(transfer);await f.service.reassignBookingRevenueCostCenter(transfer);assert.equal(f.journals.length,2);assert.deepEqual(f.journals[1].lines,[{accountId:'revenue',costCenterId:'old-program',debit:'100'},{accountId:'revenue',costCenterId:'new-program',credit:'100'}]);assert.equal((await f.service.getInvoice(company,'i1'))?.lines[0]?.costCenterId,'old-program');
+ await f.service.createAdjustment(coreCredit({amount:amount('30'),documentAmount:amount('30')}));assert.equal(f.journals.at(-1).lines[0].costCenterId,'new-program');
+ await f.service.reassignBookingRevenueCostCenter({...transfer,id:'transfer-two',costCenterId:'third-program',number:'MOVE-2'});assert.deepEqual(f.journals.at(-1).lines,[{accountId:'revenue',costCenterId:'new-program',debit:'70'},{accountId:'revenue',costCenterId:'third-program',credit:'70'}]);assert.equal((await f.service.getCommercialPosition(company,'i1')).charged,'70');assert.equal((await f.service.getInvoice(company,'i1'))?.financialDimensions?.history.length,2);
+ await assert.rejects(f.service.reverseAdjustment(company,'core-credit','2026-09-22','UNSAFE-REVERSAL'),/current-center|transferred/);
+});
+
+test('foreign document credit retains historical carrying and exposes base-currency refund liability',async()=>{
+ const f=fixture();await f.service.createDraft(invoice({currency:'USD'}));await f.service.postInvoice(company,'i1');await f.service.applyAllocation({id:'foreign-paid',companyId:company,partyKind:'CUSTOMER',partyId:'party',invoiceId:'i1',amount:amount('5000'),sourceType:'RECEIPT',sourceId:'foreign-paid'});
+ const quote=await f.service.quoteDocumentCredit(company,'i1',amount('40'));assert.equal(quote.baseAmount,'2000');assert.equal(quote.refundBaseAmount,'2000');assert.equal(quote.currency,'USD');assert.equal(quote.baseCurrency,'EGP');
+ await f.service.createAdjustment(coreCredit({amount:amount('2000'),documentAmount:amount('40')}));const position=await f.service.getCommercialPosition(company,'i1');assert.equal(position.charged,'60');assert.equal(position.outstanding,'0');assert.equal(position.advances[0]?.available,'2000');assert.equal(position.advances[0]?.baseCurrency,'EGP');
+});
+
+test('two competing cancellation credits cannot exceed the original commercial charge',async()=>{
+ const f=fixture();await f.service.createDraft(invoice());await f.service.postInvoice(company,'i1');const first=coreCredit({amount:amount('80'),documentAmount:amount('80')}),second={...first,id:'competing-credit',sourceId:'competing-cancellation'};const results=await Promise.allSettled([f.service.createAdjustment(first),f.service.createAdjustment(second)]);assert.equal(results.filter(x=>x.status==='fulfilled').length,1);assert.equal((await f.service.getCommercialPosition(company,'i1')).charged,'20');assert.equal((await f.service.getInvoice(company,'i1'))?.outstanding,'20');assert.equal(f.journals.length,2);
+ await assert.rejects(f.service.createAdjustment(results[0]?.status==='fulfilled'?second:first),/exceeds/);assert.equal((await f.service.getInvoice(company,'i1'))?.economicOperationKey,undefined);
+});
+
+test('an unresolved write-off cannot be converted into cash refund credit',async()=>{
+ const f=fixture();await f.service.createDraft(invoice());await f.service.postInvoice(company,'i1');await f.service.createAdjustment({id:'writeoff',companyId:company,invoiceId:'i1',kind:'WRITE_OFF',amount:amount('20'),sourceType:'WRITE_OFF',sourceId:'writeoff',postingDate:'2026-09-22',number:'WRITE-OFF',offsetAccountId:'bad-debt'});
+ await assert.rejects(f.service.createAdjustment(coreCredit({amount:amount('90'),documentAmount:amount('90')})),/write-off/);assert.equal((await f.service.getInvoice(company,'i1'))?.economicOperationKey,undefined);assert.equal(f.journals.length,2);
+ await f.service.reverseAdjustment(company,'writeoff','2026-09-22','REVERSE-WRITEOFF');await f.service.createAdjustment(coreCredit({amount:amount('90'),documentAmount:amount('90')}));assert.equal((await f.service.getCommercialPosition(company,'i1')).charged,'10');assert.equal((await f.service.getInvoice(company,'i1'))?.outstanding,'10');
+});
+
+test('refund installments reserve before cash, retain unknown-outcome reservations and finalize without consuming twice', async () => {
+ const f=fixture(); await f.service.createDraft(invoice()); await f.service.postInvoice(company,'i1');
+ await f.service.applyAllocation({id:'refund-funding',companyId:company,partyKind:'CUSTOMER',partyId:'party',invoiceId:'i1',amount:amount('100'),sourceType:'RECEIPT',sourceId:'refund-funding'});
+ const credit=await f.service.createAdjustment(coreCredit({amount:amount('100'),documentAmount:amount('100')}));
+ const command={companyId:company,advanceId:credit.advanceId!,partyKind:'CUSTOMER' as const,partyId:'party',amount:amount('60'),sourceId:'installment-one'};
+ const reserved=await f.service.reserveAdvanceRefund(command); assert.equal(reserved.status,'RESERVED');
+ assert.equal((await f.repository.advance(company,credit.advanceId!))?.available,'40');
+ assert.deepEqual(await f.service.reserveAdvanceRefund(command),reserved);
+ await assert.rejects(f.service.reserveAdvanceRefund({...command,sourceId:'competing-installment'}),/exceeds/);
+ await assert.rejects(f.service.reserveAdvanceRefund({...command,partyId:'another-family'}),/own/);
+ await assert.rejects(f.service.reserveAdvanceRefund({...command,amount:amount('50')}),/conflicting/);
+ const evidence={voucherId:'usd-voucher',journalId:'cash-journal',paymentCurrency:'USD',paymentAmount:amount('1.2'),fxRateId:'historical-50'};
+ const completed=await f.service.completeAdvanceRefund({companyId:company,sourceId:command.sourceId,evidence});
+ assert.equal(completed.status,'POSTED');assert.deepEqual(completed.evidence,evidence);
+ assert.deepEqual(await f.service.completeAdvanceRefund({companyId:company,sourceId:command.sourceId,evidence}),completed);
+ await assert.rejects(f.service.completeAdvanceRefund({companyId:company,sourceId:command.sourceId,evidence:{...evidence,voucherId:'different-cash'}}),/conflicting/);
+ await f.service.reserveAdvanceRefund({...command,amount:amount('40'),sourceId:'installment-two'});
+ assert.equal((await f.repository.advance(company,credit.advanceId!))?.available,'0');
+ assert.equal((await f.service.reserveAdvanceRefund(command)).status,'POSTED');
+ assert.equal(f.journals.length,2);
+});
+
+test('legacy advances without verified carrying currency cannot fund a new cash refund', async () => {
+ const f=fixture();await f.repository.saveAdvance({id:'legacy',companyId:company,partyKind:'CUSTOMER',partyId:'party',amount:amount('50'),available:amount('50'),sourceType:'LEGACY',sourceId:'legacy'});
+ await assert.rejects(f.service.reserveAdvanceRefund({companyId:company,advanceId:'legacy',partyKind:'CUSTOMER',partyId:'party',amount:amount('10'),sourceId:'unsafe-currency-guess'}),/historical currency/);
+ assert.equal((await f.repository.advance(company,'legacy'))?.available,'50');assert.equal(f.repository.consumptionValues.length,0);
+});
+
+test('cancellation blockers include refund credit notes only for their own invoice', async () => {
+ const f=fixture();
+ await f.service.createDraft(invoice());
+ await f.service.postInvoice(company,'i1');
+ await f.service.createDraft(invoice({id:'i2',sourceId:'o2',number:'INV-2'}));
+ await f.service.postInvoice(company,'i2');
+ await f.service.applyAllocation({id:'credit-cash',companyId:company,partyKind:'CUSTOMER',partyId:'party',invoiceId:'i1',amount:amount('100'),sourceType:'RECEIPT',sourceId:'credit-cash'});
+ const credit=await f.service.createAdjustment(coreCredit({amount:amount('100'),documentAmount:amount('100')}));
+ assert.equal((await f.service.getCancellationEvidence(company,'i1')).hasAvailableAdvance,true);
+ assert.equal((await f.service.getCancellationEvidence(company,'i1')).settlementRequired,true);
+ assert.equal((await f.service.getCancellationEvidence(company,'i2')).hasAvailableAdvance,false);
+ await f.service.reserveAdvanceRefund({companyId:company,advanceId:credit.advanceId!,partyKind:'CUSTOMER',partyId:'party',amount:amount('100'),sourceId:'credit-refund'});
+ assert.equal((await f.service.getCancellationEvidence(company,'i1')).hasAvailableAdvance,false);
+ assert.equal((await f.service.getCancellationEvidence(company,'i1')).settlementRequired,true);
+});
+
+test('booking credit refund may spend only its own customer invoice credit',async()=>{
+  const f=fixture();
+  await f.service.createDraft(invoice());
+  await f.service.postInvoice(company,'i1');
+  await f.service.createDraft(invoice({id:'i2',number:'INV-2',sourceId:'o2'}));
+  await f.service.postInvoice(company,'i2');
+  await f.service.applyAllocation({id:'cash-100',companyId:company,partyKind:'CUSTOMER',
+    partyId:'party',invoiceId:'i1',amount:amount('100'),sourceType:'RECEIPT',sourceId:'cash-100'});
+  const credit=await f.service.createAdjustment(coreCredit({amount:amount('100'),documentAmount:amount('100')}));
+  const command={companyId:company,invoiceId:'i1',advanceId:credit.advanceId!,
+    partyId:'party',amount:amount('60'),sourceId:'credit-installment-1'};
+  await assert.rejects(()=>f.service.reserveBookingCreditRefund({...command,invoiceId:'i2'}),/credit-note liability/);
+  await assert.rejects(()=>f.service.reserveBookingCreditRefund({...command,partyId:'other'}),/posted invoice/);
+  const reservation=await f.service.reserveBookingCreditRefund(command);
+  assert.equal(reservation.liabilityAccountId,'customer-advance');
+  assert.equal((await f.service.reserveBookingCreditRefund(command)).id,reservation.id);
+  assert.equal((await f.repository.advance(company,credit.advanceId!))?.available,'40');
+  await assert.rejects(()=>f.service.reserveBookingCreditRefund({...command,sourceId:'other-installment',amount:amount('60')}),/exceeds/);
 });

@@ -7,7 +7,7 @@ export interface FollowupDraft {
  readonly nextAction:string;
 }
 export interface DraftScope { readonly companyId:string; readonly branchId:string; readonly userId:string; }
-interface StoredDraft { readonly id:string; readonly salt:Uint8Array<ArrayBuffer>; readonly iv:Uint8Array<ArrayBuffer>; readonly ciphertext:ArrayBuffer; readonly operationId?:string; }
+import { encryptRecord, decryptRecord, type EncryptedLocalRecord as StoredDraft } from './encrypted-local-record.js';
 const databaseName='elhafez.followup-drafts.v1';
 const storeName='drafts';
 const headStore='submissionHeads';
@@ -46,28 +46,10 @@ async function writeRecord(id:string,value?:StoredDraft):Promise<void> {
   tx.onerror=()=>reject(new Error('لم تُحفظ التغييرات على الجهاز. تحقق من مساحة التخزين.'));
  });}catch(error){throw new Error('لم تُحفظ التغييرات على الجهاز. تحقق من مساحة التخزين.',{cause:error});}finally{db.close();}
 }
-async function deriveKey(secret:string,salt:Uint8Array<ArrayBuffer>) {
- if(secret.length<12)throw new Error('استخدم عبارة حماية للمسودة من ١٢ حرفًا على الأقل.');
- const material=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret),'PBKDF2',false,['deriveKey']);
- return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:150000,hash:'SHA-256'},material,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);
-}
 function validDraft(value:unknown):value is FollowupDraft {
  if(!value||typeof value!=='object')return false;
  const item=value as Partial<FollowupDraft>;
  return typeof item.leadId==='string'&&typeof item.responsibleUserId==='string'&&typeof item.scheduledAt==='string'&&typeof item.nextAction==='string'&&typeof item.interactionType==='string'&&['CALL','WHATSAPP','MEETING','EMAIL','OTHER'].includes(item.interactionType);
-}
-async function encryptRecord(id:string,secret:string,value:unknown,operationId?:string):Promise<StoredDraft> {
- const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));
- const key=await deriveKey(secret,salt);
- const ciphertext=await crypto.subtle.encrypt({name:'AES-GCM',iv,additionalData:new TextEncoder().encode(id)},key,new TextEncoder().encode(JSON.stringify(value)));
- return {id,salt,iv,ciphertext,...operationId?{operationId}:{}};
-}
-async function decryptRecord(record:StoredDraft,secret:string):Promise<unknown> {
- const key=await deriveKey(secret,record.salt);
- try{
-  const plaintext=await crypto.subtle.decrypt({name:'AES-GCM',iv:record.iv,additionalData:new TextEncoder().encode(record.id)},key,record.ciphertext);
-  return JSON.parse(new TextDecoder().decode(plaintext)) as unknown;
- }catch{throw new Error('تعذر فتح المسودة. راجع عبارة الحماية؛ وقد تكون البيانات المحلية تالفة.');}
 }
 export async function saveFollowupDraft(scope:DraftScope,secret:string,draft:FollowupDraft):Promise<void> {
  if(!validDraft(draft))throw new Error('بيانات المسودة غير صالحة.');

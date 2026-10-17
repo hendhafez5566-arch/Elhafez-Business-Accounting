@@ -1,6 +1,7 @@
+import { distributeCommission } from '@elhafez/expense-commission-recognition';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { companyId, decimalAmount, sourceReference } from '@elhafez/contracts';
+import { ContractValidationError, companyId, decimalAmount, executionContext, sourceReference } from '@elhafez/contracts';
 import { TourismFinanceOrchestrationApplicationService, type ConfirmBookingInput } from './application/tourism-finance-orchestration.application-service.js';
 import { InMemoryTourismFinanceRepository } from './infrastructure/in-memory-tourism-finance.repository.js';
 import { PrismaTourismFinanceRepository } from './infrastructure/prisma-tourism-finance.repository.js';
@@ -11,20 +12,36 @@ import type { BillingPort, CommissionPort, ControlsPort, CostPort, InventoryPort
 const company = companyId('company-a'); const other = companyId('company-b'); const booking = sourceReference('TOURISM_BOOKING', 'booking-1'); const program = sourceReference('TOURISM_PROGRAM', 'program-1');
 class FailingRepository extends InMemoryTourismFinanceRepository { failStep?: string; failed = false; override async completeStep(companyId: typeof company, id: string, ownerReference: string | undefined, result: unknown) { const step = [...this.steps.values()].find((item) => item.id === id); if (!this.failed && step?.name === this.failStep) { this.failed = true; throw new Error('local completion failure'); } return super.completeStep(companyId, id, ownerReference, result); } }
 function fixture(repo = new FailingRepository()) {
-  const calls = { invoice: 0, deposit: 0, commission: 0, release: 0, allocation: 0, cost: 0, cleanup: 0, cancelInvoice: 0, servicePo: 0 }; let paid = false; let historical = false; let commissionPaid = false; let inventoryBlocked = false; let approval = true; let costLinked = true; let procurementSequence: Array<'NONE' | 'SUPPLIER_EXECUTION' | 'SUPPLIER_INVOICE'> = ['NONE']; const procurementFallbacks = new Map<string, string>(); let standalonePlan: StandaloneSupplyPlan | null = null; const effects = new Set<string>();
+  const allocationKeys:string[]=[];const claims:Array<{id:string;partyId:string;amount:string;beneficiary?:{kind:'EMPLOYEE';employeeId:string;partyId:string}}>=[],reversals:string[]=[];
+  const calls = { invoice: 0, deposit: 0, commission: 0, release: 0, allocation: 0, cost: 0, cleanup: 0, cancelInvoice: 0, servicePo: 0, refundReserve: 0, refundCash: 0, refundFinalize: 0 }; let paid = false; let historical = false; let commissionPaid = false; let inventoryBlocked = false; let approval = true; let costLinked = true; let procurementSequence: Array<'NONE' | 'SUPPLIER_EXECUTION' | 'SUPPLIER_INVOICE'> = ['NONE']; const procurementFallbacks = new Map<string, string>(); let standalonePlan: StandaloneSupplyPlan | null = null; const effects = new Set<string>();
   const once = (key: string, field: keyof typeof calls) => { if (!effects.has(key)) { effects.add(key); calls[field]++; } };
-  const billing: BillingPort = { async createServiceInvoice(input) { once(input.id, 'invoice'); return { id: input.id }; }, async createBookingInvoice(input) { once(input.id, 'invoice'); return { id: input.id }; }, async cancellationEvidence() { return { hasHistoricalAllocationEvidence: historical, activeAllocationIds: paid ? ['allocation-payment'] : [], hasAvailableAdvance: false, settlementRequired: paid, cancellationSafe: !paid, outstanding: decimalAmount(paid ? '0' : '100') }; }, async cancelInvoice(_company, id) { once(`cancel:${id}`, 'cancelInvoice'); return { id }; } };
-  const treasury: TreasuryPort = { async postDeposit(input) { once(input.id, 'deposit'); paid = true; historical = true; return { id: input.id }; }, async reverseDeposit(_company, id) { paid = false; return { id }; } };
-  const commission: CommissionPort = { async createServiceCommission(input) { once(input.id, 'commission'); return { id: input.id }; }, async create(input) { once(input.id, 'commission'); return { id: input.id }; }, async evidence() { return { hasPostedPaymentHistory: commissionPaid, reversible: !commissionPaid }; }, async reverse(_company, id) { return { id }; } };
+  const billing: BillingPort = {
+    async reserveBookingRefund(input) {
+      once('reserve:'+input.sourceId,'refundReserve');
+      return{id:'reservation:'+input.sourceId,liabilityAccountId:'customer-advance',status:'RESERVED'};
+    },
+    async completeBookingRefund(input) {
+      once('finalize:'+input.sourceId,'refundFinalize');
+      return{id:'reservation:'+input.sourceId,status:'POSTED'};
+    },
+    async createServiceInvoice(input) { once(input.id, 'invoice'); return { id: input.id }; }, async createBookingInvoice(input) { once(input.id, 'invoice'); return { id: input.id }; }, async cancellationEvidence() { return { hasHistoricalAllocationEvidence: historical, activeAllocationIds: paid ? ['allocation-payment'] : [], hasAvailableAdvance: false, settlementRequired: paid, cancellationSafe: !paid, outstanding: decimalAmount(paid ? '0' : '100') }; }, async cancelInvoice(_company, id) { once(`cancel:${id}`, 'cancelInvoice'); return { id }; } };
+  const treasury: TreasuryPort = {
+    async quoteCustomerRefund(input){return{baseAmount:input.paymentAmount};},
+    async postCustomerRefund(input){
+      once('cash:'+input.id,'refundCash');
+      return{id:input.id,journalId:'refund-journal:'+input.id,currency:input.paymentCurrency,amount:input.paymentAmount};
+    },
+    async postDeposit(input) { once(input.id, 'deposit'); paid = true; historical = true; return { id: input.id }; }, async reverseDeposit(_company, id) { paid = false; return { id }; } };
+  const commission: CommissionPort = {async validateEmployee(_context,employeeId,partyId){if(employeeId!=='staff'||partyId!=='staff-payee')throw Error('invalid employee identity');return{};},async plan(_c,_currency,total,agreement){const snapshot={...agreement,precision:2};return{snapshot,roundingPolicy:'PRINCIPAL_DOWN_SUBORDINATE_REMAINDER_V1',shares:distributeCommission(total,snapshot)};}, async createServiceCommission(input) { once(input.id, 'commission'); return { id: input.id }; }, async create(input) { if(!claims.some(x=>x.id===input.id))claims.push({id:input.id,partyId:input.agentPartyId,amount:input.amount,...(input.beneficiary?{beneficiary:input.beneficiary}:{})});once(input.id, 'commission'); return { id: input.id }; }, async evidence() { return { hasPostedPaymentHistory: commissionPaid, reversible: !commissionPaid }; }, async reverse(_company, id) { if(!reversals.includes(id))reversals.push(id);return { id }; } };
   const cost: CostPort = { async ensureProgram(_company, _program, id) { return { costCenterId: id }; }, async resolveProgram() { if (!costLinked) throw new Error('missing'); return { costCenterId: 'cc-1' }; }, async actualize(input) { once(input.id, 'cost'); return { id: input.id }; } };
-  const inventory: InventoryPort = { async standalonePlan() { return standalonePlan; }, async commitStandalone(_input, key) { once(key, 'allocation'); return { planId: standalonePlan?.planId ?? 'plan-1', version: 1, allocationIds: ['allocation-1'], residuals: standalonePlan?.residuals ?? [] }; }, async allocation() { return null; }, async allocate(input) { once(`inventory:${input.allocationId}`, 'allocation'); const procurementReference = procurementFallbacks.get(input.allocationId); return procurementReference ? { procurementReference } : { allocationId: input.allocationId }; }, async blockers() { return inventoryBlocked ? [{ type: 'FINANCIAL_HISTORY' }] : []; }, async release(_company, id, _quantity, key) { once(`release:${key}`, 'release'); return { success: true, id }; } };
+  const inventory: InventoryPort = { async standalonePlan() { return standalonePlan; }, async commitStandalone(_input, key) { once(key, 'allocation'); return { planId: standalonePlan?.planId ?? 'plan-1', version: 1, allocationIds: ['allocation-1'], residuals: standalonePlan?.residuals ?? [] }; }, async allocation() { return null; }, async allocate(input,key) { allocationKeys.push(key);once(`inventory:${input.allocationId}`, 'allocation'); const procurementReference = procurementFallbacks.get(input.allocationId); return procurementReference ? { procurementReference } : { allocationId: input.allocationId }; }, async blockers() { return inventoryBlocked ? [{ type: 'FINANCIAL_HISTORY' }] : []; }, async release(_company, id, _quantity, key) { once(`release:${key}`, 'release'); return { success: true, id }; } };
   const procurement: ProcurementPort = { async createServicePurchaseOrder(input) { once(input.id, 'servicePo'); return { id: input.id }; }, async cancelServicePurchaseOrder(_company, id) { return { id }; }, async blockers() { const value = procurementSequence.length > 1 ? procurementSequence.shift()! : procurementSequence[0]!; return value === 'NONE' ? [] : [{ type: value, purchaseOrderId: 'po-1', lineId: 'line-1' }]; }, async cleanupForProgramCancellation(_company, reference) { once(`cleanup:${reference.purchaseOrderId ?? reference.commitmentId}`, 'cleanup'); return { id: reference.purchaseOrderId ?? reference.commitmentId!, status: 'CANCELLED' }; } };
   const controls: ControlsPort = { async authorizeServiceDiscount() { if (!approval) throw new Error('denied'); }, async authorizeDiscount() { if (!approval) throw new Error('denied'); }, async approvalResolved() { return approval; } };
   const create = () => new TourismFinanceOrchestrationApplicationService(repo, billing, treasury, commission, cost, inventory, procurement, controls); const service = create();
   const setup = () => service.configureFinancialSetup({ id: 'setup-hotel', companyId: company, category: 'HOTEL', receivableAccountId: 'ar', customerAdvanceAccountId: 'advance', revenueAccountId: 'revenue', costAccountId: 'cost', commissionExpenseAccountId: 'commission-expense', commissionLiabilityAccountId: 'commission-payable', active: true });
   const base: ConfirmBookingInput = { companyId: company, branchId: 'branch-1', commandKey: 'confirm-1', booking, program, programState: 'OPEN', programStateEvidence: 'program-version-7', category: 'HOTEL', costCenterId: 'cc-1', customerPartyId: 'customer-1', currency: 'EGP', grossAmount: decimalAmount('100'), discountAmount: decimalAmount('0'), postingDate: '2026-09-19', dueDate: '2026-09-30', invoiceNumber: 'INV-1', inventory: { allocationId: 'allocation-1', contractId: 'contract-1', resourceType: 'HOTEL', resourceId: 'room-1', serviceDate: '2026-10-01', quantity: decimalAmount('2') } };
   const confirm = (change: Partial<ConfirmBookingInput> = {}, target = service) => target.confirmBooking({ ...base, ...change });
-  return { repo, calls, service, create, setup, confirm, setPaid: (value: boolean) => { paid = value; historical ||= value; }, setCommissionPaid: (value: boolean) => { commissionPaid = value; }, setInventoryBlocked: (value: boolean) => { inventoryBlocked = value; }, setApproval: (value: boolean) => { approval = value; }, setCostLinked: (value: boolean) => { costLinked = value; }, setProcurementSequence: (...value: typeof procurementSequence) => { procurementSequence = value; }, setStandalonePlan: (value: StandaloneSupplyPlan) => { standalonePlan = value; }, setProcurementFallback: (allocationId: string, reference: string) => procurementFallbacks.set(allocationId, reference), isHistorical: () => historical };
+  return { commission,billing,treasury,base,allocationKeys,repo, calls, claims,reversals,service, create, setup, confirm, setPaid: (value: boolean) => { paid = value; historical ||= value; }, setCommissionPaid: (value: boolean) => { commissionPaid = value; }, setInventoryBlocked: (value: boolean) => { inventoryBlocked = value; }, setApproval: (value: boolean) => { approval = value; }, setCostLinked: (value: boolean) => { costLinked = value; }, setProcurementSequence: (...value: typeof procurementSequence) => { procurementSequence = value; }, setStandalonePlan: (value: StandaloneSupplyPlan) => { standalonePlan = value; }, setProcurementFallback: (allocationId: string, reference: string) => procurementFallbacks.set(allocationId, reference), isHistorical: () => historical };
 }
 
 test('GS-023 BR-043 claims booking identity across different command keys and rejects conflicting payload', async () => { const f = fixture(); await f.setup(); const [first, second] = await Promise.all([f.confirm(), f.confirm({ commandKey: 'confirm-other' })]); assert.deepEqual(first, second); assert.equal(f.calls.invoice, 1); await assert.rejects(() => f.confirm({ commandKey: 'confirm-third', grossAmount: decimalAmount('101') }), /conflicting financial confirmation/); });
@@ -453,4 +470,151 @@ test('mixed supply opens exactly one supplier purchase order for quoted residual
   const first=await f.service.confirmStandaloneService(input);const replay=await f.service.confirmStandaloneService(input);
   assert.equal(first.purchaseOrderIds.length,1);assert.deepEqual(first.purchaseOrderIds,replay.purchaseOrderIds);
   assert.equal(f.calls.servicePo,1);assert.equal(f.calls.invoice,1);assert.equal(f.calls.allocation,1);
+});
+
+test('split commission pins exact claim references and reverses every beneficiary once after lost response',async()=>{const repo=new FailingRepository();repo.failStep='COMMISSION:1';const f=fixture(repo);await f.setup();const commission={agentPartyId:'child',amount:decimalAmount('100.01'),agreement:{agreementId:'agreement-v1',agreementVersion:1,principalPartyId:'parent',subordinatePartyId:'child',principalPercent:'33.333333'}};await assert.rejects(()=>f.confirm({commission}),/local completion failure/);const bookingResult=await f.confirm({commission},f.create()) as BookingReference;assert.deepEqual(f.claims.map(x=>[x.partyId,x.amount]),[['parent','33.33'],['child','66.68']]);assert.equal(bookingResult.commissionClaimIds?.length,2);assert.equal(f.calls.commission,2);await f.service.cancelBooking({companyId:company,branchId:'branch-1',commandKey:'split-cancel',booking,travelStarted:false,travelEvidence:'not-started',postingDate:'2026-09-20'});assert.deepEqual(new Set(f.reversals),new Set(bookingResult.commissionClaimIds));});
+test('agreement belonging to another agent is rejected before any economic effect',async()=>{const f=fixture();await f.setup();await assert.rejects(()=>f.confirm({commission:{agentPartyId:'someone-else',amount:decimalAmount('10'),agreement:{agreementId:'a',agreementVersion:1,principalPartyId:'parent',subordinatePartyId:'child',principalPercent:'50'}}}),/does not belong/);assert.equal(f.calls.invoice,0);assert.equal(f.calls.allocation,0);});
+
+test('reviewed family receipt resumes all booking allocations after lost parent completion',async()=>{
+ const repo=new FailingRepository(),f=fixture(repo);await f.setup();await f.confirm();const second=sourceReference('TOURISM_BOOKING','booking-2');await f.confirm({booking:second,commandKey:'confirm-second',invoiceNumber:'INV-2'});
+ const input={companyId:company,branchId:'branch-1',commandKey:'family-payment',familyReference:'FAMILY',treasuryId:'cash',number:'FAM-1',postingDate:'2026-09-19',amount:decimalAmount('15'),allocations:[{booking,amount:decimalAmount('10')},{booking:second,amount:decimalAmount('5')}]};
+ repo.failStep='FAMILY_ALLOCATION:TOURISM_BOOKING:booking-1';await assert.rejects(()=>f.service.recordFamilyDeposit(input),/local completion failure/);await f.create().recordFamilyDeposit(input);await f.create().recordFamilyDeposit(input);assert.equal(f.calls.deposit,2);
+ await assert.rejects(()=>f.service.recordFamilyDeposit({...input,amount:decimalAmount('16')}),/exactly equal/);
+ await assert.rejects(()=>f.service.recordFamilyDeposit({...input,amount:decimalAmount('0.0000000000000000001')}),/18 fractional/);assert.equal(f.calls.deposit,2);
+ await assert.rejects(()=>f.service.recordFamilyDeposit({...input,allocations:[{booking,amount:decimalAmount('5')},{booking,amount:decimalAmount('10')}]}),/duplicate/);
+ await assert.rejects(()=>f.service.recordFamilyDeposit({...input,branchId:'other'}),/different branch/);
+});
+
+test('capacity hold is real and confirmation reuses its exact owner key without an extra allocation',async()=>{
+ const f=fixture();await f.setup();const hold={companyId:company,branchId:'branch-1',commandKey:'hold-capacity',booking,program,expiresAt:new Date(Date.now()+60000).toISOString(),inventory:f.base.inventory!};
+ await f.service.holdBookingCapacity(hold);await f.create().holdBookingCapacity(hold);assert.equal(f.calls.invoice,0);await f.confirm({capacityHoldKey:hold.commandKey});assert.equal(f.calls.invoice,1);assert.equal(f.calls.allocation,1);assert.equal(f.allocationKeys.length,2);assert.equal(f.allocationKeys[0],f.allocationKeys[1]);
+ await assert.rejects(()=>f.service.releaseBookingHold({companyId:company,branchId:'branch-1',booking,capacityHoldKey:hold.commandKey}),/being reserved or adopted/);assert.equal(f.calls.release,0);
+});
+test('explicit hold release retains workflow history and prevents later adoption',async()=>{
+ const f=fixture();await f.setup();const hold={companyId:company,branchId:'branch-1',commandKey:'hold-release',booking,program,expiresAt:new Date(Date.now()+60000).toISOString(),inventory:f.base.inventory!};await f.service.holdBookingCapacity(hold);
+ const release={companyId:company,branchId:'branch-1',booking,capacityHoldKey:hold.commandKey};await f.service.releaseBookingHold(release);await f.create().releaseBookingHold(release);assert.equal(f.calls.release,1);await assert.rejects(()=>f.confirm({capacityHoldKey:hold.commandKey}),/not available/);assert.equal(f.calls.invoice,0);assert.equal((await f.repo.workflow(company,hold.commandKey))?.status,'HOLD_RELEASED');
+});
+test('confirmation and explicit release racing for the same hold cannot both succeed',async()=>{
+ const f=fixture();await f.setup();const hold={companyId:company,branchId:'branch-1',commandKey:'hold-race',booking,program,expiresAt:new Date(Date.now()+60000).toISOString(),inventory:f.base.inventory!};await f.service.holdBookingCapacity(hold);
+ const results=await Promise.allSettled([f.confirm({capacityHoldKey:hold.commandKey}),f.service.releaseBookingHold({companyId:company,branchId:'branch-1',booking,capacityHoldKey:hold.commandKey})]);assert.equal(results.filter(x=>x.status==='fulfilled').length,1);assert.ok(f.calls.invoice===0||f.calls.release===0);
+});
+
+test('individual invoices preserve each debtor, reject ambiguous receipts and resume every charge after a lost owner acknowledgement',async()=>{
+ const repo=new FailingRepository();repo.failStep='BILLING:1';const f=fixture(repo);await f.setup();const invoices:Array<{partyId:string;amount:string;id:string}>=[],original=f.billing.createBookingInvoice;
+ f.billing.createBookingInvoice=async input=>{if(!invoices.some(x=>x.id===input.id))invoices.push(input);return original(input);};
+ const customerCharges=[{travelerId:'t1',financialCustomerId:'parent',partyId:'parent-party',amount:decimalAmount('40')},{travelerId:'t1',financialCustomerId:'guardian',partyId:'guardian-party',amount:decimalAmount('10')},{travelerId:'t2',financialCustomerId:'parent',partyId:'parent-party',amount:decimalAmount('50')}];
+ await assert.rejects(()=>f.confirm({customerCharges}),/local completion failure/);await f.confirm({customerCharges:[...customerCharges].reverse()},f.create());assert.equal(f.calls.invoice,3);assert.equal(invoices.length,3);assert.equal(invoices.reduce((sum,x)=>sum+BigInt(x.amount),0n),100n);
+ const reference=await repo.booking(company,booking);assert.equal(reference?.customerInvoices?.length,3);const target=reference!.customerInvoices!.find(x=>x.partyId==='guardian-party')!;
+ const receipt={companyId:company,branchId:'branch-1',commandKey:'individual-receipt',booking,treasuryId:'cash',number:'R-IND',postingDate:'2026-09-19',amount:decimalAmount('5')};await assert.rejects(()=>f.service.recordBookingDeposit(receipt),/choose the individual/);await assert.rejects(()=>f.service.recordBookingDeposit({...receipt,invoiceId:'foreign'}),/does not belong/);assert.equal(f.calls.deposit,0);
+ let debtor='';const post=f.treasury.postDeposit;f.treasury.postDeposit=async input=>{debtor=input.partyId;assert.equal(input.invoiceId,target.invoiceId);return post(input);};await f.service.recordBookingDeposit({...receipt,invoiceId:target.invoiceId});await f.service.recordBookingDeposit({...receipt,invoiceId:target.invoiceId});assert.equal(debtor,'guardian-party');assert.equal(f.calls.deposit,1);
+ f.treasury.postDeposit=post;const another=reference!.customerInvoices!.find(x=>x.invoiceId!==target.invoiceId)!;const family={companyId:company,branchId:'branch-1',commandKey:'shared-individual-family',familyReference:'same-booking-family',treasuryId:'cash',number:'RF',postingDate:'2026-09-19',amount:decimalAmount('10'),allocations:[{booking,invoiceId:target.invoiceId,amount:decimalAmount('5')},{booking,invoiceId:another.invoiceId,amount:decimalAmount('5')}]};await f.service.recordFamilyDeposit(family);await f.service.recordFamilyDeposit(family);assert.equal(f.calls.deposit,3);
+
+ const blockers=await f.service.getBookingCancellationBlockers({companyId:company,branchId:'branch-1',booking,travelStarted:false,travelEvidence:'not-started'});assert.equal(blockers.blockers.filter(x=>x.type==='CUSTOMER_SETTLEMENT_REQUIRED').length,3);
+ f.setPaid(false);await f.service.cancelBooking({companyId:company,branchId:'branch-1',commandKey:'cancel-individual',booking,travelStarted:false,travelEvidence:'not-started',postingDate:'2026-09-20'});assert.equal(f.calls.cancelInvoice,3);
+});
+test('unbalanced and duplicate individual charge plans fail before any owner effect',async()=>{for(const customerCharges of [[{travelerId:'t1',financialCustomerId:'parent',partyId:'p',amount:decimalAmount('99')}],[{travelerId:'t1',financialCustomerId:'parent',partyId:'p',amount:decimalAmount('50')},{travelerId:'t1',financialCustomerId:'parent',partyId:'p',amount:decimalAmount('50')}]]){const f=fixture();await f.setup();await assert.rejects(()=>f.confirm({customerCharges}));assert.equal(f.calls.invoice,0);assert.equal(f.calls.allocation,0);}});
+
+
+test('employee and agent commission have independent durable effects and both retain cancellation evidence',async()=>{
+ const repo=new FailingRepository();repo.failStep='EMPLOYEE_COMMISSION';const f=fixture(repo);await f.setup();
+ const change={context:executionContext('company-a','branch-1','cashier'),employeeCommission:{employeeId:'staff',partyId:'staff-payee',amount:decimalAmount('7')},commission:{agentPartyId:'agent',amount:decimalAmount('5')}};
+ await assert.rejects(f.confirm(change),/local completion failure/);
+ const result=await f.confirm(change,f.create()) as BookingReference;
+ assert.equal(f.calls.invoice,1);assert.equal(f.calls.commission,2);
+ assert.deepEqual(f.claims.map(x=>[x.partyId,x.amount]),[['agent','5'],['staff-payee','7']]);
+ assert.equal(result.commissionClaimIds?.length,2);
+ await f.service.cancelBooking({companyId:company,branchId:'branch-1',commandKey:'cancel-staff',booking,travelStarted:false,travelEvidence:'not started',postingDate:'2026-10-16'});
+ assert.deepEqual(new Set(f.reversals),new Set(result.commissionClaimIds));
+});
+
+test('invalid employee identity fails before booking invoice or inventory effects',async()=>{
+ const f=fixture();await f.setup();
+ await assert.rejects(f.confirm({context:executionContext('company-a','branch-1','cashier'),employeeCommission:{employeeId:'invalid',partyId:'staff-payee',amount:decimalAmount('7')}}),/invalid employee/);
+ assert.equal(f.calls.invoice,0);assert.equal(f.calls.allocation,0);assert.equal(f.calls.commission,0);
+});
+
+
+test('deposit completion appends cash evidence without overwriting a newer booking state or commission references',async()=>{
+ const f=fixture();await f.setup();await f.confirm();
+ let entered!:()=>void,release!:()=>void;const started=new Promise<void>(resolve=>{entered=resolve;}),gate=new Promise<void>(resolve=>{release=resolve;}),original=f.treasury.postDeposit;
+ f.treasury.postDeposit=async input=>{entered();await gate;return original(input);};
+ const input={companyId:company,branchId:'branch-1',commandKey:'append-cash',booking,treasuryId:'cash',number:'CASH',postingDate:'2026-10-16',amount:decimalAmount('5')};
+ const pending=f.service.recordBookingDeposit(input);await started;
+ const current=(await f.repo.booking(company,booking))!;await f.repo.saveBooking({...current,status:'CANCELLED',commissionClaimIds:['retained-settlement-claim'],depositVoucherIds:['another-concurrent-voucher']});release();
+ const result=await pending as {voucherId:string},after=(await f.repo.booking(company,booking))!;
+ assert.equal(after.status,'CANCELLED');assert.deepEqual(after.commissionClaimIds,['retained-settlement-claim']);assert.deepEqual(new Set(after.depositVoucherIds),new Set(['another-concurrent-voucher',result.voucherId]));
+ await f.service.recordBookingDeposit(input);assert.equal(f.calls.deposit,1);assert.equal((await f.repo.booking(company,booking))?.depositVoucherIds.length,2);
+});
+
+
+function agentSettlementPort(f:ReturnType<typeof fixture>){
+ const groups=new Map<string,{id:string;total:ReturnType<typeof decimalAmount>;baseTotal:ReturnType<typeof decimalAmount>;status:string}>();let calls=0;
+ f.commission.describe=async(_company,id)=>{const claim=f.claims.find(x=>x.id===id);if(!claim)throw Error('claim missing');return{id,branchId:'branch-1',agentPartyId:claim.partyId,currency:'EGP',amount:decimalAmount(claim.amount),status:'APPROVED',payments:[],...(claim.beneficiary?{beneficiary:{...claim.beneficiary,employeeName:'Staff',payeeName:'Payee'}}:{})};};
+ f.commission.findSettlement=async(_company,id)=>groups.get(id);
+ f.commission.settleAgent=async input=>{const prior=groups.get(input.id);if(prior)return prior;calls++;if(input.expectedRemaining.map(x=>x.amount).join(',')!=='3.33,26.67')throw new ContractValidationError('expectedRemaining','balance changed');assert.ok(input.claimIds.every(id=>!f.claims.find(x=>x.id===id)?.beneficiary));const group={id:input.id,total:decimalAmount('30'),baseTotal:decimalAmount('30'),status:'COMPLETED'};groups.set(group.id,group);return group;};
+ return{groups,calls:()=>calls};
+}
+async function agentChangeFixture(repo=new FailingRepository()){
+ const f=fixture(repo);await f.setup();const context=executionContext('company-a','branch-1','manager');
+ await f.confirm({context,employeeCommission:{employeeId:'staff',partyId:'staff-payee',amount:decimalAmount('7')},commission:{agentPartyId:'child',amount:decimalAmount('40'),agreement:{agreementId:'old-agreement',agreementVersion:1,principalPartyId:'parent',subordinatePartyId:'child',principalPercent:'33.333333'}}});
+ const original=(await f.repo.booking(company,booking))!,active=original.agentCommissionState!.activeClaimIds,owner=agentSettlementPort(f),input={context,commandKey:'change-agent',booking,newAgentPartyId:'new-child',agreement:{agreementId:'new-agreement',agreementVersion:2,principalPartyId:'new-parent',subordinatePartyId:'new-child',principalPercent:'25'},expectedRemaining:active.map((claimId,index)=>({claimId,amount:decimalAmount(index===0?'3.33':'26.67')})),currency:'EGP',reason:'Reviewed transfer of the unpaid agent entitlement',postingDate:'2026-10-16',number:'CHANGE'};
+ return{f,owner,input,original};
+}
+
+test('agent reassignment resumes all replacement shares without erasing old or employee claims',async()=>{
+ const repo=new FailingRepository();repo.failStep='NEW_AGENT_COMMISSION:1';const{f,owner,input,original}=await agentChangeFixture(repo);
+ await assert.rejects(f.service.reassignBookingAgentCommissions(input),/local completion failure/);assert.ok((await repo.booking(company,booking))?.mutationKey);
+ await assert.rejects(f.service.cancelBooking({companyId:company,branchId:'branch-1',commandKey:'competing-cancel',booking,travelStarted:false,travelEvidence:'not started',postingDate:'2026-10-16'}),/pending financial/);
+ await f.create().reassignBookingAgentCommissions(input);const changed=(await repo.booking(company,booking))!;
+ assert.equal(changed.mutationKey,undefined);assert.equal(changed.agentCommissionState?.changes.length,1);assert.equal(changed.commissionClaimIds?.length,5);assert.ok(original.commissionClaimIds?.every(id=>changed.commissionClaimIds?.includes(id)));
+ assert.deepEqual(f.claims.filter(x=>x.partyId.startsWith('new-')).map(x=>[x.partyId,x.amount]),[['new-parent','7.5'],['new-child','22.5']]);assert.equal(f.claims.find(x=>x.partyId==='staff-payee')?.amount,'7');assert.equal(owner.calls(),1);assert.equal(f.calls.commission,5);
+ await f.service.reassignBookingAgentCommissions(input);assert.equal(owner.calls(),1);assert.equal(f.calls.commission,5);
+});
+
+test('lost booking pointer save resumes from retained completed mutation without rolling back newer references',async()=>{
+ const{f,owner,input}=await agentChangeFixture(),finish=f.repo.finishBookingMutation.bind(f.repo);let fail=true;
+ f.repo.finishBookingMutation=async(...args)=>{await finish(...args);if(fail){fail=false;throw Error('lost pointer acknowledgement');}};
+ await assert.rejects(f.service.reassignBookingAgentCommissions(input),/lost pointer acknowledgement/);await f.create().reassignBookingAgentCommissions(input);
+ assert.equal((await f.repo.booking(company,booking))?.agentCommissionState?.changes.length,1);assert.equal(owner.calls(),1);assert.equal(f.calls.commission,5);
+});
+
+test('changed reviewed balances return a documented rejection and unlock booking before any settlement',async()=>{
+ const{f,owner,input,original}=await agentChangeFixture();const result=await f.service.reassignBookingAgentCommissions({...input,expectedRemaining:input.expectedRemaining.map(x=>({...x,amount:decimalAmount('99')}))}) as {changed:boolean;reason:string};
+ assert.equal(result.changed,false);assert.match(result.reason,/balance changed/);const after=(await f.repo.booking(company,booking))!;assert.equal(after.mutationKey,undefined);assert.deepEqual(after.agentCommissionState,original.agentCommissionState);assert.equal(owner.groups.size,0);assert.equal(f.calls.commission,3);
+ await assert.rejects(f.service.reassignBookingAgentCommissions({...input,context:executionContext('company-a','other-branch','manager')}),/branch/);assert.equal((await f.repo.booking(company,booking))?.mutationKey,undefined);
+});
+
+test('customer credit refund links exact invoice and survives lost treasury completion acknowledgement',async()=>{
+  const repo=new FailingRepository();repo.failStep='REFUND_CASH_PAYMENT';
+  const f=fixture(repo);await f.setup();const confirmed=await f.confirm() as BookingReference;
+  const refund={companyId:company,branchId:'branch-1',commandKey:'refund-case-1',booking,
+    invoiceId:confirmed.invoiceId!,advanceId:'credit:booking-1',treasuryId:'cash',
+    paymentCurrency:'EGP',paymentAmount:decimalAmount('40'),postingDate:'2026-09-23',
+    number:'REF-1',reviewed:true,reason:'Reviewed partial refund for traveler'};
+  await assert.rejects(()=>f.service.refundBookingCredit(refund),/local completion failure/);
+  const result=await f.create().refundBookingCredit(refund) as {voucherId:string;baseAmount:string};
+  assert.ok(result.voucherId);assert.equal(result.baseAmount,'40');
+  assert.equal(f.calls.refundReserve,1);assert.equal(f.calls.refundCash,1);
+  assert.equal(f.calls.refundFinalize,1);
+  assert.deepEqual(await f.service.refundBookingCredit(refund),result);
+  await assert.rejects(()=>f.service.refundBookingCredit({...refund,paymentAmount:decimalAmount('41')}),/conflicting replay/);
+  await assert.rejects(()=>f.service.refundBookingCredit({...refund,invoiceId:'someone-else'}),/invoice does not belong/);
+});
+
+test('approval supplied after a paused refund resumes one reserved credit, not a second payout',async()=>{
+ const f=fixture();await f.setup();const confirmed=await f.confirm() as BookingReference;
+ const refund={companyId:company,branchId:'branch-1',commandKey:'approval-later-refund',
+  booking,invoiceId:confirmed.invoiceId!,advanceId:'credit:booking-1',treasuryId:'cash',
+  paymentCurrency:'EGP',paymentAmount:decimalAmount('25'),postingDate:'2026-09-23',
+  number:'REF-APPROVAL',reviewed:true,reason:'Reviewed refund awaiting cash approval'};
+ const original=f.treasury.postCustomerRefund;
+ f.treasury.postCustomerRefund=async input=>{
+  if(!input.approvalRequestId)throw new Error('exact cash approval required');
+  return original(input);
+ };
+ await assert.rejects(()=>f.service.refundBookingCredit(refund),/approval required/);
+ assert.equal(f.calls.refundReserve,1);assert.equal(f.calls.refundCash,0);
+ await f.create().refundBookingCredit({...refund,approvalRequestId:'approved-payment-1'});
+ assert.equal(f.calls.refundReserve,1);assert.equal(f.calls.refundCash,1);
+ assert.equal(f.calls.refundFinalize,1);
 });
