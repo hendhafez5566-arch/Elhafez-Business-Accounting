@@ -1,6 +1,6 @@
 import type { CompanyId, DecimalAmount, SourceReference } from '@elhafez/contracts';
 export type ServiceCategory='HOTEL'|'FLIGHT'|'TRANSPORT'|'VISA'|'OTHER';
-export type WorkflowKind='BOOKING_AGENT_CHANGE'|'BOOKING_HOLD'|'BOOKING_CONFIRMATION'|'BOOKING_DEPOSIT'|'BOOKING_SETTLEMENT'|'BOOKING_CANCELLATION'|'PROGRAM_CANCELLATION'|'PROGRAM_CLOSE'|'MILESTONE_ACTUALIZATION'|'STANDALONE_CONFIRMATION'|'STANDALONE_CANCELLATION';
+export type WorkflowKind='BOOKING_AGENT_CHANGE'|'BOOKING_HOLD'|'BOOKING_CONFIRMATION'|'BOOKING_DEPOSIT'|'BOOKING_SETTLEMENT'|'BOOKING_CANCELLATION'|'BOOKING_REFUND'|'PROGRAM_CANCELLATION'|'PROGRAM_CLOSE'|'MILESTONE_ACTUALIZATION'|'STANDALONE_CONFIRMATION'|'STANDALONE_CANCELLATION';
 export type WorkflowStatus='HELD'|'HOLD_CONFIRMING'|'HOLD_RELEASING'|'HOLD_RELEASED'|'RUNNING'|'BLOCKED'|'SETTLEMENT_REQUIRED'|'COMPLETED';
 export interface Workflow {id:string;companyId:CompanyId;branchId?:string;kind:WorkflowKind;commandKey:string;payloadHash:string;sourceType:string;sourceId:string;status:WorkflowStatus;payload:unknown;result?:unknown;createdAt:string;updatedAt:string}
 export interface WorkflowStep {id:string;companyId:CompanyId;workflowId:string;name:string;effectKey:string;status:'PENDING'|'COMPLETED';ownerReference?:string;result?:unknown;createdAt:string;completedAt?:string}
