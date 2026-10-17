@@ -17,18 +17,18 @@ function fixture(repo = new FailingRepository()) {
   const once = (key: string, field: keyof typeof calls) => { if (!effects.has(key)) { effects.add(key); calls[field]++; } };
   const billing: BillingPort = {
     async reserveBookingRefund(input) {
-      once(input.sourceId,'refundReserve');
+      once('reserve:'+input.sourceId,'refundReserve');
       return{id:'reservation:'+input.sourceId,liabilityAccountId:'customer-advance',status:'RESERVED'};
     },
     async completeBookingRefund(input) {
-      once(input.sourceId,'refundFinalize');
+      once('finalize:'+input.sourceId,'refundFinalize');
       return{id:'reservation:'+input.sourceId,status:'POSTED'};
     },
     async createServiceInvoice(input) { once(input.id, 'invoice'); return { id: input.id }; }, async createBookingInvoice(input) { once(input.id, 'invoice'); return { id: input.id }; }, async cancellationEvidence() { return { hasHistoricalAllocationEvidence: historical, activeAllocationIds: paid ? ['allocation-payment'] : [], hasAvailableAdvance: false, settlementRequired: paid, cancellationSafe: !paid, outstanding: decimalAmount(paid ? '0' : '100') }; }, async cancelInvoice(_company, id) { once(`cancel:${id}`, 'cancelInvoice'); return { id }; } };
   const treasury: TreasuryPort = {
     async quoteCustomerRefund(input){return{baseAmount:input.paymentAmount};},
     async postCustomerRefund(input){
-      once(input.id,'refundCash');
+      once('cash:'+input.id,'refundCash');
       return{id:input.id,journalId:'refund-journal:'+input.id,currency:input.paymentCurrency,amount:input.paymentAmount};
     },
     async postDeposit(input) { once(input.id, 'deposit'); paid = true; historical = true; return { id: input.id }; }, async reverseDeposit(_company, id) { paid = false; return { id }; } };
