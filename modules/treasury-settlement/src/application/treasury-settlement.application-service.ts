@@ -388,7 +388,7 @@ export class TreasurySettlementApplicationService {
   }
   /** AC-08 narrow payment port for liabilities owned outside Billing. */
   async postOwnerPayment(input: {
-    id:string; companyId:CompanyId; branchId?:string; treasuryId:string; ownerType:'EXPENSE'|'COMMISSION';
+    id:string; companyId:CompanyId; branchId?:string; treasuryId:string; ownerType:'EXPENSE'|'COMMISSION'|'CUSTOMER_REFUND';
     ownerId:string; partyId:string; number:string; postingDate:string; amount:DecimalAmount;
     paymentCurrency:string;
     carryingBaseAmount:DecimalAmount; settlementBaseAmount:DecimalAmount; liabilityAccountId:string;
@@ -396,7 +396,10 @@ export class TreasurySettlementApplicationService {
     realizedFxGainAccountId?:string; realizedFxLossAccountId?:string; fxRateId?:string;
   }):Promise<Voucher>{
     const amount=pos(input.amount),carrying=pos(input.carryingBaseAmount),settlement=pos(input.settlementBaseAmount);
+    if(input.ownerType==='CUSTOMER_REFUND'&&(!input.debitPartyId||input.debitPartyId!==input.partyId))
+      throw new ContractValidationError('partyId','customer refund must debit the original debtor');
     const treasury=await this.required(input.companyId,input.treasuryId);
+    if(!treasury.active)throw new ContractValidationError('treasury','inactive treasury');
     if(currencyCode(input.paymentCurrency)!==treasury.currency)throw new ContractValidationError('paymentCurrency','must match selected Treasury currency');
     const ownerSourceId=input.ownerType+':'+input.ownerId+':'+input.id;
     const requestHash=hash({...input,amount,carryingBaseAmount:carrying,settlementBaseAmount:settlement});
