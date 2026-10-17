@@ -27,6 +27,25 @@ export class FamilyStatementController {
   for(const allocation of input.allocations){const row=statement.rows.find(x=>x.bookingId===allocation.bookingId&&(!allocation.invoiceId||x.invoiceId===allocation.invoiceId));if(!row?.invoiceId||row.currency!==input.currency)throw new ContractValidationError('booking','invoiced family booking in selected currency required');}
   return this.orchestration.recordFamilyDeposit({companyId:c.companyId,branchId:c.branchId,commandKey:'family:'+input.requestId,familyReference:input.reference,treasuryId:input.treasuryId,number:input.number,postingDate:input.postingDate,amount:decimalAmount(input.amount),allocations:input.allocations.map(x=>({booking:sourceReference('HAJJ_UMRAH_BOOKING',x.bookingId),...(x.invoiceId?{invoiceId:x.invoiceId}:{}),amount:decimalAmount(x.amount)}))});
  }
+ @Post('refunds')
+ async refund(@Headers('authorization') auth:string|undefined,
+  @Headers('x-company-id') companyId:string|undefined,
+  @Headers('x-branch-id') branchId:string|undefined,
+  @Body() input:{bookingId:string;invoiceId:string;advanceId:string;treasuryId:string;
+    commandKey:string;paymentCurrency:string;paymentAmount:string;postingDate:string;
+    number:string;reviewed:boolean;reason:string}) {
+  const c=await this.writeContext(auth,companyId,branchId);
+  if(!input?.bookingId?.trim()||!input?.invoiceId?.trim()||!input?.advanceId?.trim())
+    throw new ContractValidationError('refund','booking, invoice and refund credit required');
+  return this.orchestration.refundBookingCredit({
+    companyId:c.companyId,branchId:c.branchId,
+    booking:sourceReference('HAJJ_UMRAH_BOOKING',input.bookingId),
+    invoiceId:input.invoiceId,advanceId:input.advanceId,
+    treasuryId:input.treasuryId,commandKey:input.commandKey,
+    paymentCurrency:input.paymentCurrency,paymentAmount:decimalAmount(input.paymentAmount),
+    postingDate:input.postingDate,number:input.number,reviewed:input.reviewed,reason:input.reason,
+  });
+ }
  @Get()
  async statement(@Headers('authorization') auth:string|undefined,@Headers('x-company-id') companyId:string|undefined,@Headers('x-branch-id') branchId:string|undefined,@Query('reference') reference:string|undefined,@Query('travelerId') travelerId?:string){
   if(!auth?.startsWith('Bearer ')||!companyId||!branchId)throw new UnauthorizedException('authenticated company and branch required');
