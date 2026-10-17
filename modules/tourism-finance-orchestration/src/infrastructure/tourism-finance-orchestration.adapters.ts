@@ -1,6 +1,4 @@
 import type { BillingSubledgersApplicationService } from '@elhafez/billing-subledgers';
-import {currencyCode,decimalAmount,money} from '@elhafez/contracts';
-import type {CurrencyFxApplicationService} from '@elhafez/currency-fx';
 import type { TreasurySettlementApplicationService } from '@elhafez/treasury-settlement';
 import type { ExpenseCommissionRecognitionApplicationService } from '@elhafez/expense-commission-recognition';
 import type { ProcurementFinanceApplicationService } from '@elhafez/procurement-finance';
@@ -73,18 +71,9 @@ export class BillingAdapter implements BillingPort {
 }
 
 export class TreasuryAdapter implements TreasuryPort {
-  constructor(private readonly treasury:TreasurySettlementApplicationService,private readonly fx?:CurrencyFxApplicationService) {}
-  async quoteCustomerRefund(input:Parameters<TreasuryPort['quoteCustomerRefund']>[0]){
-    const treasury=await this.treasury.getTreasurySnapshot(input.companyId,input.treasuryId);
-    if(!treasury.active||treasury.currency!==currencyCode(input.paymentCurrency))
-      throw new Error('active treasury in selected refund currency required');
-    if(!this.fx)throw new Error('currency FX provider required for refunds');
-    const base=await this.fx.getBaseCurrency(input.companyId);
-    if(treasury.currency===base.code)return{baseAmount:decimalAmount(input.paymentAmount)};
-    const converted=await this.fx.calculateSettlement(input.companyId,
-      money(input.paymentAmount,currencyCode(input.paymentCurrency)),base.code,
-      input.postingDate+'T23:59:59.999Z');
-    return{baseAmount:decimalAmount(converted.converted.amount),fxRateId:converted.rate.rateId};
+  constructor(private readonly treasury:TreasurySettlementApplicationService) {}
+  quoteCustomerRefund(input:Parameters<TreasuryPort['quoteCustomerRefund']>[0]){
+    return this.treasury.quoteCustomerRefund(input);
   }
   postCustomerRefund(input:Parameters<TreasuryPort['postCustomerRefund']>[0]){
     return this.treasury.postOwnerPayment({
