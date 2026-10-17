@@ -62,7 +62,7 @@ export class FamilyStatementController {
     const invoice=charge.invoiceId?await this.billing.getCommercialPosition(context.companyId,charge.invoiceId):null;
     if(invoice&&(invoice.branchId!==context.branchId||invoice.partyId!==charge.partyId))throw new ContractValidationError('invoice','owner scope does not match family booking');
     const active=invoice?.status==='POSTED';
-    rows.push({invoiceState:invoice?.status??null,bookingId:booking.id,code:booking.code,status:booking.status,travelerIds:charge.travelerId?[charge.travelerId]:booking.travelerIds,financialCustomerId:charge.financialCustomerId,invoiceId:invoice?.invoiceId??null,currency:invoice?.currency??null,charged:active?invoice.charged:'0',paid:active?invoice.settled:'0',outstanding:active?invoice.outstanding:'0',allocationBasis:charge.travelerId||booking.travelerIds.length===1?'INDIVIDUAL':'SHARED_NOT_DISTRIBUTED'});
+    rows.push({invoiceState:invoice?.status??null,bookingId:booking.id,code:booking.code,status:booking.status,travelerIds:charge.travelerId?[charge.travelerId]:booking.travelerIds,financialCustomerId:charge.financialCustomerId,invoiceId:invoice?.invoiceId??null,currency:invoice?.currency??null,charged:active?invoice.charged:'0',paid:active?invoice.settled:'0',outstanding:active?invoice.outstanding:'0',refundCredits:active?invoice.advances.filter(x=>units(x.available)>0n&&x.baseCurrency).map(x=>({id:x.id,available:x.available,baseCurrency:x.baseCurrency!})):[],allocationBasis:charge.travelerId||booking.travelerIds.length===1?'INDIVIDUAL':'SHARED_NOT_DISTRIBUTED'});
    }
   }
   const selected=travelerId?rows.filter(row=>row.allocationBasis==='INDIVIDUAL'&&row.travelerIds.includes(travelerId)):rows;
